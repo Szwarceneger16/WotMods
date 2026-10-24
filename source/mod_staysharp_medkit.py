@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.6.1 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.7.0 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
 no lifecycle monkeypatches; subscribes to native ComponentEvent lifecycle.
 It preserves the working v1.5.0 rendering and detects incompatible HUD
-shapes before attempting to paint. No sound, SWF replacement or downloads.
+shapes before attempting to paint. Bundled ready voice and native medkit SFX;
+no SWF replacement or downloads.
 """
 from __future__ import absolute_import
 
@@ -24,7 +25,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.6.1'
+VERSION = '1.7.0'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -32,6 +33,8 @@ HALF_PULSE = 2.0               # 0%->100% in 2 s, then 100%->0% in 2 s
 PULSE_TICK = 0.10              # 10 texture switches/s, never allocate new GUI roots
 STATE_TICK = 0.25
 STABLE_READY_DELAY = 0.90
+READY_VOICE_DELAY = 1.0
+READY_VOICE_EVENT = 'staysharp_medkit_ready'
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
 OFFSET_Y = 0.0
@@ -67,6 +70,117 @@ _event_bus = None
 _event_scope = None
 _consumables_alias = None
 _log_file = None
+_audio_key = None
+_audio_since = None
+_audio_announced = False
+_audio_next_reminder = None
+_voice_player = None
+_voice_disabled = False
+_effect_sound = None
+_effect_compact = None
+_effect_disabled = False
+_audio_suspended = True
+
+
+def _suspend_audio():
+    """Stop current audio, retaining the one-announcement-per-ready latch."""
+    global _audio_next_reminder, _audio_suspended
+    _audio_next_reminder = None
+    if _audio_suspended:
+        return
+    _audio_suspended = True
+    if _voice_player is not None:
+        try:
+            _voice_player.stop()
+        except Exception:
+            _exception('voice stop failed')
+    if _effect_sound is not None:
+        try:
+            _effect_sound.stop()
+        except Exception:
+            _exception('native reminder stop failed')
+
+
+def _reset_audio():
+    global _audio_key, _audio_since, _audio_announced
+    _suspend_audio()
+    _audio_key = None
+    _audio_since = None
+    _audio_announced = False
+
+
+def _track_audio_ready(panel, slot):
+    """Track actual readiness even while the player temporarily hides HUD."""
+    global _audio_key, _audio_since
+    key = (slot, panel._cds[slot]) if slot is not None else None
+    if key != _audio_key:
+        _reset_audio()
+        _audio_key = key
+        if key is not None:
+            _audio_since = _time()
+
+
+def _play_medkit_effect(compact):
+    """Use the same descriptor-to-event mapping as WoT's activation code."""
+    global _effect_sound, _effect_compact, _effect_disabled
+    if _effect_disabled:
+        return
+    try:
+        import SoundGroups
+        from gui.battle_control.controllers.consumables.equipment_ctrl import EquipmentSound
+        if _effect_sound is None or _effect_compact != compact:
+            if _effect_sound is not None:
+                _effect_sound.stop()
+            event = EquipmentSound._soundMap.get(compact)
+            if not event:
+                raise ValueError('no native medkit activation sound for descriptor')
+            _effect_sound = SoundGroups.g_instance.getSound2D(event)
+            _effect_compact = compact
+        result = _effect_sound.play()
+        if result is not None and not result:
+            raise RuntimeError('native medkit playback failed')
+    except Exception:
+        _effect_disabled = True
+        _exception('native medkit reminder unavailable; disabled for battle')
+
+
+def _play_ready_voice(compact):
+    global _voice_player, _voice_disabled
+    if not _voice_disabled:
+        try:
+            if _voice_player is None:
+                import SoundGroups
+                _voice_player = SoundGroups.g_instance.getSound2D(READY_VOICE_EVENT)
+            result = _voice_player.play()
+            if result is not None and not result:
+                raise RuntimeError('ready voice playback failed')
+            return
+        except Exception:
+            _voice_disabled = True
+            _exception('ready voice unavailable; using native medkit effect for battle')
+    _play_medkit_effect(compact)
+
+
+def _update_audio():
+    """Run on the existing state tick; no extra callbacks or catch-up bursts."""
+    global _audio_announced, _audio_next_reminder, _audio_suspended
+    if not _overlay_active or _audio_key is None:
+        _suspend_audio()
+        return
+    now = _time()
+    if now - _audio_since < READY_VOICE_DELAY:
+        return
+    _audio_suspended = False
+    if not _audio_announced:
+        _audio_announced = True
+        _play_ready_voice(_audio_key[1])
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+    elif _audio_next_reminder is None:
+        # Resume at the next complete pulse without repeating the voice.
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+    elif now >= _audio_next_reminder:
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        _play_medkit_effect(_audio_key[1])
 
 
 def _log(message):
@@ -549,6 +663,7 @@ def _set_frame(level):
 
 def _hide_overlay(reason='not_ready'):
     global _overlay_active, _frame
+    _suspend_audio()
     _cancel_pulse()
     if not _overlay_active:
         return
@@ -709,7 +824,7 @@ def _show_overlay(slot, geometry):
             _frame_switches = 0
             _last_pulse_report = _time()
             _set_frame(0)
-            _log('overlay ACTIVE slot=%d, mount=%s, frames 0..%d, silent; depth=%.3f' % (slot, _overlay_mount, FRAME_LEVELS, GUI_DEPTH))
+            _log('overlay ACTIVE slot=%d, mount=%s, frames 0..%d; depth=%.3f' % (slot, _overlay_mount, FRAME_LEVELS, GUI_DEPTH))
             _schedule_pulse()
     except Exception:
         _graphics_disabled = True
@@ -765,11 +880,17 @@ def _refresh(panel):
         _last_hud_status = hud_reason
         _log('native HUD visibility=' + hud_reason)
     if not shown:
+        if hud_reason == 'native_panel_hidden':
+            slot, _ = _probe_medkit(panel)
+            _track_audio_ready(panel, slot)
+        else:
+            _reset_audio()
         _ready_slot, _ready_since = None, None
         _hide_overlay(hud_reason)
         return
 
     slot, reason = _probe_medkit(panel)
+    _track_audio_ready(panel, slot)
     if reason != _last_reason:
         _last_reason = reason
         _log('equipment state=' + reason + (' slot=%d' % slot if slot is not None else ''))
@@ -794,6 +915,7 @@ def _refresh(panel):
         _hide_overlay('panel_geometry_unavailable_' + origin)
         return
     _show_overlay(slot, geometry)
+    _update_audio()
 
 def _check_state():
     global _state_callback, _error_count, _graphics_disabled
@@ -825,10 +947,15 @@ def _activate(panel):
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
+    global _voice_player, _voice_disabled, _effect_disabled, _effect_sound, _effect_compact
     if panel is _panel:
         return
     if _panel is not None:
         _deactivate(_panel)
+    _reset_audio()
+    _voice_player = None
+    _voice_disabled, _effect_disabled = False, False
+    _effect_sound, _effect_compact = None, None
     _panel = panel
     _ready_slot = None
     _ready_since = None
@@ -853,6 +980,7 @@ def _deactivate(panel):
     _ready_slot = None
     _ready_since = None
     _cancel_state()
+    _reset_audio()
     _delete_overlay()
     _log('battle panel disposed')
 
@@ -918,7 +1046,7 @@ def init():
                     pass
                 raise
             _event_listeners.append((event_type, handler))
-        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, v1.5 graphics unchanged, silent')
+        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, ready voice + native medkit reminders')
     except Exception:
         _exception('component event subscription failed; mod disabled')
         fini()

@@ -1,4 +1,4 @@
-"""Mod 1.6.0 offline tests with deliberately strict GUI mock.
+"""Offline runtime regressions with deliberately strict GUI and sound mocks.
 
 Cannot validate actual WoT graphics layering; regression assertions target
 previously confirmed bugs: alpha tint ineffective, sniper isActive gating,
@@ -249,8 +249,29 @@ class Tests(unittest.TestCase):
                'gui.Scaleform.daapi.view.battle.shared.consumables_panel',
                'gui.Scaleform.genConsts',
                'gui.Scaleform.genConsts.BATTLE_VIEW_ALIASES',
-               'gui.shared', 'gui.shared.events']
+               'gui.shared', 'gui.shared.events',
+               'gui.battle_control', 'gui.battle_control.controllers',
+               'gui.battle_control.controllers.consumables',
+               'gui.battle_control.controllers.consumables.equipment_ctrl']
         packages={name:types.ModuleType(name) for name in names}
+        self.audio_plays=[]
+        self.audio_stops=[]
+        self.audio_fail=set()
+        self.audio_gets=[]
+        self.sounds={}
+        def get_sound(event):
+            self.audio_gets.append(event)
+            if event in self.audio_fail:
+                raise RuntimeError('sound unavailable')
+            if event not in self.sounds:
+                self.sounds[event]=types.SimpleNamespace(
+                    play=lambda: self.audio_plays.append((self.world.clock,event)),
+                    stop=lambda: self.audio_stops.append(event))
+            return self.sounds[event]
+        sound_groups=types.ModuleType('SoundGroups')
+        sound_groups.g_instance=types.SimpleNamespace(getSound2D=get_sound)
+        packages['gui.battle_control.controllers.consumables.equipment_ctrl'].EquipmentSound=types.SimpleNamespace(
+            _soundMap={72:'battle_equipment_1019',73:'battle_equipment_763'})
         packages['gui.Scaleform.daapi.view.battle.shared.consumables_panel'].ConsumablesPanel=Panel
         packages['gui.Scaleform.genConsts.BATTLE_VIEW_ALIASES'].BATTLE_VIEW_ALIASES=types.SimpleNamespace(CONSUMABLES_PANEL='consumablesPanel')
         self.bus=FakeEventBus()
@@ -262,7 +283,7 @@ class Tests(unittest.TestCase):
         arena_module=types.ModuleType('constants')
         arena_module.ARENA_PERIOD=types.SimpleNamespace(BATTLE=3,PREBATTLE=2,AFTERBATTLE=4)
         self.patch=patch.dict(sys.modules,{'BigWorld':self.world,'GUI':self.gui,'constants':arena_module,
-                 'ResMgr':self.resmgr,'gui':types.ModuleType('gui'),**packages})
+                 'ResMgr':self.resmgr,'SoundGroups':sound_groups,'gui':types.ModuleType('gui'),**packages})
         self.patch.start()
         spec=importlib.util.spec_from_file_location('mod_staysharp_v160',SOURCE)
         self.mod=importlib.util.module_from_spec(spec)
@@ -380,9 +401,9 @@ class Tests(unittest.TestCase):
         self.assertLess(overlay.position[2],0.01)
         self.assertGreaterEqual(overlay.position[2],0)
 
-    def test_12_no_sound_shaders_flash_private(self):
+    def test_12_no_shaders_native_glow_or_os_audio(self):
         src=SOURCE.read_text()
-        for needle in ['GUI.AlphaShader(','.addShader(', 'playSound(', 'SoundGroups.', 
+        for needle in ['GUI.AlphaShader(','.addShader(', 'ctypes', 'winsound', 'subprocess',
                        '.as_setGlowS(','.as_hideGlowS(', 'component.colour = (255, 255, 255, 0)']:
             self.assertNotIn(needle,src)
 
@@ -1232,6 +1253,179 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.mod.HALF_PULSE,2.0)
         self.assertEqual(self.mod.PULSE_TICK,0.1)
         self.assertEqual([self.animate_at(t) for t in (0,1,2,3,4)],[0,10,20,10,0])
+
+
+    def test_118_voice_after_one_second_exactly_once(self):
+        self.state()
+        detected=self.world.clock
+        self.state(3)
+        self.assertEqual(self.audio_plays,[])
+        self.state()
+        self.assertEqual(self.audio_plays,[(detected+1.0,self.mod.READY_VOICE_EVENT)])
+        self.state(15)
+        self.assertEqual(len(self.audio_plays),1)
+        self.state()
+        self.assertEqual(self.audio_plays[-1],(detected+5.0,'battle_equipment_1019'))
+        self.state(16)
+        self.assertEqual(self.audio_plays[-1],(detected+9.0,'battle_equipment_1019'))
+        self.assertEqual(len(self.audio_plays),3)
+
+    def test_119_sound_handles_are_reused_during_ready_interval(self):
+        self.state(65)
+        self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT,'battle_equipment_1019'])
+        self.assertEqual(len(self.audio_plays),4)
+
+    def test_120_cooldown_stops_audio_and_next_ready_rearms_voice(self):
+        self.visible_start()
+        self.item.isAvailableToUse=False
+        self.state()
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+        before=list(self.audio_plays)
+        self.state(24)
+        self.assertEqual(self.audio_plays,before)
+        self.item.isAvailableToUse=True
+        self.state(5)
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
+        self.assertEqual(len(self.audio_plays),len(before)+1)
+
+    def test_121_hidden_hud_pauses_without_repeating_voice(self):
+        self.visible_start()
+        self.panel.native_visible=False
+        self.state(30)
+        self.assertEqual(len(self.audio_plays),1)
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+        self.panel.native_visible=True
+        self.state(5)
+        self.assertEqual(len(self.audio_plays),1)
+        self.state(16)
+        self.assertEqual([event for _,event in self.audio_plays],
+                         [self.mod.READY_VOICE_EVENT,'battle_equipment_1019'])
+
+    def test_122_hidden_hud_still_tracks_cooldown(self):
+        self.visible_start()
+        self.panel.native_visible=False
+        self.item.isAvailableToUse=False
+        self.state()
+        self.item.isAvailableToUse=True
+        self.state(30)
+        self.assertEqual(len(self.audio_plays),1)
+        self.panel.native_visible=True
+        self.state(5)
+        self.assertEqual([event for _,event in self.audio_plays],
+                         [self.mod.READY_VOICE_EVENT]*2)
+
+    def test_123_camera_switch_does_not_repeat_or_delay_voice(self):
+        self.visible_start()
+        for camera in ('sniper','strategic','trajectory','arcade'):
+            self.panel.camera_mode=camera
+            self.panel.isActive=False
+            self.state(4)
+        self.assertEqual(len(self.audio_plays),2)
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+
+    def test_124_frame_stall_emits_only_one_reminder(self):
+        self.visible_start()
+        self.world.clock+=60.0
+        self.state()
+        self.assertEqual(len(self.audio_plays),2)
+        self.state(15)
+        self.assertEqual(len(self.audio_plays),2)
+        self.state()
+        self.assertEqual(len(self.audio_plays),3)
+
+    def test_125_voice_failure_falls_back_without_stopping_overlay(self):
+        self.audio_fail.add(self.mod.READY_VOICE_EVENT)
+        self.visible_start()
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.state(32)
+        self.assertEqual(self.audio_gets.count(self.mod.READY_VOICE_EVENT),1)
+        self.assertEqual(len(self.audio_plays),3)
+
+    def test_126_native_effect_failure_is_bounded_and_visual_survives(self):
+        self.audio_fail.add('battle_equipment_1019')
+        self.visible_start()
+        self.state(40)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(self.audio_gets.count('battle_equipment_1019'),1)
+        self.assertEqual(len(self.audio_plays),1)
+
+    def test_127_small_medkit_uses_its_own_native_activation_effect(self):
+        self.panel._cds[3]=73
+        self.panel.sessionProvider.shared.equipments.compact=73
+        self.state(21)
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_763')
+
+    def test_128_destroyed_vehicle_cancels_audio(self):
+        self.visible_start()
+        self.world.avatar.vehicle.health=0
+        self.state(30)
+        self.assertEqual(len(self.audio_plays),1)
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+
+    def test_129_battle_end_cancels_audio(self):
+        self.visible_start()
+        self.world.avatar.arena.period=4
+        self.state(30)
+        self.assertEqual(len(self.audio_plays),1)
+        self.assertIsNone(self.mod._audio_key)
+
+    def test_130_no_audio_before_battle_or_without_perk(self):
+        self.world.avatar.arena.period=2
+        self.state(24)
+        self.assertEqual(self.audio_plays,[])
+        self.world.avatar.arena.period=3
+        self.world.avatar.vehicle.perkEffects={'equipment':[]}
+        self.state(24)
+        self.assertEqual(self.audio_plays,[])
+
+    def test_131_no_audio_in_replay_or_spectator(self):
+        self.panel.sessionProvider.isReplayPlaying=True
+        self.state(24)
+        self.assertEqual(self.audio_plays,[])
+        self.panel.sessionProvider.isReplayPlaying=False
+        self.world.avatar.isObserver=lambda:True
+        self.state(24)
+        self.assertEqual(self.audio_plays,[])
+
+    def test_132_disposal_cancels_audio_and_all_callbacks(self):
+        self.visible_start()
+        self.emit_unregister()
+        self.assertEqual(self.world.jobs,{})
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+        self.assertIsNone(self.mod._audio_key)
+
+    def test_133_next_battle_retries_previously_failed_voice(self):
+        self.audio_fail.add(self.mod.READY_VOICE_EVENT)
+        self.visible_start()
+        self.emit_unregister()
+        self.audio_fail.clear()
+        self.emit_register()
+        self.visible_start()
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
+        self.assertEqual(self.audio_gets.count(self.mod.READY_VOICE_EVENT),2)
+
+    def test_134_native_warning_suppresses_audio(self):
+        self.visible_start()
+        self.panel._equipmentsGlowCallbacks[3]=1
+        self.state(30)
+        self.assertEqual(len(self.audio_plays),1)
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+
+    def test_135_graphics_failure_cannot_leave_audio_running(self):
+        self.visible_start()
+        self.gui.fail_swap=True
+        self.animate_at(2)
+        self.assertTrue(self.mod._graphics_disabled)
+        self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
+        self.assertIsNone(self.mod._audio_next_reminder)
+
+    def test_136_native_playback_false_uses_effect_fallback(self):
+        voice=types.SimpleNamespace(play=lambda:False,stop=lambda:None)
+        self.sounds[self.mod.READY_VOICE_EVENT]=voice
+        self.visible_start()
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.assertTrue(self.mod._voice_disabled)
 
 
 if __name__=='__main__':

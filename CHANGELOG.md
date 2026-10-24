@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Add a single bundled "Medkit is ready" voice after one second of eligible readiness, using WoT/Wwise only.
+- Repeat the equipped medkit's native activation effect once per four-second pulse while the reminder remains active.
+- Stop audio on use/cooldown, perk loss, native injury/stun warning, HUD suppression, vehicle destruction and battle disposal.
+- Keep the announcement latch across temporary HUD hiding and camera changes; skip missed repetitions after a frame stall.
+- Add a deterministic PCM Wwise bank builder, verified voice source, native loading descriptor and audio regression tests; document sound-mod coexistence.
+
 ## 1.6.1 (first GitHub publication candidate, PR #1 fixes)
 
 - Fix Windows log rotation when the `.old` backup already exists; also rotate logs during long sessions.
