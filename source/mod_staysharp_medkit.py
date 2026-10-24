@@ -13,6 +13,7 @@ from __future__ import absolute_import
 import errno
 import json
 import os
+import sys
 import time
 import traceback
 
@@ -38,7 +39,7 @@ STABLE_READY_DELAY = 0.90
 READY_VOICE_DELAY = 1.0
 READY_VOICE_EVENT = 'staysharp_medkit_ready'
 VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
-CONFIG_FILENAME = 'config.json'
+CONFIG_FILENAME = 'staysharp.medkit.json'
 CONFIG_MAX_BYTES = 4096
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
@@ -98,14 +99,71 @@ def _language_code(value):
     return value.strip().lower().replace('_', '-').split('-')[0]
 
 
+def _game_roots(value, xml=False):
+    """Confirm physical installation roots, including native UTF-8 paths."""
+    try:
+        text_type = unicode
+    except NameError:
+        text_type = str
+    variants = []
+    if isinstance(value, text_type):
+        variants.append(value)
+    elif isinstance(value, bytes):
+        for encoding in ('utf-8', sys.getfilesystemencoding() or 'utf-8'):
+            try:
+                decoded = value.decode(encoding)
+                if decoded not in variants:
+                    variants.append(decoded)
+            except (UnicodeError, LookupError):
+                pass
+    roots = set()
+    for path in variants:
+        if not path or '\x00' in path or not os.path.isabs(path):
+            continue
+        if xml:
+            if os.path.basename(path).lower() != 'paths.xml' or not os.path.isfile(path):
+                continue
+            directories = (os.path.dirname(path),)
+        else:
+            directories = (path, os.path.dirname(path))
+        for root in directories:
+            if os.path.isfile(os.path.join(root, 'paths.xml')) and os.path.isdir(os.path.join(root, 'mods')):
+                roots.add(os.path.normcase(os.path.realpath(root)))
+    return roots
+
+
+def _config_path():
+    """Use mods/configs outside version folders; never guess a game version."""
+    try:
+        getter = getattr(ResMgr, 'resolveToAbsolutePath', None)
+        roots = _game_roots(getter('../paths.xml'), xml=True) if callable(getter) else set()
+        if roots:
+            return (os.path.join(next(iter(roots)), 'mods', 'configs', CONFIG_FILENAME)
+                    if len(roots) == 1 else None)
+    except Exception:
+        pass
+    roots = set()
+    try:
+        getter = getattr(ResMgr, 'appDirectory', None)
+        if callable(getter):
+            roots.update(_game_roots(getter()))
+    except Exception:
+        pass
+    try:
+        roots.update(_game_roots(getattr(os, 'getcwdu', os.getcwd)()))
+    except Exception:
+        pass
+    return (os.path.join(next(iter(roots)), 'mods', 'configs', CONFIG_FILENAME)
+            if len(roots) == 1 else None)
+
+
 def _load_language():
     """Read a bounded local JSON once at startup; never overwrite user data."""
     global _language
     selected = 'auto'
-    base = os.environ.get('LOCALAPPDATA') or os.environ.get('APPDATA')
-    if base:
-        folder = os.path.join(base, 'StaySharpMedkit')
-        path = os.path.join(folder, CONFIG_FILENAME)
+    path = _config_path()
+    if path is not None:
+        folder = os.path.dirname(path)
         try:
             try:
                 with open(path, 'rb') as handle:

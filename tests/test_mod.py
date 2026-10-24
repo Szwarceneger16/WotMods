@@ -239,6 +239,10 @@ class Tests(unittest.TestCase):
         self.world=FakeBW()
         self.gui=FakeGUI()
         self.resmgr=types.ModuleType('ResMgr')
+        self.game=Path(self.temp.name)/'game'
+        (self.game/'mods').mkdir(parents=True)
+        (self.game/'paths.xml').write_text('<root/>')
+        self.resmgr.resolveToAbsolutePath=lambda path:str(self.game/'paths.xml')
         self.missing=set()
         self.resmgr.isFile=lambda path:path not in self.missing
         self.item=FakeItem()
@@ -1433,12 +1437,12 @@ class Tests(unittest.TestCase):
 
 
     def write_language_config(self, value):
-        path=Path(self.temp.name)/'StaySharpMedkit'/'config.json'
+        path=self.game/'mods'/'configs'/'staysharp.medkit.json'
         path.write_text(json.dumps(value),encoding='utf-8')
         return path
 
     def test_137_missing_config_is_created_with_auto_language(self):
-        path=Path(self.temp.name)/'StaySharpMedkit'/'config.json'
+        path=self.game/'mods'/'configs'/'staysharp.medkit.json'
         self.assertEqual(json.loads(path.read_text()),{'language':'auto'})
 
     def test_138_all_manual_languages_select_their_own_voice(self):
@@ -1515,15 +1519,10 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.mod._language,'fr')
         self.assertEqual(self.audio_plays[-1][1],'staysharp_medkit_ready_fr')
 
-    def test_146_appdata_fallback_and_missing_appdata(self):
-        self.client_language='de'
-        with tempfile.TemporaryDirectory() as folder:
-            with patch.dict(os.environ,{'APPDATA':folder},clear=True):
-                self.mod._load_language()
-                self.assertTrue((Path(folder)/'StaySharpMedkit'/'config.json').is_file())
+    def test_146_configuration_does_not_require_appdata(self):
+        self.write_language_config({'language':'de'})
         with patch.dict(os.environ,{},clear=True), patch.object(self.mod,'_log'):
-            with patch('builtins.open',side_effect=AssertionError('unexpected disk access')):
-                self.mod._load_language()
+            self.mod._load_language()
         self.assertEqual(self.mod._language,'de')
 
     def test_147_no_config_reads_during_state_or_animation(self):
@@ -1543,6 +1542,74 @@ class Tests(unittest.TestCase):
         self.visible_start()
         self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
         self.assertTrue(self.mod._overlay_active)
+
+
+    def test_149_resolver_wins_over_another_installation_cwd(self):
+        self.write_language_config({'language':'pl'})
+        with tempfile.TemporaryDirectory() as other:
+            root=Path(other)
+            (root/'mods').mkdir()
+            (root/'paths.xml').write_text('<root/>')
+            with patch.object(os,'getcwd',return_value=other):
+                self.assertEqual(self.mod._config_path(),str(self.game/'mods'/'configs'/'staysharp.medkit.json'))
+                self.mod._load_language()
+        self.assertEqual(self.mod._language,'pl')
+
+    def test_150_config_is_shared_across_game_versions(self):
+        path=self.write_language_config({'language':'uk'})
+        for version in ('2.4.1.0','2.5.0.0'):
+            (self.game/'mods'/version).mkdir()
+            self.assertEqual(Path(self.mod._config_path()),path)
+            self.assertFalse((self.game/'mods'/version/'staysharp.medkit.json').exists())
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'uk')
+
+    def test_151_old_appdata_configuration_is_ignored(self):
+        old=Path(self.temp.name)/'StaySharpMedkit'/'config.json'
+        old.write_text('{"language":"ru"}')
+        self.client_language='de'
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'de')
+        self.assertEqual(old.read_text(),'{"language":"ru"}')
+
+    def test_152_fallback_handles_win64_app_directory(self):
+        win64=self.game/'win64'
+        win64.mkdir()
+        self.resmgr.resolveToAbsolutePath=lambda _:None
+        self.resmgr.appDirectory=lambda:str(win64)
+        with patch.object(os,'getcwd',return_value=self.temp.name):
+            self.assertEqual(Path(self.mod._config_path()),self.game/'mods'/'configs'/'staysharp.medkit.json')
+
+    def test_153_ambiguous_or_unavailable_installation_uses_auto_without_writes(self):
+        self.resmgr.resolveToAbsolutePath=lambda _:None
+        self.resmgr.appDirectory=lambda:str(self.game)
+        self.client_language='fr'
+        with tempfile.TemporaryDirectory() as other:
+            root=Path(other)
+            (root/'mods').mkdir()
+            (root/'paths.xml').write_text('<root/>')
+            with patch.object(os,'getcwd',return_value=other), patch.object(self.mod,'_log'):
+                self.assertIsNone(self.mod._config_path())
+                with patch('builtins.open',side_effect=AssertionError('unexpected file access')):
+                    self.mod._load_language()
+            self.assertFalse((root/'mods'/'configs').exists())
+        self.assertEqual(self.mod._language,'fr')
+        self.resmgr.appDirectory=lambda:self.temp.name
+        with patch.object(os,'getcwd',return_value=self.temp.name):
+            self.assertIsNone(self.mod._config_path())
+
+    def test_154_native_utf8_unicode_installation_path(self):
+        root=Path(self.temp.name)/'Zażółć'/'WoT'
+        (root/'mods').mkdir(parents=True)
+        (root/'paths.xml').write_text('<root/>')
+        self.resmgr.resolveToAbsolutePath=lambda _:str(root/'paths.xml').encode('utf-8')
+        self.assertEqual(Path(self.mod._config_path()),root/'mods'/'configs'/'staysharp.medkit.json')
+        self.mod._load_language()
+        path=root/'mods'/'configs'/'staysharp.medkit.json'
+        self.assertTrue(path.exists())
+        path.write_text('{"language":"es"}')
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'es')
 
 
 if __name__=='__main__':

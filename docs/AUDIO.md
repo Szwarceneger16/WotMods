@@ -42,10 +42,11 @@ spoken recordings in each language:
 | `es` | Spanish | Botiquín listo. |
 | `uk` | Ukrainian | Аптечка готова. |
 
-The mod creates `%LOCALAPPDATA%\StaySharpMedkit\config.json` beside its
-local log on first startup. If LOCALAPPDATA is unavailable, APPDATA is used.
-No configuration is written when neither location is available. The default
-is:
+The optional configuration is `<World_of_Tanks_EU>/mods/configs/staysharp.medkit.json`.
+The `configs` folder is beside version folders such as `2.4.1.0`, so the
+setting survives game-version folder changes. On first startup the mod
+creates the default file there when the installation is identifiable and
+writable. Without a readable file it uses the automatic default:
 
 ```json
 {
@@ -57,13 +58,20 @@ is:
 codes such as `pl-PL` and `fr_FR` are normalized. Unsupported or unavailable
 game languages use English. To force Polish, change the value to `"pl"`;
 the other codes in the table work the same way. A copyable sample is provided
-as `staysharp.medkit.example.json` in the repository.
+as `staysharp.medkit.example.json` in the repository; copy it to
+`mods/configs/staysharp.medkit.json` if you want to prepare the setting before
+the first game launch.
 
 **Restart WoT after editing this file.** Configuration is read once at mod
 startup, never on animation/state ticks. A missing file is created with
 `auto`; an existing file is never replaced. Malformed JSON, non-object
 roots, invalid values, read errors and files over 4 KiB use automatic
 selection and log a short local diagnostic without echoing file contents.
+The installation is identified through WoT's resource resolver and physical
+`paths.xml`/`mods` paths, with a bounded application-directory/CWD fallback.
+If the installation cannot be identified uniquely, the mod uses automatic
+language without writing configuration elsewhere. Existing AppData config
+files are not read or migrated. The diagnostic log location is unchanged.
 The repeated medkit activation effect remains the native game sound.
 
 ## Bank and volume

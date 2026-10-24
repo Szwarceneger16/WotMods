@@ -10,8 +10,8 @@
    are bundled. There are no separate DLLs, speech tools or sound downloads.
 5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
    before starting: a shared `audio_mods.xml` needs all installed banks.
-6. Start the game normally. The mod creates `%LOCALAPPDATA%\StaySharpMedkit\config.json`
-   beside its log. It defaults to `{"language":"auto"}`. To force Polish,
+6. Start the game normally. The mod creates `mods/configs/staysharp.medkit.json`,
+   outside the version folder. It defaults to `{"language":"auto"}`. To force Polish,
    change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
 
 ## In-game verification

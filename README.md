@@ -16,6 +16,8 @@ The mod uses the regular consumables HUD and works independently of arcade, snip
 3. Copy the downloaded `.wotmod` to `<World_of_Tanks_EU>/mods/<current_game_version>/`.
 4. Start WoT. To uninstall, remove this single `.wotmod` file.
 
+Optional language configuration: `mods/configs/staysharp.medkit.json`, beside the game-version folders. The mod creates an `auto` default there when possible; see [language selection](docs/AUDIO.md#language-configuration).
+
 The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the v1.7.0 soundbank, routing/volume and audio timing still require an in-game regression test. Back up the last working version before testing an update.
 
 Diagnostic log (created on the player's computer, **never included in releases**): `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
