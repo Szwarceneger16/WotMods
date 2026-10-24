@@ -206,7 +206,11 @@
       "sort.desc": "Descending",
       "unknown.tier": "Unknown tier",
       "sort.xp_base": "Base XP",
-      "sort.xp_received": "Received XP"
+      "sort.xp_received": "Received XP",
+      "groups.vehicles.total": "{0} vehicles",
+      "groups.maps.total": "{0} maps",
+      "groups.battles.total": "{0} battles",
+      "groups.tiers.total": "{0} tiers"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -413,7 +417,11 @@
       "sort.desc": "Malejąco",
       "unknown.tier": "Nieznany poziom",
       "sort.xp_base": "Bazowe PD",
-      "sort.xp_received": "Otrzymane PD"
+      "sort.xp_received": "Otrzymane PD",
+      "groups.vehicles.total": "{0} czołgów",
+      "groups.maps.total": "{0} map",
+      "groups.battles.total": "{0} bitew",
+      "groups.tiers.total": "{0} poziomów"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -620,7 +628,11 @@
       "sort.desc": "По убыв.",
       "unknown.tier": "Неизвестный уровень",
       "sort.xp_base": "Баз. опыт",
-      "sort.xp_received": "Получ. опыт"
+      "sort.xp_received": "Получ. опыт",
+      "groups.vehicles.total": "Техника: {0}",
+      "groups.maps.total": "Карты: {0}",
+      "groups.battles.total": "Бои: {0}",
+      "groups.tiers.total": "{0} уровней"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -827,7 +839,11 @@
       "sort.desc": "Décroissant",
       "unknown.tier": "Rang inconnu",
       "sort.xp_base": "EXP de base",
-      "sort.xp_received": "EXP reçue"
+      "sort.xp_received": "EXP reçue",
+      "groups.vehicles.total": "{0} véhicules",
+      "groups.maps.total": "{0} cartes",
+      "groups.battles.total": "{0} batailles",
+      "groups.tiers.total": "{0} rangs"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1034,7 +1050,11 @@
       "sort.desc": "Absteigend",
       "unknown.tier": "Unbekannte Stufe",
       "sort.xp_base": "Basis-EP",
-      "sort.xp_received": "Erhaltene EP"
+      "sort.xp_received": "Erhaltene EP",
+      "groups.vehicles.total": "{0} Fahrzeuge",
+      "groups.maps.total": "{0} Karten",
+      "groups.battles.total": "{0} Gefechte",
+      "groups.tiers.total": "{0} Stufen"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1241,7 +1261,11 @@
       "sort.desc": "Descendente",
       "unknown.tier": "Nivel desconocido",
       "sort.xp_base": "EXP base",
-      "sort.xp_received": "EXP recibida"
+      "sort.xp_received": "EXP recibida",
+      "groups.vehicles.total": "{0} vehículos",
+      "groups.maps.total": "{0} mapas",
+      "groups.battles.total": "{0} batallas",
+      "groups.tiers.total": "{0} niveles"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1448,7 +1472,11 @@
       "sort.desc": "Спадання",
       "unknown.tier": "Невідомий рівень",
       "sort.xp_base": "Баз. досвід",
-      "sort.xp_received": "Отр. досвід"
+      "sort.xp_received": "Отр. досвід",
+      "groups.vehicles.total": "Техніка: {0}",
+      "groups.maps.total": "Мапи: {0}",
+      "groups.battles.total": "Бої: {0}",
+      "groups.tiers.total": "{0} рівнів"
     }
   }
 }

@@ -3,6 +3,8 @@ const fs=require('fs'),path=require('path');
 module.exports=async ({browser,nativeHost,check})=>{
   const page=await nativeHost(browser,{});
   await page.locator('#ss-group-tiers').click();
+  await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',messages:{'groups.tiers.count':'Legacy count · newest first'}};GRZSessionStats.update(s);});
+  check('Legacy count text cannot mislabel the current ordering',!(await page.locator('#ss-list-meta').textContent()).includes('newest first'));
   check('Tiers tab shows the real tier aggregate',await page.locator('#ss-groups .ss-group').count()===1 && await page.locator('#ss-groups .ss-group-title').textContent()==='X');
   check('Off retains chronology and disables statistic/direction only',await page.locator('#ss-sort-statistic button[role=combobox]').isDisabled() && await page.locator('#ss-sort-direction button[role=combobox]').isDisabled() && await page.locator('#ss-sort-chronology button[role=combobox]').isEnabled());
   async function choose(field,value){

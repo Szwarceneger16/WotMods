@@ -29,3 +29,5 @@ Each stage is committed to the same pull request so work can resume from a publi
 - The source appearance template controls all colors and corner radii, including the new dropdowns.
 
 Renderer evidence: https://coherentlabs.github.io/GameUIComponents/en/components/form-control/#select
+
+List totals use new `groups.*.total` messages, so an unchanged older external translation template cannot append a stale “newest first” or “most battles first” caption to a different sort order.
