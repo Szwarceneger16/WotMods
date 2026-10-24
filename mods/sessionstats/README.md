@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.2.9 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.3.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -98,3 +98,11 @@ Appearance fields and validation: [APPEARANCE_CONFIG.md](docs/APPEARANCE_CONFIG.
 Battle outcomes use unchanged local WG notification artwork with separate captions.
 No game artwork is edited, bundled or downloaded at runtime. Missing resources
 retain text outcomes. See [0.2.9 UI and language evidence](docs/UI_0.2.9_SOURCE_EVIDENCE.md).
+
+### Result ordering and Tiers
+
+Use the date dropdown between Previous and Next for newest/oldest ordering. The following row contains Statistic (Min/Avg/Max), Sort by (Off/Base XP/Received XP/Credits net/WN8), and Order (Ascending/Descending). With Sort by set to Off, date ordering applies; the other two controls are disabled. Equal metric values use the selected date order, with stable ID ties. Missing metric values sort last.
+
+Sorting covers the complete selected period before pages of 40 rows are sent to the UI, and changes return to page one. Vehicles, Maps, Battles and the new Tiers tab have independent choices in each session scope, including Installation. Tiers includes XI and preserves an unknown-tier group for incomplete metadata. WN8 Min/Avg/Max uses individual battle WN8, and credits use per-battle net earnings, including losses.
+
+The selectors use local Gameface-compatible dropdowns with keyboard navigation. See [sorting and tier behavior](docs/SORTING_AND_TIERS.md).

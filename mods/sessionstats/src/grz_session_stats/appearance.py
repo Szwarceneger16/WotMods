@@ -275,7 +275,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-data-notice { color:{{colors.data_notice_text}}; font-size:13rem; line-height:18rem; margin:2rem 0 0; }
 .ss-explainer { color:{{colors.explanation_text}}; font-size:12rem; margin-top:5rem; line-height:17rem; }
 .ss-group-tabs { display:flex; min-height:30rem; border-top:1rem solid {{colors.group_tabs_border_top}}; border-bottom:1rem solid {{colors.group_tabs_border_bottom}}; border-radius:{{radii.group_tabs}}rem {{radii.group_tabs}}rem 0 0; }
-.ss-group-tab { width:33.333%; padding:4rem 3rem; min-height:30rem; border:0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
+.ss-group-tab { width:25%; padding:4rem 3rem; min-height:30rem; border:0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
 .ss-group-tab:hover { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}; }
 .ss-list-meta { min-height:24rem; padding:5rem 0 2rem; font-size:12rem; color:{{colors.list_meta_text}}; }
@@ -347,9 +347,25 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 }
 
 .ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:8rem 1rem; }
-.ss-pagination .ss-button { min-width:84rem; max-width:38%; min-height:25rem; padding:3rem 10rem; }
+.ss-pagination > .ss-button { min-width:64rem; width:25%; max-width:28%; min-height:25rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
-#ss-page-label { display:block; flex:1; min-width:0; padding:0 8rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
+#ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
+.ss-page-center { flex:1; min-width:0; padding:0 6rem; }
+.ss-sorting { display:flex; align-items:flex-end; margin:0 1rem 8rem; }
+.ss-sort-field { min-width:0; }
+.ss-sort-statistic { width:24%; padding-right:5rem; }
+.ss-sort-metric { width:43%; padding-right:5rem; }
+.ss-sort-direction { width:33%; }
+.ss-sort-caption { display:block; margin-bottom:2rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ss-select { position:relative; width:100%; min-width:0; }
+.ss-select-trigger { width:100%; min-width:0; min-height:27rem; padding:3rem 5rem; justify-content:space-between; }
+.ss-select-trigger .ss-control-label { flex:1; text-align:left; }
+.ss-select-arrow { display:block; flex-shrink:0; width:11rem; margin-left:3rem; font-size:11rem; }
+.ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_tabs}}rem; background:{{colors.window_background}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
+.ss-sort-direction .ss-select-options { left:auto; right:0; }
+.ss-select-option { width:100%; min-height:28rem; padding:4rem 5rem; border:0; background:{{colors.body_background}}; color:{{colors.list_meta_text}}; justify-content:flex-start; }
+.ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
+.ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
 .ss-outcome-art { width:100rem; max-width:36%; padding:0; background:none; }
 .ss-outcome-image { display:block; width:100rem; max-width:100%; height:58rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-outcome-label { display:block; text-align:center; }

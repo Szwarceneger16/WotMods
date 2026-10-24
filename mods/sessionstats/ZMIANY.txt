@@ -1,5 +1,12 @@
 SESSION STATS — CHANGELOG
 
+0.3.0 • 2026-10-24
+• Add global Min/Avg/Max sorting by Base XP, Received XP, net credits and battle WN8, ascending or descending.
+• Add independent newest/oldest date ordering between Previous and Next.
+• Add Tiers with the same totals and sorting in all session scopes, including tier XI and unknown metadata.
+• Add two compact rows of Gameface-compatible dropdown controls and seven-language captions.
+• Return to page one after sorting; preserve full-period totals and bounded native payloads.
+
 0.2.9 • 2026-10-24
 
 • Previous/Next now use the same olive/gold action-button style as the panel,
