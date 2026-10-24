@@ -1,7 +1,13 @@
 Stay Sharp bundled voice
 
-Text: "Med kit is ready."
+English: "Med kit is ready."
 Synthesized offline with CMU Flite 2.2, cmu_us_slt voice.
+Polish, Russian, French, German, Spanish and Ukrainian: synthesized offline
+with eSpeak NG 1.53.0 (source revision ba90c8e), standard language voices,
+180 words/minute. Resampled to 16 kHz mono PCM using FFmpeg; no speech model
+or executable is included. Text and generation settings: assets/voices/manifest.json
+in the source repository. Output speech is synthetic.
+eSpeak NG project: https://github.com/espeak-ng/espeak-ng
 The audio is synthetic; no game or actor recording is redistributed.
 No synthesizer or voice-model library is shipped or required by the mod.
 Project: https://github.com/festvox/flite

@@ -5,6 +5,7 @@ previously confirmed bugs: alpha tint ineffective, sniper isActive gating,
 and sound-like vanilla consumable glow.
 """
 import importlib.util
+import json
 import os
 from pathlib import Path
 import sys
@@ -254,6 +255,9 @@ class Tests(unittest.TestCase):
                'gui.battle_control.controllers.consumables',
                'gui.battle_control.controllers.consumables.equipment_ctrl']
         packages={name:types.ModuleType(name) for name in names}
+        self.client_language='en'
+        packages['helpers']=types.ModuleType('helpers')
+        packages['helpers'].getClientLanguage=lambda:self.client_language
         self.audio_plays=[]
         self.audio_stops=[]
         self.audio_fail=set()
@@ -1426,6 +1430,119 @@ class Tests(unittest.TestCase):
         self.visible_start()
         self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
         self.assertTrue(self.mod._voice_disabled)
+
+
+    def write_language_config(self, value):
+        path=Path(self.temp.name)/'StaySharpMedkit'/'config.json'
+        path.write_text(json.dumps(value),encoding='utf-8')
+        return path
+
+    def test_137_missing_config_is_created_with_auto_language(self):
+        path=Path(self.temp.name)/'StaySharpMedkit'/'config.json'
+        self.assertEqual(json.loads(path.read_text()),{'language':'auto'})
+
+    def test_138_all_manual_languages_select_their_own_voice(self):
+        for language in ('en','pl','ru','fr','de','es','uk'):
+            with self.subTest(language=language):
+                path=self.write_language_config({'language':language})
+                before=path.read_bytes()
+                self.mod._load_language()
+                self.mod._voice_player=None
+                self.mod._play_ready_voice(72)
+                expected='staysharp_medkit_ready'+('' if language=='en' else '_'+language)
+                self.assertEqual(self.audio_plays[-1][1],expected)
+                self.assertEqual(path.read_bytes(),before)
+
+    def test_139_auto_follows_game_language_and_region(self):
+        for game,expected in [('pl','pl'),('uk-UA','uk'),('fr_FR','fr'),(' DE ','de'),('en-US','en')]:
+            with self.subTest(game=game):
+                self.client_language=game
+                self.mod._load_language()
+                self.assertEqual(self.mod._language,expected)
+
+    def test_140_unknown_or_unavailable_game_language_falls_back_to_english(self):
+        for game in ('ja',None,12,[],True,''):
+            self.client_language=game
+            self.mod._load_language()
+            self.assertEqual(self.mod._language,'en')
+        with patch('helpers.getClientLanguage',side_effect=RuntimeError('not ready')):
+            self.mod._load_language()
+            self.assertEqual(self.mod._language,'en')
+
+    def test_141_manual_language_overrides_client(self):
+        self.client_language='ru'
+        self.write_language_config({'language':'pl'})
+        self.mod._load_language()
+        self.state(5)
+        self.assertEqual(self.audio_plays[-1][1],'staysharp_medkit_ready_pl')
+
+    def test_142_bad_values_fall_back_to_auto_without_overwriting(self):
+        self.client_language='pl'
+        for value in (None,[],False,12,{'language':False},{'language':[]},{'language':'xx'}):
+            with self.subTest(value=value):
+                path=self.write_language_config(value)
+                before=path.read_bytes()
+                self.mod._load_language()
+                self.assertEqual(self.mod._language,'pl')
+                self.assertEqual(path.read_bytes(),before)
+
+    def test_143_malformed_oversized_and_bom_configs(self):
+        self.client_language='uk'
+        path=self.write_language_config({})
+        for raw in (b'{oops',b'\xff',b' '*4097+b'{}'):
+            path.write_bytes(raw)
+            self.mod._load_language()
+            self.assertEqual(self.mod._language,'uk')
+            self.assertEqual(path.read_bytes(),raw)
+        path.write_bytes(b'\xef\xbb\xbf'+b'{"language":"de"}')
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'de')
+
+    def test_144_empty_object_uses_auto_and_manual_region_is_normalized(self):
+        self.client_language='es'
+        self.write_language_config({})
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'es')
+        self.write_language_config({'language':'PL_pl'})
+        self.mod._load_language()
+        self.assertEqual(self.mod._language,'pl')
+
+    def test_145_config_read_errors_do_not_disable_reminder(self):
+        self.client_language='fr'
+        with patch('builtins.open',side_effect=PermissionError('locked')):
+            self.mod._load_language()
+        self.visible_start()
+        self.assertEqual(self.mod._language,'fr')
+        self.assertEqual(self.audio_plays[-1][1],'staysharp_medkit_ready_fr')
+
+    def test_146_appdata_fallback_and_missing_appdata(self):
+        self.client_language='de'
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(os.environ,{'APPDATA':folder},clear=True):
+                self.mod._load_language()
+                self.assertTrue((Path(folder)/'StaySharpMedkit'/'config.json').is_file())
+        with patch.dict(os.environ,{},clear=True), patch.object(self.mod,'_log'):
+            with patch('builtins.open',side_effect=AssertionError('unexpected disk access')):
+                self.mod._load_language()
+        self.assertEqual(self.mod._language,'de')
+
+    def test_147_no_config_reads_during_state_or_animation(self):
+        self.visible_start()
+        # Editing is intentionally applied only after restarting the mod/game.
+        self.write_language_config({'language':'pl'})
+        with patch.object(self.mod,'_load_language',side_effect=AssertionError('unexpected reload')):
+            self.state(32)
+            self.animate_at(2)
+        self.assertEqual(self.mod._language,'en')
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+
+    def test_148_localized_voice_failure_uses_native_effect(self):
+        self.write_language_config({'language':'pl'})
+        self.mod._load_language()
+        self.audio_fail.add('staysharp_medkit_ready_pl')
+        self.visible_start()
+        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.assertTrue(self.mod._overlay_active)
 
 
 if __name__=='__main__':

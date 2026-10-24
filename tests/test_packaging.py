@@ -154,14 +154,16 @@ class Tests(unittest.TestCase):
         self.assertEqual((version,language,alignment,kind),(150,0,16,0))
         self.assertEqual(bank_id,build.audio.short_id('staysharp_medkit'))
         self.assertEqual(offsets[b'DATA']%16,0)
-        media_id,offset,size=struct.unpack('<3I',chunks[b'DIDX'])
+        self.assertEqual(len(chunks[b'DIDX']),12*7)
+        media_id,offset,size=struct.unpack_from('<3I',chunks[b'DIDX'])
         self.assertEqual(offset,0)
-        self.assertEqual(size,len(chunks[b'DATA']))
+        self.assertLess(size,len(chunks[b'DATA']))
         self.assertEqual(media_id,build.audio.short_id('staysharp_medkit_ready_pcm'))
 
     def test_22_bank_embeds_complete_pcm_voice_without_reencoding(self):
         chunks,_=self.bank_chunks()
-        wem=chunks[b'DATA']
+        media_id,offset,size=struct.unpack_from('<3I',chunks[b'DIDX'])
+        wem=chunks[b'DATA'][offset:offset+size]
         self.assertEqual(wem[:4],b'RIFF')
         self.assertEqual(struct.unpack_from('<I',wem,4)[0],len(wem)-8)
         self.assertEqual(wem[8:16],b'WAVEfmt ')
@@ -179,13 +181,14 @@ class Tests(unittest.TestCase):
     def test_23_bank_graph_links_event_action_sound_and_native_voice_bus(self):
         chunks,_=self.bank_chunks()
         graph=chunks[b'HIRC']
-        self.assertEqual(struct.unpack_from('<I',graph)[0],3)
+        self.assertEqual(struct.unpack_from('<I',graph)[0],21)
         pos=4
         objects={}
-        for _ in range(3):
+        for index in range(21):
             kind,size=struct.unpack_from('<BI',graph,pos)
             data=graph[pos+5:pos+5+size]
-            objects[kind]=data
+            if index < 3:
+                objects[kind]=data
             pos+=5+size
         self.assertEqual(pos,len(graph))
         self.assertEqual(set(objects),{2,3,4})
@@ -227,6 +230,55 @@ class Tests(unittest.TestCase):
             bank=archive.read('res/audioww/staysharp_medkit.bnk')
         self.assertEqual(bank,build.audio.build_bank())
         self.assertEqual(build.audio.short_id('Init'),1355168291)
+
+
+    def test_26_all_seven_voices_have_distinct_events_and_original_pcm(self):
+        chunks,offsets=self.bank_chunks()
+        self.assertEqual(set(build.audio.LANGUAGES),{'en','pl','ru','fr','de','es','uk'})
+        ids=set()
+        graph=chunks[b'HIRC']
+        pos=4
+        objects={}
+        while pos < len(graph):
+            kind,size=struct.unpack_from('<BI',graph,pos)
+            data=graph[pos+5:pos+5+size]
+            ident=struct.unpack_from('<I',data)[0]
+            self.assertNotIn(ident,objects)
+            objects[ident]=(kind,data)
+            pos+=5+size
+        previous_end=0
+        for n,language in enumerate(build.audio.LANGUAGES):
+            event=build.audio.event_name(language)
+            media_id,offset,size=struct.unpack_from('<III',chunks[b'DIDX'],n*12)
+            self.assertEqual(media_id,build.audio.short_id(event+'_pcm'))
+            self.assertNotIn(media_id,ids)
+            ids.add(media_id)
+            self.assertEqual((offsets[b'DATA']+offset)%16,0)
+            self.assertGreaterEqual(offset,previous_end)
+            self.assertEqual(set(chunks[b'DATA'][previous_end:offset]),set() if previous_end==offset else {0})
+            wem=chunks[b'DATA'][offset:offset+size]
+            self.assertEqual(struct.unpack_from('<I',wem,4)[0],len(wem)-8)
+            with wave.open(io.BytesIO(build.audio.load_voice(language))) as voice:
+                self.assertEqual(wem[52:],voice.readframes(voice.getnframes()))
+                self.assertLess(voice.getnframes()/voice.getframerate(),2.0)
+            previous_end=offset+size
+            kind,event_data=objects[build.audio.short_id(event)]
+            self.assertEqual(kind,4)
+            action_id=struct.unpack_from('<I',event_data,5)[0]
+            kind,action=objects[action_id]
+            self.assertEqual(kind,3)
+            sound_id=struct.unpack_from('<I',action,6)[0]
+            kind,sound=objects[sound_id]
+            self.assertEqual(kind,2)
+            self.assertEqual(struct.unpack_from('<I',sound,9)[0],media_id)
+            self.assertEqual(struct.unpack_from('<I',sound,13)[0],size)
+            self.assertEqual(struct.unpack_from('<I',sound,22)[0],build.audio.short_id('VOICE_GUI'))
+        self.assertEqual(previous_end,len(chunks[b'DATA']))
+
+    def test_27_unknown_voice_cannot_select_arbitrary_asset(self):
+        for language in ('jp','../en','','AUTO'):
+            with self.assertRaises(ValueError):
+                build.audio.load_voice(language)
 
 
 if __name__=='__main__':

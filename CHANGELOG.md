@@ -2,7 +2,8 @@
 
 ## 1.7.0
 
-- Add a single bundled "Medkit is ready" voice after one second of eligible readiness, using WoT/Wwise only.
+- Add a single bundled ready voice after one second of eligible readiness, using WoT/Wwise only.
+- Bundle the same seven spoken languages as Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`) and a small local JSON language selector, defaulting to the game language. Validate configuration with safe automatic/English fallback.
 - Repeat the equipped medkit's native activation effect once per four-second pulse while the reminder remains active.
 - Stop audio on use/cooldown, perk loss, native injury/stun warning, HUD suppression, vehicle destruction and battle disposal.
 - Keep the announcement latch across temporary HUD hiding and camera changes; skip missed repetitions after a frame stall.

@@ -27,10 +27,50 @@ speech, external process, background thread or runtime download is used.
   continues. Wwise errors that only appear in the game's own log cannot be
   detected reliably by Python.
 
+## Language configuration
+
+The same seven language codes as Session Stats are supported, with actual
+spoken recordings in each language:
+
+| Code | Language | Spoken announcement |
+| --- | --- | --- |
+| `en` | English | Medkit is ready. |
+| `pl` | Polish | Apteczka gotowa. |
+| `ru` | Russian | Аптечка готова. |
+| `fr` | French | Trousse de soins prête. |
+| `de` | German | Das Medikit ist bereit. |
+| `es` | Spanish | Botiquín listo. |
+| `uk` | Ukrainian | Аптечка готова. |
+
+The mod creates `%LOCALAPPDATA%\StaySharpMedkit\config.json` beside its
+local log on first startup. If LOCALAPPDATA is unavailable, APPDATA is used.
+No configuration is written when neither location is available. The default
+is:
+
+```json
+{
+  "language": "auto"
+}
+```
+
+`auto` follows WoT's language using `helpers.getClientLanguage()`. Regional
+codes such as `pl-PL` and `fr_FR` are normalized. Unsupported or unavailable
+game languages use English. To force Polish, change the value to `"pl"`;
+the other codes in the table work the same way. A copyable sample is provided
+as `staysharp.medkit.example.json` in the repository.
+
+**Restart WoT after editing this file.** Configuration is read once at mod
+startup, never on animation/state ticks. A missing file is created with
+`auto`; an existing file is never replaced. Malformed JSON, non-object
+roots, invalid values, read errors and files over 4 KiB use automatic
+selection and log a short local diagnostic without echoing file contents.
+The repeated medkit activation effect remains the native game sound.
+
 ## Bank and volume
 
-The package contains `res/audioww/staysharp_medkit.bnk`, with one event,
-`staysharp_medkit_ready`. Its embedded mono PCM voice is 1.36 seconds long.
+The package contains `res/audioww/staysharp_medkit.bnk`, with seven events: the existing English `staysharp_medkit_ready` and
+`staysharp_medkit_ready_<code>` for the other six languages. Each embedded
+mono PCM voice is under two seconds long; only the selected one is played.
 The sound routes to the game's existing **VOICE_GUI** bus, inheriting WoT's
 master/voice notification volume and mute controls. The native effect keeps
 its original game routing. No existing game event, bus or voiceover bank is
@@ -39,10 +79,13 @@ replaced. Sound settings and the final loudness must be checked in-game.
 `source/build_audio_bank.py` serializes the small Wwise 2023.1 / bank-version
 150 subset directly. Rebuilding requires only Python's standard library;
 it verifies the original WAV checksum before building Wwise PCM media and
-the Sound -> Play Action -> Event graph. IDs use Wwise's lowercase FNV-1.
-The source recording was synthesized offline using **CMU Flite 2.2,
-cmu_us_slt**, with text `Med kit is ready.`. Attribution is kept in
-`assets/VOICE_NOTICE.txt` and included in the package. Flite is not a runtime
+all seven Sound -> Play Action -> Event graphs. IDs use Wwise's lowercase FNV-1.
+The English recording was synthesized offline using **CMU Flite 2.2,
+cmu_us_slt**, with text `Med kit is ready.`. The other six recordings use
+**eSpeak NG 1.53.0**, native language voices at 180 words/minute, resampled
+offline to 16 kHz mono PCM. Text and generation provenance are recorded in
+`assets/voices/manifest.json`; each WAV has its own checked SHA-256. Attribution is kept in
+`assets/VOICE_NOTICE.txt` and included in the package. Neither synthesizer is a runtime
 or packaging dependency. Keep the notice with derived audio.
 
 Format and routing references:
@@ -82,7 +125,7 @@ After changing audio loading configuration, fully restart WoT.
 Offline tests cover announcement timing, repetition, cancellation, camera
 and HUD transitions, failed audio calls, package resources, PCM content,
 IDs and bank references. The generated bank was also parsed independently
-with **wwiser v20260808**, with all three HIRC objects consumed and no parse
+with **wwiser v20260808**, with all 21 HIRC objects consumed and no parse
 errors. These checks do not prove native engine loading or audible output.
 There is no WoT client in the build environment: perform the in-game checks
 in [the installation guide](INSTALACJA.md) before calling this version

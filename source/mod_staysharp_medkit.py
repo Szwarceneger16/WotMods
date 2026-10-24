@@ -10,6 +10,8 @@ no SWF replacement or downloads.
 """
 from __future__ import absolute_import
 
+import errno
+import json
 import os
 import time
 import traceback
@@ -35,6 +37,9 @@ STATE_TICK = 0.25
 STABLE_READY_DELAY = 0.90
 READY_VOICE_DELAY = 1.0
 READY_VOICE_EVENT = 'staysharp_medkit_ready'
+VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
+CONFIG_FILENAME = 'config.json'
+CONFIG_MAX_BYTES = 4096
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
 OFFSET_Y = 0.0
@@ -80,6 +85,75 @@ _effect_sound = None
 _effect_compact = None
 _effect_disabled = False
 _audio_suspended = True
+_language = 'en'
+
+
+def _language_code(value):
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+    if not isinstance(value, string_type):
+        return None
+    return value.strip().lower().replace('_', '-').split('-')[0]
+
+
+def _load_language():
+    """Read a bounded local JSON once at startup; never overwrite user data."""
+    global _language
+    selected = 'auto'
+    base = os.environ.get('LOCALAPPDATA') or os.environ.get('APPDATA')
+    if base:
+        folder = os.path.join(base, 'StaySharpMedkit')
+        path = os.path.join(folder, CONFIG_FILENAME)
+        try:
+            try:
+                with open(path, 'rb') as handle:
+                    raw = handle.read(CONFIG_MAX_BYTES + 1)
+            except IOError as error:
+                if error.errno != errno.ENOENT:
+                    raise
+                if not os.path.isdir(folder):
+                    try:
+                        os.makedirs(folder)
+                    except OSError:
+                        if not os.path.isdir(folder):
+                            raise
+                # Exclusive creation protects an existing config in a race.
+                try:
+                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                except OSError as error:
+                    if error.errno != errno.EEXIST:
+                        raise
+                else:
+                    with os.fdopen(fd, 'wb') as handle:
+                        handle.write(b'{\n  "language": "auto"\n}\n')
+                with open(path, 'rb') as handle:
+                    raw = handle.read(CONFIG_MAX_BYTES + 1)
+            if len(raw) > CONFIG_MAX_BYTES:
+                raise ValueError('configuration exceeds size limit')
+            config = json.loads(raw.decode('utf-8-sig'))
+            if not isinstance(config, dict):
+                raise ValueError('configuration must be a JSON object')
+            value = _language_code(config.get('language', 'auto'))
+            if value not in VOICE_LANGUAGES + ('auto',):
+                raise ValueError('unsupported voice language')
+            selected = value
+        except Exception:
+            # Do not echo file contents or a private filesystem path.
+            _log('invalid or unreadable configuration; using automatic language')
+    if selected == 'auto':
+        try:
+            from helpers import getClientLanguage
+            selected = _language_code(getClientLanguage())
+        except Exception:
+            selected = None
+    _language = selected if selected in VOICE_LANGUAGES else 'en'
+    _log('ready voice language=' + _language)
+
+
+def _ready_voice_event():
+    return READY_VOICE_EVENT if _language == 'en' else READY_VOICE_EVENT + '_' + _language
 
 
 def _suspend_audio():
@@ -150,7 +224,7 @@ def _play_ready_voice(compact):
         try:
             if _voice_player is None:
                 import SoundGroups
-                _voice_player = SoundGroups.g_instance.getSound2D(READY_VOICE_EVENT)
+                _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
             result = _voice_player.play()
             if result is not None and not result:
                 raise RuntimeError('ready voice playback failed')
@@ -1020,6 +1094,7 @@ def init():
     global _event_bus, _event_scope, _consumables_alias
     if _event_listeners:
         return
+    _load_language()
     try:
         from gui.shared import g_eventBus, EVENT_BUS_SCOPE
         from gui.shared.events import ComponentEvent

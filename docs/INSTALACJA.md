@@ -10,7 +10,9 @@
    are bundled. There are no separate DLLs, speech tools or sound downloads.
 5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
    before starting: a shared `audio_mods.xml` needs all installed banks.
-6. Start the game normally.
+6. Start the game normally. The mod creates `%LOCALAPPDATA%\StaySharpMedkit\config.json`
+   beside its log. It defaults to `{"language":"auto"}`. To force Polish,
+   change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
 
 ## In-game verification
 
@@ -18,7 +20,7 @@
   extra audio.
 - With the Stay Sharp perk permitting medkit use and the kit available,
   expect the original four-second orange pulse and one **"Medkit is ready"**
-  voice after one second. There should be no additional immediate ping on
+  voice after one second, in the selected language. There should be no additional immediate ping on
   top of the game's cooldown-complete sound.
 - If you leave the kit ready, expect its normal **activation effect** four
   seconds after the announcement and every four seconds thereafter.
@@ -29,6 +31,9 @@
 - Hide/show the HUD: silence while hidden, no duplicate voice when restored.
 - Check an injury/stun warning, perk permission loss, own vehicle destruction,
   battle end and return to the garage. No reminder should continue there.
+- Test `language: auto` with your game language, then force another supported
+  code in the configuration and restart. Confirm that the spoken language
+  changes while timing and the native repeated effect remain the same.
 - Change WoT master/voice notification volume and mute; check the voice
   follows the game settings. The repeated native effect follows its existing
   game audio channel. Restore your preferred volume afterward.

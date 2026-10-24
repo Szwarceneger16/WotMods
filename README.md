@@ -1,7 +1,7 @@
 # Stay Sharp — Medkit Reminder for World of Tanks
 
 A small **client-side visual and audio reminder** for the Commander's *Stay Sharp* perk.
-When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. After one second of eligible readiness, it says **"Medkit is ready" once**; while the outline keeps pulsing, the native medkit activation effect repeats every four seconds. Both sounds use WoT's Wwise audio engine. No keypresses, automatic consumable use, game-stat changes or injected network traffic.
+When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. After one second of eligible readiness, it says **"Medkit is ready" once**; while the outline keeps pulsing, the native medkit activation effect repeats every four seconds. Seven spoken languages match Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`), selected automatically from WoT or explicitly in the small [language configuration](docs/AUDIO.md#language-configuration). Both sounds use WoT's Wwise audio engine. No keypresses, automatic consumable use, game-stat changes or injected network traffic.
 
 The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint all required DDS frames, and its own small voice soundbank.
 

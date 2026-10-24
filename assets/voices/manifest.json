@@ -1,0 +1,60 @@
+{
+  "en": {
+    "text": "Med kit is ready.",
+    "engine": "CMU Flite 2.2 / cmu_us_slt"
+  },
+  "pl": {
+    "text": "Apteczka gotowa.",
+    "engine": "eSpeak NG 1.53.0 / pl",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "ru": {
+    "text": "Аптечка готова.",
+    "engine": "eSpeak NG 1.53.0 / ru",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "fr": {
+    "text": "Trousse de soins prête.",
+    "engine": "eSpeak NG 1.53.0 / fr",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "de": {
+    "text": "Das Medikit ist bereit.",
+    "engine": "eSpeak NG 1.53.0 / de",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "es": {
+    "text": "Botiquín listo.",
+    "engine": "eSpeak NG 1.53.0 / es",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "uk": {
+    "text": "Аптечка готова.",
+    "engine": "eSpeak NG 1.53.0 / uk",
+    "speed_wpm": 180,
+    "source_revision": "ba90c8e9f440ad544f674a790bb5f53878b6ffc5",
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  }
+}
