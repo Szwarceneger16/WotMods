@@ -1,47 +1,53 @@
-# Stay Sharp Medkit Reminder 1.6.0 — instalacja i test
+# Stay Sharp Medkit Reminder 1.7.0 - installation and test
 
-## Co robi
+## Install
 
-Wyświetla pomarańczową, gradientową ramkę apteczki, pulsującą przez 2 sekundy do pełnej intensywności i przez 2 sekundy do zera. Działa wyłącznie wtedy, gdy własny pojazd ma uprawnienie do wykorzystania apteczki wynikające z aktywnego efektu atutu, apteczka jest gotowa, HUD jest widoczny i trwa bitwa. Nie aktywuje apteczki, nie wydaje żadnego dźwięku i nie zmienia statystyk gry.
+1. Close World of Tanks EU completely.
+2. Keep a backup of your last working build outside the active mods folder.
+3. Remove older `com.staysharp.medkitreminder_*.wotmod` files from the active
+   `mods/<current_game_version>/` folder; install only one version.
+4. Copy the new `.wotmod` to that folder. All frames, code and the voice bank
+   are bundled. There are no separate DLLs, speech tools or sound downloads.
+5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
+   before starting: a shared `audio_mods.xml` needs all installed banks.
+6. Start the game normally.
 
-## Instalacja
+## In-game verification
 
-1. Zamknij World of Tanks.
-2. Zachowaj kopię potwierdzonej jako działająca wersji 1.5.0 poza katalogiem `mods`.
-3. **Usuń stary plik 1.5.0 z aktywnego katalogu `mods/<wersja_gry>/`**. Dwie wersje tego samego moda nie mogą działać równocześnie.
-4. Skopiuj `com.staysharp.medkitreminder_1.6.0.wotmod` do katalogu gry, np. `C:\Games\World_of_Tanks_EU\mods\2.4.1.0\` (jeżeli gra zaktualizowała numer katalogu, użyj nowego katalogu wersji).
-5. Uruchom grę normalnie.
+- Before battle starts and during equipment selection, expect no outline or
+  extra audio.
+- With the Stay Sharp perk permitting medkit use and the kit available,
+  expect the original four-second orange pulse and one **"Medkit is ready"**
+  voice after one second. There should be no additional immediate ping on
+  top of the game's cooldown-complete sound.
+- If you leave the kit ready, expect its normal **activation effect** four
+  seconds after the announcement and every four seconds thereafter.
+- Check arcade, sniper, SPG top-down and trajectory cameras. Switching camera
+  modes must not repeat the voice or reset the reminder interval.
+- Use the medkit; the outline and extra sounds must stop during cooldown.
+  The next eligible readiness interval should produce one new voice.
+- Hide/show the HUD: silence while hidden, no duplicate voice when restored.
+- Check an injury/stun warning, perk permission loss, own vehicle destruction,
+  battle end and return to the garage. No reminder should continue there.
+- Change WoT master/voice notification volume and mute; check the voice
+  follows the game settings. The repeated native effect follows its existing
+  game audio channel. Restore your preferred volume afterward.
+- If other sound mods are installed, verify their effects still work too.
 
-Nie trzeba kopiować `.py`, `.dds`, `.swf`, shaderów, banków dźwięku ani DLL. Pakiet `.wotmod` zawiera `meta.xml`, plik `.pyc` i komplet 21 DDS, pod ścieżkami zasobów WoT.
+Offline checks cannot confirm native bank loading, final voice loudness or
+client rendering. If there is no voice, inspect the game's sound errors and
+verify the `staysharp_medkit.bnk` loading entry. Keep the previous working
+build until the new one has passed an actual battle test.
 
-## Test w grze
+## Diagnostics and removal
 
-- Przed odliczaniem i podczas wyboru konfiguracji nie powinna pojawić się ramka.
-- Po rozpoczęciu bitwy, na pojeździe z właściwym atutem, gotowa apteczka powinna pulsować w cyklu 4 sekund.
-- Sprawdź kamerę arcade, sniper, widok artyleryjski z góry i widok trajektorii.
-- Po użyciu apteczki oraz podczas cooldownu ramka ma zgasnąć, a po odnowieniu wrócić.
-- Przy rannym członku załogi lub natywnym podświetleniu WoT przypomnienie nie powinno zastępować ostrzeżenia gry.
-- Po zamknięciu bitwy nie powinny pozostawać ramki ani uruchomione animacje.
+Local log: `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
-## Diagnostyka
+`ready voice unavailable` or `native medkit reminder unavailable` means an
+API call failed and that path was disabled for the battle. Wwise can also
+report failures only in `python.log`. `overlay suspended` explains why the
+visual and audio reminder paused. Logs remain local and are not uploaded.
 
-Log jest zapisywany pod:
-
-`%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`
-
-Najbardziej przydatne wpisy:
-
-- `v1.6.0 loaded; component events` — subskrypcja zdarzeń gry zainstalowana.
-- `battle panel populated` — komponent został wykryty za pomocą zdarzenia rejestracji (nie przez podmianę metod).
-- `HUD registration rejected: ...` — niezgodny klient / układ HUD; mod nie włączy grafiki.
-- `equipment state=incompatible_hud_...` — niespodziewana zmiana w trakcie bitwy; mod wygasza ramkę.
-- `GFX disabled by compatibility preflight: ...` — brak wymaganej części interfejsu renderera.
-- `overlay mounted: hud_child` — nakładka została dodana pod komponentem HUD.
-- `overlay mounted: gui_root` — stara metoda graficzna, gdy komponent HUD nie jest dostępny.
-- `PULSE alive` — animacja dalej aktualizuje klatki.
-
-Jeśli gra się wyłącza, **usuń 1.6.0**, wróć do sprawdzonej wersji 1.5.0 i wyślij końcówkę logu. Żaden test offline nie zastępuje prawdziwego klienta WoT.
-
-## Aktualizacje WoT
-
-Jeżeli aktualizacja nie zmieni API, wystarczy przenieść ten sam `.wotmod` do nowego katalogu `mods/<wersja_gry>`. Przy zmianie struktury HUD lub API moduł ma się wyłączyć bez zgadywania położenia ramki; może to wymagać aktualizacji moda. Plik `.pyc` jest zgodny z bajtkodem CPython 2.7 używanym przez zweryfikowany klient. Migracja gry na inny interpreter będzie wymagała nowej kompilacji.
+To uninstall, remove this mod's `.wotmod`. If you manually merged a bank
+entry into a separate audio configuration, remove only the
+`staysharp_medkit.bnk` entry, preserving all other sound mods.
