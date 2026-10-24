@@ -155,6 +155,7 @@ def aggregate_stats(records, expected_table):
     stats['win_rate'] = stats['wins'] * 100.0 / count if count else None
     for key in ('xp_base', 'xp_received', 'free_xp'):
         stats[key] = _series([record.get(key) for record in records])
+    stats['credits_net'] = _series([record.get('currencies', {}).get('credits', {}).get('net') for record in records])
     actual = dict((key, 0.0) for key in ('damage', 'frags', 'spots', 'defense', 'wins'))
     reference = dict((key, 0.0) for key in actual)
     per_battle = []
@@ -254,6 +255,7 @@ class StatsService(object):
         self._warnings = []
         self._indexes = None
         self._pages = {}
+        self._orders = {}
         self._receipt = None
         self._intake = None
         self._received_context = {}
@@ -514,6 +516,16 @@ class StatsService(object):
         if period_id is not None and period_id != self._indexes[scope].identifier:
             return False
         self._pages.setdefault(scope, {})[group] = page
+        return True
+
+    def set_order(self, scope, group, options, period_id):
+        from .projection import valid_order
+        if (not valid_order(options) or not self.ready or self._closed or
+                scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps') or
+                period_id != self._indexes[scope].identifier):
+            return False
+        self._orders.setdefault(scope, {})[group] = dict(options)
+        self._pages.setdefault(scope, {})[group] = 0
         return True
 
     def _time(self):
@@ -825,7 +837,7 @@ class StatsService(object):
 
     def _scope(self, key, identifier, label, started_at):
         name = 'launch' if key == '_launch_id' else 'manual'
-        return self._indexes[name].snapshot(label, started_at, self._pages.get(name))
+        return self._indexes[name].snapshot(label, started_at, self._pages.get(name), self._orders.get(name))
 
     def launch_records(self):
         """Independent records from this account and game process only."""
