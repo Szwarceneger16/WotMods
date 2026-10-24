@@ -40,19 +40,19 @@ class ScopedStaySharpReleaseTests(unittest.TestCase):
         self.assertFalse(any('mods/**' in p or 'sessionstats' in p for p in paths))
 
     def test_carried_assets_never_rebuilt_in_own_release(self):
-        self.assertIn('bash scripts/release_snapshot.sh dist', RELEASE)
+        self.assertIn('bash scripts/release_snapshot.sh release', RELEASE)
         self.assertIn('com.staysharp.medkitreminder_${RELEASE_VERSION}.wotmod', RELEASE)
-        self.assertIn('com.staysharp.medkitreminder_*.wotmod', RELEASE)
+        self.assertIn('StaySharp-Medkit-v*.zip', RELEASE)
         self.assertNotIn('mods/sessionstats/tools/build.py', RELEASE)
         self.assertNotIn('scripts/sessionstats/validate.sh', RELEASE)
-        self.assertLess(RELEASE.index('bash scripts/release_snapshot.sh dist'),
+        self.assertLess(RELEASE.index('bash scripts/release_snapshot.sh release'),
                         RELEASE.index('gh release create'))
 
     def test_all_current_snapshot_assets_are_uploaded(self):
-        self.assertIn('gh release create "$tag" dist/*', RELEASE)
+        self.assertIn('gh release create "$tag" release/*.zip', RELEASE)
         self.assertIn('--latest', RELEASE)
         self.assertIn('gh release download "$tag" --repo "$GITHUB_REPOSITORY" --dir "$remote"', RELEASE)
-        self.assertIn('cmp -- "dist/$name" "$remote/$name"', RELEASE)
+        self.assertIn('cmp -- "release/$name" "$remote/$name"', RELEASE)
 
     def test_shared_lock_serializes_only_publish_jobs_and_queues_every_merge(self):
         # Builds for different mods are independent and can run in parallel.

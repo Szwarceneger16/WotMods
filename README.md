@@ -2,8 +2,8 @@
 
 | Mod | Source and instructions | Releases |
 |---|---|---|
-| Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `sessionstats-v…` tags, ZIP with dependency and configuration |
-| Stay Sharp — Medkit Reminder | [source](source), description below | `staysharp-v…` tags, standalone `.wotmod` |
+| Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `Session-Stats-v<version>.zip`, including OpenWG and configuration examples |
+| Stay Sharp — Medkit Reminder | [source](source), description below | `StaySharp-Medkit-v<version>.zip`, including installation paths and a configuration example |
 
 Both mods can be installed independently. [Latest shared release snapshot](../../releases/latest). Unchanged packages are carried forward byte-for-byte; each mod builds independently. See [release flow](docs/MULTIMOD_RELEASES.md).
 Sources, tests and licenses are separate; the Session Stats license does not cover the medkit mod.
@@ -18,14 +18,16 @@ The mod uses the regular consumables HUD and works independently of arcade, snip
 
 ## Downloads
 
-**[GitHub Releases](../../releases)** — download `com.staysharp.medkitreminder_<version>.wotmod` from the latest release. Releases become downloadable for everyone after the first reviewed PR is merged and the Release workflow succeeds.
+**[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip` or `Session-Stats-v<version>.zip`. Each release offers both installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the two installers.
 
 ## Installation
 
 1. Close World of Tanks EU.
 2. Remove every older `com.staysharp.medkitreminder_*.wotmod` from the active version folder.
-3. Copy the downloaded `.wotmod` to `<World_of_Tanks_EU>/mods/<current_game_version>/`.
-4. Start WoT. To uninstall, remove this single `.wotmod` file.
+3. Extract the installer ZIP into the folder containing `WorldOfTanks.exe`. It already contains `mods/<game_version>/` and `mods/configs/`. Check that its target version matches your client.
+4. Start WoT. To uninstall Stay Sharp, remove its `.wotmod` file.
+
+Configurations are optional `mods/configs/*.json.example` files and are not loaded. To customize a supported setting, copy its example and remove only the final `.example`. Keep existing `.json` files when updating. The current silent Stay Sharp version uses built-in behavior; its language example is reserved for audio-capable versions. Instructions and metadata are under `docs/<mod>/` inside each ZIP.
 
 The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the v1.6.1 event-driven implementation and the 1.6.1 log fix still require an in-game regression test. Back up the last working version before testing an update.
 

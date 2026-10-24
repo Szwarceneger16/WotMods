@@ -10,6 +10,8 @@ on:
       - 'VERSION'
       - 'scripts/release_version.py'
       - 'scripts/release_snapshot.sh'
+      - 'scripts/release_installers.py'
+      - 'tests/test_release_installers.py'
       - 'scripts/privacy_audit.py'
       - 'tests/test_mod.py'
       - 'tests/test_packaging.py'
