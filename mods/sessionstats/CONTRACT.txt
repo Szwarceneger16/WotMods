@@ -82,16 +82,16 @@ SNAPSHOT -> Window ViewModel string property `payload`
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
  scopes: {
   launch: {label:'Since launch', started_at:seconds, pending:number,
-           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]},
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], tiers:[GROUP], battles:[BATTLE_ROW]},
   manual: {label:'Since reset', started_at:seconds, pending:number,
-           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]}
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], tiers:[GROUP], battles:[BATTLE_ROW]}
  }
 }
 STATS = {
  battles:int, observed_battles:int, missing_results:int, partial_results:int,
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
- xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
+ xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES, credits_net:SERIES,
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -106,7 +106,7 @@ outcomes. Missing results remain listed with unknown outcome and unknown numeric
 values. All group/financial coverage uses observed_battles as denominator. Display
 results/observed and an incomplete-data explanation whenever outcomes are missing;
 never silently present the known subset as the whole registered session.
-GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, stats:STATS}
+GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, started_at:latest battle time, first_started_at:earliest battle time, stats:STATS}
 BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
               outcome:string, tier:int or null, stats:STATS}
 Runtime adds appearance to the snapshot, including snapshots without an active service.
@@ -375,3 +375,15 @@ Optional translation overrides: mods/configs/grz.sessionstats.languages.json
 Data persisted outside mods/<version>. No automatic code downloads. No live-game test claimed.
 Historical compatibility: upgrading from 0.2.6 to 0.2.7 required no history reset
 or persisted-data migration.
+
+RESULT ORDERING (0.3.0)
+Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
+ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8,
+                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest}.
+The sort command carries these four fields plus scope, group, account_key and period_id.
+Validate account ownership and current period before changing transient presentation state.
+A successful request resets that grouping to page zero; pagination and totals remain period-wide.
+Metric ordering uses the selected per-battle series statistic, with missing values last.
+Chronology uses the latest/earliest battle for groups and the start time for individual battles.
+Stable IDs resolve remaining ties. Tiers use the original recorded vehicle_tier, including XI;
+unknown tier metadata has a separate group. No persistent schema or saved data is changed.

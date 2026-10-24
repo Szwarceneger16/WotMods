@@ -203,7 +203,10 @@
       "sort.off": "Off",
       "sort.credits": "Credits (net)",
       "sort.asc": "Ascending",
-      "sort.desc": "Descending"
+      "sort.desc": "Descending",
+      "unknown.tier": "Unknown tier",
+      "sort.xp_base": "Base XP",
+      "sort.xp_received": "Received XP"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -407,7 +410,10 @@
       "sort.off": "Wyłączone",
       "sort.credits": "Kredyty (netto)",
       "sort.asc": "Rosnąco",
-      "sort.desc": "Malejąco"
+      "sort.desc": "Malejąco",
+      "unknown.tier": "Nieznany poziom",
+      "sort.xp_base": "Bazowe PD",
+      "sort.xp_received": "Otrzymane PD"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -609,9 +615,12 @@
       "sort.oldest": "Старые сначала",
       "sort.avg": "Сред.",
       "sort.off": "Отключено",
-      "sort.credits": "Кредиты (чист.)",
+      "sort.credits": "Кредиты нетто",
       "sort.asc": "По возр.",
-      "sort.desc": "По убыв."
+      "sort.desc": "По убыв.",
+      "unknown.tier": "Неизвестный уровень",
+      "sort.xp_base": "Баз. опыт",
+      "sort.xp_received": "Получ. опыт"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -815,7 +824,10 @@
       "sort.off": "Désactivé",
       "sort.credits": "Crédits nets",
       "sort.asc": "Croissant",
-      "sort.desc": "Décroissant"
+      "sort.desc": "Décroissant",
+      "unknown.tier": "Rang inconnu",
+      "sort.xp_base": "EXP de base",
+      "sort.xp_received": "EXP reçue"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1019,7 +1031,10 @@
       "sort.off": "Aus",
       "sort.credits": "Kreditp. (netto)",
       "sort.asc": "Aufsteigend",
-      "sort.desc": "Absteigend"
+      "sort.desc": "Absteigend",
+      "unknown.tier": "Unbekannte Stufe",
+      "sort.xp_base": "Basis-EP",
+      "sort.xp_received": "Erhaltene EP"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1223,7 +1238,10 @@
       "sort.off": "Desactivado",
       "sort.credits": "Créditos netos",
       "sort.asc": "Ascendente",
-      "sort.desc": "Descendente"
+      "sort.desc": "Descendente",
+      "unknown.tier": "Nivel desconocido",
+      "sort.xp_base": "EXP base",
+      "sort.xp_received": "EXP recibida"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1425,9 +1443,12 @@
       "sort.oldest": "Старі спочатку",
       "sort.avg": "Сер.",
       "sort.off": "Вимкнено",
-      "sort.credits": "Кредити (чист.)",
+      "sort.credits": "Кредити нетто",
       "sort.asc": "Зростання",
-      "sort.desc": "Спадання"
+      "sort.desc": "Спадання",
+      "unknown.tier": "Невідомий рівень",
+      "sort.xp_base": "Баз. досвід",
+      "sort.xp_received": "Отр. досвід"
     }
   }
 }

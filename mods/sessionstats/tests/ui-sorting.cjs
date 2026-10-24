@@ -30,17 +30,17 @@ module.exports=async ({browser,nativeHost,check})=>{
   for(const width of [320,744]) {
     await page.setViewportSize({width,height:820});
     for(const [language,messages] of Object.entries(languages)) {
-      await page.evaluate(({language,messages})=>{
-        const snapshot=JSON.parse(model.payload);snapshot.localization={language,messages};
+      await page.evaluate(({language,messages,width})=>{
+        const snapshot=JSON.parse(model.payload);snapshot.localization={language,messages};snapshot.viewport.width=width;
         const order=snapshot.scopes.launch.ordering.tiers;
         order.metric='xp_received';order.statistic='avg';order.direction='desc';
         model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);
         document.getElementById('ss-sorting').scrollIntoView({block:'center'});
-      },{language,messages});
+      },{language,messages,width});
       check('Sorting fits one row in '+language+' at '+width,await page.locator('#ss-sorting').evaluate(bar=>{
         const box=bar.getBoundingClientRect(),triggers=Array.from(bar.querySelectorAll('[role=combobox]'));
         const boxes=triggers.map(n=>n.getBoundingClientRect());
-        return boxes.length===3 && boxes.every(b=>b.left>=box.left-1 && b.right<=box.right+1 && Math.abs(b.top-boxes[0].top)<1);
+        return boxes.length===3 && boxes.every(b=>b.left>=box.left-1 && b.right<=box.right+1 && Math.abs(b.top-boxes[0].top)<1) && triggers.every(trigger=>{const label=trigger.querySelector('.ss-control-label'),range=document.createRange();range.selectNodeContents(label);const original=label.textContent,available=label.getBoundingClientRect().width;const fits=Array.from(trigger.parentNode.querySelectorAll('[role=option]')).every(option=>{label.textContent=option.textContent;range.selectNodeContents(label);return range.getBoundingClientRect().width<=available+1;});label.textContent=original;return fits;});
       }));
       await page.locator('#ss-sort-direction [role=combobox]').click();
       check('Open menu stays inside the panel in '+language+' at '+width,await page.locator('#ss-options-direction').evaluate(menu=>{

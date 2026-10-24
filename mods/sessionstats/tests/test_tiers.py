@@ -21,6 +21,14 @@ class TierTests(HistoryPerformanceTests):
         for row in tiers.values():
             self.assert_numbers(row['stats'],aggregate_stats([r for r in rows if r.get('vehicle_tier') == row['tier']],EXPECTED))
 
+    def test_unknown_tier_name_is_localized_without_changing_the_identifier(self):
+        from grz_session_stats.localization import Localizer
+        self.service.record_result(result('unknown',vehicle_tier=None))
+        snapshot=Localizer('pl').snapshot(self.service.snapshot())
+        row=snapshot['scopes']['manual']['tiers'][0]
+        self.assertEqual(row['id'],'__unknown__')
+        self.assertEqual(row['name'],'Nieznany poziom')
+
     def test_corrected_tier_moves_statistics_and_removes_empty_group(self):
         self.service.record_result(result('a',vehicle_tier=8))
         self.service.record_result(result('a',vehicle_tier=11,reconcile=True))

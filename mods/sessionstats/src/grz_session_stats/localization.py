@@ -219,8 +219,8 @@ class Localizer(object):
         """Translate presentation fields only; never IDs or game-supplied names."""
         snapshot['localization'] = {'language': self.language, 'messages': dict(self.messages)}
         snapshot['warnings'] = [self.translate(value) for value in snapshot.get('warnings', [])]
-        fallbacks = set(ENGLISH[key] for key in ('unknown.vehicle', 'unknown.map'))
-        fallbacks.update(LEGACY_POLISH[key] for key in ('unknown.vehicle', 'unknown.map'))
+        fallbacks = set(ENGLISH[key] for key in ('unknown.vehicle', 'unknown.map', 'unknown.tier'))
+        fallbacks.update(LEGACY_POLISH[key] for key in ('unknown.vehicle', 'unknown.map', 'unknown.tier'))
         def is_fallback(value):
             return isinstance(value, text_type) and (value in fallbacks or any(
                 pattern.match(value) for pattern, key, unused in self._patterns

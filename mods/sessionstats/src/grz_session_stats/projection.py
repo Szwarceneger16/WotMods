@@ -17,7 +17,7 @@ GROUP_FIELDS = (('vehicles', 'vehicle_id'), ('maps', 'map_id'), ('tiers', 'vehic
 
 def tier_name(tier):
     numerals = ('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI')
-    return numerals[tier - 1] if isinstance(tier, int) and not isinstance(tier, bool) and 1 <= tier <= len(numerals) else str(tier) if tier is not None else message('unknown')
+    return numerals[tier - 1] if isinstance(tier, int) and not isinstance(tier, bool) and 1 <= tier <= len(numerals) else str(tier) if tier is not None else message('unknown.tier')
 
 
 DEFAULT_ORDER = {'metric': 'off', 'statistic': 'avg', 'direction': 'desc', 'chronology': 'newest'}
