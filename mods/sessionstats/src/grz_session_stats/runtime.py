@@ -1377,13 +1377,9 @@ class Runtime(object):
             else:
                 return
             self._window_call('refresh')
-        elif action == 'page' and self.active_service is not None:
+        elif action in ('page', 'sort') and self.active_service is not None:
             if getter('account_key') != self.active_key:
                 return
-            raw_page = getter('page')
-            if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
-                return
-            page = int(raw_page)
             scope, group = getter('scope'), getter('group')
             service = self.active_service
             if scope == 'instance' and self._instance_tab_enabled:
@@ -1391,8 +1387,19 @@ class Runtime(object):
                 if session is None:
                     return
                 service, scope = session.service, 'manual'
-            if not getter('period_id') or not service.set_page(scope, group, page, getter('period_id')):
+            period_id = getter('period_id')
+            if not period_id:
                 return
+            if action == 'sort':
+                options = dict((key, getter(key)) for key in ('metric', 'statistic', 'direction', 'chronology'))
+                if not service.set_order(scope, group, options, period_id):
+                    return
+            else:
+                raw_page = getter('page')
+                if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
+                    return
+                if not service.set_page(scope, group, int(raw_page), period_id):
+                    return
             self._window_call('refresh')
         elif action == 'refresh':
             self._load_appearance()

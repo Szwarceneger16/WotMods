@@ -34,13 +34,22 @@
       <nav id="ss-group-tabs" class="ss-group-tabs" aria-label="Group results" data-i18n-aria="groups.label">
         <button id="ss-group-vehicles" type="button" tabindex="0" class="ss-control ss-group-tab is-active" aria-pressed="true"><span class="ss-control-label" data-i18n="groups.vehicles">Vehicles</span></button>
         <button id="ss-group-maps" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.maps">Maps</span></button>
+        <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
         <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
       </nav>
       <div id="ss-list-meta" class="ss-list-meta"></div>
       <div id="ss-pagination" class="ss-pagination" style="display:none">
         <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
-        <span id="ss-page-label" aria-live="polite"></span>
+        <div class="ss-page-center">
+          <div id="ss-sort-chronology" class="ss-select"></div>
+          <span id="ss-page-label" aria-live="polite"></span>
+        </div>
         <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
+      </div>
+      <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
+        <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
+        <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
+        <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
       </div>
       <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
     </div>

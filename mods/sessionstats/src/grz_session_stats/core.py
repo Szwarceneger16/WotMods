@@ -155,6 +155,7 @@ def aggregate_stats(records, expected_table):
     stats['win_rate'] = stats['wins'] * 100.0 / count if count else None
     for key in ('xp_base', 'xp_received', 'free_xp'):
         stats[key] = _series([record.get(key) for record in records])
+    stats['credits_net'] = _series([record.get('currencies', {}).get('credits', {}).get('net') for record in records])
     actual = dict((key, 0.0) for key in ('damage', 'frags', 'spots', 'defense', 'wins'))
     reference = dict((key, 0.0) for key in actual)
     per_battle = []
@@ -254,6 +255,7 @@ class StatsService(object):
         self._warnings = []
         self._indexes = None
         self._pages = {}
+        self._orders = {}
         self._receipt = None
         self._intake = None
         self._received_context = {}
@@ -509,11 +511,21 @@ class StatsService(object):
     def set_page(self, scope, group, page, period_id=None):
         if not self.ready or self._closed:
             return False
-        if scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps'):
+        if scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers'):
             return False
         if period_id is not None and period_id != self._indexes[scope].identifier:
             return False
         self._pages.setdefault(scope, {})[group] = page
+        return True
+
+    def set_order(self, scope, group, options, period_id):
+        from .projection import valid_order
+        if (not valid_order(options) or not self.ready or self._closed or
+                scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers') or
+                period_id != self._indexes[scope].identifier):
+            return False
+        self._orders.setdefault(scope, {})[group] = dict(options)
+        self._pages.setdefault(scope, {})[group] = 0
         return True
 
     def _time(self):
@@ -825,7 +837,7 @@ class StatsService(object):
 
     def _scope(self, key, identifier, label, started_at):
         name = 'launch' if key == '_launch_id' else 'manual'
-        return self._indexes[name].snapshot(label, started_at, self._pages.get(name))
+        return self._indexes[name].snapshot(label, started_at, self._pages.get(name), self._orders.get(name))
 
     def launch_records(self):
         """Independent records from this account and game process only."""
@@ -846,8 +858,8 @@ class StatsService(object):
         """Project known records without changing their account/session ledger."""
         scope = {'label': label, 'started_at': started_at,
                  'pending': sum(1 for record in records if self._pending(record)),
-                 'summary': aggregate_stats(records, self.expected_table), 'vehicles': [], 'maps': [], 'battles': []}
-        for group_type, field, name_field in (('vehicles', 'vehicle_id', 'vehicle_name'), ('maps', 'map_id', 'map_name')):
+                 'summary': aggregate_stats(records, self.expected_table), 'vehicles': [], 'maps': [], 'battles': [], 'tiers': []}
+        for group_type, field, name_field in (('vehicles', 'vehicle_id', 'vehicle_name'), ('maps', 'map_id', 'map_name'), ('tiers', 'vehicle_tier', 'vehicle_tier')):
             groups = {}
             for record in records:
                 identifier = _text(record[field]) if record.get(field) is not None else '__unknown__'
@@ -860,6 +872,12 @@ class StatsService(object):
                          'tier': latest.get('vehicle_tier') if group_type == 'vehicles' else None,
                          'type': latest.get('vehicle_type') if group_type == 'vehicles' else None,
                          'stats': aggregate_stats(group_records, self.expected_table)}
+                if group_type == 'tiers':
+                    from .projection import tier_name
+                    group['tier'] = latest.get('vehicle_tier')
+                    group['name'] = tier_name(group['tier'])
+                group['started_at'] = max((row.get('started_at') or 0 for row in group_records))
+                group['first_started_at'] = min((row.get('started_at') or 0 for row in group_records))
                 scope[group_type].append(group)
             scope[group_type].sort(key=lambda group: (-group['stats']['battles'], group['name'].lower(), group['id']))
         for record in sorted(records, key=lambda row: (row.get('started_at') or 0, row['arena_id']), reverse=True):

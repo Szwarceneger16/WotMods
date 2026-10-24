@@ -16,7 +16,7 @@ module.exports = async ({browser,nativeHost,check}) => {
   check('Pagination reports the whole history count',await page.locator('#ss-list-meta').textContent().then(t=>t.includes('125')));
   check('First page disables Previous and enables Next',await page.evaluate(()=>
     document.getElementById('ss-page-previous').disabled && !document.getElementById('ss-page-next').disabled));
-  check('Pagination uses explicit Gameface button labels',await page.locator('#ss-pagination .ss-control-label').count()===2);
+  check('Pagination uses explicit Gameface button labels',await page.locator('#ss-pagination > .ss-button .ss-control-label').count()===2);
   check('Pagination label is visible',await page.locator('#ss-page-label').textContent()==='Page 1 of 4');
   check('Paging buttons share the panel action colors, border and font',await page.evaluate(()=>{
     const next=getComputedStyle(document.getElementById('ss-page-next'));
@@ -51,7 +51,7 @@ module.exports = async ({browser,nativeHost,check}) => {
   check('Previous requests the preceding page',await page.evaluate(()=>
     __grzCommands.filter(c=>c.action==='page').pop().page==='2'));
   await page.locator('#ss-scope-manual').click();
-  check('Legacy small scopes hide pagination',!await page.locator('#ss-pagination').isVisible());
+  check('Single-page scopes retain chronological sorting between disabled page controls',await page.locator('#ss-pagination').isVisible() && await page.locator('#ss-page-next').isDisabled());
   await page.locator('#ss-scope-launch').click();
   await page.evaluate(()=>{ window.__beforePages=__grzCommands.filter(c=>c.action==='page').length;
     GRZSessionStats.destroy(); document.getElementById('ss-page-previous').onclick(); });
