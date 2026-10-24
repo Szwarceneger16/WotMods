@@ -227,7 +227,7 @@ class Localizer(object):
                 if key in ('unknown.vehicle_id', 'unknown.map_id')))
         for name, scope in snapshot.get('scopes', {}).items():
             scope['label'] = self.text('scope.' + name)
-            for grouping in ('vehicles', 'maps', 'battles'):
+            for grouping in ('vehicles', 'maps', 'battles', 'tiers'):
                 for row in scope.get(grouping, []):
                     for field in ('name', 'map'):
                         value = row.get(field)

@@ -511,7 +511,7 @@ class StatsService(object):
     def set_page(self, scope, group, page, period_id=None):
         if not self.ready or self._closed:
             return False
-        if scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps'):
+        if scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers'):
             return False
         if period_id is not None and period_id != self._indexes[scope].identifier:
             return False
@@ -521,7 +521,7 @@ class StatsService(object):
     def set_order(self, scope, group, options, period_id):
         from .projection import valid_order
         if (not valid_order(options) or not self.ready or self._closed or
-                scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps') or
+                scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers') or
                 period_id != self._indexes[scope].identifier):
             return False
         self._orders.setdefault(scope, {})[group] = dict(options)
@@ -858,8 +858,8 @@ class StatsService(object):
         """Project known records without changing their account/session ledger."""
         scope = {'label': label, 'started_at': started_at,
                  'pending': sum(1 for record in records if self._pending(record)),
-                 'summary': aggregate_stats(records, self.expected_table), 'vehicles': [], 'maps': [], 'battles': []}
-        for group_type, field, name_field in (('vehicles', 'vehicle_id', 'vehicle_name'), ('maps', 'map_id', 'map_name')):
+                 'summary': aggregate_stats(records, self.expected_table), 'vehicles': [], 'maps': [], 'battles': [], 'tiers': []}
+        for group_type, field, name_field in (('vehicles', 'vehicle_id', 'vehicle_name'), ('maps', 'map_id', 'map_name'), ('tiers', 'vehicle_tier', 'vehicle_tier')):
             groups = {}
             for record in records:
                 identifier = _text(record[field]) if record.get(field) is not None else '__unknown__'
@@ -872,6 +872,12 @@ class StatsService(object):
                          'tier': latest.get('vehicle_tier') if group_type == 'vehicles' else None,
                          'type': latest.get('vehicle_type') if group_type == 'vehicles' else None,
                          'stats': aggregate_stats(group_records, self.expected_table)}
+                if group_type == 'tiers':
+                    from .projection import tier_name
+                    group['tier'] = latest.get('vehicle_tier')
+                    group['name'] = tier_name(group['tier'])
+                group['started_at'] = max((row.get('started_at') or 0 for row in group_records))
+                group['first_started_at'] = min((row.get('started_at') or 0 for row in group_records))
                 scope[group_type].append(group)
             scope[group_type].sort(key=lambda group: (-group['stats']['battles'], group['name'].lower(), group['id']))
         for record in sorted(records, key=lambda row: (row.get('started_at') or 0, row['arena_id']), reverse=True):

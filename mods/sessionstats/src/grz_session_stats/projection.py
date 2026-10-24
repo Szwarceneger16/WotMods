@@ -12,6 +12,14 @@ from .localization import message
 from .loading import complete
 
 PAGE_SIZE = 40
+GROUP_FIELDS = (('vehicles', 'vehicle_id'), ('maps', 'map_id'), ('tiers', 'vehicle_tier'))
+
+
+def tier_name(tier):
+    numerals = ('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI')
+    return numerals[tier - 1] if isinstance(tier, int) and not isinstance(tier, bool) and 1 <= tier <= len(numerals) else str(tier) if tier is not None else message('unknown')
+
+
 DEFAULT_ORDER = {'metric': 'off', 'statistic': 'avg', 'direction': 'desc', 'chronology': 'newest'}
 
 
@@ -233,6 +241,9 @@ class Group(object):
     def metadata(self):
         latest = self.records[self.order[-1][-1]]
         vehicle = self.kind == 'vehicles'
+        if self.kind == 'tiers':
+            tier = latest.get('vehicle_tier')
+            return {'id': self.identifier, 'name': tier_name(tier), 'tier': tier, 'type': None}
         return {'id': self.identifier,
                 'name': (latest.get(self.name_field) or message('unknown.vehicle' if vehicle else 'unknown.map'))[:256],
                 'tier': latest.get('vehicle_tier') if vehicle else None,
@@ -252,7 +263,7 @@ class ScopeIndex(object):
         self.identifier = identifier
         self.records = {}
         self.order = []
-        self.groups = {'vehicles': {}, 'maps': {}}
+        self.groups = dict((kind, {}) for kind, unused in GROUP_FIELDS)
         self.totals = Totals()
         self.pending = 0
         self._sort_cache = {}
@@ -276,7 +287,7 @@ class ScopeIndex(object):
         yield None
         for step in self.totals.build_steps(items):
             yield step
-        for kind, field in (('vehicles', 'vehicle_id'), ('maps', 'map_id')):
+        for kind, field in GROUP_FIELDS:
             grouped = {}
             for position, item in enumerate(items):
                 row = item[0]
@@ -313,7 +324,7 @@ class ScopeIndex(object):
             self.warnings[warning] += direction
             if not self.warnings[warning]:
                 del self.warnings[warning]
-        for kind, field in (('vehicles', 'vehicle_id'), ('maps', 'map_id')):
+        for kind, field in GROUP_FIELDS:
             group_id = _text(record[field]) if record.get(field) is not None else '__unknown__'
             groups = self.groups[kind]
             if group_id not in groups:
@@ -359,7 +370,7 @@ class ScopeIndex(object):
         pages, orders = pages or {}, orders or {}
         result = {'label': label, 'started_at': started_at, 'pending': self.pending,
                   'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {}, 'period_id': self.identifier}
-        for kind in ('vehicles', 'maps', 'battles'):
+        for kind in ('vehicles', 'maps', 'battles', 'tiers'):
             options = orders.get(kind, DEFAULT_ORDER)
             options = options if valid_order(options) else DEFAULT_ORDER
             result['ordering'][kind] = dict(options)
