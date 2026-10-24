@@ -88,13 +88,42 @@ replaced. Sound settings and the final loudness must be checked in-game.
 150 subset directly. Rebuilding requires only Python's standard library;
 it verifies the original WAV checksum before building Wwise PCM media and
 all seven Sound -> Play Action -> Event graphs. IDs use Wwise's lowercase FNV-1.
-The English recording was synthesized offline using **CMU Flite 2.2,
-cmu_us_slt**, with text `Med kit is ready.`. The other six recordings use
-**eSpeak NG 1.53.0**, native language voices at 180 words/minute, resampled
-offline to 16 kHz mono PCM. Text and generation provenance are recorded in
-`assets/voices/manifest.json`; each WAV has its own checked SHA-256. Attribution is kept in
-`assets/VOICE_NOTICE.txt` and included in the package. Neither synthesizer is a runtime
-or packaging dependency. Keep the notice with derived audio.
+All seven recordings are **AI-generated neural speech**. English uses the
+selected **Piper `en_US-hfc_female-medium`** voice. Russian, French, German,
+Spanish and Ukrainian use Piper 1.8.0 / VITS models `ru_RU-denis-medium`,
+`fr_FR-siwis-medium`, `de_DE-thorsten-high`, `es_ES-davefx-medium` and
+`uk_UA-tetiana-high`. Polish uses **Chatterbox Multilingual V2**
+(`chatterbox-tts 0.1.7`, Resemble AI), with the provider's default Polish demo
+speaker prompt. These replace the earlier Flite/eSpeak recordings.
+Outer silence is trimmed, peaks normalized to 0.82, and finished recordings
+resampled to 16 kHz mono PCM. Normal speaking speed is retained; no time
+compression is used. The Polish generator uses its built-in Perth
+watermarker, without a watermark-removal step. Watermark detection after
+resampling has not been tested.
+
+Exact text, model/config/WAV SHA-256 hashes, processing, Polish generation
+settings and reference provenance are recorded in `assets/voices/manifest.json`.
+Original model-card attribution and license information are preserved in
+`assets/VOICE_NOTICE.txt`, which is included in the package.
+
+**The selected English HFC voice uses Hi-Fi-CAPTAIN data under CC BY-NC-SA
+4.0. The English recording is distributed under that license: noncommercial
+use, attribution and ShareAlike apply to that audio asset.** The notice
+identifies NICT and the Piper voice contributors, the dataset source and
+the synthesis/processing changes. French SIWIS data uses CC BY 4.0, the other
+Piper sources use CC0/Apache-2.0 as recorded in their model cards, and
+Chatterbox is MIT licensed. Audio notices do not relicense the mod's code.
+Keep the notice when redistributing the audio or package.
+
+Speech engines and their dependencies are neither shipped nor executed by
+the mod. The game only plays finished audio using Wwise. During generation,
+Piper disables ONNX Runtime telemetry before initialization with its documented
+`ORT_DISABLE_TELEMETRY=1` setting and calls `disable_telemetry_events()`.
+Chatterbox inference runs from local weights with outbound socket syscalls
+denied by the kernel and Hugging Face offline/telemetry flags set. Neither
+engine is a runtime or packaging dependency. Auditory quality and
+pronunciation still need listening checks; offline validation cannot certify
+how every voice will sound inside the WoT mix.
 
 Format and routing references:
 

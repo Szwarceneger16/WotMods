@@ -176,7 +176,8 @@ class Tests(unittest.TestCase):
         self.assertEqual(size,len(pcm))
         with wave.open(io.BytesIO(build.audio.load_voice())) as voice:
             self.assertEqual(pcm,voice.readframes(voice.getnframes()))
-            self.assertAlmostEqual(voice.getnframes()/voice.getframerate(),1.36)
+            self.assertGreater(voice.getnframes()/voice.getframerate(),0.5)
+            self.assertLess(voice.getnframes()/voice.getframerate(),2.0)
 
     def test_23_bank_graph_links_event_action_sound_and_native_voice_bus(self):
         chunks,_=self.bank_chunks()
@@ -221,8 +222,9 @@ class Tests(unittest.TestCase):
         self.assertEqual([child.tag for child in root],['loadBanks'])
         self.assertEqual([el.text for el in root.findall('loadBanks/bank/name')],
                          ['staysharp_medkit.bnk'])
-        self.assertIn(b'Carnegie Mellon University',notice)
-        self.assertIn(b'cmu_us_slt',notice)
+        self.assertIn(b'AI-generated neural speech',notice)
+        self.assertIn(b'Piper 1.8.0',notice)
+        self.assertIn(b'SIWIS',notice)
 
     def test_25_voice_integrity_and_bank_build_are_deterministic(self):
         chunks,_=self.bank_chunks()
