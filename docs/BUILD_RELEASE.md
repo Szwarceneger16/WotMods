@@ -5,6 +5,7 @@
 - `source/mod_staysharp_medkit.py` is the WoT client runtime (Python 2.7-compatible).
 - `source/build_wotmod.py` creates the single, self-contained `.wotmod` archive using Python 3 standard-library tools.
 - `assets/medkit_pulse_master.dds.b85` and `.sha256` are the checked animation master; 21 DDS frames are generated without external downloads.
+- `source/build_audio_bank.py` creates the bundled Wwise v150 PCM bank from checksum-verified `assets/medkit_ready.wav.b85`; no authoring tool or synthesizer is required for packaging. See [audio details](AUDIO.md).
 - `VERSION` is the reviewed release base. The `Release WotMod` workflow uses its own `github.run_number` to select a unique patch number. A *rerun* keeps the same number; a new dispatch/merge gets a new number.
 
 Run:

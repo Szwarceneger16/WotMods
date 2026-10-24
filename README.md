@@ -1,9 +1,9 @@
 # Stay Sharp — Medkit Reminder for World of Tanks
 
-A small **client-side visual reminder** for the Commander's *Stay Sharp* perk.
-When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. No keypresses, automatic consumable use, game-stat changes, audio, or injected network traffic.
+A small **client-side visual and audio reminder** for the Commander's *Stay Sharp* perk.
+When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. After one second of eligible readiness, it says **"Medkit is ready" once**; while the outline keeps pulsing, the native medkit activation effect repeats every four seconds. Seven spoken languages match Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`), selected automatically from WoT or explicitly in the small [language configuration](docs/AUDIO.md#language-configuration). Both sounds use WoT's Wwise audio engine. No keypresses, automatic consumable use, game-stat changes or injected network traffic.
 
-The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint and all required DDS frames.
+The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint all required DDS frames, and its own small voice soundbank.
 
 ## Downloads
 
@@ -16,7 +16,9 @@ The mod uses the regular consumables HUD and works independently of arcade, snip
 3. Copy the downloaded `.wotmod` to `<World_of_Tanks_EU>/mods/<current_game_version>/`.
 4. Start WoT. To uninstall, remove this single `.wotmod` file.
 
-The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the v1.6.1 event-driven implementation and the 1.6.1 log fix still require an in-game regression test. Back up the last working version before testing an update.
+Optional language configuration: `mods/configs/staysharp.medkit.json`, beside the game-version folders. The mod creates an `auto` default there when possible; see [language selection](docs/AUDIO.md#language-configuration).
+
+The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the v1.7.0 soundbank, routing/volume and audio timing still require an in-game regression test. Back up the last working version before testing an update.
 
 Diagnostic log (created on the player's computer, **never included in releases**): `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
@@ -31,7 +33,7 @@ python3 source/build_wotmod.py
 sha256sum dist/*.wotmod
 ```
 
-The `assets/medkit_pulse_master.dds.b85` file is a compressed, ASCII-encoded source DDS. The builder recreates **all 21 original DDS animation frames byte-for-byte** using an exact, tested alpha-scaling formula; the full assets do not need to be separately committed. The **historical v1.6.0** artifact has SHA-256 `9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927`. This legacy check applies only when building v1.6.0. Current code starts at **v1.6.1**, which includes a Windows log-rotation fix.
+The `assets/medkit_pulse_master.dds.b85` file is a compressed, ASCII-encoded source DDS. The builder recreates **all 21 original DDS animation frames byte-for-byte** using an exact, tested alpha-scaling formula; the full assets do not need to be separately committed. The **historical v1.6.0** artifact has SHA-256 `9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927`. This legacy check applies only when building v1.6.0. Current code starts at **v1.7.0**, which adds native WoT audio reminders. The builder validates the voice checksum and embeds it as PCM in a deterministic Wwise v150 bank. See [audio packaging and compatibility](docs/AUDIO.md), including coexistence with other sound mods.
 
 See [independent builds and shared Release snapshots](docs/MULTIMOD_RELEASES.md), [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](docs/REVIEW_1.6.0.md), and [installation guide](docs/INSTALACJA.md).
 

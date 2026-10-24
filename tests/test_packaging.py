@@ -1,5 +1,8 @@
 """Binary package / frame-level regression tests. No WoT client available."""
 import importlib.util
+import io
+import wave
+from xml.etree import ElementTree
 from pathlib import Path
 import struct
 import sys
@@ -25,9 +28,9 @@ class Tests(unittest.TestCase):
     def test_02_single_file_is_zip(self):
         self.assertTrue(zipfile.is_zipfile(self.target))
 
-    def test_03_exactly_23_files(self):
+    def test_03_exactly_27_files(self):
         with zipfile.ZipFile(self.target) as z:
-            self.assertEqual(len(z.namelist()),23)
+            self.assertEqual(len(z.namelist()),27)
 
     def test_04_all_zipstored(self):
         with zipfile.ZipFile(self.target) as z:
@@ -37,9 +40,11 @@ class Tests(unittest.TestCase):
         with zipfile.ZipFile(self.target) as z:
             self.assertFalse(any(x.flag_bits&1 for x in z.infolist()))
 
-    def test_06_no_externally_needed_shader_sound_or_dll(self):
+    def test_06_only_bundled_audio_no_shader_dll_or_swf(self):
         with zipfile.ZipFile(self.target) as z:
-            self.assertFalse(any(x.filename.endswith(('.fx','.wav','.bnk','.dll','.swf','.py')) for x in z.infolist()))
+            self.assertFalse(any(x.filename.endswith(('.fx','.dll','.swf','.py')) for x in z.infolist()))
+            self.assertEqual([x for x in z.namelist() if x.endswith('.bnk')],
+                             ['res/audioww/staysharp_medkit.bnk'])
 
     def test_07_python_entrypoint_matches_working_py27_format(self):
         with zipfile.ZipFile(self.target) as z:
@@ -124,6 +129,158 @@ class Tests(unittest.TestCase):
 
     def test_20_package_stays_under_2mb(self):
         self.assertLess(self.target.stat().st_size,2*1024*1024)
+
+
+    def bank_chunks(self):
+        with zipfile.ZipFile(self.target) as archive:
+            bank=archive.read('res/audioww/staysharp_medkit.bnk')
+        chunks={}
+        offsets={}
+        pos=0
+        while pos < len(bank):
+            tag,size=struct.unpack_from('<4sI',bank,pos)
+            self.assertNotIn(tag,chunks)
+            offsets[tag]=pos+8
+            chunks[tag]=bank[pos+8:pos+8+size]
+            self.assertEqual(len(chunks[tag]),size)
+            pos+=8+size
+        self.assertEqual(pos,len(bank))
+        return chunks,offsets
+
+    def test_21_native_bank_header_and_aligned_embedded_media(self):
+        chunks,offsets=self.bank_chunks()
+        self.assertEqual(set(chunks),{b'BKHD',b'DIDX',b'DATA',b'HIRC',b'STID'})
+        version,bank_id,language,alignment,project,kind=struct.unpack_from('<6I',chunks[b'BKHD'])
+        self.assertEqual((version,language,alignment,kind),(150,0,16,0))
+        self.assertEqual(bank_id,build.audio.short_id('staysharp_medkit'))
+        self.assertEqual(offsets[b'DATA']%16,0)
+        self.assertEqual(len(chunks[b'DIDX']),12*7)
+        media_id,offset,size=struct.unpack_from('<3I',chunks[b'DIDX'])
+        self.assertEqual(offset,0)
+        self.assertLess(size,len(chunks[b'DATA']))
+        self.assertEqual(media_id,build.audio.short_id('staysharp_medkit_ready_pcm'))
+
+    def test_22_bank_embeds_complete_pcm_voice_without_reencoding(self):
+        chunks,_=self.bank_chunks()
+        media_id,offset,size=struct.unpack_from('<3I',chunks[b'DIDX'])
+        wem=chunks[b'DATA'][offset:offset+size]
+        self.assertEqual(wem[:4],b'RIFF')
+        self.assertEqual(struct.unpack_from('<I',wem,4)[0],len(wem)-8)
+        self.assertEqual(wem[8:16],b'WAVEfmt ')
+        self.assertEqual(struct.unpack_from('<I',wem,16)[0],24)
+        self.assertEqual(struct.unpack_from('<HHIIHHHHI',wem,20),
+                         (0xfffe,1,16000,32000,2,16,6,16,0x4101))
+        self.assertEqual(wem[44:48],b'data')
+        size=struct.unpack_from('<I',wem,48)[0]
+        pcm=wem[52:]
+        self.assertEqual(size,len(pcm))
+        with wave.open(io.BytesIO(build.audio.load_voice())) as voice:
+            self.assertEqual(pcm,voice.readframes(voice.getnframes()))
+            self.assertGreater(voice.getnframes()/voice.getframerate(),0.5)
+            self.assertLess(voice.getnframes()/voice.getframerate(),2.0)
+
+    def test_23_bank_graph_links_event_action_sound_and_native_voice_bus(self):
+        chunks,_=self.bank_chunks()
+        graph=chunks[b'HIRC']
+        self.assertEqual(struct.unpack_from('<I',graph)[0],21)
+        pos=4
+        objects={}
+        for index in range(21):
+            kind,size=struct.unpack_from('<BI',graph,pos)
+            data=graph[pos+5:pos+5+size]
+            if index < 3:
+                objects[kind]=data
+            pos+=5+size
+        self.assertEqual(pos,len(graph))
+        self.assertEqual(set(objects),{2,3,4})
+        sound,action,event=objects[2],objects[3],objects[4]
+        self.assertEqual(len(sound),49)
+        self.assertEqual(len(action),22)
+        self.assertEqual(len(event),9)
+        sound_id=struct.unpack_from('<I',sound)[0]
+        action_id=struct.unpack_from('<I',action)[0]
+        self.assertEqual(struct.unpack_from('<I',event)[0],
+                         build.audio.short_id('staysharp_medkit_ready'))
+        self.assertEqual(event[4],1)
+        self.assertEqual(struct.unpack_from('<I',event,5)[0],action_id)
+        self.assertEqual(struct.unpack_from('<HI',action,4),(0x0403,sound_id))
+        self.assertEqual(struct.unpack_from('<II',action,14),
+                         (build.audio.short_id('staysharp_medkit'),0))
+        self.assertEqual(struct.unpack_from('<I',sound,22)[0],
+                         build.audio.short_id('VOICE_GUI'))
+        self.assertEqual(struct.unpack_from('<I',sound,4)[0],0x00010001)
+        self.assertEqual(sound[8],0)  # embedded source, not streaming
+        self.assertEqual(sound[33],1)  # override positioning with 2D panning
+
+    def test_24_bank_loading_config_has_no_global_event_overrides(self):
+        with zipfile.ZipFile(self.target) as archive:
+            native=archive.read('res/audioww/audio_mods.xml')
+            namespaced=archive.read('res/audioww/staysharp_medkit.xml')
+            notice=archive.read('res/audioww/staysharp_VOICE_NOTICE.txt')
+        self.assertEqual(native,namespaced)
+        root=ElementTree.fromstring(native)
+        self.assertEqual([child.tag for child in root],['loadBanks'])
+        self.assertEqual([el.text for el in root.findall('loadBanks/bank/name')],
+                         ['staysharp_medkit.bnk'])
+        self.assertIn(b'AI-generated neural speech',notice)
+        self.assertIn(b'Piper 1.8.0',notice)
+        self.assertIn(b'SIWIS',notice)
+
+    def test_25_voice_integrity_and_bank_build_are_deterministic(self):
+        chunks,_=self.bank_chunks()
+        with zipfile.ZipFile(self.target) as archive:
+            bank=archive.read('res/audioww/staysharp_medkit.bnk')
+        self.assertEqual(bank,build.audio.build_bank())
+        self.assertEqual(build.audio.short_id('Init'),1355168291)
+
+
+    def test_26_all_seven_voices_have_distinct_events_and_original_pcm(self):
+        chunks,offsets=self.bank_chunks()
+        self.assertEqual(set(build.audio.LANGUAGES),{'en','pl','ru','fr','de','es','uk'})
+        ids=set()
+        graph=chunks[b'HIRC']
+        pos=4
+        objects={}
+        while pos < len(graph):
+            kind,size=struct.unpack_from('<BI',graph,pos)
+            data=graph[pos+5:pos+5+size]
+            ident=struct.unpack_from('<I',data)[0]
+            self.assertNotIn(ident,objects)
+            objects[ident]=(kind,data)
+            pos+=5+size
+        previous_end=0
+        for n,language in enumerate(build.audio.LANGUAGES):
+            event=build.audio.event_name(language)
+            media_id,offset,size=struct.unpack_from('<III',chunks[b'DIDX'],n*12)
+            self.assertEqual(media_id,build.audio.short_id(event+'_pcm'))
+            self.assertNotIn(media_id,ids)
+            ids.add(media_id)
+            self.assertEqual((offsets[b'DATA']+offset)%16,0)
+            self.assertGreaterEqual(offset,previous_end)
+            self.assertEqual(set(chunks[b'DATA'][previous_end:offset]),set() if previous_end==offset else {0})
+            wem=chunks[b'DATA'][offset:offset+size]
+            self.assertEqual(struct.unpack_from('<I',wem,4)[0],len(wem)-8)
+            with wave.open(io.BytesIO(build.audio.load_voice(language))) as voice:
+                self.assertEqual(wem[52:],voice.readframes(voice.getnframes()))
+                self.assertLess(voice.getnframes()/voice.getframerate(),2.0)
+            previous_end=offset+size
+            kind,event_data=objects[build.audio.short_id(event)]
+            self.assertEqual(kind,4)
+            action_id=struct.unpack_from('<I',event_data,5)[0]
+            kind,action=objects[action_id]
+            self.assertEqual(kind,3)
+            sound_id=struct.unpack_from('<I',action,6)[0]
+            kind,sound=objects[sound_id]
+            self.assertEqual(kind,2)
+            self.assertEqual(struct.unpack_from('<I',sound,9)[0],media_id)
+            self.assertEqual(struct.unpack_from('<I',sound,13)[0],size)
+            self.assertEqual(struct.unpack_from('<I',sound,22)[0],build.audio.short_id('VOICE_GUI'))
+        self.assertEqual(previous_end,len(chunks[b'DATA']))
+
+    def test_27_unknown_voice_cannot_select_arbitrary_asset(self):
+        for language in ('jp','../en','','AUTO'):
+            with self.assertRaises(ValueError):
+                build.audio.load_voice(language)
 
 
 if __name__=='__main__':

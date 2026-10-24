@@ -1,0 +1,165 @@
+Stay Sharp ready voices - AI-generated neural speech
+
+English, Russian, French, German, Spanish and Ukrainian were synthesized
+with Piper 1.8.0 / neural VITS. Polish was synthesized with Resemble AI's
+Chatterbox Multilingual V2 (chatterbox-tts 0.1.7).
+Only finished PCM audio is distributed. No speech engine, ONNX runtime,
+model weights, network service or telemetry is included in the game mod.
+
+Processing: normal speaking speed, outer silence trim, peak normalization
+to 0.82 and resampling to 16 kHz mono 16-bit PCM. No time compression.
+Source/model/config/WAV hashes and generation settings:
+assets/voices/manifest.json in the source repository.
+
+English audio: CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+Attribution: Hi-Fi-CAPTAIN, National Institute of Information and
+Communications Technology (NICT), and rhasspy/piper-voices contributors.
+Source: https://ast-astrec.nict.go.jp/en/release/hi-fi-captain/
+Adaptation: synthetic "Medkit is ready." using en_US-hfc_female-medium,
+followed by the processing described above. Noncommercial use only;
+share adaptations of this English recording under the same license.
+This asset-specific license does not relicense the mod's source code.
+
+French source attribution: SIWIS French Speech Synthesis Database,
+University of Edinburgh; rhasspy/piper-voices contributors.
+https://datashare.is.ed.ac.uk/handle/10283/2353
+https://creativecommons.org/licenses/by/4.0/
+Adaptation: synthesized "Trousse de soins prête." and processed as above.
+
+Piper: https://github.com/OHF-Voice/piper1-gpl
+Voice models: https://huggingface.co/rhasspy/piper-voices
+Chatterbox: https://github.com/resemble-ai/chatterbox
+Polish model: https://huggingface.co/ResembleAI/chatterbox
+Polish speaker prompt: provider-published default Polish demo sample,
+https://storage.googleapis.com/chatterbox-demo-samples/mtl_prompts/pl_m.flac
+The reference recording is not bundled. The generator's built-in Perth
+watermarker was used; no watermark-removal step was applied. Watermark
+detection after resampling has not been tested.
+
+Model and source dataset attribution (original model-card text follows):
+
+=== en / en_US-hfc_female-medium ===
+# Model card for hfc_female (medium)
+
+* Language: en_US (English, United States)
+* Speakers: 1
+* Quality: medium
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://ast-astrec.nict.go.jp/en/release/hi-fi-captain/
+* License: https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en
+
+## Training
+
+Finetuned from U.S. English lessac voice (medium quality).
+
+=== ru / ru_RU-denis-medium ===
+# Model card for denis (medium)
+
+* Language: ru_RU (Russian, Russia)
+* Speakers: 1
+* Quality: medium
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://github.com/OHF-Voice/voice-datasets
+* License: CC0
+
+## Training
+
+Finetuned from U.S. English lessac voice (medium quality).
+
+=== fr / fr_FR-siwis-medium ===
+# Model card for siwis (medium)
+
+* Language: fr_FR (French, France)
+* Speakers: 1
+* Quality: medium
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://datashare.is.ed.ac.uk/handle/10283/2353
+* License: CC-BY 4.0
+
+## Training
+
+Finetuned from U.S. English lessac voice (medium quality)
+
+=== de / de_DE-thorsten-high ===
+# Model card for thorsten (high)
+
+* Language: de_DE (German, Germany)
+* Speakers: 1
+* Quality: high
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://github.com/thorstenMueller/Thorsten-Voice
+* License: CC0
+
+## Training
+
+Finetuned from U.S. English lessac voice (high quality).
+
+=== es / es_ES-davefx-medium ===
+# Model card for davefx (medium)
+
+* Language: es_ES (Spanish, Spain)
+* Speakers: 1
+* Quality: medium
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://github.com/OHF-Voice/voice-datasets
+* License: CC0
+
+## Training
+
+Finetuned from U.S. English lessac voice (medium quality).
+
+=== uk / uk_UA-tetiana-high ===
+# Model card for tetiana (high)
+
+* Language: uk_UA (Ukrainian, Ukraine)
+* Speakers: 1
+* Quality: high
+* Samplerate: 22,050Hz
+
+## Dataset
+
+* URL: https://github.com/egorsmkv/ukrainian-tts-datasets
+* License: Apache 2.0
+
+## Training
+
+See: https://huggingface.co/RomanStasyshyn/uk_UA-tetiana-high
+
+=== pl / Chatterbox Multilingual V2 ===
+MIT License
+
+Copyright (c) 2025 Resemble AI
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
