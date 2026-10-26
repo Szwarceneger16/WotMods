@@ -7,7 +7,7 @@ packaging or workflow. A change in `mods/sessionstats/**` (including languages),
 README, or another mod does **not** rebuild Stay Sharp. Each mod has its own
 version series, build job, tests and workflow. GitHub has one Releases page and
 one repository-wide `/releases/latest` pointer. Each *published* Release is a
-complete immutable snapshot of all mod artifacts known at publication time.
+complete immutable snapshot containing exactly two user-facing installer ZIPs: `StaySharp-Medkit-v<version>.zip` and `Session-Stats-v<version>.zip`. GitHub supplies source archives and attestations separately.
 
 ## Publishing without cross-mod rebuilds
 
@@ -16,15 +16,15 @@ complete immutable snapshot of all mod artifacts known at publication time.
 2. The publish job waits for the common mutex used by **every** mod publisher.
    Jobs that are only building do not hold this mutex.
 3. **Inside that mutex**, fetch the repository-wide Latest published immutable
-   Release, download all its files and validate the complete `SHA256SUMS.txt`.
-4. Compare the *versioned primary package* of the updated mod with the one in
+   Release, download its two ZIPs and validate each complete internal checksum manifest. For the first migration only, verify the old outer `SHA256SUMS.txt` and convert the legacy assets without recompiling either mod.
+4. Compare the *versioned installer* of the updated mod with the one in
    the current Latest. If Latest already contains a **newer** version, skip
    the older job (exit status `75` is explicitly converted into a successful
    no-op). If versions are equal, verify the package bytes match; equal
    versions with different bytes fail closed.
 5. Replace only the current mod's old files; copy every other mod's published
-   package and configuration **byte-for-byte**, without invoking its builder.
-   Recreate the global checksum manifest, publish a new GitHub Release and
+   installer **byte-for-byte**, without invoking its builder.
+   Use a temporary global manifest for assembly, remove it before uploading, publish a new GitHub Release and
    verify all uploaded bytes while **still holding the mutex**.
 
 ### Required mutex across ALL release workflows
@@ -76,29 +76,38 @@ The common helper interface is:
 bash scripts/release_snapshot.sh DIST PRIMARY_FILE PRIMARY_GLOB [OTHER_OWNED_GLOBS...]
 ```
 
-For Stay Sharp:
+The read-only build artifacts keep their existing validation layout. The publisher
+packages only the changed mod, then invokes the shared helper with an installer
+as its versioned primary artifact:
 
 ```bash
-bash scripts/release_snapshot.sh dist \
-  "com.staysharp.medkitreminder_${RELEASE_VERSION}.wotmod" \
-  'com.staysharp.medkitreminder_*.wotmod'
+python3 scripts/release_installers.py package release --source dist --mod staysharp
+bash scripts/release_snapshot.sh release \
+  "StaySharp-Medkit-v${RELEASE_VERSION}.zip" 'StaySharp-Medkit-v*.zip'
 ```
 
-For Session Stats:
+For Session Stats use `--source mods/sessionstats/dist --mod sessionstats` and
+`"Session-Stats-v${RELEASE_VERSION}.zip" 'Session-Stats-v*.zip'`.
+The helper retains support for legacy `.wotmod` callers for offline regression
+coverage, but both active publishers use ZIP primaries.
 
-```bash
-bash scripts/release_snapshot.sh mods/sessionstats/dist \
-  "grz.sessionstats_${SESSIONSTATS_VERSION}.wotmod" \
-  'grz.sessionstats_*.wotmod' \
-  'wot-statystyki-sesji-v*.zip' \
-  'net.openwg.gameface_*.wotmod' \
-  'grz.sessionstats.json' \
-  'BUILD.json'
-```
+Before publishing, remove the temporary `release/SHA256SUMS.txt` and run
+`python3 scripts/release_installers.py verify release`. Exactly one installer
+per mod is required. Both must target the same client, include only optional
+`.json.example` configs under `mods/configs/`, and have disjoint package IDs and
+resource paths. OpenWG is inside Session Stats. Each mod has its own
+`docs/<mod>/` directory for instructions, licenses, source where applicable,
+build metadata and a full internal checksum manifest. Production `.wotmod`
+bytes are preserved. No nested installer ZIP is introduced.
 
-Every mod needs its own `on.push.paths`, independent version tags and native
-GitHub tag-protection Ruleset for its prefix. The root SHA256SUMS.txt is always
-recreated for the complete snapshot, and release filenames must not collide.
+Release notes begin with Downloads and Installation sections, with direct links
+to both ZIPs. SHA-256 values appear in a collapsed details block; GitHub's
+generated changes follow. The Assets section uploads only `release/*.zip`.
+Post-publication checks compare the complete remote asset list and every byte,
+validate both installers again, then re-resolve the protected tag.
+
+Existing immutable release assets are left intact. The first successful release
+from this workflow introduces the new layout; it does not delete history.
 
 **Merge dependency:** PR #5 is accepted on main. PR #2 integrates that accepted
 flow for Session Stats; PR #3 remains stacked on #2. After #2 is accepted,

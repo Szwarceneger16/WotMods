@@ -1,66 +1,64 @@
 # Stay Sharp Medkit Reminder 1.6.0 — code review / hardening
 
-## Punkt wyjścia
+## Baseline
 
-Wersja 1.5.0 została potwierdzona przez użytkownika jako działająca w grze, w tym w widokach celowania. Nowe wydanie zmienia tylko mechanizm przyłączania do cyklu życia panelu oraz sprawdzanie zgodności. Algorytm pulsowania i zasoby DDS pozostają bez zmian.
+The user confirmed version 1.5.0 in the game, including aiming views. This release changes only panel lifecycle attachment and compatibility checks. The pulse algorithm and DDS resources remain unchanged.
 
-## 1. Subskrypcja zdarzeń zamiast monkeypatchingu
+## 1. Event subscriptions
 
-**Wersja 1.5:** podmiana `ConsumablesPanel._populate` i `ConsumablesPanel._dispose` w klasie WoT.
+**Version 1.5:** replaced `ConsumablesPanel._populate` and `ConsumablesPanel._dispose` on the WoT class.
 
-**Wersja 1.6:** dwa odczytowe listenery globalnego `g_eventBus`:
+**Version 1.6:** two read-only listeners on the global `g_eventBus`:
 
 - `ComponentEvent.COMPONENT_REGISTERED` (`event.alias == BATTLE_VIEW_ALIASES.CONSUMABLES_PANEL`) → `_activate`.
 - `ComponentEvent.COMPONENT_UNREGISTERED` (`event.componentPy is _panel`) → `_deactivate`.
 
-To nie jest własny, nieudokumentowany event: klient WoT sam używa takiego wzorca, np. w `markers_gui_provider.py`. Klient rejestruje komponent po `componentPy.create()` i emituje zdarzenie przed `viewPy.destroy()`.
+The WoT client uses this event pattern itself, for example in `markers_gui_provider.py`. Registration follows `componentPy.create()`; unregistration is emitted before `viewPy.destroy()`.
 
-Źródła pomocnicze (społecznościowy zrzut kodu klienta WoT, nie oficjalnie stabilne publiczne API):
+Supporting sources are community client-code mirrors, not an officially stable public API:
 
 - https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/gui/Scaleform/framework/entities/BaseDAAPIComponent.py
 - https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/gui/Scaleform/framework/entities/DisposableEntity.py
 - https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/gui/Scaleform/daapi/view/battle/shared/component_marker/markers_gui_provider.py
 - https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/gui/Scaleform/genConsts/BATTLE_VIEW_ALIASES.py
 
-**Zaleta:** brak przepisywania implementacji metod WoT, brak kolizji z modami patchującymi te same metody, mniejsze ryzyko błędnej kolejności wywołań.
+This avoids overwriting WoT method implementations, collisions with mods patching the same methods and invocation-order problems. Future clients may change or remove these events; the mod then disables itself rather than automatically falling back to monkeypatching.
 
-**Ryzyko:** przyszła wersja WoT może zmienić/wycofać te zdarzenia. Wtedy mod wyłączy się, a nie automatycznie przełączy na monkeypatching.
+## 2. Compatibility adapter
 
-## 2. Adapter zgodności
+Before activation, `_panel_contract(panel)` checks:
 
-`_panel_contract(panel)` sprawdza przed uruchomieniem:
+- Panel identifiers/ranges and 12 slots.
+- `_getPanelSettings()` and the standard layout (`0`).
+- Availability of `as_isVisibleS()`.
+- Presence/type of `_cds` and a valid 12-bit `_mask`.
+- The `_equipmentsGlowCallbacks` dictionary, preserving native WoT warning priority.
 
-- identyfikatory i zakresy panelu, 12 slotów;
-- obecność `_getPanelSettings()` i standardowy layout (`0`);
-- dostępność `as_isVisibleS()`;
-- obecność oraz typ `_cds`, poprawny 12-bitowy `_mask`;
-- słownik `_equipmentsGlowCallbacks`, zapewniający pierwszeństwo natywnych ostrzeżeń WoT.
+`_slot_contract(panel, slot, compact)` verifies that the ready medkit occupies an actual slot in 3..5, that the mask includes the slot and that its compact equipment identifier matches the HUD. Repeated checks during battle cover panel/configuration changes.
 
-`_slot_contract(panel, slot, compact)` sprawdza, czy gotowa apteczka znajduje się rzeczywiście w jednym ze slotów 3..5, czy slot jest w masce i czy kompaktowy identyfikator wyposażenia zgadza się z HUD-em. Jest powtarzany podczas bitwy, więc obejmuje zmianę panelu lub konfiguracji w locie.
+`_graphics_contract()` checks `GUI.Simple`, required enums, `ResMgr.isFile`, callback support and BigWorld functions before touching the native renderer. Existing `_preflight_frames` also validates every DDS resource.
 
-`_graphics_contract()` sprawdza istnienie `GUI.Simple`, wymaganych enumów, `ResMgr.isFile`, obsługi callbacków i funkcji BigWorld przed dotknięciem natywnego renderera. Wszystkie zasoby DDS weryfikuje ponadto istniejący `_preflight_frames`.
+**Fail-closed behavior:** unknown layouts disable the overlay and log a specific reason. The mod does not guess layouts or move equipment slots.
 
-**Zasada fail-closed:** nieznany układ → brak nakładki i konkretna przyczyna w logu. Nie ma próby zgadywania nieznanego układu interfejsu ani przestawiania slotów.
+## 3. Unchanged behavior
 
-## 3. Zachowane bez zmian
-
-- 21 bitmap 128x128, DDS ARGB8888: porównanie wszystkich 21 plików z paczką 1.5.0 wykazało zgodność bajt w bajt.
+- All 21 128x128 DDS ARGB8888 frames match the 1.5.0 package byte for byte.
 - `TEXTURE_TEMPLATE`, `FRAME_LEVELS=20`, `HALF_PULSE=2.0`, `PULSE_TICK=0.1`.
-- Logika `GUI.Simple` i `hud.addChild` z wersji 1.5.0.
-- Kontrola `playerVehicleID`, `perkEffects['equipment']`, `item.canActivate(avatar=player)` i priorytetu wbudowanych ostrzeżeń.
-- Brak dźwięków, shaderów, DLL, podmiany `battle.swf` i dodatkowych folderów wymaganych do instalacji.
+- The 1.5.0 `GUI.Simple` and `hud.addChild` logic.
+- Checks of `playerVehicleID`, `perkEffects['equipment']`, `item.canActivate(avatar=player)` and native warning priority.
+- No sounds, shaders, DLLs, `battle.swf` replacement or extra installation folders.
 
-## 4. Walidacja
+## 4. Validation
 
-- 137/137 testów offline (82 regresyjne logiki, 35 nowych testów kompatybilności/eventów, 20 opakowania).
-- Całe `.wotmod` jest ZIP_STORED, zawiera 23 wpisy i ma poprawne metadane.
-- Bytecode loader jest ten sam co sprawdzony w 1.5.0 format CPython 2.7 (wbudowany w `.pyc` skrypt ASCII).
-- Testy symulują niezgodne/nieobecne API, w tym odrzucenie nieznanego layoutu, maski, słownika glow, brak enumów i problemy rejestracji listenera.
-- **Nie przeprowadzono testu w działającym kliencie WoT**. Stwierdzenie `137/137` dotyczy testów offline, nie gwarancji stabilności silnika.
+- 137/137 offline tests: 82 logic regressions, 35 compatibility/event checks and 20 packaging checks.
+- The entire `.wotmod` uses ZIP_STORED, has 23 entries and valid metadata.
+- The bytecode loader retains the CPython 2.7 format verified in 1.5.0, with an ASCII script embedded in `.pyc`.
+- Tests simulate missing/incompatible APIs, unknown layouts, invalid masks/glow dictionaries, missing enums and listener-registration failures.
+- **No live WoT client test was performed.** The 137/137 result describes offline checks, not an engine-stability guarantee.
 
-## 5. Ograniczenia
+## 5. Limitations
 
-- Wciąż korzystamy z niepublicznych `_cds`, `_mask`, `perkEffects`, `as_isVisibleS` i mostka Flash. Nie można zagwarantować działania po przebudowie HUD-u.
-- Gdy przyszła wersja zmieni układ, poprawną reakcją jest brak pulsowania, nie błędna ramka nad innym wyposażeniem.
-- W razie zmiany interpretera Pythona przez WoT obecny `.pyc` przestanie być zgodny i trzeba zbudować nowe wydanie.
-- Nie istnieje bezpieczna, uniwersalna technika zapewniająca 100% kompatybilność z nieznanymi przyszłymi aktualizacjami gry.
+- The mod still depends on private `_cds`, `_mask`, `perkEffects`, `as_isVisibleS` and the Flash bridge. A HUD redesign may break it.
+- If a future layout changes, disabling the pulse is the correct response; placing a frame over the wrong consumable is not.
+- A different WoT Python interpreter will invalidate the current `.pyc` and require a new build.
+- No safe universal technique guarantees full compatibility with unknown future game updates.

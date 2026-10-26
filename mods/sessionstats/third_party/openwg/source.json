@@ -1,0 +1,10 @@
+{
+  "name": "OpenWG Gameface",
+  "version": "1.2.2",
+  "license": "MIT",
+  "release": "https://gitlab.com/openwg/wot.gameface/-/releases/v1.2.2",
+  "commit": "ca0d87251e68aec578d2bf3356c004236a5e406b",
+  "sha256": "2bb65f28663e3ab34b5a1102a1bbd1f6e17a65e1f6a898a8645c4ab732b50184",
+  "modified": false,
+  "purpose": "Inject the garage footer button. Native stats window registers independently."
+}

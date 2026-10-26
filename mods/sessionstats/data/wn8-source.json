@@ -1,0 +1,13 @@
+{
+  "source": "https://static.modxvm.com/wn8-data-exp/json/wg/wn8exp.json",
+  "publisher": "XVM team / modxvm.com",
+  "game": "Wargaming",
+  "downloaded_utc": "2026-10-20",
+  "sha256": "00ac1b79966f3243c8f9ee3f7a9fee8b83edcb03ee9c9f137f7b2914b0fc69ff",
+  "vehicles": 999,
+  "header": {
+    "url": "https://static.modxvm.com/wn8-data-exp/json/wg/wn8exp-2026-10-19.json",
+    "source": "XVM",
+    "version": "2026-10-19"
+  }
+}

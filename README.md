@@ -1,20 +1,33 @@
+# World of Tanks — mods
+
+| Mod | Source and instructions | Releases |
+|---|---|---|
+| Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `Session-Stats-v<version>.zip`, including OpenWG and configuration examples |
+| Stay Sharp — Medkit Reminder | [source](source), description below | `StaySharp-Medkit-v<version>.zip`, including installation paths and a configuration example |
+
+Both mods can be installed independently. [Latest shared release snapshot](../../releases/latest). Unchanged packages are carried forward byte-for-byte; each mod builds independently. See [release flow](docs/MULTIMOD_RELEASES.md).
+Sources, tests and licenses are separate; the Session Stats license does not cover the medkit mod.
+Integration rules: [mods/sessionstats/README.md](mods/sessionstats/README.md).
+
 # Stay Sharp — Medkit Reminder for World of Tanks
 
 A small **client-side visual and audio reminder** for the Commander's *Stay Sharp* perk.
 When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. After one second of eligible readiness, it says **"Medkit is ready" once**; while the outline keeps pulsing, the native medkit activation effect repeats every four seconds. Seven spoken languages match Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`), selected automatically from WoT or explicitly in the small [language configuration](docs/AUDIO.md#language-configuration). Both sounds use WoT's Wwise audio engine. No keypresses, automatic consumable use, game-stat changes or injected network traffic.
 
-The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint all required DDS frames, and its own small voice soundbank.
+The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint, all required DDS frames, and its own small voice soundbank.
 
 ## Downloads
 
-**[GitHub Releases](../../releases/latest)** — download `com.staysharp.medkitreminder_<version>.wotmod` from the latest published release. The latest immutable Release is a **snapshot**: it may also include unchanged files of other mods, carried byte-for-byte from the preceding verified Release. An update to Session Stats does **not** rebuild Stay Sharp. Only fully published Releases are downloadable; a failed draft is not a usable release.
+**[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip` or `Session-Stats-v<version>.zip`. Each release offers both installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the two installers.
 
 ## Installation
 
 1. Close World of Tanks EU.
 2. Remove every older `com.staysharp.medkitreminder_*.wotmod` from the active version folder.
-3. Copy the downloaded `.wotmod` to `<World_of_Tanks_EU>/mods/<current_game_version>/`.
-4. Start WoT. To uninstall, remove this single `.wotmod` file.
+3. Extract the installer ZIP into the folder containing `WorldOfTanks.exe`. It already contains `mods/<game_version>/` and `mods/configs/`. Check that its target version matches your client.
+4. Start WoT. To uninstall Stay Sharp, remove its `.wotmod` file.
+
+Configurations are optional `mods/configs/*.json.example` files and are not loaded. To customize a supported setting, copy its example and remove only the final `.example`. Keep existing `.json` files when updating. Stay Sharp 1.7.0 uses the language example for its spoken reminder; `auto` follows the client language. Instructions and metadata are under `docs/<mod>/` inside each ZIP.
 
 Optional language configuration: `mods/configs/staysharp.medkit.json`, beside the game-version folders. The mod creates an `auto` default there when possible; see [language selection](docs/AUDIO.md#language-configuration).
 
@@ -35,7 +48,7 @@ sha256sum dist/*.wotmod
 
 The `assets/medkit_pulse_master.dds.b85` file is a compressed, ASCII-encoded source DDS. The builder recreates **all 21 original DDS animation frames byte-for-byte** using an exact, tested alpha-scaling formula; the full assets do not need to be separately committed. The **historical v1.6.0** artifact has SHA-256 `9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927`. This legacy check applies only when building v1.6.0. Current code starts at **v1.7.0**, which adds native WoT audio reminders. The builder validates the voice checksum and embeds it as PCM in a deterministic Wwise v150 bank. See [audio packaging and compatibility](docs/AUDIO.md), including coexistence with other sound mods.
 
-See [independent builds and shared Release snapshots](docs/MULTIMOD_RELEASES.md), [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](docs/REVIEW_1.6.0.md), and [installation guide](docs/INSTALACJA.md).
+See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](docs/REVIEW_1.6.0.md), and [installation guide](docs/INSTALACJA.md).
 
 ## Changes, reviews and releases
 

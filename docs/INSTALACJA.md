@@ -6,13 +6,22 @@
 2. Keep a backup of your last working build outside the active mods folder.
 3. Remove older `com.staysharp.medkitreminder_*.wotmod` files from the active
    `mods/<current_game_version>/` folder; install only one version.
-4. Copy the new `.wotmod` to that folder. All frames, code and the voice bank
-   are bundled. There are no separate DLLs, speech tools or sound downloads.
+4. Download `StaySharp-Medkit-v<version>.zip` from GitHub Releases and extract it
+   into the folder containing `WorldOfTanks.exe`, preserving the nested paths.
+   The installer puts the `.wotmod` in `mods/<game_version>/`; check that its
+   target version matches your client. All frames, code and the voice bank are
+   bundled. There are no separate DLLs, speech tools or sound downloads.
 5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
    before starting: a shared `audio_mods.xml` needs all installed banks.
-6. Start the game normally. The mod creates `mods/configs/staysharp.medkit.json`,
-   outside the version folder. It defaults to `{"language":"auto"}`. To force Polish,
+6. The optional template is `mods/configs/staysharp.medkit.json.example`; it is
+   not loaded. Preserve any existing `.json` when updating. To configure before
+   startup, copy the example and remove only its final `.example`. Otherwise,
+   start the game normally: the mod creates `mods/configs/staysharp.medkit.json`
+   with `{"language":"auto"}` when the directory is writable. To force Polish,
    change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
+7. Installer metadata, checksums, audio instructions and voice attribution are
+   included under `docs/staysharp/`. Session Stats is the separate second ZIP;
+   its existing installer is carried forward without being rebuilt.
 
 ## In-game verification
 

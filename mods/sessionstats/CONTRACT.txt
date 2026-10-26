@@ -1,0 +1,377 @@
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.2.9 (persistent data schema unchanged)
+Release date: 2026-10-21.
+
+Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
+All game-independent code must also run under Python 3 for development.
+Project files belong below this directory. Never include credentials or game account names in logs.
+
+OWNERSHIP
+core agent: src/grz_session_stats/core.py, storage.py, tests/test_core.py, tests/test_storage.py.
+integration agent: src/grz_session_stats/runtime.py, normalize.py, views.py, footer.py;
+                  src/mod_grz_session_stats.py; tests/test_normalize.py, test_runtime.py.
+UI agent: ui/SessionStats.html, ui/session_stats.css, ui/session_stats.js,
+          ui/footer.js, ui/footer.css; tests/ui-*; preview/demo_data.js if needed.
+root: expected data, tools/build.py, packaging, README, resource registry,
+      shared __init__.py, installation, reconciliation and end-to-end verification.
+
+MODULE SERVICE API (core.py)
+StatsService(data_dir, account_key, launch_id, expected_table, now=None)
+  - account_key is stable REGION:DBID string, never display nickname.
+  - launch_id is one UUID for this process, retained across reconnect/login.
+  - expected_table is full XVM JSON with header/data or the parsed expected mapping.
+begin_battle(arena_id, started_at=None, vehicle_id=None, map_id=None, mode=None,
+             vehicle_name=None, vehicle_tier=None, vehicle_type=None, map_name=None)
+record_result(record) -> bool changed (deduplicate/update by arena_id)
+result_context(arena_id) -> independent dict of known contextual metadata only
+launch_records() -> detached records from this account's current launch only
+project_scope(records, label, started_at) -> read-only scope projection
+reset_manual(now=None) -> new manual id
+pending_arena_ids() -> list of string arena IDs
+snapshot() -> JSON-serializable payload described below
+All mutations durably saved. now is callable returning unix seconds or None.
+Service shall expose last_error (None or readable string), not swallow storage errors silently.
+result_context must not write state or expose statistics/session membership for mutation.
+Use it before result normalization to preserve known names and map identities after restart
+when current optional client metadata helpers are unavailable. Verified current metadata wins.
+
+NORMALIZED RECORD
+{
+ arena_id: string, started_at: unix seconds or None, ended_at: seconds or None,
+ vehicle_id: integer typeCompDescr (WN8 expected ID), vehicle_name: unicode,
+ vehicle_tier: integer or None, vehicle_type: string or None,
+ map_id: stable string geometryName or arenaTypeID, map_name: unicode,
+ mode: 'random' (only supported counted mode), outcome: 'win'/'loss'/'draw'/None,
+ damage: nonnegative number or None, frags: number or None, spots: number or None,
+ defense: number or None, xp_base: number or None, xp_received: number or None,
+ free_xp: number or None,
+ currencies: {
+  credits: {income: number or None, costs: number or None, net: number or None,
+            breakdown: {repair: number or None, ammo: number or None,
+                        consumables: number or None, directives: number or None}},
+  bonds: {income: number or None, costs: number or None, net: number or None},
+  gold: {income: number or None, costs: number or None, net: number or None}
+ },
+ complete: boolean, reconcile: boolean, xp_bonus_applied: boolean,
+ warnings: [short diagnostic strings]
+}
+Missing field is unknown, never implicitly a numerical zero. A duplicate partial update
+must not overwrite previously known fields with None. An authoritative update marked
+reconcile=True can revise previously known values even if some other fields remain missing.
+The complete flag describes coverage, not authority. xp_bonus_applied is a durable OR flag:
+once true, only another confirmed bonus-aware read may revise xp_received, including after
+a restart. Posted native XP bonuses must not be reverted by an older raw cache response.
+Signed income and net are allowed (penalties); costs must stay nonnegative.
+Known positional costs require exactly two items for autoLoadCost and three for
+autoEquipCost / autoEquipBoostersCost. Do not reuse indices from a differently shaped
+sequence. Within a supported shape, each valid currency remains independently usable
+when another amount is missing. Partial finance must not discard valid combat or XP.
+Exclude replays and unsupported modes in adapter and service.
+Capture both session memberships on begin_battle. Late results update original sessions.
+At entry persist available own-vehicle name/tier/class and map name alongside IDs/time.
+Use the native descriptor and arena type; never persist the raw context or roster.
+Repeated avatar events/ticks only fill unknown fields, without duplicate records/writes
+or erasing confirmed results. Optional display metadata must not block the beginning.
+For previously unseen results use reliable started_at and saved epoch intervals; don't assign
+to current launch just because received now. Use returned battle start time in actual result.
+
+SNAPSHOT -> Window ViewModel string property `payload`
+{
+ version: '0.2.9', account_key: string, generated_at: unix seconds,
+ expected: {version: string, ...}, warnings: [string],
+ appearance: {panel_css:string, footer_css:string, scroll_speed:number},
+ recovery: {pending:int, in_flight:int, states:{status_label:int}},
+ scopes: {
+  launch: {label:'Since launch', started_at:seconds, pending:number,
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]},
+  manual: {label:'Since reset', started_at:seconds, pending:number,
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]}
+ }
+}
+STATS = {
+ battles:int, observed_battles:int, missing_results:int, partial_results:int,
+ wins:int, losses:int, draws:int, win_rate:number or null,
+ wn8:number or null, wn8_count:int,
+ xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
+ currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
+}
+SERIES = {min:number or null, avg:number or null, max:number or null,
+          sum:number or null, count:int}
+MONEY = {income:number or null, costs:number or null, net:number or null,
+         income_count:int, costs_count:int, net_count:int,
+         breakdown:{repair:number or null, ammo:number or null,
+                    consumables:number or null, directives:number or null}}
+Partial sums are sums of confirmed known values and must show coverage e.g. 15/16.
+observed_battles includes durable beginnings with no outcome; battles counts known
+outcomes. Missing results remain listed with unknown outcome and unknown numeric
+values. All group/financial coverage uses observed_battles as denominator. Display
+results/observed and an incomplete-data explanation whenever outcomes are missing;
+never silently present the known subset as the whole registered session.
+GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, stats:STATS}
+BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
+              outcome:string, tier:int or null, stats:STATS}
+Runtime adds appearance to the snapshot, including snapshots without an active service.
+It is presentation state only; do not persist it in battle/session records or alter history.
+
+ACCOUNT AND OPTIONAL INSTANCE SCOPES
+Both launch and manual scopes belong exclusively to REGION:DBID. Switching accounts
+selects that account's saved manual epoch; resetting it never touches another account.
+Optional sessions.instance_tab is a strict JSON boolean, default false. If true,
+Runtime adds scopes.instance with the same scope shape and label 'Installation'.
+InstallationSession uses its own StatsService/GenerationStore ledger under installations,
+keyed by the hashed canonical game root located through the physical paths.xml.
+Never use a global fallback for unknown roots. Client version directories do not
+change its identity. Stable hashed account/battle keys avoid collisions and raw IDs.
+Recalculate WN8/averages/coverage from records; never average account summaries.
+Installation history and its manual reset boundary survive game restarts. Only an
+explicit installation reset starts a new period; it never changes account epochs.
+Late known results keep their original installation epoch even after restarting.
+Do not import unknown historical account records without installation provenance.
+Visibility is independent of collection: hiding the tab does not erase or interrupt
+the saved period. Installation storage errors must not block account collection.
+reset actions optionally carry scope (manual/instance) and account_key. Missing scope
+means manual for compatibility; unknown/disabled targets and stale account keys do
+nothing. UI confirms the selected target and closes confirmation on account changes.
+Instance results do not broaden the active-account footer spinner.
+
+OFFLINE RESULT RECOVERY
+Persist beginnings before receiving results. On a later login use the native
+battleResultsCache.get path, which can request the server if the local cache misses.
+Do not introduce HTTP credentials, background processes or a separate API client.
+Optionally observe native cache consumers before their callback/stream ACK, preserving
+arguments, return values and consumers. Validate battle/account identity and retain
+the request's original lifecycle. A failed observer must not interrupt stock/other-mod
+consumers; teardown restores only its own wrapper and clears runtime references.
+Prefer live results then earliest-due work. Native cooldown/login/disconnection must
+not inflate per-battle backoff. Log status labels and known codes only, never IDs or
+arbitrary unknown values. A valid same-lifecycle late stream may fill unknowns with
+reconcile=False, without revising newer facts or clearing a replacement request token.
+Unavailable results remain explicit gaps, not fabricated statistics. Server retention
+is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
+
+APPEARANCE CONFIGURATION
+The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
+The package remains mods/2.4.1.0/grz.sessionstats_0.2.9.wotmod. Bundle complete defaults
+outside the archive in mods/configs, together with optional language overrides.
+Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
+existing central file. Copy legacy language overrides only if their destination is absent.
+Keep legacy originals. Use bounded reads and atomic create-only publication; contain
+permission/disk/migration failures. Preserve custom JSON when extracting installer defaults.
+Configuration stays in mods/configs across client-version changes.
+Default language is auto: read helpers.getClientLanguage, normalize supported regional
+codes and fall back to English. Explicit language codes win; never replace an existing
+en override with auto. Resolve original outcome text only for a matching client language;
+custom translations still win. Optional game-language API failures must not stop collection.
+Outcome artwork uses only verified, unchanged local WG notification resources, with
+separate text captions. Missing images retain text; no artwork is bundled or downloaded.
+Keep AppData config.json separate: it still controls hotkey/footer_button on restart.
+
+appearance.py is pure Python 2.7/3 and exposes default_config(), load_config(path),
+validate_config(object), build_presentation(config). The presentation contains panel_css,
+footer_css and scroll_speed. Defaults preserve the current layout, fonts, spacing, colors,
+radii, opacity and wheel behavior. Static CSS remains the fallback if this optional module
+or bridge cannot be used. Successful defaults must be equivalent to both base stylesheets,
+apart from neutral opacity:1 declarations for the panel and garage button.
+
+Schema 1 contains 140 color keys, 12 radii keys, 3 opacity keys and
+scroll.speed_multiplier. Colors accept #RGB, #RRGGBB, #RRGGBBAA, rgb(), rgba(),
+or transparent; RGB channels are integers 0..255, alpha 0..1. Convert 8-digit hex to
+rgba() before rendering. Reject arbitrary CSS declarations, selectors, URLs and scripts.
+Radii are finite numbers 0..24 in existing logical UI units. Opacity is finite 0..1:
+window, garage_button, disabled_controls. Whole-element opacity affects text and controls;
+alpha in individual colors can make backgrounds translucent independently.
+Wheel multiplier is finite 0.1..8, default 1.0; booleans are not numeric values.
+Token coverage must include actual colors, radii and opacity in both base stylesheets.
+Generate full Gameface-safe CSS from validated scalar values; do not rely on CSS variables.
+
+Read at startup after logging starts, on panel open and on action refresh. Do not poll the
+file on each tick/frame, scan the disk from an animation, or reread on each battle result.
+Apply refresh changes to the open panel and footer. A bad new value restores its default
+instead of silently retaining a previous custom setting. All appearance failures must
+leave result collection, storage, activity state and independent UI actions operational.
+
+Read at most 128 KiB of UTF-8 JSON with optional BOM. Reject duplicate object keys,
+NaN/Infinity constants and malformed JSON. Missing/unreadable file, bad encoding,
+oversize input, malformed JSON, non-object root or unsupported schema_version use complete
+defaults. A missing field uses its default. A wrong-type section uses that section's
+defaults; an invalid individual value uses only its own default. Ignore unknown fields
+and log them. Validate number finiteness and ranges, including overflow values.
+CONFIG diagnostics go to the existing session-stats.log via grz.sessionstats logger.
+Log field name and rejection reason, or syntax error line/column when available, including
+Python 2.7's textual parser error format. Never log raw JSON or supplied values. Bound
+field diagnostics to 64 per read plus an omitted-count notice. A missing file is ordinary
+default selection, not a result-health warning. See docs/APPEARANCE_CONFIG.md.
+
+config_path.find_config_path(package_name=None, resmgr=None, cwd=None) returns an absolute
+mods/configs/grz.sessionstats.json path or None without writing files. Default package name uses the current VERSION and exact
+grz.sessionstats_<VERSION>.wotmod filename. Do not infer the disk path from virtual __file__.
+Prefer an existing physical paths.xml resolved by ResMgr; parse declared *.wotmod paths
+and respect recursive mode. Relative roots are anchored to that physical XML's directory.
+If an authoritative XML is present but invalid or ambiguous, do not fall back to a different
+installation. Otherwise use only a bounded set of appDirectory/cwd/parent locations with
+existing paths.xml and one unambiguous current package. Do not choose the highest-numbered
+mods directory or an inactive old-version copy. Preserve distinct XML locations whose
+relative roots may differ; repeated references to the same package are deduplicated.
+Require one current package even if the central JSON does not yet exist. A renamed,
+missing or duplicated active package cannot be guessed. prepare_config_path performs
+optional creation/migration only after this unambiguous discovery succeeds.
+Bound physical XML size to 256 KiB, elements to 4096, roots to 32, scanned entries to 8192
+and depth to 8. Reject DTD/ENTITY before parsing; import the XML parser lazily and guard
+unavailability. Skip encountered symlink directories/packages. Resolve Unicode, BOM and
+Python 2 filesystem bytes without silently choosing distinct existing interpretations.
+On failure log one bounded CONFIG_PATH warning per call and return None for defaults;
+do not include raw XML, paths, exception text or traceback. Exact APIs and limitations
+are documented with pinned source URLs in docs/CONFIG_PATH_SOURCES.md.
+
+UI CONTRACT
+Standalone native Gameface document. No external network, no framework dependencies.
+Bridge subscribes to model.payload via client gameface API (must verify current bootstrap).
+Model has one command `onAction` with string-map argument {action:'close'|'reset'|'refresh'}.
+User preferences (scope, group, XP type, sorting) can remain in JS and be sent optionally.
+`reset` requires confirmation in UI, resets manual scope only. `close` destroys window.
+Root `window.GRZSessionStats.update(payload)` allows offline DOM QA.
+Preview data are injected ONLY by standalone preview, never silently shown inside game.
+Window title Session statistics; top session toggles; base/received XP toggle.
+Single vertically scrolling content: compact global stats + full details always visible,
+then Vehicles | Maps | Battles switch; Vehicles default. All group details always visible.
+No separate Summary tab, accordions or 'more details'. Summary and aggregate group
+headline columns: Battles, Win rate, WN8. Sessions, vehicles and maps retain XP/WN8
+min/average/max. A battle row shows its outcome and exactly one XP and one WN8 value,
+without Battles=1 or Win rate=0/100%. Both XP choices work in all groupings.
+WN8 full integer, never k/truncation/leading zeroes.
+Use Gameface-safe flex/block CSS; no grid, gap, sticky, inline-block, fit-content,
+font-feature-settings. Warhelios native font, warm cream/olive/gold.
+Modest corner radii, quiet row separators and right-aligned figures with a trailing inset.
+Native ordinary wheel events move one quarter of the visible list at multiplier 1.0,
+with the WoT sign. Apply appearance.scroll_speed to native scrolling, including page-mode
+input, without changing direction or boundary handling. Missing/invalid presentation uses 1.0.
+The unbound offline preview keeps ordinary browser wheel input.
+JS use ES5-compatible syntax unless native support verified. DOM set textContent for labels.
+Unknowns use dash. Missing/partial finance and WN8 coverage visible in compact note.
+Footers inject actual clickable button inside LobbyFooter document via optional OpenWG.
+Main native window must work without OpenWG via configurable hotkey (default Ctrl+F10).
+UI dimensions approximately 700 logical px wide / 620px tall, responsive to smaller windows.
+
+FOOTER ACTIVITY
+FooterInstallation.set_activity(pending_count, processing) is an optional runtime hook.
+The grzSessionFooter child model exposes an activity string containing JSON:
+{"pending": 0, "processing": false}. Initialize idle; pending is a nonnegative integer,
+processing a boolean. UI validates shape and values; missing/malformed activity is idle.
+Only counts and state cross this bridge, never raw results or account identifiers.
+
+Footer pending means unresolved records for battles observed in this runtime and active
+account, excluding the current arena while the player is in that battle. An early return
+to the garage makes that known battle pending until WoT supplies usable data. A result
+whose battle began during this runtime can establish activity if avatar-ready was missed.
+Reconnecting into an ongoing battle observes it again, even if it began before startup.
+Processing wraps result normalization/storage and scheduled native XP bonus refresh.
+A bonus timer retains its scheduling account and skips result reads if the active
+account differs at delivery. Manual refresh is independent of the pending timer.
+Show the spinner when pending > 0 or processing; no artificial minimum busy duration.
+Manual reset changes the visible epoch, not the account queue. Persisted incomplete
+records from earlier runtimes remain in the ledger and background cache recovery, but
+cannot keep the footer busy after a garage-only restart. The panel retains its complete
+unresolved count and explains these older incomplete records in a warning. Normalizing
+a recovered result briefly publishes actual processing, then returns to idle. No record
+is deleted, marked complete or assigned zero stats to clear the spinner. Restarting the
+same Runtime instance also clears its observed-battle set; history is not reset.
+Account switches select that account's queue; callbacks tied to an older account/lifecycle
+must not make a different account or later runtime busy. Stop publishes idle and removes
+the button. Recreated footer children receive the current state; unchanged model writes
+are deduplicated and transient model-write errors remain retryable.
+
+The existing 44 x 36 button retains its bars and superscript WN8. A small CSS spinner fits
+above the bars; it does not enlarge the button. Tooltip/aria text distinguishes waiting
+from processing and includes the pending count. aria-busy follows the same busy state.
+Do not add a Python timer per animation frame or change the main panel layout.
+
+FOOTER APPEARANCE
+The grzSessionFooter child model has a separate StringProperty appearance holding the
+validated footer CSS string. FooterInstallation.set_appearance(css) is an optional hook;
+recreated children receive the latest desired style. Do not overload the activity JSON.
+Deduplicate successful native model writes; transient errors remain retryable. Missing
+or malformed appearance retains/reinstates the packaged footer stylesheet. Cleanup removes
+injected styles with the owned footer UI and invalidates stale callbacks. A style failure
+must not stop the existing button, activity spinner or other cleanup steps.
+
+RESULT HEALTH AND DIAGNOSTICS
+health.inspect_result(results, context=None, random_bonus_type=1) is pure Python 2.7/3.
+It returns at most 32 bounded {code, path, expected, actual} issues without mutating input,
+doing I/O, importing WoT or emitting notifications. Runtime checks delivered results
+before normalization. Ordinary not-ready/transport-error status is not a schema alarm.
+Detect unsupported container shapes, new field names against a pinned verified catalog,
+missing required consumed fields, unsupported types/ranges, known cost tuple lengths,
+and selected identity/currency consistency failures. Known other-account results,
+replays and unsupported modes are excluded from the random-battle contract.
+Type/range validation covers fields read by the adapter. Other catalog entries detect
+new names without claiming full validation of unused nested extensions. Do not require
+all optional known fields. Do not learn a new contract from the first post-update result.
+Unknown names alone do not veto independently valid data; normalization must still keep
+unknown amounts unknown. Never guess a new currency position or replace missing values
+with zero. See docs/RESULT_HEALTH_CONTRACT.md for the pinned source and exact scope.
+
+A changed meaning with identical names, types and valid ranges cannot be proved from
+the payload alone. Missing unused optional fields and interiors of unused extensions
+are not exhaustively checked. A new field may be harmless; an alert does not establish
+that all statistics are wrong. Do not promise detection of every future format change.
+
+ResultMonitor logs each distinct (code, path, expected, actual) signature once per runtime
+lifecycle, independently of source. Bound signature memory to 256 entries and queued
+field labels to a small fixed list. Health logs contain schema metadata only, with dynamic
+record identities masked; no raw payload, statistics values, account/player IDs or names.
+Reader/callback/bonus contract failures use the same monitoring channel.
+Native SystemMessages warnings are sent only in the garage with an active service,
+not during a battle or replay. Group new issues and allow no more than one attempt
+per 60 seconds; keep the queued warning if notification fails. Include affected field
+paths and the actual working local log path, or game.log fallback. Escape native rich
+text labels. Keep a current-run health warning in snapshot.warnings. Monitor failures
+must not disable independently usable statistics.
+
+diagnostics.start_logging(data_dir) -> LogState with path, ok, error, flush(), close().
+Normal path: <data_dir>/logs/session-stats.log, ordinarily
+%APPDATA%/grz_wot_session_stats/logs/session-stats.log on Windows.
+UTF-8 records contain UTC timestamp, severity and mod version. Rotate at approximately
+1 MiB and keep three backups (.1, .2, .3), approximately 4 MiB per log family.
+A nonblocking OS lock covers reopen/rotation/write; no stale stream remains open across
+unlock. Temporary lock contention buffers at most 32 records without a permanent error.
+Runtime flushes on its existing tick and closes on stop. Overflow is bounded and reported.
+If the locking extension is unavailable, use session-stats-<PID>.log with identical
+per-family rotation. Do not delete another process's log family; total PID-family usage
+is not globally capped. Returned path is authoritative for notices and support.
+Initialization, formatting, write and rollover errors must not escape into native events.
+Report own-log failure in panel/native warning and preserve the existing game log route.
+Only grz.sessionstats gets the owned handler and INFO level when needed; restore its
+previous level on final close. Repeated starts for the same directory are idempotent.
+Leave root logger, other mods' handlers and propagation unchanged. Local exception
+formatting keeps type and frame locations, omitting exception text/source lines without
+mutating the record propagated to game.log. Never add raw results to log messages.
+
+CLIENT BOUNDARIES
+Window, keyboard, native footer, thumbnail families and optional result channels must fail
+independently. A missing optional UI module must not itself stop collecting available results.
+Appearance import, config location, validation and style delivery are optional boundaries;
+their failure must retain the bundled static appearance and default scroll speed.
+Guard own event callbacks so changed native signatures cannot escape into the host dispatcher.
+Keep original native method return values and exceptions intact in scoped footer wrappers.
+Invalidate retained listeners and delayed callbacks on stop/cleanup; failed unsubscription
+must not let a previous lifecycle affect a later runtime or window. Continue other cleanup.
+Panel cleanup invalidates bound/callback ownership before native removals. Isolate each
+engine.off and removeDataChangedCallback failure; retained scale/model callbacks stay inert.
+Report unavailable result/bonus channels in snapshot.warnings; deduplicate recurring logs.
+No guessed substitute API names, currency indices, account IDs, outcomes or bonus values.
+Do not promise compatibility with an unknown result schema, Wulf bridge or bytecode format.
+Do not modify core client loading paths or activate the mod in unverified future versions.
+
+PACKAGING
+res/scripts/client/gui/mods/mod_grz_session_stats.pyc (Python 2.7 bytecode)
+res/scripts/client/gui/mods/grz_session_stats/*.pyc
+res/gui/gameface/mods/grz_session_stats/{SessionStats.html,session_stats.css,session_stats.js,footer.js,footer.css}
+res/gui/gen_resources/grz.sessionstats.json -> R.mods.grz.sessionstats.views.SessionStats
+res/grz_session_stats/wn8exp.json (bundled WG table)
+Outside .wotmod: mods/configs/grz.sessionstats.json
+Optional translation overrides: mods/configs/grz.sessionstats.languages.json
+  - full default appearance JSON, UTF-8; exact defaults match appearance.py.
+  - distinct from res/gui/gen_resources/grz.sessionstats.json resource registration inside
+    the archive and from the user's AppData config.json hotkey/footer settings.
+Data persisted outside mods/<version>. No automatic code downloads. No live-game test claimed.
+Historical compatibility: upgrading from 0.2.6 to 0.2.7 required no history reset
+or persisted-data migration.

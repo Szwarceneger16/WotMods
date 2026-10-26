@@ -1,0 +1,294 @@
+SESSION STATS — CHANGELOG
+
+0.2.9 • 2026-10-24
+
+• Previous/Next now use the same olive/gold action-button style as the panel,
+  including native-scale spacing, captions and disabled states.
+• Battle outcomes reference unchanged, existing WG notification artwork and
+  show a separate caption. When languages match, captions use the original
+  client translations. Missing resources preserve readable text and statistics.
+  No artwork is edited, bundled or downloaded; no other mod is required.
+• New configuration defaults to "language": "auto": follow the game language,
+  otherwise English. An explicit configured language takes priority. Existing
+  "language": "en" is preserved; change it to "auto" to follow the game.
+• Advance package/runtime metadata and active installation guides to 0.2.9.
+  History format and calculations are unchanged; no reset or migration is needed.
+• See docs/UI_0.2.9_SOURCE_EVIDENCE.md for source checks and test scope.
+
+0.2.8 • 2026-10-23
+
+• Native window commands now forward page changes to the runtime, restoring
+  access beyond the first 40 rows in every scope and grouping.
+• Delayed results cannot borrow a posted XP bonus from a different account or
+  battle. Matching current-account bonus updates remain supported.
+• Optional roster, vehicle descriptor and map metadata failures no longer block
+  recording a verified random-battle beginning. See docs/FINAL_REVIEW_PR3.md.
+
+• Appearance/language configuration now lives in mods/configs, outside the client
+  version folder. Missing main configuration is created from defaults or copied
+  from the active package's legacy adjacent JSON. Optional language overrides
+  migrate too. Existing central files and legacy originals are never overwritten.
+  Installer paths, internal checksums and guides use the same new location.
+
+• Assign a new package version to the accumulated review, reliability and
+  performance corrections. Package metadata, runtime version and active guides
+  now identify 0.2.8; the client target and OpenWG dependency are unchanged.
+• Saves append checksummed journal changes instead of rewriting the full history.
+  Incremental summaries and 40-row pages preserve full-period statistics while
+  reducing ready-state save and panel preparation work.
+• Result recovery, account/installation isolation, native callback teardown and
+  coexistence safeguards include the corrections documented in
+  docs/REVIEW_FIXES_PR3.md and docs/INDEPENDENT_SAFETY_REVIEW_PR3.md.
+• History loading now runs in scheduled garage steps, including JSON reading,
+  checksum verification, journal replay, validation and index construction.
+  Background history work pauses during battles. No SQLite or new mod dependency.
+• Battle beginnings and results received during loading are durably queued.
+  Committed receipt watermarks prevent double application after interruption
+  between the history commit and queue cleanup. Account and launch ownership,
+  corrections and installation provenance are retained.
+• Late installation discovery also retains queued live beginnings before loading
+  finishes and backfills completed account results after readiness. Live battle
+  timestamps ahead of the local clock retain session ownership. Ambiguous game
+  path encodings cannot silently select another installation.
+• The panel shows loading/failure instead of partial totals and disables reset
+  until ready. Full history, period totals, WN8, XP and financial calculations remain.
+• Backups must include startup-intake/ as well as all journal files. Finish loading
+  before downgrading to a release that does not understand the startup queue.
+• See docs/HISTORY_PERFORMANCE.md for synthetic measurements and remaining limits;
+  the scheduling budget is not a hard frame-time guarantee. No live WoT test.
+
+Upgrade with the game closed: remove the previous Session Stats .wotmod and
+install grz.sessionstats_0.2.8.wotmod. Preserve custom JSON, language overrides
+and the complete account/installation history directories. No reset is required.
+
+0.2.7 • 2026-10-21
+
+Appearance and scrolling configuration beside the mod package:
+
+• New grz.sessionstats.json beside grz.sessionstats_0.2.7.wotmod. The complete
+  supplied file preserves the current appearance: 140 colors, 12 corner radii
+  and three opacity settings covering the panel, tables, lines, text, shadows,
+  control states, icon and spinner.
+• scroll.speed_multiplier ranges from 0.1 to 8; default 1.0 preserves speed.
+  Colors support alpha, radii range from 0 to 24 and opacity from 0 to 1.
+  Layout, spacing, dimensions and scroll direction remain unchanged.
+• Configuration loads at startup, panel opening and Refresh. Appearance edits
+  do not require restarting the game. No per-frame/tick file polling.
+• Missing files or invalid JSON restore all defaults. Invalid individual fields
+  restore their own defaults while other valid fields remain active. Unknown
+  keys are ignored and logged.
+• UTF-8 with BOM support and a 128 KiB limit. Duplicate keys and NaN/Infinity are
+  rejected; types, finiteness and ranges are checked. Arbitrary CSS, paths and
+  scripts are not accepted.
+• CONFIG diagnostics in session-stats.log identify fields/reasons and syntax
+  line/column when available. CONFIG_PATH identifies ambiguous active-package
+  discovery. Raw JSON is not logged.
+• Discovery uses physical client paths.xml and active *.wotmod roots with bounded
+  scanning. It does not select the highest version directory or stale inactive
+  configuration. Ambiguity uses defaults. Game files are not modified.
+• The panel model receives appearance.panel_css, footer_css and scroll_speed.
+  The footer has a separate appearance StringProperty and handle set_appearance.
+  Optional configuration failures retain static styles and default wheel behavior.
+• Expanded parser, validation, default-style, discovery, reload, footer-bridge
+  and wheel-multiplier tests. Python: 284/284 on Python 3 and CPython 2.7.18;
+  UI appearance: 30/30. Default panel/icon images match their static-style
+  baselines pixel for pixel within the same test. UI regressions: panel 78/78,
+  wheel 22/22, footer compatibility 12/12, spinner 22/22, baseline footer PASS.
+  No JavaScript errors. No live WoT test. Guide: source/docs/APPEARANCE_CONFIG.md.
+
+INSTALLING THE UPDATE
+Close the game. Replace grz.sessionstats_0.2.6.wotmod or an older version with
+grz.sessionstats_0.2.7.wotmod. Place grz.sessionstats.json beside it, for example
+in mods/2.4.1.0/. OpenWG 1.2.2 is unchanged; retain one copy. Preserve your custom
+JSON in future updates and move it with the package when the version folder changes.
+Existing AppData config.json still handles the shortcut and footer_button.
+History format is unchanged; updating from 0.2.6 requires no reset. This release
+was not run in a live WoT client here.
+
+0.2.6 • 2026-10-21
+
+Result compatibility checks, dedicated logging and garage activity indicator:
+
+• Received-result health checks cover known names, types/container shapes,
+  adapter-required data, numeric ranges, vehicle identity, costs and deductions,
+  including bonds. The catalog is pinned to reviewed client definitions rather
+  than learned from the first post-update battle.
+• Garage WoT system warnings identify problematic fields and the log path.
+  Each signature is reported once per launch. New problems are grouped with
+  at least 60 seconds between notification attempts. Failed notifications retry;
+  the panel retains incompatibilities detected during the current launch.
+• Dedicated UTF-8 log: %APPDATA%/grz_wot_session_stats/logs/session-stats.log.
+  UTC timestamps, severity, version and schema diagnostics without raw results,
+  account identifiers or nicknames. Rotation is approximately 1 MiB plus three
+  backups. A short nonblocking lock coordinates concurrent processes. Without
+  a locking module, session-stats-<PID>.log uses the same limit per PID family;
+  other processes' logs are not removed. Warnings show the actual path. Dedicated
+  log failure is reported without disabling statistics; game.log remains available.
+• A spinner above the small WN8 icon's bars indicates the account queue or
+  result/XP-bonus processing. The tooltip distinguishes states and pending count.
+  The icon retains its size and opens the panel.
+• An ongoing battle alone does not start pending-result activity. Returning early
+  waits for WoT's result. In this historical release, incomplete results could
+  remain waiting after restart. Manual reset did not discard the account queue;
+  account changes and stopping isolated old callbacks.
+• Unknown expense-tuple lengths are not interpreted using old indexes. With a
+  known layout, one missing currency amount preserves other amounts. Valid combat
+  and XP data remain usable with partial finances.
+• Tests cover schema, notifications, delayed results, account changes, stopping,
+  logging/rotation and spinner states. Python: 214/214 on Python 3 and CPython
+  2.7.18. Browser checks: panel 78, wheel 22, footer compatibility 12, activity/
+  spinner 22; baseline-icon PASS.
+
+Checks cannot detect changed meanings with identical names, types and valid ranges.
+Unused internals are not fully validated; absent unused optional fields are not
+alarms. New names may be harmless extensions. Waiting is not a format error.
+Scope and sources: source/docs/RESULT_HEALTH_CONTRACT.md.
+
+The main panel, wheel, WN8 data and history format remain unchanged. No migration
+or reset. Automated tests do not replace a live 0.2.6 test; none was performed here.
+
+INSTALLING THE UPDATE
+Close the game. Remove grz.sessionstats_0.2.5.wotmod or an older version from the
+active mods directory and install grz.sessionstats_0.2.6.wotmod. OpenWG 1.2.2 is
+unchanged. Saved sessions require no reset.
+
+0.2.5 • 2026-10-20
+
+Client-change resilience after the user confirmed 0.2.4 in the game:
+
+• Result collection, window, shortcut, footer and optional data sources start
+  independently. One UI failure does not block persistence.
+• Guarded callbacks and init/fini boundaries. Changed event signatures do not
+  leak mod errors into native dispatchers. Repeated problems log once; unavailable
+  result/XP-bonus channels produce readable panel warnings.
+• Independent cleanup and invalidation of old listeners, timers and result
+  callbacks after stopping. A pending JS frame cannot restore a removed garage button.
+• Optional Wulf events do not block working controls. Footer integration preserves
+  the original client method's return values and exceptions.
+• Vehicle-thumbnail helpers load lazily; their absence does not disable maps.
+• Re-reading an old result after restart preserves known names and map identity
+  rather than replacing them with fallback names. Confirmed current metadata may
+  still improve earlier descriptions.
+• Tests cover missing/changed interfaces, rejected subscriptions, cleanup,
+  restarting and history retention. Source audit:
+  source/docs/UPDATE_COMPATIBILITY_SOURCES.md.
+
+Main panel HTML/JS/CSS, icon appearance, WN8 calculations, financial normalization
+and storage remain consistent with working 0.2.4. No data migration. Major result,
+Wulf/Gameface or bytecode changes can still require fixes. Automated checks are
+not a live WoT 0.2.5 test.
+
+INSTALLING THE UPDATE
+Close the game. Replace grz.sessionstats_0.2.4.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.5.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+0.2.4 • 2026-10-20
+
+Fixes following 0.2.3 screenshots and feedback from the real client:
+
+• Faster scrolling: ordinary vertical input moves one quarter of the visible
+  list height. Small client input such as delta 1 no longer means one pixel.
+  Correct 0.2.3 direction, endpoints, history batching and normal browser-preview
+  scrolling remain.
+• Dedicated single-battle layout: one XP value, one WN8 value, date, map and
+  outcome. Repeated min/average/max and Battles=1 / WR=0–100% are removed. Base/
+  received XP selection applies here too. Missing data does not become zero;
+  finances, free XP and thumbnails remain.
+• Session, vehicle and map aggregates retain minimum/average/maximum.
+• Softer styling: lightly rounded surfaces/headers, subtle horizontal separators
+  and spacing around numbers. Vertical cell grids no longer dominate. Larger
+  digits, colors and compactness remain.
+
+Presentation and wheel handling change; calculations, result adapter, history and
+credit/bond/gold settlement do not. Chrome UI tests and client-contract simulations
+do not replace running 0.2.4 in WoT; the complete game was not run here.
+
+INSTALLING THE UPDATE
+Close the game. Replace grz.sessionstats_0.2.3.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.4.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+0.2.3 • 2026-10-20
+
+More readable tables after real-client 0.2.2 testing:
+
+• Larger XP/WN8/financial numbers and clearer table labels: XP/WN8 from 14 to 16
+  logical units, finances from 12 to 14, labels from 12 to 13.
+• Subtle row/column separators, emphasized headers and gentler cell backgrounds
+  help align values visually.
+• Compact 700×620 panel, immediately visible details and unabbreviated values
+  remain. Wider columns fit full 100.0% and large amounts; narrow layouts wrap.
+• Wheel handling follows the current client's Gameface sign: down advances to
+  later results, up returns toward the beginning. Browser previews retain native
+  browser handling.
+
+New user screenshots showed correct vehicle/map thumbnails, the upper-right close
+button and two saved results in 0.2.2. This update improves readability/scrolling
+without changing calculations, settlement or history. UI/native-contract tests
+are not a live WoT test of 0.2.3.
+
+INSTALLING THE UPDATE
+Close the game. Replace grz.sessionstats_0.2.2.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.3.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+0.2.2 • 2026-10-20
+
+Fixes following four more WoT screenshots:
+
+• Three visible garage-icon bars use an explicit background color instead of
+  unsupported Gameface background currentColor. Small WN8 remains in the corner.
+• The close control has explicit upper-right title-bar positioning, independent
+  of automatic margins ignored by the game renderer.
+• Title dragging uses native WoT window events. Result refresh should not replace
+  the player's chosen position. Native document dimensions follow the panel;
+  diagnostics distinguish requested and observed position/size.
+• Vehicle/map thumbnails use local resources resolved by identifiers, without
+  additional downloads or history-format changes. Missing images do not disable stats.
+• Negative amounts use ASCII '-' so the client font does not hide the sign.
+  This covers expenses and negative balances in every grouping.
+
+The screenshot confirmed at least one result in 0.2.1: a battle, WN8, XP, credits
+and bonds. It neither validates every result type nor tests new 0.2.2 in the client.
+
+INSTALLING THE UPDATE
+Close the game. Remove grz.sessionstats_0.2.0.wotmod or grz.sessionstats_0.2.1.wotmod
+from the active mods directory. Install grz.sessionstats_0.2.2.wotmod and retain
+one OpenWG Gameface 1.2.2 copy. No session reset. Full guide: README_PL.txt.
+
+0.2.1 • 2026-10-20
+
+Fixes following a real-client report and screenshot:
+
+• Controls have explicit layout, dimensions and separate labels, removing reliance
+  on default browser button-text rendering. Applies to session tabs, Base/Received
+  XP, Vehicles/Maps/Battles, Refresh, Reset and Close.
+• Clearer Warhelios body/button fonts with explicit sizes. The compact panel and
+  single scrolling detail list remain.
+• Native window centering starts on opening; dimensions honor WoT UI scale.
+• A 44-logical-unit icon replaces the wide garage label: three gray bars and a
+  small superscript-like WN8 in the corner. It scales with the native footer.
+  Bars are custom CSS shapes based on the game's visual pattern.
+• Expanded label-rendering, controls, scaling and window/icon lifecycle tests.
+  Window tests simulate client APIs; HTML tests run Chrome, not native WoT Gameface.
+
+INSTALLING THE UPDATE
+Close the game. Replace only grz.sessionstats_0.2.0.wotmod in active mods with
+grz.sessionstats_0.2.1.wotmod. Retain one OpenWG Gameface copy; bundled 1.2.2 is
+unchanged. No AppData reset. Full guide: README_PL.txt.
+
+VERIFICATION SCOPE
+This fix uses a specific screenshot and reviewed client contracts. Version 0.2.1
+was not run in WoT here. Initial button visibility/actions, window position and
+icon checks can be performed in the garage without a random battle. Zero battles
+on a screenshot alone does not establish whether new-result receipt works;
+that requires comparison with a game result.
+
+0.2.0 • 2026-10-20
+
+First installation package with actual Python 2.7 bytecode, a Gameface window,
+garage button, persistent manual session, launch session and vehicle/map/battle
+groupings. Includes WN8, XP-mode switching and currency settlements including
+bonds. Earlier Chrome checks missed rendering defects later visible in the
+user's live-client screenshot.

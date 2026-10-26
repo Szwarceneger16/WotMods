@@ -28,7 +28,14 @@ __pycache__/
 
 # Never commit a local installation, local crash reports or player screenshots
 /res_mods/
-/mods/
+/mods/*
+!/mods/sessionstats/
+!/mods/sessionstats/third_party/openwg/net.openwg.gameface_1.2.2.wotmod
+/mods/sessionstats/dist/
+/mods/sessionstats/tests/*-report.json
+/mods/sessionstats/preview/PODGLAD.html
+/mods/sessionstats/preview/demo_snapshot.json
+/mods/sessionstats/node_modules/
 /Reports/
 /screenshots/
 /player_data/

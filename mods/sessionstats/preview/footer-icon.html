@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Session statistics</title>
+<style>
+html { font-size:1px; }
+body { margin:0; min-height:96px; display:flex; align-items:center; justify-content:center; background:#181b19; }
+</style>
+<style id="grz-footer-styles">
+/* Own compact icon in LobbyFooter. All dimensions follow the native rem scale. */
+.grz-session-footer-button {
+    position:relative;
+    display:block;
+    flex:0 0 44rem;
+    box-sizing:border-box;
+    width:44rem;
+    min-width:44rem;
+    max-width:44rem;
+    height:36rem;
+    padding:0;
+    margin:0 3rem;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+    color:#969a9d;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:12rem;
+    line-height:12rem;
+    cursor:pointer;
+}
+.grz-session-footer-button:hover { background:rgba(255,255,255,0.04); color:#e0ddd2; }
+.grz-session-footer-button:focus { outline:1rem solid #d3c79b; outline-offset:-2rem; }
+.grz-session-footer-button:disabled { opacity:0.45; }
+.grz-session-footer-button .grz-session-footer-icon {
+    position:absolute;
+    display:block;
+    left:8rem;
+    bottom:5rem;
+    width:18rem;
+    height:18rem;
+    pointer-events:none;
+}
+.grz-session-footer-button .grz-session-footer-bar {
+    position:absolute;
+    bottom:0;
+    display:block;
+    width:4rem;
+    /* Gameface does not support currentColor as a background color. */
+    background-color:#969a9d;
+}
+.grz-session-footer-button:hover .grz-session-footer-bar { background-color:#e0ddd2; }
+.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:9rem; }
+.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:13rem; }
+.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
+.grz-session-footer-button .grz-session-footer-rating {
+    position:absolute;
+    top:1rem;
+    right:1rem;
+    display:block;
+    width:22rem;
+    margin:0;
+    color:#bdc0c2;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:9rem;
+    font-weight:normal;
+    line-height:11rem;
+    letter-spacing:0;
+    text-align:center;
+    white-space:nowrap;
+    text-shadow:0 1rem 1rem #000;
+    pointer-events:none;
+}
+.grz-session-footer-button:hover .grz-session-footer-rating { color:#eee6c9; }
+
+/* CSS animation stays inside the renderer; no Python/JS frame callbacks.
+   Fits above the bars and left of WN8 inside the existing 44 x 36 button. */
+.grz-session-footer-button .grz-session-footer-spinner {
+    position:absolute;
+    display:none;
+    box-sizing:border-box;
+    left:10rem;
+    top:2rem;
+    width:10rem;
+    height:10rem;
+    border:2rem solid rgba(207,190,140,0.25);
+    border-top-color:#dfd3a4;
+    border-radius:5rem;
+    pointer-events:none;
+    animation:none;
+}
+.grz-session-footer-busy .grz-session-footer-spinner {
+    display:block;
+    animation:grz-session-footer-spin 1s linear infinite;
+}
+@keyframes grz-session-footer-spin {
+    from { transform:rotate(0deg); }
+    to { transform:rotate(360deg); }
+}
+
+</style>
+<style id="grz-footer-appearance">
+/* Own compact icon in LobbyFooter. All dimensions follow the native rem scale. */
+.grz-session-footer-button {
+    position:relative;
+    display:block;
+    flex:0 0 44rem;
+    box-sizing:border-box;
+    width:44rem;
+    min-width:44rem;
+    max-width:44rem;
+    height:36rem;
+    padding:0;
+    margin:0 3rem;
+    border:0;
+    background:transparent;
+    box-shadow:none;
+    color:#969a9d;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:12rem;
+    line-height:12rem;
+    cursor:pointer;
+}
+.grz-session-footer-button:hover { background:rgba(255,255,255,0.04); color:#e0ddd2; }
+.grz-session-footer-button:focus { outline:1rem solid #d3c79b; outline-offset:-2rem; }
+.grz-session-footer-button:disabled { opacity:0.45; }
+.grz-session-footer-button .grz-session-footer-icon {
+    position:absolute;
+    display:block;
+    left:8rem;
+    bottom:5rem;
+    width:18rem;
+    height:18rem;
+    pointer-events:none;
+}
+.grz-session-footer-button .grz-session-footer-bar {
+    position:absolute;
+    bottom:0;
+    display:block;
+    width:4rem;
+    /* Gameface does not support currentColor as a background color. */
+    background-color:#969a9d;
+}
+.grz-session-footer-button:hover .grz-session-footer-bar { background-color:#e0ddd2; }
+.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:9rem; }
+.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:13rem; }
+.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
+.grz-session-footer-button .grz-session-footer-rating {
+    position:absolute;
+    top:1rem;
+    right:1rem;
+    display:block;
+    width:22rem;
+    margin:0;
+    color:#bdc0c2;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:9rem;
+    font-weight:normal;
+    line-height:11rem;
+    letter-spacing:0;
+    text-align:center;
+    white-space:nowrap;
+    text-shadow:0 1rem 1rem #000;
+    pointer-events:none;
+}
+.grz-session-footer-button:hover .grz-session-footer-rating { color:#eee6c9; }
+
+/* CSS animation stays inside the renderer; no Python/JS frame callbacks.
+   Fits above the bars and left of WN8 inside the existing 44 x 36 button. */
+.grz-session-footer-button .grz-session-footer-spinner {
+    position:absolute;
+    display:none;
+    box-sizing:border-box;
+    left:10rem;
+    top:2rem;
+    width:10rem;
+    height:10rem;
+    border:2rem solid rgba(207,190,140,0.25);
+    border-top-color:#dfd3a4;
+    border-radius:5rem;
+    pointer-events:none;
+    animation:none;
+}
+.grz-session-footer-busy .grz-session-footer-spinner {
+    display:block;
+    animation:grz-session-footer-spin 1s linear infinite;
+}
+@keyframes grz-session-footer-spin {
+    from { transform:rotate(0deg); }
+    to { transform:rotate(360deg); }
+}
+
+.grz-session-footer-button { opacity:1; }
+
+</style>
+</head>
+<body>
+<button id="grz-session-stats-footer-button" class="grz-session-footer-button" type="button" aria-label="Session statistics: battles, win rate and WN8" title="Session statistics: battles, win rate and WN8">
+<span class="grz-session-footer-icon" aria-hidden="true"><span class="grz-session-footer-bar grz-session-footer-bar-0"></span><span class="grz-session-footer-bar grz-session-footer-bar-1"></span><span class="grz-session-footer-bar grz-session-footer-bar-2"></span></span>
+<span class="grz-session-footer-rating" aria-hidden="true">WN8</span>
+<span class="grz-session-footer-spinner" aria-hidden="true"></span>
+</button>
+</body>
+</html>

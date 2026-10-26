@@ -6,6 +6,7 @@ from xml.etree import ElementTree
 from pathlib import Path
 import struct
 import sys
+import tempfile
 import unittest
 import zipfile
 
@@ -281,6 +282,40 @@ class Tests(unittest.TestCase):
         for language in ('jp','../en','','AUTO'):
             with self.assertRaises(ValueError):
                 build.audio.load_voice(language)
+
+
+    def test_28_new_release_installer_preserves_the_verified_audio_build(self):
+        installer_spec = importlib.util.spec_from_file_location(
+            'audio_release_installers', ROOT / 'scripts/release_installers.py')
+        installers = importlib.util.module_from_spec(installer_spec)
+        installer_spec.loader.exec_module(installers)
+        with tempfile.TemporaryDirectory(prefix='staysharp-installer-') as directory:
+            root = Path(directory)
+            source = root / 'verified-build'
+            source.mkdir()
+            verified = self.target.read_bytes()
+            (source / self.target.name).write_bytes(verified)
+            installers.manifest(source)
+            first = installers.package(source, root / 'first', 'staysharp')
+            second = installers.package(source, root / 'second', 'staysharp')
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            kind, version, client, files, primary = installers.verify(first)
+            self.assertEqual((kind, version), ('staysharp', build.VERSION))
+            self.assertEqual(primary, 'mods/' + client + '/' + self.target.name)
+            self.assertEqual(files[primary], verified)
+            self.assertEqual(files['mods/configs/staysharp.medkit.json.example'],
+                             (ROOT / 'staysharp.medkit.example.json').read_bytes())
+            self.assertNotIn('mods/configs/staysharp.medkit.json', files)
+            self.assertEqual(files['docs/staysharp/VOICE_NOTICE.txt'],
+                             (ROOT / 'assets/VOICE_NOTICE.txt').read_bytes())
+            self.assertEqual(files['docs/staysharp/AUDIO.md'],
+                             (ROOT / 'docs/AUDIO.md').read_bytes())
+            with zipfile.ZipFile(io.BytesIO(files[primary])) as packaged:
+                self.assertEqual(packaged.read('res/audioww/staysharp_medkit.bnk'),
+                                 build.audio.build_bank())
+                self.assertIn('staysharp_medkit.bnk',
+                              packaged.read('res/audioww/audio_mods.xml').decode('utf-8'))
+
 
 
 if __name__=='__main__':

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="title">Session statistics</title>
+  <link rel="stylesheet" href="session_stats.css">
+</head>
+<body>
+  <div id="grz-session-stats" class="ss-window">
+    <header id="ss-titlebar" class="ss-titlebar">
+      <h1 data-i18n="title">Session statistics</h1>
+      <span class="ss-game-mode" data-i18n="mode.random">Random battles</span>
+      <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" data-i18n="close.symbol">×</span></button>
+    </header>
+    <div class="ss-controls">
+      <div class="ss-scopes" role="group" aria-label="Session period" data-i18n-aria="scope.group">
+        <button id="ss-scope-launch" class="ss-control ss-scope is-active" title="Since game launch — current account" data-i18n-title="scope.launch.title" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="scope.launch">Since launch</span></button>
+        <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
+        <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
+      </div>
+      <div class="ss-toolbar">
+        <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
+        <div class="ss-xp-picker" role="group" aria-label="Experience type" data-i18n-aria="xp.group">
+          <button id="ss-xp-base" class="ss-control ss-small-toggle is-active" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="xp.base">Base XP</span></button>
+          <button id="ss-xp-received" class="ss-control ss-small-toggle" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="xp.received">Received XP</span></button>
+        </div>
+      </div>
+    </div>
+    <div id="ss-scroll" class="ss-scroll" role="main" aria-label="Statistics and results" data-i18n-aria="stats.region">
+      <div id="ss-summary" class="ss-summary" role="region" aria-label="Whole period" data-i18n-aria="stats.period">
+        <p class="ss-empty" data-i18n="waiting.game">Waiting for game data.</p>
+      </div>
+      <nav id="ss-group-tabs" class="ss-group-tabs" aria-label="Group results" data-i18n-aria="groups.label">
+        <button id="ss-group-vehicles" type="button" tabindex="0" class="ss-control ss-group-tab is-active" aria-pressed="true"><span class="ss-control-label" data-i18n="groups.vehicles">Vehicles</span></button>
+        <button id="ss-group-maps" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.maps">Maps</span></button>
+        <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
+      </nav>
+      <div id="ss-list-meta" class="ss-list-meta"></div>
+      <div id="ss-pagination" class="ss-pagination" style="display:none">
+        <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
+        <span id="ss-page-label" aria-live="polite"></span>
+        <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
+      </div>
+      <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
+    </div>
+    <footer class="ss-footer">
+      <span id="ss-status" class="ss-status" role="status" aria-live="polite" data-i18n="waiting.data">Waiting for data</span>
+      <button id="ss-refresh" class="ss-control ss-button ss-quiet" type="button" tabindex="0"><span class="ss-control-label" data-i18n="refresh">Refresh</span></button>
+      <button id="ss-reset" class="ss-control ss-button ss-reset" type="button" tabindex="0" disabled><span class="ss-control-label" data-i18n="reset">Reset period</span></button>
+    </footer>
+    <div id="ss-reset-overlay" class="ss-modal-overlay" style="display:none">
+      <div class="ss-confirm" role="dialog" aria-modal="true" aria-labelledby="ss-confirm-title">
+        <h2 id="ss-confirm-title" data-i18n="reset.manual.title">Reset “Since reset”?</h2>
+        <p id="ss-confirm-message" data-i18n="reset.manual.body">A new period starts now for the current account. Other accounts keep their history.</p>
+        <div class="ss-confirm-actions">
+          <button id="ss-reset-cancel" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="cancel">Cancel</span></button>
+          <button id="ss-reset-confirm" class="ss-control ss-button ss-gold" type="button" tabindex="0"><span class="ss-control-label" data-i18n="reset">Reset period</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="session_stats.js"></script>
+</body>
+</html>

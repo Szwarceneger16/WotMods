@@ -58,7 +58,8 @@ writable. Without a readable file it uses the automatic default:
 codes such as `pl-PL` and `fr_FR` are normalized. Unsupported or unavailable
 game languages use English. To force Polish, change the value to `"pl"`;
 the other codes in the table work the same way. A copyable sample is provided
-as `staysharp.medkit.example.json` in the repository; copy it to
+inside the installer as `mods/configs/staysharp.medkit.json.example` (remove
+only `.example` to activate it), and as `staysharp.medkit.example.json` in the repository; copy it to
 `mods/configs/staysharp.medkit.json` if you want to prepare the setting before
 the first game launch.
 

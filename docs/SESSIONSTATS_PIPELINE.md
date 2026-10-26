@@ -8,7 +8,7 @@ mod. A removed/misnamed entrypoint or shallow history fails validation.
 
 | Mod | Sources | Baseline | Tags | Workflow |
 |---|---|---|---|---|
-| Stay Sharp | `source/`, `assets/` | `VERSION` | `v1.6.…` | `release.yml` |
+| Stay Sharp | `source/`, `assets/` | `VERSION` | `staysharp-v…` | `release.yml` |
 | Session Stats | `mods/sessionstats/` | `mods/sessionstats/VERSION` | `sessionstats-v0.2.…` | `sessionstats-release.yml` |
 
 Session Stats builds never invoke Stay Sharp's builder. Read-only builds test

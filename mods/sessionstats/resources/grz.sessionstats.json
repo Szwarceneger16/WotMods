@@ -1,0 +1,8 @@
+[
+  {
+    "type": "Layout",
+    "id": "R.mods.grz.sessionstats.views.SessionStats",
+    "path": "coui://gui/gameface/mods/grz_session_stats/SessionStats.html",
+    "parameters": {"entrance": "SessionStats", "impl": "gameface"}
+  }
+]
