@@ -205,7 +205,15 @@ class Localizer(object):
     def snapshot(self, snapshot):
         """Translate presentation fields only; never IDs or game-supplied names."""
         snapshot['localization'] = {'language': self.language, 'selected': self.selected, 'messages': dict(self.messages)}
-        snapshot['warnings'] = [self.translate(value) for value in snapshot.get('warnings', [])]
+        # Legacy Polish and canonical English notices can describe the same
+        # condition. Deduplicate after translation, without rewriting the ledger.
+        warnings, seen = [], set()
+        for value in snapshot.get('warnings', []):
+            translated = self.translate(value)
+            if isinstance(translated, text_type) and translated and translated not in seen:
+                seen.add(translated)
+                warnings.append(translated)
+        snapshot['warnings'] = warnings
         fallbacks = set(ENGLISH[key] for key in ('unknown.vehicle', 'unknown.map', 'unknown.tier'))
         fallbacks.update(LEGACY_POLISH[key] for key in ('unknown.vehicle', 'unknown.map', 'unknown.tier'))
         def is_fallback(value):

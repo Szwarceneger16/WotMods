@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.3.0 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.3.1 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -70,6 +70,16 @@ field meanings when types and structures remain the same. The user tested 0.2.4
 and has also confirmed a preceding build works in game. The 0.2.9 UI/language
 changes and 0.2.12 Windows storage correction still require a current-client test
 after automated validation.
+
+## Data coverage and notices
+
+An `x/y` count means that a value is available for `x` of the `y` recorded battles.
+The headline counts received results; XP, WN8 and each financial column have their
+own coverage. Missing values do not become zero. Partial summaries include a
+localized explanation, and the individual counts carry matching descriptions.
+Data notices are deduplicated after translation, including older Polish history;
+the footer counts the distinct messages actually displayed. Saved records are
+not rewritten by this presentation change.
 
 ## Interface languages and optional configuration
 

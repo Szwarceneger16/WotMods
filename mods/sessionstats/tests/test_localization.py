@@ -297,6 +297,56 @@ class LocalizationTests(unittest.TestCase):
                 self.assertEqual(translator.translate(english), expected, code + ':' + key)
                 self.assertEqual(translator.translate(polish), expected, code + ':' + key)
 
+    def test_legacy_and_canonical_notices_collapse_only_after_translation(self):
+        raw = [loc.LEGACY_POLISH['normalize.reserve'], loc.ENGLISH['normalize.reserve'],
+               loc.ENGLISH['normalize.finance'], loc.LEGACY_POLISH['normalize.finance'],
+               'Synthetic custom notice', 'Synthetic custom notice']
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot({'warnings': list(raw), 'scopes': {}})
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['normalize.reserve'],
+                self.catalog[code]['normalize.finance'], 'Synthetic custom notice'])
+        self.assertEqual(len(raw), 6)
+
+    def test_notice_dedup_keeps_different_parameters_and_unknown_text(self):
+        raw = [loc.ENGLISH['runtime.backlog'].format(1),
+               loc.LEGACY_POLISH['runtime.backlog'].format(1),
+               loc.ENGLISH['runtime.backlog'].format(2),
+               'Synthetic failure A', 'Synthetic failure B']
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot({'warnings': list(raw), 'scopes': {}})
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['runtime.backlog'].format(1),
+                self.catalog[code]['runtime.backlog'].format(2), 'Synthetic failure A', 'Synthetic failure B'])
+
+    def test_translated_notice_dedup_does_not_change_saved_battles_or_totals(self):
+        from test_core import StatsService, Clock as ServiceClock, result
+        clock = ServiceClock(100)
+        service = StatsService(self.directory, 'EU:notice-test', 'launch', EXPECTED, clock)
+        clock.value = 120
+        service.record_result(result('one', warnings=[loc.LEGACY_POLISH['normalize.reserve']]))
+        service.record_result(result('two', warnings=[loc.ENGLISH['normalize.reserve']]))
+        saved = copy.deepcopy(service._state)
+        snapshot = service.snapshot()
+        self.assertEqual(len(snapshot['warnings']), 2)
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot(copy.deepcopy(snapshot))
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['normalize.reserve']])
+            self.assertEqual(rendered['scopes']['launch']['summary'], snapshot['scopes']['launch']['summary'])
+        self.assertEqual(service._state, saved)
+        self.assertEqual(service.store.load(), saved)
+
+    def test_notice_correction_keeps_other_battles_notices_until_they_are_corrected(self):
+        from test_core import StatsService, Clock as ServiceClock, result
+        clock = ServiceClock(100)
+        service = StatsService(self.directory, 'EU:notice-test', 'launch', EXPECTED, clock)
+        clock.value = 120
+        for key, template in (('one', loc.LEGACY_POLISH), ('two', loc.ENGLISH)):
+            service.record_result(result(key, warnings=[template['normalize.reserve']]))
+        service.record_result(result('one', reconcile=True, warnings=[]))
+        self.assertEqual(loc.Localizer('en').snapshot(service.snapshot())['warnings'],
+                         [loc.ENGLISH['normalize.reserve']])
+        service.record_result(result('two', reconcile=True, warnings=[]))
+        self.assertEqual(loc.Localizer('en').snapshot(service.snapshot())['warnings'], [])
+
     def test_native_notifications_escape_user_catalog_markup_at_final_boundary(self):
         import types
         pushed = []

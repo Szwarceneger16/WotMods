@@ -25,6 +25,13 @@ module.exports = async ({browser,nativeHost,check}) => {
     return next.backgroundImage!=='none' &&
       ['backgroundImage','color','borderTopColor','borderTopWidth','fontFamily'].every(key=>next[key]===action[key]);
   }));
+  check('Paging buttons remain compact instead of filling a quarter of the panel',await page.evaluate(()=>
+    ['ss-page-previous','ss-page-next'].every(id=>{
+      const button=document.getElementById(id),box=button.getBoundingClientRect();
+      const style=getComputedStyle(button),label=getComputedStyle(button.querySelector('.ss-control-label'));
+      return box.width>=64 && box.width<=100 && box.height<=27 && label.fontSize==='12px' &&
+        style.backgroundImage!=='none';
+    })));
   for(const width of [320,744]) {
     await page.setViewportSize({width,height:820});
     check('Paging controls and counter fit at width '+width,await page.locator('#ss-pagination').evaluate(bar=>{

@@ -1,5 +1,16 @@
 SESSION STATS — CHANGELOG
 
+0.3.1 • 2026-10-26
+• Deduplicate data notices after translation. Legacy Polish and canonical English
+  copies of the same warning now produce one visible message and one notice count.
+  The original saved records and numerical statistics remain unchanged.
+• Apply the same notice handling during history loading and failures. Distinct
+  errors and parameter values remain visible; unknown text is rendered literally.
+• Explain x/y as battles with the given value out of all recorded battles, in all
+  seven languages. Per-value descriptions retain each metric's own coverage.
+• Size Previous/Next to their captions instead of 25% of the panel width, while
+  retaining the panel button style, 25rem minimum height and disabled states.
+
 0.3.0 • 2026-10-26
 • Add global Min/Avg/Max sorting by Base XP, Received XP, net credits and battle WN8, ascending or descending.
 • Add independent newest/oldest date ordering between Previous and Next.

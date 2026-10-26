@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.0 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.1 (persistent data schema unchanged)
 Release date: 2026-10-26.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
@@ -76,7 +76,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.3.0', account_key: string, generated_at: unix seconds,
+ version: '0.3.1', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -150,7 +150,7 @@ is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
-The package remains mods/2.4.1.0/grz.sessionstats_0.3.0.wotmod. Bundle complete defaults
+The package remains mods/2.4.1.0/grz.sessionstats_0.3.1.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
 existing central file during initialization. Never copy or load legacy external language catalogs.

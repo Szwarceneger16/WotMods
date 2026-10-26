@@ -220,7 +220,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: battles with this value / recorded battles.",
+      "coverage.value": "Data available for {0} of {1} recorded battles."
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -441,7 +443,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: bitwy z dostępną wartością / zapisane bitwy.",
+      "coverage.value": "Dane dostępne dla {0} z {1} zapisanych bitew."
     },
     "ru": {
       "title": "Статистика сессии",
@@ -662,7 +666,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: бои с этим значением / записанные бои.",
+      "coverage.value": "Данные доступны для {0} из {1} записанных боёв."
     },
     "fr": {
       "title": "Statistiques de session",
@@ -883,7 +889,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y : batailles avec cette valeur / batailles enregistrées.",
+      "coverage.value": "Données disponibles pour {0} batailles sur {1} enregistrées."
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1104,7 +1112,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: Gefechte mit diesem Wert / erfasste Gefechte.",
+      "coverage.value": "Daten für {0} von {1} erfassten Gefechten verfügbar."
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1325,7 +1335,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: batallas con este valor / batallas registradas.",
+      "coverage.value": "Datos disponibles para {0} de {1} batallas registradas."
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1546,7 +1558,9 @@
       "language.fr": "Français",
       "language.de": "Deutsch",
       "language.es": "Español",
-      "language.uk": "Українська"
+      "language.uk": "Українська",
+      "coverage.legend": "x/y: бої з цим значенням / записані бої.",
+      "coverage.value": "Дані доступні для {0} із {1} записаних боїв."
     }
   }
 }
