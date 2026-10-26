@@ -67,14 +67,15 @@ class ConfigFilesTests(unittest.TestCase):
         self.assertEqual((self.read(self.path), self.read(self.languages)), before)
         self.assertEqual(load_config(self.path)['language'], 'pl')
 
-    def test_legacy_configuration_and_translations_are_copied_verbatim_not_removed(self):
+    def test_legacy_configuration_is_copied_but_external_translations_are_not(self):
         raw = b'\xef\xbb\xbf{ "language": "pl", "custom_unknown": 7 }\n'
         self.write(self.legacy, raw)
         self.write(self.old_languages, b'{"schema_version":1,"languages":{}}')
         self.prepare()
         self.assertEqual(self.read(self.path), raw)
         self.assertEqual(self.read(self.legacy), raw)
-        self.assertEqual(self.read(self.languages), self.read(self.old_languages))
+        self.assertFalse(os.path.exists(self.languages))
+        self.assertEqual(self.read(self.old_languages), b'{"schema_version":1,"languages":{}}')
         self.assertEqual(load_config(self.path)['language'], 'pl')
         self.write(self.path, b'{"language":"de"}')
         self.prepare()

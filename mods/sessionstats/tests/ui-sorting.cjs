@@ -28,7 +28,7 @@ module.exports=async ({browser,nativeHost,check})=>{
   await choose('metric','off');
   await choose('chronology','oldest');
   check('Chronological ordering is independent when metric sorting is off',await page.evaluate(()=>__grzCommands.filter(c=>c.action==='sort').pop().chronology==='oldest'));
-  const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../grz.sessionstats.languages.json'),'utf8')).languages;
+  const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   for(const width of [320,744]) {
     await page.setViewportSize({width,height:820});
     for(const [language,messages] of Object.entries(languages)) {

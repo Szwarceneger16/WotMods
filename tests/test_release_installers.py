@@ -30,7 +30,7 @@ def mod(identifier, version, payload=b'payload'):
                     'res/'+identifier+'/module.pyc': payload})
 
 
-def build(directory, kind, version):
+def build(directory, kind, version, internal=False):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = r.KINDS[kind][1]
     primary = prefix+version+'.wotmod'
@@ -38,12 +38,19 @@ def build(directory, kind, version):
     if kind == 'sessionstats':
         config, language = b'{"language":"auto"}', b'{"languages":{"en":{}}}'
         dependency = mod('net.openwg.gameface', '1.2.2')
-        report = json.dumps({'version':version, 'client_target':r.CLIENT,
-                             'languages_config_sha256':r.digest(language)}).encode()
+        report_data={'version':version, 'client_target':r.CLIENT, 'languages_config_sha256':r.digest(language)}
+        if internal:
+            language=json.dumps({'schema_version':1,'languages':{code:{'title':'Fixture'} for code in ('en','pl','ru','fr','de','es','uk')}}).encode()
+            resources=r.read_zip(io.BytesIO((directory/primary).read_bytes()))
+            resources['res/grz_session_stats/languages.json']=language
+            (directory/primary).write_bytes(archive(resources))
+            del report_data['languages_config_sha256']
+            report_data.update(languages_resource='res/grz_session_stats/languages.json',languages_resource_sha256=r.digest(language))
+        report=json.dumps(report_data).encode()
         (directory/'grz.sessionstats.json').write_bytes(config)
         (directory/'net.openwg.gameface_1.2.2.wotmod').write_bytes(dependency)
         (directory/'BUILD.json').write_bytes(report)
-        (directory/('wot-statystyki-sesji-v'+version+'.zip')).write_bytes(archive({
+        bundled = {
             'mods/'+r.CLIENT+'/'+primary:(directory/primary).read_bytes(),
             'mods/'+r.CLIENT+'/net.openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
             'mods/configs/grz.sessionstats.json':config,
@@ -52,7 +59,11 @@ def build(directory, kind, version):
             'LICENSE.txt':b'GPL', 'source/src/main.py':b'# corresponding source',
             'source/third_party/openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
             'SHA256SUMS.txt':b'legacy installer manifest',
-        }))
+        }
+        if internal:
+            del bundled['mods/configs/grz.sessionstats.languages.json']
+            bundled['source/data/languages.json']=language
+        (directory/('wot-statystyki-sesji-v'+version+'.zip')).write_bytes(archive(bundled))
     r.manifest(directory)
 
 
@@ -93,6 +104,24 @@ class InstallerTests(unittest.TestCase):
         first=path.read_bytes()
         path=r.package(self.source,self.out,'sessionstats')
         self.assertEqual(first,path.read_bytes())
+
+    def test_internal_catalog_stays_inside_mod_and_only_main_config_is_installed(self):
+        build(self.source,'sessionstats','0.3.0',internal=True)
+        target=r.package(self.source,self.out,'sessionstats')
+        kind,version,client,files,primary=r.verify(target)
+        self.assertEqual((kind,version),('sessionstats','0.3.0'))
+        self.assertIn('res/grz_session_stats/languages.json',r.read_zip(io.BytesIO(files[primary])))
+        self.assertEqual({n for n in files if n.startswith('mods/configs/')},
+                         {'mods/configs/grz.sessionstats.json.example'})
+        self.assertIn('docs/sessionstats/source/data/languages.json',files)
+
+    def test_internal_catalog_hash_is_checked_before_installation(self):
+        build(self.source,'sessionstats','0.3.0',internal=True)
+        report=json.loads((self.source/'BUILD.json').read_bytes())
+        report['languages_resource_sha256']='0'*64
+        (self.source/'BUILD.json').write_text(json.dumps(report))
+        r.manifest(self.source)
+        with self.assertRaises(ValueError): r.package(self.source,self.out,'sessionstats')
 
     def test_legacy_snapshot_migration_retains_exact_production_bytes(self):
         build(self.source,'staysharp','1.6.4')

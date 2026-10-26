@@ -119,14 +119,13 @@ class BuildContracts(unittest.TestCase):
         files=[]
         for name, relative in [('grz.sessionstats_0.2.8.wotmod','mods/2.5.0.0/'),
                                ('net.openwg.gameface_1.2.2.wotmod','mods/2.5.0.0/net.openwg/'),
-                               ('grz.sessionstats.json','mods/configs/'),
-                               ('grz.sessionstats.languages.json','mods/configs/')]:
+                               ('grz.sessionstats.json','mods/configs/')]:
             path = self.directory/relative/name
             path.parent.mkdir(parents=True,exist_ok=True)
             path.write_bytes(name.encode('ascii')); files.append(path)
-        manifest = self.build.installer_checksums(files[0], files[1], files[2], '2.5.0.0', files[3])
+        manifest = self.build.installer_checksums(files[0], files[1], files[2], '2.5.0.0')
         (self.directory/'SHA256SUMS.txt').write_bytes(manifest)
-        self.assertEqual(len(manifest.splitlines()),4)
+        self.assertEqual(len(manifest.splitlines()),3)
         subprocess.check_output(['sha256sum','-c','SHA256SUMS.txt'],cwd=str(self.directory))
 
 

@@ -350,6 +350,10 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-pagination > .ss-button { min-width:64rem; width:25%; max-width:28%; min-height:25rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
 #ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
+.ss-language-row { display:flex; align-items:center; justify-content:flex-end; min-height:33rem; padding-top:3rem; }
+.ss-language-caption { display:block; min-width:0; margin-right:8rem; color:{{colors.list_meta_text}}; font-size:12rem; }
+.ss-select.ss-language-select { width:170rem; max-width:65%; }
+.ss-language-select .ss-select-options { left:auto; right:0; }
 .ss-page-center { flex:1; min-width:0; padding:0 6rem; }
 .ss-sorting { display:flex; align-items:flex-end; margin:0 1rem 8rem; }
 .ss-sort-field { min-width:0; }

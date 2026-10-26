@@ -14,7 +14,7 @@ No game networking, account mutation, automatic input or executable download.
 """
 from __future__ import absolute_import, unicode_literals
 
-from .localization import Localizer, FILENAME as LANGUAGES_FILENAME, message
+from .localization import Localizer, message
 
 import io
 import json
@@ -476,8 +476,7 @@ class Runtime(object):
                 path = prepare_config_path()
             self.appearance_path = path
             config = load_config(path)
-            languages_path = os.path.join(os.path.dirname(path), LANGUAGES_FILENAME) if path else None
-            self._localizer = Localizer(config['language'], languages_path,
+            self._localizer = Localizer(config['language'],
                                         client_language=self._client_language(),
                                         native_messages=self._outcome_messages())
             self._presentation = build_presentation(config)
@@ -1401,6 +1400,15 @@ class Runtime(object):
                 if not service.set_page(scope, group, int(raw_page), period_id):
                     return
             self._window_call('refresh')
+        elif action == 'language' and self.active_service is not None:
+            if getter('account_key') != self.active_key:
+                return
+            from .config_files import save_language
+            if save_language(self.appearance_path, getter('language')):
+                self._load_appearance()
+                self._window_call('refresh')
+            else:
+                self._notify(message('language.save_error'))
         elif action == 'refresh':
             self._load_appearance()
             self._refresh_posted()

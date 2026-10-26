@@ -93,6 +93,20 @@ def installer_name(kind, version):
     return KINDS[kind][0] + version + '.zip'
 
 
+
+def bundled_languages(report, package):
+    resource = report.get('languages_resource')
+    if resource != 'res/grz_session_stats/languages.json' or 'languages_config_sha256' in report:
+        raise ValueError('Invalid bundled language metadata')
+    if resource not in package or digest(package[resource]) != report.get('languages_resource_sha256'):
+        raise ValueError('Bundled language resource hash mismatch')
+    catalog = json.loads(package[resource].decode('utf-8'))
+    if (type(catalog.get('schema_version')) is not int or catalog['schema_version'] != 1 or
+            set(catalog.get('languages', {})) != {'en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'}):
+        raise ValueError('Bundled language catalog does not match supported languages')
+    return resource
+
+
 def verify(path):
     kind, version = identity(path.name)
     files = read_zip(path)
@@ -128,7 +142,14 @@ def verify(path):
         wanted.add('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod')
         if not wanted <= files.keys():
             raise ValueError('Missing OpenWG dependency')
-        for filename in ('grz.sessionstats.json', 'grz.sessionstats.languages.json'):
+        build_report = json.loads(files.get(doc + 'BUILD.json', b'{}'))
+        embedded = build_report.get('languages_resource')
+        examples = ('grz.sessionstats.json',) if embedded else ('grz.sessionstats.json', 'grz.sessionstats.languages.json')
+        if embedded:
+            bundled_languages(build_report, package)
+            if 'mods/configs/grz.sessionstats.languages.json.example' in files:
+                raise ValueError('External translations in bundled-language installer')
+        for filename in examples:
             if 'mods/configs/' + filename + '.example' not in files:
                 raise ValueError('Missing configuration example')
     elif 'mods/configs/staysharp.medkit.json.example' not in files:
@@ -196,9 +217,17 @@ def package(source, destination, kind, client=CLIENT):
         ):
             if bundle.get(name) != expected:
                 raise ValueError('Installer and verified build disagree')
-        language = bundle['mods/configs/grz.sessionstats.languages.json']
-        if digest(language) != report['languages_config_sha256']:
-            raise ValueError('Language configuration hash mismatch')
+        embedded = report.get('languages_resource')
+        if embedded:
+            resources = read_zip(io.BytesIO(files[primary]))
+            bundled_languages(report, resources)
+            if 'mods/configs/grz.sessionstats.languages.json' in bundle:
+                raise ValueError('External translations in bundled-language build')
+        else:
+            # Preserve previously published installers byte-for-byte on carry-forward.
+            language = bundle['mods/configs/grz.sessionstats.languages.json']
+            if digest(language) != report['languages_config_sha256']:
+                raise ValueError('Language configuration hash mismatch')
         for name, data in bundle.items():
             if name == 'SHA256SUMS.txt':
                 continue

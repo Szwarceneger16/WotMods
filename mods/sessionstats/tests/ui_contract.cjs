@@ -561,6 +561,7 @@ async function nativeHost(browser, options) {
     await degraded.close();
   }
   await require('./ui-connection.cjs')({browser,nativeHost,check});
+  await require('./ui-language.cjs')({browser,nativeHost,check});
   await require('./ui-sorting.cjs')({browser,nativeHost,check});
   await require('./ui-pagination.cjs')({browser,nativeHost,check});
   await require('./ui-outcomes.cjs')({browser,nativeHost,check});
@@ -721,7 +722,7 @@ async function nativeHost(browser, options) {
     return reset.length===2 && reset[1].scope==='manual' && reset[1].account_key==='fixture-account-b';
   }));
   await sessions.close();
-  const languages=JSON.parse(fs.readFileSync(path.join(root,'grz.sessionstats.languages.json'),'utf8')).languages;
+  const languages=JSON.parse(fs.readFileSync(path.join(root,'data/languages.json'),'utf8')).languages;
   const localized=await nativeHost(browser,{});
   for(const [language,messages] of Object.entries(languages)) {
     const snapshot=JSON.parse(JSON.stringify(fixtures.normal));

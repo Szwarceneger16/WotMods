@@ -210,7 +210,17 @@
       "groups.vehicles.total": "{0} vehicles",
       "groups.maps.total": "{0} maps",
       "groups.battles.total": "{0} battles",
-      "groups.tiers.total": "{0} tiers"
+      "groups.tiers.total": "{0} tiers",
+      "language.label": "Language",
+      "language.auto": "Automatic",
+      "language.save_error": "Could not save the language. Your configuration was preserved.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -421,7 +431,17 @@
       "groups.vehicles.total": "{0} czołgów",
       "groups.maps.total": "{0} map",
       "groups.battles.total": "{0} bitew",
-      "groups.tiers.total": "{0} poziomów"
+      "groups.tiers.total": "{0} poziomów",
+      "language.label": "Język",
+      "language.auto": "Automatycznie",
+      "language.save_error": "Nie udało się zapisać języka. Konfiguracja została zachowana.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -632,7 +652,17 @@
       "groups.vehicles.total": "Техника: {0}",
       "groups.maps.total": "Карты: {0}",
       "groups.battles.total": "Бои: {0}",
-      "groups.tiers.total": "{0} уровней"
+      "groups.tiers.total": "{0} уровней",
+      "language.label": "Язык",
+      "language.auto": "Автоматически",
+      "language.save_error": "Не удалось сохранить язык. Настройки сохранены без изменений.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -843,7 +873,17 @@
       "groups.vehicles.total": "{0} véhicules",
       "groups.maps.total": "{0} cartes",
       "groups.battles.total": "{0} batailles",
-      "groups.tiers.total": "{0} rangs"
+      "groups.tiers.total": "{0} rangs",
+      "language.label": "Langue",
+      "language.auto": "Automatique",
+      "language.save_error": "Impossible d’enregistrer la langue. La configuration a été conservée.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1054,7 +1094,17 @@
       "groups.vehicles.total": "{0} Fahrzeuge",
       "groups.maps.total": "{0} Karten",
       "groups.battles.total": "{0} Gefechte",
-      "groups.tiers.total": "{0} Stufen"
+      "groups.tiers.total": "{0} Stufen",
+      "language.label": "Sprache",
+      "language.auto": "Automatisch",
+      "language.save_error": "Die Sprache konnte nicht gespeichert werden. Die Konfiguration wurde beibehalten.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1265,7 +1315,17 @@
       "groups.vehicles.total": "{0} vehículos",
       "groups.maps.total": "{0} mapas",
       "groups.battles.total": "{0} batallas",
-      "groups.tiers.total": "{0} niveles"
+      "groups.tiers.total": "{0} niveles",
+      "language.label": "Idioma",
+      "language.auto": "Automático",
+      "language.save_error": "No se pudo guardar el idioma. Se conservó la configuración.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1476,7 +1536,17 @@
       "groups.vehicles.total": "Техніка: {0}",
       "groups.maps.total": "Мапи: {0}",
       "groups.battles.total": "Бої: {0}",
-      "groups.tiers.total": "{0} рівнів"
+      "groups.tiers.total": "{0} рівнів",
+      "language.label": "Мова",
+      "language.auto": "Автоматично",
+      "language.save_error": "Не вдалося зберегти мову. Налаштування залишено без змін.",
+      "language.en": "English",
+      "language.pl": "Polski",
+      "language.ru": "Русский",
+      "language.fr": "Français",
+      "language.de": "Deutsch",
+      "language.es": "Español",
+      "language.uk": "Українська"
     }
   }
 }
