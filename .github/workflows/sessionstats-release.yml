@@ -7,6 +7,7 @@ on:
       - 'mods/sessionstats/**'
       - 'scripts/sessionstats/**'
       - 'scripts/release_snapshot.sh'
+      - 'scripts/release_installers.py'
       - 'scripts/release_version.py'
       - 'scripts/privacy_audit.py'
       - 'tests/test_sessionstats_pipeline.py'
@@ -107,11 +108,10 @@ jobs:
           set -euo pipefail
           # Acquire the shared publish lock BEFORE reading Latest. A reverse-
           # ordered older build exits 75 rather than rolling back a newer mod.
-          if bash scripts/release_snapshot.sh mods/sessionstats/dist \
-              "grz.sessionstats_${RELEASE_VERSION}.wotmod" \
-              'grz.sessionstats_*.wotmod' \
-              'wot-statystyki-sesji-v*.zip' 'net.openwg.gameface_*.wotmod' \
-              'grz.sessionstats.json' 'BUILD.json'; then
+          python3 scripts/release_installers.py package release --source mods/sessionstats/dist --mod sessionstats
+          if bash scripts/release_snapshot.sh release \
+              "Session-Stats-v${RELEASE_VERSION}.zip" \
+              'Session-Stats-v*.zip'; then
             echo 'publish=true' >> "$GITHUB_OUTPUT"
           else
             status=$?
@@ -123,9 +123,15 @@ jobs:
             fi
           fi
 
-      - name: Check carried package compatibility
+      - name: Verify two installers and prepare download sections
         if: steps.snapshot.outputs.publish == 'true'
-        run: python3 scripts/sessionstats/integration.py --directory mods/sessionstats/dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm release/SHA256SUMS.txt
+          python3 scripts/release_installers.py verify release
+          python3 scripts/release_installers.py notes release --output release-notes.md \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG"
 
       - name: Create and verify GitHub Release
         if: steps.snapshot.outputs.publish == 'true'
@@ -223,9 +229,9 @@ jobs:
           check_remote_tag
 
           if [[ "$state" == absent ]]; then
-            gh release create "$tag" mods/sessionstats/dist/* \
+            gh release create "$tag" release/*.zip \
               --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
-              --title "WotMods $tag (Session Stats updated)" --generate-notes
+              --title "WotMods — Session Stats ${RELEASE_VERSION}" --notes-file release-notes.md --generate-notes
           else
             echo 'Existing published release: verify only, never overwrite.'
           fi
@@ -239,7 +245,7 @@ jobs:
           printf '%s' "$metadata" | jq -e --arg tag "$tag" \
             '.tagName == $tag and .isDraft == false and .isPrerelease == false' >/dev/null
           # Check the COMPLETE published snapshot, not just the changed mod.
-          expected="$(find mods/sessionstats/dist -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          expected="$(find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
           listed="$(printf '%s' "$metadata" | jq -r '.assets[].name' | LC_ALL=C sort)"
           test "$listed" = "$expected" || { echo 'Release asset list mismatch' >&2; exit 1; }
           remote="$(mktemp -d)"
@@ -248,9 +254,9 @@ jobs:
           received="$(find "$remote" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
           test "$received" = "$expected" || { echo 'Downloaded asset list mismatch' >&2; exit 1; }
           while IFS= read -r name; do
-            cmp -- "mods/sessionstats/dist/$name" "$remote/$name" || exit 1
+            cmp -- "release/$name" "$remote/$name" || exit 1
           done <<< "$expected"
-          (cd "$remote" && sha256sum --check SHA256SUMS.txt)
+          python3 scripts/release_installers.py verify "$remote"
           # Final check re-resolves the Git ref; a local rev-parse is NOT enough.
           check_remote_tag
           echo "Published and verified: https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag"

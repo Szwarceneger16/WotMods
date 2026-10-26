@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Assemble a complete immutable Release snapshot, replacing only the rebuilt mod.
 # Usage: release_snapshot.sh DIST PRIMARY_FILE PRIMARY_GLOB [OTHER_OWNED_GLOBS...]
-#  - PRIMARY_FILE is exactly one newly built versioned .wotmod.
+#  - PRIMARY_FILE is exactly one newly built versioned .wotmod or installer ZIP.
 #  - PRIMARY_GLOB matches this mod's older/newer versioned primary artifact.
 #  - Remaining globs are assets owned by this mod (installer/config/etc).
 #  - Exit 75 means an already-published primary version is >= this build:
@@ -15,7 +15,7 @@ fail() { printf 'Release snapshot blocked: %s\n' "$*" >&2; exit 1; }
 dest="$(realpath -- "$1")"; primary="$2"; primary_glob="$3"; shift 3
 [[ -d "$dest" && -f "$dest/SHA256SUMS.txt" ]] || fail 'Missing locally verified build/manifest'
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
-[[ "$primary" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.wotmod$ && -f "$dest/$primary" ]] || fail 'Missing or unsafe primary .wotmod'
+[[ "$primary" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*\.(wotmod|zip)$ && -f "$dest/$primary" ]] || fail 'Missing or unsafe primary .wotmod/ZIP'
 [[ "$primary_glob" =~ ^[A-Za-z0-9._-]+\*[A-Za-z0-9._-]+$ ]] || fail 'Primary glob must contain exactly one asterisk'
 [[ "$primary" == $primary_glob ]] || fail 'Primary asset does not match its versioned glob'
 # The primary glob must contain a single *, and all versions use strict SemVer.
@@ -49,6 +49,12 @@ else
   staging="$(mktemp -d)"
   trap 'rm -rf -- "$staging"' EXIT
   gh release download "$latest" --repo "$GITHUB_REPOSITORY" --dir "$staging" || fail 'Cannot download previous Release'
+  # Installer releases have internal per-ZIP manifests. Validate these before
+  # generating the temporary outer manifest required by the shared snapshot.
+  # Legacy loose assets are checksum-verified and converted exactly once.
+  if [[ "$primary" == *.zip ]]; then
+    python3 "$(dirname -- "$0")/release_installers.py" normalize "$staging"
+  fi
   [[ -f "$staging/SHA256SUMS.txt" ]] || fail 'Previous Release lacks checksum manifest'
   expected="$(sed -nE 's/^[0-9a-f]{64}  ([A-Za-z0-9][A-Za-z0-9._-]*)$/\1/p' "$staging/SHA256SUMS.txt" | LC_ALL=C sort)"
   actual="$(find "$staging" -mindepth 1 -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | LC_ALL=C sort)"

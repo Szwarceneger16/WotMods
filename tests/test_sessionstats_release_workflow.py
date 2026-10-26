@@ -137,7 +137,7 @@ class SessionStatsNativeReleaseTests(unittest.TestCase):
         first = WORKFLOW.index('          check_remote_tag\n')
         publish = WORKFLOW.index('            gh release create')
         after = WORKFLOW.index('          check_remote_tag\n', publish)
-        manifest = WORKFLOW.index('          (cd "$remote" && sha256sum --check SHA256SUMS.txt)')
+        manifest = WORKFLOW.index('          python3 scripts/release_installers.py verify "$remote"')
         final = WORKFLOW.index('          check_remote_tag\n', manifest)
         self.assertLess(first, publish)
         self.assertLess(publish, after)
@@ -147,9 +147,10 @@ class SessionStatsNativeReleaseTests(unittest.TestCase):
         self.assertIn('git ls-remote --tags origin "refs/tags/$tag"', WORKFLOW)
 
     def test_asset_integrity_and_fail_closed_drafts(self):
-        self.assertIn('sha256sum --check SHA256SUMS.txt', WORKFLOW)
+        self.assertIn('scripts/sessionstats/release.py --verify-directory', WORKFLOW)
+        self.assertIn('scripts/release_installers.py verify', WORKFLOW)
         self.assertIn('gh release download', WORKFLOW)
-        self.assertIn('cmp -- "mods/sessionstats/dist/$name" "$remote/$name"', WORKFLOW)
+        self.assertIn('cmp -- "release/$name" "$remote/$name"', WORKFLOW)
         self.assertIn('isDraft', WORKFLOW)
         self.assertIn('draft)', WORKFLOW)
         self.assertIn('exit 1', WORKFLOW)

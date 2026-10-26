@@ -1,5 +1,5 @@
 GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.0 (persistent data schema unchanged)
-Release date: 2026-10-21.
+Release date: 2026-10-26.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
 All game-independent code must also run under Python 3 for development.

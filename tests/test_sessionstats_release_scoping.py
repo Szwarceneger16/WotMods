@@ -13,9 +13,9 @@ class SessionStatsScopingTests(unittest.TestCase):
 
     def test_snapshot_skip_and_integration_precede_tag_push(self):
         text = (ROOT/'.github/workflows/sessionstats-release.yml').read_text()
-        for marker in ('scripts/release_snapshot.sh', '"$status" == 75', 'scripts/sessionstats/integration.py --directory'):
+        for marker in ('scripts/release_snapshot.sh', '"$status" == 75', 'scripts/release_installers.py verify release'):
             self.assertLess(text.index(marker), text.index('git push origin'))
-        for pattern in ('grz.sessionstats_*.wotmod', 'wot-statystyki-sesji-v*.zip', 'net.openwg.gameface_*.wotmod', 'grz.sessionstats.json', 'BUILD.json'):
+        for pattern in ('Session-Stats-v*.zip',):
             self.assertIn("'"+pattern+"'", text)
 
     def test_no_cross_mod_build_or_retired_import(self):

@@ -13,8 +13,8 @@ Import review fixes: [REVIEW_FIXES_PR3.md](docs/REVIEW_FIXES_PR3.md).
 Independent stability/coexistence review and corrections: [INDEPENDENT_SAFETY_REVIEW_PR3.md](docs/INDEPENDENT_SAFETY_REVIEW_PR3.md).
 Incremental saves, paged history, staged startup with durable pending results,
 benchmarks and remaining limits: [HISTORY_PERFORMANCE.md](docs/HISTORY_PERFORMANCE.md).
-The build/validation pipeline comes from parent PR #2. The source PR is stacked
-on it and requires that infrastructure to merge first.
+Windows journal creation and checksum-verified recovery of affected saves:
+[WINDOWS_JOURNAL_RECOVERY.md](docs/WINDOWS_JOURNAL_RECOVERY.md).
 
 ## Installation and integration with other mods
 
@@ -67,8 +67,9 @@ This license does not alter the terms of other mods in the repository.
 
 WoT interfaces may change. Health checks cannot guarantee detection of changed
 field meanings when types and structures remain the same. The user tested 0.2.4
-and has also confirmed the preceding build works in game. The 0.2.9 UI/language
-changes still require a current-client test after automated validation.
+and has also confirmed a preceding build works in game. The 0.2.9 UI/language
+changes and 0.2.12 Windows storage correction still require a current-client test
+after automated validation.
 
 ## Interface languages and optional configuration
 

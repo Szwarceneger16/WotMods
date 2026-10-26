@@ -1,4 +1,4 @@
-# Configuration in mods/configs — discovery and sources, 0.2.9
+# Configuration in mods/configs — discovery and sources, 0.2.12
 
 ## Contract
 

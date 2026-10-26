@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.3.0 • 2026-10-24 • target: Wargaming EU 2.4.1.0
+Version 0.3.0 • 2026-10-26 • target: Wargaming EU 2.4.1.0
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -19,7 +19,9 @@ Close the game, remove the previous grz.sessionstats_*.wotmod from the active
 mods directory and replace it with grz.sessionstats_0.3.0.wotmod
 from this package. Place grz.sessionstats.json in mods/configs. Keep only one active
 version of grz.sessionstats. Bundled OpenWG 1.2.2 is unchanged; keep one copy.
-Existing history remains readable. Updating does not require a data reset.
+The Windows journal-header defect is recovered only after the original checksum
+verifies. Updating does not require a data reset. Back up the complete AppData
+history first; see docs/WINDOWS_JOURNAL_RECOVERY.md for scope and limits.
 
 The configuration filename has no release number. Preserve your own
 grz.sessionstats.json instead of overwriting it with the new package's defaults.
