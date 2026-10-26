@@ -92,7 +92,7 @@ class NativeLanguageTests(unittest.TestCase):
         paging.NativePaginationTests.__dict__['setUp'](self)
         self.path=os.path.join(self.directory,'grz.sessionstats.json')
         self.document={'language':'en','colors':{'window_border':'#123456'},'scroll':{'speed_multiplier':2},'sessions':{'instance_tab':True}}
-        with io.open(self.path,'w',encoding='utf-8') as handle: handle.write(json.dumps(self.document))
+        with io.open(self.path,'wb') as handle: handle.write(json.dumps(self.document).encode('utf-8'))
         self.mod.data_dir=self.directory
         self.mod._appearance_override_path=self.path
         self.mod._load_appearance();self.window.refresh()
@@ -122,7 +122,7 @@ class NativeLanguageTests(unittest.TestCase):
         with io.open(self.path,'r',encoding='utf-8') as handle: self.assertEqual(json.load(handle),self.document)
     def test_manual_config_edit_is_read_on_refresh(self):
         self.command('fr')
-        with io.open(self.path,'w',encoding='utf-8') as handle: handle.write(json.dumps(dict(self.document,language='uk')))
+        with io.open(self.path,'wb') as handle: handle.write(json.dumps(dict(self.document,language='uk')).encode('utf-8'))
         self.mod.on_action({'action':'refresh'})
         self.assertEqual(self.payload()['localization']['selected'],'uk')
 
