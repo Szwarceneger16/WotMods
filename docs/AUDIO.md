@@ -89,42 +89,39 @@ replaced. Sound settings and the final loudness must be checked in-game.
 150 subset directly. Rebuilding requires only Python's standard library;
 it verifies the original WAV checksum before building Wwise PCM media and
 all seven Sound -> Play Action -> Event graphs. IDs use Wwise's lowercase FNV-1.
-All seven recordings are **AI-generated neural speech**. English uses the
-selected **Piper `en_US-hfc_female-medium`** voice. Russian, French, German,
-Spanish and Ukrainian use Piper 1.8.0 / VITS models `ru_RU-denis-medium`,
-`fr_FR-siwis-medium`, `de_DE-thorsten-high`, `es_ES-davefx-medium` and
-`uk_UA-tetiana-high`. Polish uses **Chatterbox Multilingual V2**
-(`chatterbox-tts 0.1.7`, Resemble AI), with the provider's default Polish demo
-speaker prompt. These replace the earlier Flite/eSpeak recordings.
-Outer silence is trimmed, peaks normalized to 0.82, and finished recordings
-resampled to 16 kHz mono PCM. Normal speaking speed is retained; no time
-compression is used. The Polish generator uses its built-in Perth
-watermarker, without a watermark-removal step. Watermark detection after
-resampling has not been tested.
+All seven recordings are **AI-generated neural speech**, created offline
+with **Boson AI's Higgs TTS 3 4B**. The Polish and English takes follow the
+owner-auditioned delivery; the other five use the same determination and
+projected-voice controls. No real-person voice-cloning reference is used.
+The generated Ukrainian sentence includes explicit Ukrainian context to
+disambiguate the identical Russian/Ukrainian spelling of the target phrase;
+only the complete announcement is extracted for packaging.
 
-Exact text, model/config/WAV SHA-256 hashes, processing, Polish generation
-settings and reference provenance are recorded in `assets/voices/manifest.json`.
-Original model-card attribution and license information are preserved in
-`assets/VOICE_NOTICE.txt`, which is included in the package.
+The source model produces 24 kHz float audio. Post-processing uses
+**FFmpeg `atempo=1.07`** for the selected 7% faster tempo while retaining
+pitch, followed by constant gain to approximately **-20 LUFS**, subject to
+a **-1.5 dBTP** ceiling, and mono 16-bit PCM export at 16 kHz. There is no
+intercom filter, ambience, reverb or pitch shift. The earlier time-stretch
+method was rejected after a measured change to the selected Polish
+recording's low-mid balance. The Wwise builder embeds the finished PCM
+samples without another audio encode.
 
-**The selected English HFC voice uses Hi-Fi-CAPTAIN data under CC BY-NC-SA
-4.0. The English recording is distributed under that license: noncommercial
-use, attribution and ShareAlike apply to that audio asset.** The notice
-identifies NICT and the Piper voice contributors, the dataset source and
-the synthesis/processing changes. French SIWIS data uses CC BY 4.0, the other
-Piper sources use CC0/Apache-2.0 as recorded in their model cards, and
-Chatterbox is MIT licensed. Audio notices do not relicense the mod's code.
-Keep the notice when redistributing the audio or package.
+Exact text, model/codec/port revisions, generation parameters, raw waveform
+hashes, Ukrainian crop bounds and final WAV/PCM hashes are recorded in
+`assets/voices/manifest.json`. The generated-audio credit is prominent in
+the README and retained in `assets/VOICE_NOTICE.txt`, which is included in
+the soundbank package and installer. The original model's terms are the
+[Boson Higgs TTS 3 Research and Non-Commercial License, including its
+Creator Use Grant](https://huggingface.co/bosonai/higgs-tts-3-4b/blob/239f63fb7b02b1aa085f98d9efae5e35cc5523e8/LICENSE).
+The model license is not an open-source license, and this audio notice does
+not relicense the mod's code. No model weights or inference runtime are
+shipped by the mod.
 
-Speech engines and their dependencies are neither shipped nor executed by
-the mod. The game only plays finished audio using Wwise. During generation,
-Piper disables ONNX Runtime telemetry before initialization with its documented
-`ORT_DISABLE_TELEMETRY=1` setting and calls `disable_telemetry_events()`.
-Chatterbox inference runs from local weights with outbound socket syscalls
-denied by the kernel and Hugging Face offline/telemetry flags set. Neither
-engine is a runtime or packaging dependency. Auditory quality and
-pronunciation still need listening checks; offline validation cannot certify
-how every voice will sound inside the WoT mix.
+Inference ran from pinned local files in a rootless container with networking
+disabled. Neither the game nor the package builder requires the generator
+or its libraries. Local speech recognition checked each announcement's
+wording; it cannot certify native pronunciation or acting. The final
+language quality and loudness still require an in-game listening check.
 
 Format and routing references:
 
@@ -162,9 +159,12 @@ After changing audio loading configuration, fully restart WoT.
 
 Offline tests cover announcement timing, repetition, cancellation, camera
 and HUD transitions, failed audio calls, package resources, PCM content,
-IDs and bank references. The generated bank was also parsed independently
-with **wwiser v20260808**, with all 21 HIRC objects consumed and no parse
-errors. These checks do not prove native engine loading or audible output.
+IDs and bank references. The existing bank layout was previously parsed
+independently with **wwiser v20260808**, with all 21 HIRC objects consumed
+and no parse errors. This recording refresh keeps the same bank builder;
+current packaging tests compare every embedded PCM payload to its source
+and provenance checksums. These checks do not prove native engine loading
+or audible output.
 There is no WoT client in the build environment: perform the in-game checks
 in [the installation guide](INSTALACJA.md) before calling this version
 confirmed stable. A future Wwise upgrade may require updating the bank

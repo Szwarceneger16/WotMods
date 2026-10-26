@@ -3,7 +3,7 @@
 ## 1.7.0
 
 - Add a single bundled ready voice after one second of eligible readiness, using WoT/Wwise only.
-- Replace the seven synthetic announcements with offline-generated neural speech: the selected English HFC female voice and five other Piper voices, plus Polish Chatterbox Multilingual V2. Include model provenance, waveform hashes, attribution and the English audio's CC BY-NC-SA 4.0 notice. The mod ships only finished audio.
+- Replace all seven ready announcements with offline-generated Higgs TTS 3 speech, following the owner-auditioned Polish and English delivery. Apply pitch-preserving tempo +7% with FFmpeg atempo, match loudness near -20 LUFS, and package 16 kHz mono PCM under two seconds. Include model/codec revisions, full WAV and PCM hashes, Ukrainian language-context provenance and Boson creator attribution. The mod ships only finished audio.
 - Bundle the same seven spoken languages as Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`) and a small optional `mods/configs/staysharp.medkit.json` language selector, defaulting to the game language. Validate configuration with safe automatic/English fallback.
 - Repeat the equipped medkit's native activation effect once per four-second pulse while the reminder remains active.
 - Stop audio on use/cooldown, perk loss, native injury/stun warning, HUD suppression, vehicle destruction and battle disposal.

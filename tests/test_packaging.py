@@ -1,6 +1,8 @@
 """Binary package / frame-level regression tests. No WoT client available."""
 import importlib.util
+import hashlib
 import io
+import json
 import wave
 from xml.etree import ElementTree
 from pathlib import Path
@@ -224,8 +226,9 @@ class Tests(unittest.TestCase):
         self.assertEqual([el.text for el in root.findall('loadBanks/bank/name')],
                          ['staysharp_medkit.bnk'])
         self.assertIn(b'AI-generated neural speech',notice)
-        self.assertIn(b'Piper 1.8.0',notice)
-        self.assertIn(b'SIWIS',notice)
+        self.assertIn(b"Boson AI's Higgs Audio",notice)
+        self.assertIn(b'Higgs TTS 3',notice)
+        self.assertIn(b'Creator Use Grant',notice)
 
     def test_25_voice_integrity_and_bank_build_are_deterministic(self):
         chunks,_=self.bank_chunks()
@@ -238,6 +241,9 @@ class Tests(unittest.TestCase):
     def test_26_all_seven_voices_have_distinct_events_and_original_pcm(self):
         chunks,offsets=self.bank_chunks()
         self.assertEqual(set(build.audio.LANGUAGES),{'en','pl','ru','fr','de','es','uk'})
+        manifest=json.loads((ROOT/'assets/voices/manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(set(manifest),set(build.audio.LANGUAGES))
+        pcm_hashes=set()
         ids=set()
         graph=chunks[b'HIRC']
         pos=4
@@ -261,9 +267,20 @@ class Tests(unittest.TestCase):
             self.assertEqual(set(chunks[b'DATA'][previous_end:offset]),set() if previous_end==offset else {0})
             wem=chunks[b'DATA'][offset:offset+size]
             self.assertEqual(struct.unpack_from('<I',wem,4)[0],len(wem)-8)
-            with wave.open(io.BytesIO(build.audio.load_voice(language))) as voice:
-                self.assertEqual(wem[52:],voice.readframes(voice.getnframes()))
+            original=build.audio.load_voice(language)
+            self.assertEqual(hashlib.sha256(original).hexdigest(),manifest[language]['wav_sha256'])
+            with wave.open(io.BytesIO(original)) as voice:
+                pcm=voice.readframes(voice.getnframes())
+                self.assertEqual(wem[52:],pcm)
                 self.assertLess(voice.getnframes()/voice.getframerate(),2.0)
+                self.assertEqual(voice.getnframes(),manifest[language]['frames'])
+                self.assertEqual((voice.getframerate(),voice.getnchannels(),voice.getsampwidth()*8),
+                                 (manifest[language]['sample_rate'],manifest[language]['channels'],
+                                  manifest[language]['bits_per_sample']))
+            pcm_sha=hashlib.sha256(pcm).hexdigest()
+            self.assertEqual(pcm_sha,manifest[language]['pcm_sha256'])
+            self.assertNotIn(pcm_sha,pcm_hashes)
+            pcm_hashes.add(pcm_sha)
             previous_end=offset+size
             kind,event_data=objects[build.audio.short_id(event)]
             self.assertEqual(kind,4)
