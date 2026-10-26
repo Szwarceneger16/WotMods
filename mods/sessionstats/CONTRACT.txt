@@ -153,14 +153,14 @@ The user-facing file is mods/configs/grz.sessionstats.json in the verified game 
 The package remains mods/2.4.1.0/grz.sessionstats_0.3.0.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
-existing central file. Copy legacy language overrides only if their destination is absent.
+existing central file during initialization. Never copy or load legacy external language catalogs.
 Keep legacy originals. Use bounded reads and atomic create-only publication; contain
 permission/disk/migration failures. Preserve custom JSON when extracting installer defaults.
 Configuration stays in mods/configs across client-version changes.
 Default language is auto: read helpers.getClientLanguage, normalize supported regional
 codes and fall back to English. Explicit language codes win; never replace an existing
 en override with auto. Resolve original outcome text only for a matching client language;
-custom translations still win. Optional game-language API failures must not stop collection.
+packaged translations are the only fallback. Optional game-language API failures must not stop collection.
 Outcome artwork uses only verified, unchanged local WG notification resources, with
 separate text captions. Missing images retain text; no artwork is bundled or downloaded.
 Keep AppData config.json separate: it still controls hotkey/footer_button on restart.
@@ -368,7 +368,7 @@ res/gui/gameface/mods/grz_session_stats/{SessionStats.html,session_stats.css,ses
 res/gui/gen_resources/grz.sessionstats.json -> R.mods.grz.sessionstats.views.SessionStats
 res/grz_session_stats/wn8exp.json (bundled WG table)
 Outside .wotmod: mods/configs/grz.sessionstats.json
-Optional translation overrides: mods/configs/grz.sessionstats.languages.json
+Translation catalogs: res/grz_session_stats/languages.json inside the .wotmod only
   - full default appearance JSON, UTF-8; exact defaults match appearance.py.
   - distinct from res/gui/gen_resources/grz.sessionstats.json resource registration inside
     the archive and from the user's AppData config.json hotkey/footer settings.
@@ -387,3 +387,13 @@ Metric ordering uses the selected per-battle series statistic, with missing valu
 Chronology uses the latest/earliest battle for groups and the start time for individual battles.
 Stable IDs resolve remaining ties. Tiers use the original recorded vehicle_tier, including XI;
 unknown tier metadata has a separate group. No persistent schema or saved data is changed.
+
+GUI LANGUAGE SELECTION
+The Language dropdown provides auto/en/pl/ru/fr/de/es/uk only. Auto follows the game.
+Its native command requires the active account and uses the existing protected view lifecycle.
+Save the language property in mods/configs/grz.sessionstats.json, preserving every other
+property. Reject malformed/oversized/future-schema or concurrently changed files. Publish
+with a flushed same-directory temporary file and atomic replacement (MoveFileExW on Py2
+Windows). On failure, preserve the previous file and selected language and notify locally.
+Reload the panel and footer labels after success; never reset history, periods or sort state.
+Manual config changes remain supported. The old external language JSON is ignored.

@@ -77,11 +77,12 @@ The default `"language": "auto"` follows the game language, with English as the
 fallback. Explicit `en`, `ru`, `fr`, `pl`, `de`, `es` or `uk` in the root `language`
 property take priority. Existing `"language": "en"` files stay English; change
 that value to `"auto"` to follow the game.
-All mod labels and messages are customizable in `grz.sessionstats.languages.json`.
-The installation ZIP includes the editable catalog; the `.wotmod` also bundles
-all seven languages. The neighboring language file is optional: missing or invalid
-overrides fall back to bundled translations, then embedded English. See
-[language configuration](docs/LANGUAGES.md).
+Use the Language dropdown in the panel to change this same configuration value.
+The choice is saved to `mods/configs/grz.sessionstats.json` and applied immediately;
+all other config values and battle history are preserved. Manual edits still work
+when the panel is reopened or Refresh is selected.
+All seven translation catalogs are bundled inside the `.wotmod`. External language
+catalogs are not read, copied or installed. See [language configuration](docs/LANGUAGES.md).
 
 The main configuration is optional too. Include only fields you want to override;
 omitted fields and nested settings use defaults. For example:
@@ -92,8 +93,8 @@ omitted fields and nested settings use defaults. For example:
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside
-the active package if present. Existing central files always win and are never rewritten.
-Optional translation overrides belong in `mods/configs/grz.sessionstats.languages.json`.
+the active package if present. Existing central files always win during initialization; only an explicit GUI language selection updates their language property.
+The packaged language catalog is fixed to the seven supported choices; old external language files are ignored.
 Appearance fields and validation: [APPEARANCE_CONFIG.md](docs/APPEARANCE_CONFIG.md).
 
 Battle outcomes use unchanged local WG notification artwork with separate captions.

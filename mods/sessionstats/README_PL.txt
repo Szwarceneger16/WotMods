@@ -40,7 +40,6 @@ QUICK INSTALLATION
    WorldOfTanks.exe. For client 2.4.1.0, the installed files should include:
    mods/2.4.1.0/grz.sessionstats_0.3.0.wotmod
    mods/configs/grz.sessionstats.json
-   mods/configs/grz.sessionstats.languages.json
    mods/2.4.1.0/net.openwg/net.openwg.gameface_1.2.2.wotmod
    Preserve your existing configuration and language overrides when copying.
 4. If another mod pack already provides OpenWG Gameface 1.2.2 or newer, retain
@@ -67,13 +66,13 @@ in grz.sessionstats.json takes priority over the game, for example:
 {"language": "pl"}
 Existing "language": "en" remains an explicit English override. Change it to
 "auto" or remove the property to follow the game after upgrading.
-The neighboring grz.sessionstats.languages.json is an optional editable override.
-If it is absent or invalid, the mod uses its bundled catalogs. Individual missing
-translations fall back to English; an English dictionary is also embedded in
-Python code for use if the bundled resource cannot be read. Deleting or omitting
-the external language file therefore does not prevent the mod from starting.
+Use the panel Language dropdown to change the same setting without editing JSON.
+It saves language to grz.sessionstats.json and applies the choice immediately.
+Other settings and all battle history are preserved. Manual config edits continue
+working after Refresh or reopening the panel. The translation catalog is inside
+the .wotmod only; old external language files are ignored and never migrated.
 Map and vehicle names supplied by the game retain the client's own localization.
-See source/docs/LANGUAGES.md for catalog keys, placeholders and custom languages.
+See source/docs/LANGUAGES.md for supported choices and fallback behavior.
 
 The main grz.sessionstats.json is also optional. It may contain only the fields
 you want to change, including partial nested sections. Missing fields use defaults;

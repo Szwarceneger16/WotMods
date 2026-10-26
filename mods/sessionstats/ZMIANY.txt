@@ -1,11 +1,14 @@
 SESSION STATS — CHANGELOG
 
-0.3.0 • 2026-10-24
+0.3.0 • 2026-10-26
 • Add global Min/Avg/Max sorting by Base XP, Received XP, net credits and battle WN8, ascending or descending.
 • Add independent newest/oldest date ordering between Previous and Next.
 • Add Tiers with the same totals and sorting in all session scopes, including tier XI and unknown metadata.
 • Add two compact rows of Gameface-compatible dropdown controls and seven-language captions.
 • Return to page one after sorting; preserve full-period totals and bounded native payloads.
+• Bundle all seven translations internally; ignore and stop distributing external catalogs.
+• Add a GUI language dropdown that saves the existing config, applies immediately and preserves all other settings.
+• Include the accepted Windows journal recovery fixes from 0.2.12.
 
 0.2.12 • 2026-10-26
 

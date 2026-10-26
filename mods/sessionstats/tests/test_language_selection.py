@@ -44,6 +44,36 @@ class LanguageFileTests(unittest.TestCase):
         for code in ['pt-BR','../pl','PL','pl\n',None,True,{},[]]:
             self.assertFalse(config_files.save_language(self.path,code))
             self.assertEqual(self.read(),b'{"language":"en"}')
+    def test_windows_atomic_replacement_uses_unicode_and_replace_existing_flags(self):
+        import sys
+        import types
+        calls=[]
+        class Move(object):
+            def __call__(self,*args): calls.append(args);return 1
+        move=Move()
+        fake=types.ModuleType(str('ctypes'))
+        fake.wintypes=type(str('Types'),(),{'LPCWSTR':str,'DWORD':int,'BOOL':bool})
+        fake.WinDLL=lambda name,**kwargs:type(str('Kernel'),(),{'MoveFileExW':move})()
+        previous_module=sys.modules.get('ctypes');previous_name=config_files.os.name
+        sys.modules['ctypes']=fake;config_files.os.name='nt'
+        try: config_files._replace_file('źródło.tmp','ustawienia.json')
+        finally:
+            config_files.os.name=previous_name
+            if previous_module is None: del sys.modules['ctypes']
+            else: sys.modules['ctypes']=previous_module
+        self.assertEqual(calls,[('źródło.tmp','ustawienia.json',0x1|0x8)])
+
+    def test_concurrent_manual_edit_is_preserved(self):
+        self.write(b'{"language":"en"}')
+        original=config_files.tempfile.mkstemp
+        def changed(*args,**kwargs):
+            self.write(b'{"language":"uk","custom":7}')
+            return original(*args,**kwargs)
+        config_files.tempfile.mkstemp=changed
+        try: self.assertFalse(config_files.save_language(self.path,'fr'))
+        finally: config_files.tempfile.mkstemp=original
+        self.assertEqual(self.read(),b'{"language":"uk","custom":7}')
+
     def test_failed_atomic_replace_preserves_previous_config_and_removes_temp(self):
         original=config_files._replace_file
         self.write(b'{"language":"en"}')
@@ -56,17 +86,17 @@ class LanguageFileTests(unittest.TestCase):
 
 
 class NativeLanguageTests(unittest.TestCase):
-    inject_module=paging.NativePaginationTests.inject_module
-    payload=paging.NativePaginationTests.payload
+    inject_module=paging.NativePaginationTests.__dict__['inject_module']
+    payload=paging.NativePaginationTests.__dict__['payload']
     def setUp(self):
-        paging.NativePaginationTests.setUp(self)
+        paging.NativePaginationTests.__dict__['setUp'](self)
         self.path=os.path.join(self.directory,'grz.sessionstats.json')
         self.document={'language':'en','colors':{'window_border':'#123456'},'scroll':{'speed_multiplier':2},'sessions':{'instance_tab':True}}
         with io.open(self.path,'w',encoding='utf-8') as handle: handle.write(json.dumps(self.document))
         self.mod.data_dir=self.directory
         self.mod._appearance_override_path=self.path
         self.mod._load_appearance();self.window.refresh()
-    def tearDown(self): paging.NativePaginationTests.tearDown(self)
+    def tearDown(self): paging.NativePaginationTests.__dict__['tearDown'](self)
     def command(self,code,account='EU:7'):
         self.window._model.onAction({'action':'language','language':code,'account_key':account})
     def test_gui_choice_persists_and_updates_immediately_without_changing_history(self):

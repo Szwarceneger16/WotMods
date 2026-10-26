@@ -164,3 +164,13 @@ must still use exactly `wotmod-release-${{ github.repository }}`. Concurrency
 protection applies to cooperating workflows; manual administrator publication,
 queue overflow or failed builds require operator attention and are not repaired
 by another mod's successful release.
+
+### Bundled Session Stats translations
+
+Session Stats 0.3.0 and later carry their fixed seven-language catalog inside the
+`.wotmod`, with `languages_resource` and `languages_resource_sha256` in BUILD.json.
+Their installers include only `grz.sessionstats.json.example` under mods/configs;
+the GUI saves the selected language to the corresponding active JSON. The shared
+packager verifies the embedded bytes and rejects an external language config in
+new-format builds. Previously published installers retain their legacy validation
+contract and are carried forward unchanged until that mod is updated.
