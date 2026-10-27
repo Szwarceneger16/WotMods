@@ -20,13 +20,23 @@ module.exports = async ({browser,nativeHost,check}) => {
       return style && style.backgroundImage.includes('/BgBattleResultIcon'+name+'-1.png') &&
         style.backgroundSize==='contain' && style.filter==='none' && node.textContent==='';
     })));
-  check('WG-localized captions remain separate from the untouched image',await page.evaluate(()=>
+  check('WG-localized captions sit beside the untouched image',await page.evaluate(()=>
     Array.from(document.querySelectorAll('.ss-outcome-label')).map(n=>n.textContent).join('|')===
       'Zwycięstwo|Porażka|Remis' && Array.from(document.querySelectorAll('.ss-outcome-art')).every(node=>{
         const image=node.querySelector('.ss-outcome-image'),label=node.querySelector('.ss-outcome-label');
         return image.getAttribute('aria-hidden')==='true' &&
-          label.getBoundingClientRect().top>=image.getBoundingClientRect().bottom-1;
+          label.getBoundingClientRect().left>=image.getBoundingClientRect().right-1 &&
+          label.getBoundingClientRect().top<image.getBoundingClientRect().bottom &&
+          node.getBoundingClientRect().height<=32;
       })));
+  check('Battle cards keep Free XP above the tables and use compact headers and rows',await page.evaluate(()=>
+    Array.from(document.querySelectorAll('#ss-groups .ss-group')).every(group=>{
+      const free=group.querySelector('.ss-free-xp'), details=group.querySelector('.ss-details');
+      return group.querySelector('.ss-group-header').getBoundingClientRect().height<=48 &&
+        free.getBoundingClientRect().bottom<=details.getBoundingClientRect().top+1 &&
+        Array.from(group.querySelectorAll('.ss-battle-measure,.ss-money-row')).every(row=>row.getBoundingClientRect().height<=30) &&
+        group.getBoundingClientRect().height<=145;
+    })));
   for(const width of [320,744]) {
     await page.setViewportSize({width,height:820});
     check('Outcome art and identity fit the panel at width '+width,await page.evaluate(()=>{

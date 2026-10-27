@@ -1,5 +1,18 @@
 SESSION STATS — CHANGELOG
 
+0.3.2 • 2026-10-27
+• Align Previous/date order/Next in one equal-height row. Keep the page counter
+  beside the list count, independently of button sizing.
+• Restore compact cards and table rows. Put Victory/Defeat captions beside the
+  unchanged artwork, WN8 coverage beside the name and Free XP above the tables.
+• Show identical financial coverage once by the currency name; preserve separate
+  counts whenever income, costs and net have different coverage.
+• Put Language in the existing toolbar, saving a separate row of panel space.
+• Accept native Python 2 byte-string language commands. Support embedded Windows
+  clients without ctypes with rollback and interrupted-write recovery.
+• All seven language catalogs remain inside the .wotmod; the config stores only
+  the selected language along with the user's other existing settings.
+
 0.3.1 • 2026-10-26
 • Deduplicate data notices after translation. Legacy Polish and canonical English
   copies of the same warning now produce one visible message and one notice count.

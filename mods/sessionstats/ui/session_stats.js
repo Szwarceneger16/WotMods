@@ -192,7 +192,7 @@
         append(name, element('span', 'ss-cell-value', label));
         var partial = coverage(data.count, total);
         if (partial) { explainCoverage(append(name, element('span', 'ss-cell-coverage',
-            t('coverage.battles', [partial]))), data.count, total); }
+            ' (' + partial + ')')), data.count, total); }
         append(row, element('div', 'ss-metric-number', wn8 ? integer(data.min) : number(data.min)));
         append(row, element('div', 'ss-metric-number', wn8 ? integer(data.avg) : number(data.avg)));
         append(row, element('div', 'ss-metric-number', wn8 ? integer(data.max) : number(data.max)));
@@ -203,23 +203,39 @@
         append(row, element('strong', 'ss-battle-value' + (wn8 ? ' ss-wn8' : ''),
             wn8 ? integer(value) : number(value)));
     }
-    function moneyCell(parent, data, field, total) {
+    function moneyCell(parent, data, field, total, sharedCoverage) {
         var value = data[field];
         var output = field === 'costs' ? cost(value) : (field === 'net' ? signed(value) : number(value));
         var cell = append(parent, element('div', 'ss-money-value' +
             (field === 'net' ? quantityClass(value) : (!hasNumber(value) ? ' ss-unknown' : ''))));
         append(cell, element('span', 'ss-cell-value', output));
         var partial = coverage(data[field + '_count'], total);
-        if (partial) { explainCoverage(append(cell, element('span', 'ss-cell-coverage', partial)),
+        if (partial && !sharedCoverage) { explainCoverage(append(cell, element('span', 'ss-cell-coverage', partial)),
             data[field + '_count'], total); }
     }
     function moneyRow(parent, name, data, total) {
         data = data || {};
         var row = append(parent, element('div', 'ss-money-row'));
-        append(row, element('div', 'ss-money-label', name));
-        moneyCell(row, data, 'income', total);
-        moneyCell(row, data, 'costs', total);
-        moneyCell(row, data, 'net', total);
+        var label = append(row, element('div', 'ss-money-label', name));
+        var shared = data.income_count === data.costs_count && data.costs_count === data.net_count;
+        var partial = coverage(data.income_count, total);
+        if (shared && partial) { explainCoverage(append(label, element('span', 'ss-cell-coverage', partial)), data.income_count, total); }
+        moneyCell(row, data, 'income', total, shared);
+        moneyCell(row, data, 'costs', total, shared);
+        moneyCell(row, data, 'net', total, shared);
+    }
+    function freeXP(parent, stats) {
+        var free = append(parent, element('div', 'ss-free-xp'));
+        append(free, element('span', '', t('xp.free')));
+        append(free, element('strong', '', number(series(stats.free_xp).sum)));
+        var partial = coverage(series(stats.free_xp).count, observedTotal(stats));
+        if (partial) { explainCoverage(append(free, element('span', 'ss-count-coverage',
+            ' (' + partial + ')')), series(stats.free_xp).count, observedTotal(stats)); }
+    }
+    function wn8Coverage(parent, stats, battle) {
+        var partial = coverage(stats.wn8_count, observedTotal(stats));
+        if (partial) { append(parent, element('span', 'ss-coverage-note',
+            battle ? t('coverage.wn8.battle') : t('coverage.wn8.period', [partial]))); }
     }
     function details(parent, stats, global, battle) {
         stats = stats || {};
@@ -243,12 +259,6 @@
             measureRow(performance, xpLabel, xp, false, total);
             measureRow(performance, t('metric.battle_wn8'), series(stats.battle_wn8), true, total);
         }
-        var free = append(performance, element('div', 'ss-free-xp'));
-        append(free, element('span', '', t('xp.free')));
-        append(free, element('strong', '', number(series(stats.free_xp).sum)));
-        var partialFree = coverage(series(stats.free_xp).count, total);
-        if (partialFree) { explainCoverage(append(free, element('span', 'ss-count-coverage',
-            ' (' + t('coverage.battles', [partialFree]) + ')')), series(stats.free_xp).count, total); }
         if (global) {
             append(performance, element('div', 'ss-explainer',
                 t('explain.wn8')));
@@ -272,12 +282,6 @@
         if (global) {
             append(economy, element('div', 'ss-explainer',
                 t('explain.costs')));
-        }
-        var wnPartial = coverage(stats.wn8_count, total);
-        if (wnPartial) {
-            append(parent, element('div', 'ss-coverage-note',
-                battle ? t('coverage.wn8.battle') :
-                    t('coverage.wn8.period', [wnPartial])));
         }
     }
     function renderSummary(stats, scope) {
@@ -304,6 +308,9 @@
             append(nodes.summary, element('p', 'ss-data-notice',
                 t('coverage.partial', [number(stats.partial_results)])));
         }
+        var summaryMeta = append(nodes.summary, element('div', 'ss-summary-meta'));
+        freeXP(summaryMeta, stats);
+        wn8Coverage(summaryMeta, stats, false);
         details(nodes.summary, stats, true);
         if (nodes.summary.querySelector('.ss-cell-coverage, .ss-count-coverage, .ss-coverage-note')) {
             append(nodes.summary, element('p', 'ss-coverage-note ss-coverage-legend', t('coverage.legend')));
@@ -402,7 +409,7 @@
         trigger.setAttribute('aria-haspopup','listbox'); trigger.setAttribute('aria-expanded','false');
         trigger.setAttribute('aria-controls','ss-options-' + field);
         var label = append(trigger,element('span','ss-control-label'));
-        append(trigger,element('span','ss-select-arrow','▾')).setAttribute('aria-hidden','true');
+        append(trigger,element('span','ss-select-arrow')).setAttribute('aria-hidden','true');
         var menu = append(holder,element('div','ss-select-options'));
         menu.id = 'ss-options-' + field; menu.setAttribute('role','listbox'); menu.style.display = 'none';
         var control = {trigger:trigger,label:label,menu:menu,options:[]};
@@ -507,7 +514,7 @@
         var list = state.list;
         var end = Math.min(list.length, limit);
         var fragment = document.createDocumentFragment();
-        var index, item, stats, group, header, identity, subtitle;
+        var index, item, stats, group, header, identity, subtitle, heading, meta;
         var battle = state.group === 'battles';
         for (index = state.renderedCount; index < end; index += 1) {
             item = list[index];
@@ -518,11 +525,15 @@
             header = append(group, element('div', 'ss-group-header'));
             appendVisual(header, item);
             identity = append(header, element('div', 'ss-group-name'));
-            append(identity, element('h2', 'ss-group-title', item.name || t('unknown')));
+            heading = append(identity, element('div', 'ss-group-heading'));
+            append(heading, element('h2', 'ss-group-title', item.name || t('unknown')));
+            wn8Coverage(heading, stats, battle);
             subtitle = state.group === 'vehicles' ?
                 (tierText(item.tier) + (vehicleType(item.type) ? ' · ' + vehicleType(item.type) : '')) :
                 (battle ? date(item.started_at, true) + ' · ' + (item.map || t('unknown.map')) : '');
-            if (subtitle) { append(identity, element('div', 'ss-group-subtitle', subtitle)); }
+            meta = append(identity, element('div', 'ss-group-meta'));
+            if (subtitle) { append(meta, element('div', 'ss-group-subtitle', subtitle)); }
+            freeXP(meta, stats);
             if (battle) {
                 appendOutcome(header, item);
             } else {

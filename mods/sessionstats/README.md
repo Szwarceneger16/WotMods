@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.3.1 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.3.2 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;

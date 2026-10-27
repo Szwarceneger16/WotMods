@@ -39,6 +39,11 @@ module.exports = async ({browser,nativeHost,check}) => {
       return Array.from(bar.children).every(node=>{const child=node.getBoundingClientRect();
         return child.width>0 && child.left>=box.left-1 && child.right<=box.right+1;});
     }));
+    check('Previous, chronology and Next share one aligned row at width '+width,await page.evaluate(()=>{
+      const boxes=['ss-page-previous','ss-sort-chronology','ss-page-next'].map(id=>document.getElementById(id).getBoundingClientRect());
+      return boxes.every(b=>Math.abs(b.top-boxes[0].top)<=1 && Math.abs(b.height-boxes[0].height)<=1) &&
+        document.getElementById('ss-page-label').getBoundingClientRect().bottom<=boxes[0].top;
+    }));
   }
   await page.locator('#ss-page-next').click();
   check('Page command carries account, period and grouping ownership',await page.evaluate(()=>{

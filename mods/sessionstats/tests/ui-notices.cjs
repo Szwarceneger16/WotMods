@@ -48,5 +48,22 @@ module.exports=async({browser,nativeHost,check})=>{
   await render(copy());
   check('Complete data removes the temporary coverage explanation',await page.locator('#ss-summary .ss-coverage-legend').count()===0);
   check('Cleared notices remove the notice count from the footer',await page.locator('#ss-status').textContent().then(t=>!t.includes('Data notices:')));
+  payload=copy();
+  const vehicle=payload.scopes.launch.vehicles[0], partial=vehicle.stats;
+  partial.observed_battles=4;partial.battles=3;partial.wn8_count=3;
+  partial.xp_base.count=3;partial.battle_wn8.count=3;partial.free_xp.count=3;
+  for(const field of ['income','costs','net']) partial.currencies.credits[field+'_count']=3;
+  await render(payload);
+  check('Partial group keeps its WN8 note beside the name and Free XP above the tables',await page.locator('#ss-groups .ss-group').first().evaluate(group=>{
+    const heading=group.querySelector('.ss-group-heading'), note=heading.querySelector('.ss-coverage-note');
+    const title=heading.querySelector('.ss-group-title').getBoundingClientRect();
+    const free=group.querySelector('.ss-free-xp').getBoundingClientRect();
+    return note && note.getBoundingClientRect().left>=title.right && note.getBoundingClientRect().top<title.bottom &&
+      free.bottom<=group.querySelector('.ss-details').getBoundingClientRect().top+1;
+  }));
+  check('Shared financial coverage appears once per row without tall value cells',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().evaluate(row=>
+    row.querySelectorAll('.ss-cell-coverage').length===1 && row.querySelector('.ss-money-label .ss-cell-coverage').textContent==='3/4' && row.getBoundingClientRect().height<=30));
+  partial.currencies.credits.net_count=2;await render(payload);
+  check('Different financial coverage retains the independent count for each value',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().locator('.ss-money-value .ss-cell-coverage').allTextContents().then(values=>values.join('|')==='3/4|3/4|2/4'));
   await page.close();
 };
