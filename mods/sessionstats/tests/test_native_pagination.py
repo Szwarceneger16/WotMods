@@ -83,6 +83,13 @@ class NativePaginationTests(unittest.TestCase):
         self.window._model.onAction(command)
         self.assertEqual(self.payload()['scopes']['manual']['pagination']['battles']['page'], 1)
 
+    def test_native_python2_byte_page_is_accepted_but_invalid_bytes_are_rejected(self):
+        self.window._model.onAction(self.command(page=b'1'))
+        self.assertEqual(self.payload()['scopes']['manual']['pagination']['battles']['page'],1)
+        for value in [b'\xff', b'-1', b'1\n', b'1.5']:
+            self.window._model.onAction(self.command(page=value))
+        self.assertEqual(self.payload()['scopes']['manual']['pagination']['battles']['page'],1)
+
     def test_reset_invalidates_a_page_request_from_the_previous_period(self):
         command = self.command()
         self.window._model.onAction({'action': 'reset', 'scope': 'manual', 'account_key': 'EU:7'})

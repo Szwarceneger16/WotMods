@@ -655,6 +655,7 @@
             state.list = [];
             state.renderedCount = 0;
             nodes['list-meta'].textContent = '';
+            document.getElementById('ss-page-label').textContent = '';
             document.getElementById('ss-pagination').style.display = 'none';
             document.getElementById('ss-sorting').style.display = 'none';
             closeSelect(false);

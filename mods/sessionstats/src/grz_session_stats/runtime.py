@@ -1395,6 +1395,11 @@ class Runtime(object):
                     return
             else:
                 raw_page = getter('page')
+                if isinstance(raw_page, bytes) and not isinstance(raw_page, text_type):
+                    try:
+                        raw_page = raw_page.decode('ascii')
+                    except UnicodeError:
+                        return
                 if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
                     return
                 if not service.set_page(scope, group, int(raw_page), period_id):

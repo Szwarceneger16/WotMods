@@ -11,6 +11,7 @@ module.exports = async ({browser,nativeHost,check}) => {
   });
   check('History loading replaces totals with a loading notice', await page.locator('#ss-summary').textContent().then(t=>t.includes('Loading history')));
   check('History loading hides all previously rendered battle rows', await page.locator('#ss-groups .ss-group').count()===0);
+  check('History loading clears the previous page counter', await page.locator('#ss-page-label').textContent()==='');
   check('History loading preserves the scroll container and groups node', await page.locator('#ss-scroll #ss-groups').count()===1);
   check('History loading disables manual reset', await page.locator('#ss-reset').isDisabled());
   await page.evaluate(()=>document.getElementById('ss-reset').onclick());
