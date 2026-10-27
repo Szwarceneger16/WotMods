@@ -186,12 +186,12 @@
         append(holder, element('span', 'ss-kpi-label', label));
         append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
     }
-    function measureRow(parent, label, data, wn8, total) {
+    function measureRow(parent, label, data, wn8, total, sharedCoverage) {
         var row = append(parent, element('div', 'ss-metric-row'));
         var name = append(row, element('div', 'ss-metric-name'));
         append(name, element('span', 'ss-cell-value', label));
         var partial = coverage(data.count, total);
-        if (partial) { explainCoverage(append(name, element('span', 'ss-cell-coverage',
+        if (partial && !sharedCoverage) { explainCoverage(append(name, element('span', 'ss-cell-coverage',
             ' (' + partial + ')')), data.count, total); }
         append(row, element('div', 'ss-metric-number', wn8 ? integer(data.min) : number(data.min)));
         append(row, element('div', 'ss-metric-number', wn8 ? integer(data.avg) : number(data.avg)));
@@ -251,13 +251,17 @@
             battleMeasure(performance, xpLabel, xp.count === 1 ? xp.sum : null, false);
             battleMeasure(performance, t('metric.wn8'), stats.wn8_count === 1 ? stats.wn8 : null, true);
         } else {
+            var battleWN8 = series(stats.battle_wn8);
+            var shared = xp.count === battleWN8.count && !!coverage(xp.count, total);
             var header = append(performance, element('div', 'ss-metric-head'));
-            append(header, element('div', 'ss-metric-name', ''));
+            var countHeader = append(header, element('div', 'ss-metric-name' + (shared ? ' ss-metric-count' : ''), ''));
+            if (shared) { explainCoverage(append(countHeader, element('span', 'ss-cell-coverage',
+                coverage(xp.count, total))), xp.count, total); }
             append(header, element('div', 'ss-metric-number', t('metric.min')));
             append(header, element('div', 'ss-metric-number', t('metric.avg')));
             append(header, element('div', 'ss-metric-number', t('metric.max')));
-            measureRow(performance, xpLabel, xp, false, total);
-            measureRow(performance, t('metric.battle_wn8'), series(stats.battle_wn8), true, total);
+            measureRow(performance, xpLabel, xp, false, total, shared);
+            measureRow(performance, t('metric.battle_wn8'), battleWN8, true, total, shared);
         }
         if (global) {
             append(performance, element('div', 'ss-explainer',

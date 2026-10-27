@@ -7,6 +7,8 @@ SESSION STATS — CHANGELOG
   unchanged artwork, WN8 coverage beside the name and Free XP above the tables.
 • Show identical financial coverage once by the currency name; preserve separate
   counts whenever income, costs and net have different coverage.
+• Put shared XP/battle-WN8 coverage in the metric header, keeping partial rows
+  compact. Different metric coverage retains its independent count.
 • Put Language in the existing toolbar, saving a separate row of panel space.
 • Accept native Python 2 byte-string language commands. Support embedded Windows
   clients without ctypes with rollback and interrupted-write recovery.

@@ -64,6 +64,17 @@ module.exports=async({browser,nativeHost,check})=>{
   }));
   check('Shared financial coverage appears once per row without tall value cells',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().evaluate(row=>
     row.querySelectorAll('.ss-cell-coverage').length===1 && row.querySelector('.ss-money-label .ss-cell-coverage').textContent==='3/4' && row.getBoundingClientRect().height<=30));
+  check('Shared XP and battle WN8 coverage uses the header and keeps both rows compact',await page.locator('#ss-groups .ss-group').first().locator('.ss-performance').evaluate(table=>
+    table.querySelector('.ss-metric-head .ss-cell-coverage').textContent==='3/4' &&
+    table.querySelectorAll('.ss-metric-row .ss-cell-coverage').length===0 &&
+    Array.from(table.querySelectorAll('.ss-metric-row')).every(row=>row.getBoundingClientRect().height<=30)));
+  for(const width of [320,744]) {
+    await page.setViewportSize({width,height:820});payload.viewport.width=width;await render(payload);
+    check('Shared partial metric count stays visible at width '+width,await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-count .ss-cell-coverage').evaluate(node=>
+      node.textContent==='3/4' && node.getBoundingClientRect().height>0 && node.getBoundingClientRect().width>0));
+  }
+  partial.battle_wn8.count=2;await render(payload);
+  check('Different XP and WN8 coverage remains independently visible',await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row .ss-cell-coverage').allTextContents().then(values=>values.join('|')===' (3/4)| (2/4)'));
   partial.currencies.credits.net_count=2;await render(payload);
   check('Different financial coverage retains the independent count for each value',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().locator('.ss-money-value .ss-cell-coverage').allTextContents().then(values=>values.join('|')==='3/4|3/4|2/4'));
   await page.close();

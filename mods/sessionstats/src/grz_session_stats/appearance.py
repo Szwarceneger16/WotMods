@@ -332,6 +332,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
      The row label takes a separate line; the three number columns stay equal. */
   .ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { flex-wrap:wrap; }
   .ss-metric-head .ss-metric-name, .ss-money-head .ss-money-label { display:none; }
+  .ss-metric-head .ss-metric-count { display:block; width:100%; padding:0 4rem; }
   .ss-metric-name, .ss-money-label { width:100%; padding-bottom:1rem; }
   .ss-metric-number, .ss-money-value { width:33.333%; }
 }
