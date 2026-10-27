@@ -44,6 +44,49 @@ class LanguageFileTests(unittest.TestCase):
         for code in ['pt-BR','../pl','PL','pl\n',None,True,{},[]]:
             self.assertFalse(config_files.save_language(self.path,code))
             self.assertEqual(self.read(),b'{"language":"en"}')
+    def test_native_byte_string_locale_is_normalized_and_non_ascii_is_rejected(self):
+        self.write(b'{"language":"en","custom":7}')
+        self.assertTrue(config_files.save_language(self.path,b'pl'))
+        self.assertEqual(json.loads(self.read().decode('utf-8')),{'language':'pl','custom':7})
+        for code in [b'\xff', b'PL', b'pl\n', b'../pl']:
+            self.assertFalse(config_files.save_language(self.path,code))
+        self.assertEqual(json.loads(self.read().decode('utf-8'))['language'],'pl')
+
+    def test_embedded_windows_without_ctypes_saves_and_cleans_backup(self):
+        import sys
+        import types
+        previous_module=sys.modules.get('ctypes');previous_name=config_files.os.name
+        sys.modules['ctypes']=types.ModuleType(str('ctypes'));config_files.os.name='nt'
+        self.write(b'{"language":"en","custom":7}')
+        try: self.assertTrue(config_files.save_language(self.path,b'fr'))
+        finally:
+            config_files.os.name=previous_name
+            if previous_module is None: del sys.modules['ctypes']
+            else: sys.modules['ctypes']=previous_module
+        self.assertEqual(json.loads(self.read().decode('utf-8')),{'language':'fr','custom':7})
+        self.assertEqual(os.listdir(self.directory),['settings.json'])
+
+    def test_embedded_windows_failed_publication_restores_previous_config(self):
+        self.write(b'{"language":"en"}')
+        source=os.path.join(self.directory,'new.tmp')
+        with io.open(source,'wb') as handle: handle.write(b'{"language":"fr"}')
+        rename=config_files.os.rename
+        def fail_source(src,dst):
+            if src==source: raise OSError('simulated publication failure')
+            rename(src,dst)
+        config_files.os.rename=fail_source
+        try:
+            with self.assertRaises(OSError): config_files._replace_without_ctypes(source,self.path)
+        finally: config_files.os.rename=rename
+        self.assertEqual(self.read(),b'{"language":"en"}')
+        self.assertFalse(os.path.exists(self.path+'.language-backup'))
+
+    def test_interrupted_windows_replacement_recovers_before_creating_defaults(self):
+        self.write(b'{"language":"uk","custom":7}')
+        os.rename(self.path,self.path+'.language-backup')
+        config_files.prepare_config(self.path,os.path.join(self.directory,'missing.json'))
+        self.assertEqual(self.read(),b'{"language":"uk","custom":7}')
+        self.assertEqual(os.listdir(self.directory),['settings.json'])
     def test_windows_atomic_replacement_uses_unicode_and_replace_existing_flags(self):
         import sys
         import types
@@ -125,6 +168,14 @@ class NativeLanguageTests(unittest.TestCase):
         with io.open(self.path,'wb') as handle: handle.write(json.dumps(dict(self.document,language='uk')).encode('utf-8'))
         self.mod.on_action({'action':'refresh'})
         self.assertEqual(self.payload()['localization']['selected'],'uk')
+
+    def test_actual_python2_byte_command_changes_language_and_survives_reload(self):
+        self.command(b'pl')
+        self.assertEqual(self.payload()['localization']['selected'],'pl')
+        self.assertEqual(self.payload()['localization']['messages']['refresh'],'Odśwież')
+        reloaded=Runtime(api=self.mod.api,appearance_path=self.path)
+        reloaded._load_appearance()
+        self.assertEqual(reloaded._localizer.selected,'pl')
 
 
 if __name__=='__main__': unittest.main()

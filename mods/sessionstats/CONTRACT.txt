@@ -394,6 +394,9 @@ Its native command requires the active account and uses the existing protected v
 Save the language property in mods/configs/grz.sessionstats.json, preserving every other
 property. Reject malformed/oversized/future-schema or concurrently changed files. Publish
 with a flushed same-directory temporary file and atomic replacement (MoveFileExW on Py2
-Windows). On failure, preserve the previous file and selected language and notify locally.
+Windows). If ctypes is absent, retain a rollback backup during complete-file renames
+and recover interrupted replacement before preparing defaults. Accept native ASCII
+byte-string locale codes on Python 2 as well as Unicode, with the same allowlist.
+On failure, preserve the previous file and selected language and notify locally.
 Reload the panel and footer labels after success; never reset history, periods or sort state.
 Manual config changes remain supported. The old external language JSON is ignored.

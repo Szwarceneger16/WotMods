@@ -71,10 +71,41 @@ def _prepare_file(path, legacy, limit, defaults=None):
 def prepare_config(path, legacy):
     """Best-effort migration/defaults; old files and existing targets stay intact."""
     try:
+        _recover_language_backup(path)
         _prepare_file(path, legacy, MAX_CONFIG_BYTES, default_config)
     except Exception as error:
         LOG.warning('CONFIG_SETUP file=%s failed (%s); existing files are unchanged.',
                     os.path.basename(path), type(error).__name__)
+
+
+def _recover_language_backup(path):
+    """Recover an interrupted embedded-Windows replacement before defaults."""
+    backup = path + '.language-backup'
+    if not os.path.lexists(backup):
+        return
+    if not os.path.lexists(path):
+        os.rename(backup, path)
+    else:
+        os.unlink(backup)
+
+
+def _replace_without_ctypes(source, destination):
+    # Some embedded clients do not ship _ctypes. Windows rename is create-only;
+    # keep the old complete file until the new complete file is in place. The
+    # fixed backup name also permits recovery if the client stops between moves.
+    backup = destination + '.language-backup'
+    os.rename(destination, backup)
+    try:
+        os.rename(source, destination)
+    except Exception:
+        if not os.path.lexists(destination):
+            os.rename(backup, destination)
+        raise
+    try:
+        os.unlink(backup)
+    except OSError:
+        # Publication succeeded; cleanup must not report a false save failure.
+        LOG.warning('CONFIG language backup cleanup deferred.')
 
 
 def _replace_file(source, destination):
@@ -82,13 +113,18 @@ def _replace_file(source, destination):
         os.rename(source, destination)
         return
     # CPython 2.7 has no os.replace; Windows rename cannot replace a file.
-    import ctypes
+    try:
+        import ctypes
+        from ctypes import wintypes
+        loader = ctypes.WinDLL
+    except (ImportError, AttributeError):
+        _replace_without_ctypes(source, destination)
+        return
     import sys
-    from ctypes import wintypes
     from .localization import text_type
     def wide(value):
         return value if isinstance(value, text_type) else value.decode(sys.getfilesystemencoding() or 'utf-8')
-    move = ctypes.WinDLL('kernel32', use_last_error=True).MoveFileExW
+    move = loader('kernel32', use_last_error=True).MoveFileExW
     move.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD)
     move.restype = wintypes.BOOL
     if not move(wide(source), wide(destination), 0x1 | 0x8):
@@ -100,10 +136,18 @@ def save_language(path, language):
     from .localization import SUPPORTED, text_type
     from .appearance import _object_pairs, _reject_constant, SCHEMA_VERSION, integer_types
     from .storage import check_json_depth
+    # Wulf command arguments can be byte str on the game's Python 2.7.
+    # Decode only ASCII locale codes, keeping the exact supported allowlist.
+    if isinstance(language, bytes) and not isinstance(language, text_type):
+        try:
+            language = language.decode('ascii')
+        except UnicodeError:
+            return False
     if not isinstance(language, text_type) or language not in ('auto',) + SUPPORTED or not path:
         return False
     temporary = None
     try:
+        _recover_language_backup(path)
         def current():
             try:
                 with io.open(path, 'rb') as handle:

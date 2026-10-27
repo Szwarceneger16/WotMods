@@ -26,7 +26,10 @@ sort selections and all battle history. No new settings file is introduced.
 A malformed, oversized, unsupported-schema or concurrently changed file is not
 replaced. Failed saves preserve the previous configuration and selected language;
 a local notification explains that the save failed. Windows Python 2.7 uses an
-atomic Unicode file replacement after flushing the complete temporary file.
+atomic Unicode file replacement after flushing the complete temporary file. Native
+Python 2 byte-string locale codes are accepted as well as Unicode. Embedded clients
+without ctypes use complete-file renames with a rollback backup; an interrupted
+replacement is recovered before defaults are created on the next load.
 
 ## Game resources and fallbacks
 
