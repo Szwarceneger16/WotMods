@@ -50,6 +50,7 @@ module.exports=async({browser,nativeHost,check})=>{
   check('Cleared notices remove the notice count from the footer',await page.locator('#ss-status').textContent().then(t=>!t.includes('Data notices:')));
   payload=copy();
   const vehicle=payload.scopes.launch.vehicles[0], partial=vehicle.stats;
+  vehicle.name='Leox';
   partial.observed_battles=4;partial.battles=3;partial.wn8_count=3;
   partial.xp_base.count=3;partial.battle_wn8.count=3;partial.free_xp.count=3;
   for(const field of ['income','costs','net']) partial.currencies.credits[field+'_count']=3;

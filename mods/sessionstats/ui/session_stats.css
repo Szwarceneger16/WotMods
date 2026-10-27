@@ -59,8 +59,8 @@ button:disabled { opacity:0.45; }
 .ss-metric-row + .ss-metric-row, .ss-money-row + .ss-money-row { border-top:1rem solid #2e3522; background:#1a1f13; }
 .ss-metric-row:hover, .ss-money-row:hover { background:#252d1b; }
 .ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:3rem 4rem; line-height:20rem; }
-.ss-metric-name { display:block; width:34%; flex-shrink:0; color:#d4ccb0; font-size:13rem; }
-.ss-metric-number { display:block; width:22%; padding-right:3rem; text-align:right; color:#ebe7d4; font-size:16rem; }
+.ss-metric-name { display:block; width:28%; flex-shrink:0; color:#d4ccb0; font-size:13rem; }
+.ss-metric-number { display:block; width:24%; padding-right:3rem; text-align:right; color:#ebe7d4; font-size:16rem; }
 /* Right-aligned numbers retain a 3rem metric / 4rem money trailing inset. There is no
    vertical cell rule; spare leading space belongs to the full amount. */
 .ss-metric-number, .ss-money-value { padding-left:0; }
@@ -182,6 +182,7 @@ button:disabled { opacity:0.45; }
 .ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
 @media (max-width:420px) {
   .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
+  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
 }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:#e8debf; background:#111309; box-shadow:inset 2rem 0 #b3b69a; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }

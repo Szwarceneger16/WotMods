@@ -248,8 +248,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-metric-row + .ss-metric-row, .ss-money-row + .ss-money-row { border-top:1rem solid {{colors.table_row_following_border_top}}; background:{{colors.table_row_following_background}}; }
 .ss-metric-row:hover, .ss-money-row:hover { background:{{colors.table_row_hover_background}}; }
 .ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:3rem 4rem; line-height:20rem; }
-.ss-metric-name { display:block; width:34%; flex-shrink:0; color:{{colors.metric_label_text}}; font-size:13rem; }
-.ss-metric-number { display:block; width:22%; padding-right:3rem; text-align:right; color:{{colors.metric_value_text}}; font-size:16rem; }
+.ss-metric-name { display:block; width:28%; flex-shrink:0; color:{{colors.metric_label_text}}; font-size:13rem; }
+.ss-metric-number { display:block; width:24%; padding-right:3rem; text-align:right; color:{{colors.metric_value_text}}; font-size:16rem; }
 /* Right-aligned numbers retain a 3rem metric / 4rem money trailing inset. There is no
    vertical cell rule; spare leading space belongs to the full amount. */
 .ss-metric-number, .ss-money-value { padding-left:0; }
@@ -371,6 +371,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
 @media (max-width:420px) {
   .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
+  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
 }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
