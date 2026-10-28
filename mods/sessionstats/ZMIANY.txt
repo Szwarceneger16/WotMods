@@ -1,5 +1,21 @@
 SESSION STATS — CHANGELOG
 
+0.2.12 • 2026-10-26
+
+• Create storage files with an explicitly binary OS descriptor on Windows.
+  Python 2.7 text-mode newline expansion could invalidate journal offsets and
+  checksums after a restart, eventually making all retained saves unreadable.
+• Recover the precise legacy journal-header defect in memory, only when the
+  original committed checksum still verifies. No existing file is rewritten
+  during loading, and other corruption still uses the normal backup/read-only
+  safeguards. The data schema, statistics and full history are unchanged.
+• Add synthetic Windows CRT regression tests for new writes, legacy loading,
+  deferred results, mixed journal chains, mirrors, torn writes and tampering.
+  See docs/WINDOWS_JOURNAL_RECOVERY.md for recovery limits and validation scope.
+• Preserve AppData history and custom configuration when upgrading. Remove older
+  active Session Stats packages and install grz.sessionstats_0.2.12.wotmod.
+  No SQLite or additional mod dependency is introduced.
+
 0.2.9 • 2026-10-24
 
 • Previous/Next now use the same olive/gold action-button style as the panel,

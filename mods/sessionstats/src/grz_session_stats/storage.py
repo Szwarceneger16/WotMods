@@ -70,7 +70,27 @@ def _ensure_directory(directory):
 
 
 def _create_file(path):
-    return os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb')
+    # CPython 2.7's fdopen('wb') does not change the Windows descriptor's
+    # translation mode. Text-mode LF expansion breaks journal offsets/hashes.
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0)
+    return os.fdopen(os.open(path, flags, 0o600), 'wb')
+
+
+def _journal_header(handle):
+    header = handle.readline(MAX_TRANSACTION_BYTES + 1)
+    boundary = header.find(b'\r')
+    if (boundary >= 0 and header.startswith(b'{"journal_version":1,') and
+            header[boundary - 1:boundary] == b'}' and
+            header[boundary + 1:boundary + 2] == b'{'):
+        # Old Windows writers expanded the header LF into CRLF, then overwrote
+        # that LF at the intended binary offset with the first transaction.
+        # Restore only this delimiter in memory. Offsets do not change; the
+        # original committed checksum must still verify over every transaction.
+        header = header[:boundary] + b'\n'
+        handle.seek(len(header))
+    if len(header) > MAX_TRANSACTION_BYTES or not header.endswith(b'\n'):
+        raise ValueError('invalid journal header')
+    return header
 
 
 class _WriteLock(object):
@@ -219,9 +239,7 @@ class GenerationStore(object):
         for candidate in (path, path + '.bak'):
             try:
                 with open(candidate, 'rb') as handle:
-                    header = handle.readline(MAX_TRANSACTION_BYTES + 1)
-                    if len(header) > MAX_TRANSACTION_BYTES or not header.endswith(b'\n'):
-                        raise ValueError('invalid journal header')
+                    header = _journal_header(handle)
                     digest = hashlib.sha256(header).hexdigest()
                     while handle.tell() < offset:
                         raw = handle.readline(min(MAX_TRANSACTION_BYTES + 1, offset - handle.tell()))
@@ -480,8 +498,7 @@ class GenerationStore(object):
                             'payload': stored}
                 encoded = canonical_bytes(envelope)
                 try:
-                    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                    with os.fdopen(descriptor, 'wb') as handle:
+                    with _create_file(temporary) as handle:
                         handle.write(encoded)
                         handle.flush()
                         os.fsync(handle.fileno())
