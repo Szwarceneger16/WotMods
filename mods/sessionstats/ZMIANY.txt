@@ -1,5 +1,14 @@
 SESSION STATS — CHANGELOG
 
+0.3.4 • 2026-10-30
+• Use the requested lowercase installed filename grz_sessions_stats.wotmod.
+  ZIP downloads and internal metadata retain their release version.
+• Recognize the preceding GRZ_Session_Stats.wotmod test filename for config
+  discovery, while rejecting duplicate current/previous names together.
+• Verify the new stable Medkit installer alongside Session Stats. Preserve older
+  Session Stats and Medkit installers byte-for-byte when carrying them forward.
+• Remove GRZ_Session_Stats.wotmod once when replacing the earlier 0.3.3 test build.
+
 0.3.3 • 2026-10-30
 • Keep the download ZIP versioned, but always install GRZ_Session_Stats.wotmod.
   Extracting later releases overwrites the existing mod instead of adding copies.

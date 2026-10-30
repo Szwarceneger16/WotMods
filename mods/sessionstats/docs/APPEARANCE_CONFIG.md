@@ -1,11 +1,11 @@
-# Appearance and scrolling configuration — 0.3.3
+# Appearance and scrolling configuration — 0.3.4
 
 ## File placement and applying changes
 
 Place **`grz.sessionstats.json`** in the game installation's **`mods/configs`** directory:
 
 ```text
-mods/2.4.1.0/GRZ_Session_Stats.wotmod
+mods/2.4.1.0/grz_sessions_stats.wotmod
 mods/configs/grz.sessionstats.json
 ```
 

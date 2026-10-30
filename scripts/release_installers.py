@@ -17,11 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 DATE = (2026, 10, 24, 0, 0, 0)
 SEMVER = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
 CLIENT = '2.4.1.0'
-SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
+SESSIONSTATS_PACKAGE = 'grz_sessions_stats.wotmod'
+PREVIOUS_SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
 KINDS = {
     'staysharp': ('StaySharp-Medkit-v', 'com.staysharp.medkitreminder_', 'Stay Sharp Medkit'),
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
 }
+MEDKIT_INSTALLED_PACKAGE = 'GRZ_Medkit_Reminder.wotmod'
 
 
 def digest(data):
@@ -99,7 +101,7 @@ def installed_package(kind, version, report=None):
     if kind != 'sessionstats':
         return legacy
     name = (report or {}).get('installed_package', legacy)
-    if name not in (legacy, SESSIONSTATS_PACKAGE):
+    if name not in (legacy, SESSIONSTATS_PACKAGE, PREVIOUS_SESSIONSTATS_PACKAGE):
         raise ValueError('Invalid installed package filename')
     return name
 
@@ -132,7 +134,11 @@ def verify(path):
     build_report = json.loads(files.get(doc + 'BUILD.json', b'{}')) if kind == 'sessionstats' else None
     primary = 'mods/' + client + '/' + installed_package(kind, version, build_report)
     if primary not in files:
-        raise ValueError('Missing primary mod')
+        stable = 'mods/' + client + '/' + MEDKIT_INSTALLED_PACKAGE
+        if kind == 'staysharp' and stable in files:
+            primary = stable
+        else:
+            raise ValueError('Missing primary mod')
     package = read_zip(io.BytesIO(files[primary]))
     import xml.etree.ElementTree as ET
     meta = ET.fromstring(package['meta.xml'])
@@ -217,7 +223,8 @@ def package(source, destination, kind, client=CLIENT):
             raise ValueError('Build version mismatch')
         client = report['client_target']
         installed_primary = installed_package(kind, version, report)
-        config_name = 'grz.sessionstats.json' + ('.example' if installed_primary == SESSIONSTATS_PACKAGE else '')
+        config_name = 'grz.sessionstats.json' + ('.example' if installed_primary in
+            (SESSIONSTATS_PACKAGE, PREVIOUS_SESSIONSTATS_PACKAGE) else '')
         bundle = read_zip(io.BytesIO(files['wot-statystyki-sesji-v' + version + '.zip']))
         # Check the exact files against the separately verified build; a stale
         # installer must never replace the validated package/config/dependency.

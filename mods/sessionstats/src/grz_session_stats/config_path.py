@@ -18,7 +18,8 @@ from . import VERSION
 
 LOG = logging.getLogger('grz.sessionstats')
 CONFIG_FILENAME = 'grz.sessionstats.json'
-PACKAGE_FILENAME = 'GRZ_Session_Stats.wotmod'
+PACKAGE_FILENAME = 'grz_sessions_stats.wotmod'
+PREVIOUS_PACKAGE_FILENAME = 'GRZ_Session_Stats.wotmod'
 MAX_XML_BYTES = 256 * 1024
 MAX_XML_NODES = 4096
 MAX_PACKAGE_ROOTS = 32
@@ -208,7 +209,7 @@ def _find_config_location(package_name=None, resmgr=None, cwd=None):
             raise _LocationError('invalid_package_name')
         # The installed name is stable across releases. The exact current
         # versioned developer artifact remains supported for older callers.
-        package_names = (variants[0], legacy_name) if default_name else (variants[0],)
+        package_names = (variants[0], PREVIOUS_PACKAGE_FILENAME, legacy_name) if default_name else (variants[0],)
         if resmgr is None:
             try:
                 import ResMgr as resmgr

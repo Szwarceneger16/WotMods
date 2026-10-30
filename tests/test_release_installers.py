@@ -30,7 +30,7 @@ def mod(identifier, version, payload=b'payload'):
                     'res/'+identifier+'/module.pyc': payload})
 
 
-def build(directory, kind, version, internal=False, stable=False):
+def build(directory, kind, version, internal=False, stable=False, installed_name=None):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = r.KINDS[kind][1]
     primary = prefix+version+'.wotmod'
@@ -40,7 +40,7 @@ def build(directory, kind, version, internal=False, stable=False):
         dependency = mod('net.openwg.gameface', '1.2.2')
         report_data={'version':version, 'client_target':r.CLIENT, 'languages_config_sha256':r.digest(language)}
         if stable:
-            report_data['installed_package']=r.SESSIONSTATS_PACKAGE
+            report_data['installed_package']=installed_name or r.SESSIONSTATS_PACKAGE
         if internal:
             language=json.dumps({'schema_version':1,'languages':{code:{'title':'Fixture'} for code in ('en','pl','ru','fr','de','es','uk')}}).encode()
             resources=r.read_zip(io.BytesIO((directory/primary).read_bytes()))
@@ -53,7 +53,7 @@ def build(directory, kind, version, internal=False, stable=False):
         (directory/'net.openwg.gameface_1.2.2.wotmod').write_bytes(dependency)
         (directory/'BUILD.json').write_bytes(report)
         bundled = {
-            'mods/'+r.CLIENT+'/'+(r.SESSIONSTATS_PACKAGE if stable else primary):(directory/primary).read_bytes(),
+            'mods/'+r.CLIENT+'/'+((installed_name or r.SESSIONSTATS_PACKAGE) if stable else primary):(directory/primary).read_bytes(),
             'mods/'+r.CLIENT+'/net.openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
             'mods/configs/grz.sessionstats.json'+('.example' if stable else ''):config,
             'mods/configs/grz.sessionstats.languages.json':language,
@@ -131,7 +131,7 @@ class InstallerTests(unittest.TestCase):
         _,version,client,files,primary=r.verify(target)
         self.assertEqual(target.name,'Session-Stats-v0.3.3.zip')
         self.assertEqual(version,'0.3.3')
-        self.assertEqual(primary,'mods/'+client+'/GRZ_Session_Stats.wotmod')
+        self.assertEqual(primary,'mods/'+client+'/grz_sessions_stats.wotmod')
         self.assertEqual({n for n in files if n.startswith('mods/'+client+'/') and '/net.openwg/' not in n}, {primary})
         self.assertEqual(files[primary],(self.source/'grz.sessionstats_0.3.3.wotmod').read_bytes())
 
@@ -149,7 +149,7 @@ class InstallerTests(unittest.TestCase):
             with zipfile.ZipFile(target) as installer: installer.extractall(game)
         self.assertEqual(paths,['Session-Stats-v0.3.3.zip','Session-Stats-v0.3.4.zip'])
         packages=list((game/'mods'/r.CLIENT).glob('*.wotmod'))
-        self.assertEqual([p.name for p in packages],['GRZ_Session_Stats.wotmod'])
+        self.assertEqual([p.name for p in packages],['grz_sessions_stats.wotmod'])
         import xml.etree.ElementTree as ET
         contents=r.read_zip(packages[0])
         self.assertEqual(ET.fromstring(contents['meta.xml']).findtext('version'),'0.3.4')
@@ -164,6 +164,32 @@ class InstallerTests(unittest.TestCase):
             r.manifest(self.source)
             with self.assertRaisesRegex(ValueError,'installed package filename'):
                 r.package(self.source,self.out,'sessionstats')
+
+    def test_previous_stable_stats_installer_carries_forward_unchanged(self):
+        build(self.source,'sessionstats','0.3.3',internal=True,stable=True,
+              installed_name='GRZ_Session_Stats.wotmod')
+        path=r.package(self.source,self.out,'sessionstats')
+        before=path.read_bytes()
+        self.assertEqual(r.verify(path)[4],'mods/'+r.CLIENT+'/GRZ_Session_Stats.wotmod')
+        r.normalize(self.out)
+        self.assertEqual(path.read_bytes(),before)
+
+    def test_stable_medkit_and_lowercase_stats_installers_coexist_and_carry_unchanged(self):
+        medkit=self.root/'medkit'
+        build(medkit,'staysharp','1.7.0')
+        path=r.package(medkit,self.out,'staysharp')
+        _,_,_,files,old_primary=r.verify(path)
+        files['mods/'+r.CLIENT+'/GRZ_Medkit_Reminder.wotmod']=files.pop(old_primary)
+        del files['docs/staysharp/SHA256SUMS.txt']
+        r.write_installer(self.out,'staysharp','1.7.0',r.CLIENT,files)
+        build(self.source,'sessionstats','0.3.4',internal=True,stable=True)
+        r.package(self.source,self.out,'sessionstats')
+        reports=r.verify_directory(self.out)
+        self.assertEqual({x[4] for x in reports},{'mods/'+r.CLIENT+'/GRZ_Medkit_Reminder.wotmod',
+                                               'mods/'+r.CLIENT+'/grz_sessions_stats.wotmod'})
+        before={p.name:p.read_bytes() for p in self.out.glob('*.zip')}
+        r.normalize(self.out)
+        self.assertEqual({p.name:p.read_bytes() for p in self.out.glob('*.zip')},before)
 
     def test_legacy_installers_remain_byte_identical_when_carried_forward(self):
         build(self.source,'sessionstats','0.2.12')

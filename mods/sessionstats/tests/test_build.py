@@ -28,7 +28,7 @@ class BuildContracts(unittest.TestCase):
         major, minor, patch = map(int, self.build.VERSION.split('.'))
         version = '%d.%d.%d' % (major, minor, patch + 1)
         source_package = ('grz.sessionstats_' + self.build.VERSION + '.wotmod').encode('ascii')
-        target_package = b'GRZ_Session_Stats.wotmod'
+        target_package = b'grz_sessions_stats.wotmod'
         for name in self.build.RELEASE_GUIDES:
             original = (self.build.ROOT/name).read_bytes()
             rendered = self.build.render_guide(name, original, version, '2.5.0.0')
@@ -117,7 +117,7 @@ class BuildContracts(unittest.TestCase):
 
     def test_installer_manifest_verifies_from_extracted_archive_root(self):
         files=[]
-        for name, relative in [('GRZ_Session_Stats.wotmod','mods/2.5.0.0/'),
+        for name, relative in [('grz_sessions_stats.wotmod','mods/2.5.0.0/'),
                                ('net.openwg.gameface_1.2.2.wotmod','mods/2.5.0.0/net.openwg/'),
                                ('grz.sessionstats.json.example','mods/configs/')]:
             path = self.directory/relative/name
@@ -136,7 +136,7 @@ class BuildContracts(unittest.TestCase):
         config=self.directory/'grz.sessionstats.json'
         for path in (raw,dependency,config): path.write_bytes(path.name.encode('ascii'))
         result=self.build.installer_checksums(raw,dependency,config,'2.5.0.0')
-        self.assertIn(b'  mods/2.5.0.0/GRZ_Session_Stats.wotmod\n',result)
+        self.assertIn(b'  mods/2.5.0.0/grz_sessions_stats.wotmod\n',result)
         self.assertNotIn(b'grz.sessionstats_0.3.3.wotmod\n',result)
         self.assertIn(b'  mods/configs/grz.sessionstats.json.example\n',result)
 

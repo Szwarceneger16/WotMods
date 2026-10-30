@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / 'VERSION').read_text(encoding='ascii').strip()
 ZIP_DATE = (2026, 10, 21, 0, 0, 0)
 MAGIC27 = b'\x03\xf3\r\n'
-INSTALLED_PACKAGE = 'GRZ_Session_Stats.wotmod'
+INSTALLED_PACKAGE = 'grz_sessions_stats.wotmod'
 # Only these release-identifying fields are stamped; historical prose is retained.
 RELEASE_GUIDES = {
     'README_PL.txt': (r'(?m)^(Version )',),

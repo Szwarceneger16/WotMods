@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.3 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.4 (persistent data schema unchanged)
 Release date: 2026-10-26.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
@@ -76,7 +76,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.3.3', account_key: string, generated_at: unix seconds,
+ version: '0.3.4', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -150,7 +150,7 @@ is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
-The installed package is mods/2.4.1.0/GRZ_Session_Stats.wotmod. Bundle complete defaults
+The installed package is mods/2.4.1.0/grz_sessions_stats.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
 existing central file during initialization. Never copy or load legacy external language catalogs.
@@ -203,9 +203,10 @@ default selection, not a result-health warning. See docs/APPEARANCE_CONFIG.md.
 
 config_path.find_config_path(package_name=None, resmgr=None, cwd=None) returns an absolute
 mods/configs/grz.sessionstats.json path or None without writing files. The default
-package name is GRZ_Session_Stats.wotmod, independent of VERSION. Accept the
-exact current grz.sessionstats_<VERSION>.wotmod developer artifact for compatibility;
-stable and versioned copies together are ambiguous. Do not infer the disk path from virtual __file__.
+package name is grz_sessions_stats.wotmod, independent of VERSION. Accept the
+exact current grz.sessionstats_<VERSION>.wotmod developer artifact and preceding
+GRZ_Session_Stats.wotmod test filename for compatibility. More than one supported
+active filename is ambiguous. Do not infer the disk path from virtual __file__.
 Prefer an existing physical paths.xml resolved by ResMgr; parse declared *.wotmod paths
 and respect recursive mode. Relative roots are anchored to that physical XML's directory.
 If an authoritative XML is present but invalid or ambiguous, do not fall back to a different

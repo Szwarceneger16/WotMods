@@ -176,16 +176,18 @@ new-format builds. Previously published installers retain their legacy validatio
 contract and are carried forward unchanged until that mod is updated.
 
 
-Session Stats builds starting with 0.3.3 record
-`"installed_package": "GRZ_Session_Stats.wotmod"` in BUILD.json. Both the raw test
-ZIP and the production installer use that fixed filename under `mods/<client>/`;
+Session Stats build reports since 0.3.3 record a stable `installed_package` in
+BUILD.json. Starting with 0.3.4, its value is `grz_sessions_stats.wotmod`. Both the
+raw test ZIP and the production installer use that filename under `mods/<client>/`;
 the ZIP filename and internal mod metadata retain the release version. The loose
 verified build artifact remains versioned for existing release tooling. Its bytes
 are installed unchanged at the stable path, and the inner checksum manifest names
-that exact path. Older build reports and installers without the new field retain
-their original versioned paths and carry forward byte-for-byte.
+that exact path. Older versioned installers and the preceding 0.3.3
+`GRZ_Session_Stats.wotmod` test installer remain supported and carry forward
+byte-for-byte. The validator also recognizes the stable `GRZ_Medkit_Reminder.wotmod`
+installer from the Medkit branch, so either mod can carry the other forward.
 
-Users must remove old `grz.sessionstats_*.wotmod` files once when adopting the
-stable name. Later extractions overwrite `GRZ_Session_Stats.wotmod`. Production
-installers and the new raw test ZIPs ship only `.json.example` settings and preserve
-existing configs.
+Users must remove old `grz.sessionstats_*.wotmod` and `GRZ_Session_Stats.wotmod`
+files once when adopting the final name. Later extractions overwrite
+`grz_sessions_stats.wotmod`. Production installers and raw test ZIPs ship only
+`.json.example` settings and preserve existing configs.

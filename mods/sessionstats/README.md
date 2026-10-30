@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.3.3 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.3.4 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -82,8 +82,9 @@ the footer counts the distinct messages actually displayed. Saved records are
 not rewritten by this presentation change.
 
 The downloaded ZIP retains its release version, while the installed mod is always
-`GRZ_Session_Stats.wotmod`. Close the game and remove old `grz.sessionstats_*.wotmod`
-files once when switching to this name. Later updates overwrite the same file.
+`grz_sessions_stats.wotmod`. Close the game and remove old `grz.sessionstats_*.wotmod`
+files and the earlier `GRZ_Session_Stats.wotmod` test file once when switching to
+this name. Later updates overwrite the same file.
 Keep your existing `mods/configs/grz.sessionstats.json` when updating.
 
 ## Interface languages and optional configuration
