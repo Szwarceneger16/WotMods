@@ -9,6 +9,47 @@ version series, build job, tests and workflow. GitHub has one Releases page and
 one repository-wide `/releases/latest` pointer. Each *published* Release is a
 complete immutable snapshot containing exactly two user-facing installer ZIPs: `StaySharp-Medkit-v<version>.zip` and `Session-Stats-v<version>.zip`. GitHub supplies source archives and attestations separately.
 
+### Pull-request builds and downloads
+
+Each mod's PR workflow owns its native `pull_request.paths` filter. There is no
+central list of mod pairs or special "both mods changed" condition. Every
+workflow independently matches the complete PR branch diff against its merge
+base, rather than just the latest commit or the presence of a source directory:
+
+| Changes in the PR | Stay Sharp Medkit build | Session Stats build |
+| --- | --- | --- |
+| Stay Sharp sources, audio, version or installer inputs | Yes | No |
+| Session Stats sources, UI, languages, config or build tools | No | Yes |
+| Changes in both mods | Yes | Yes |
+| Shared packaging, versioning, snapshot or privacy infrastructure | Yes | Yes |
+
+A mod-specific workflow or test change also selects that mod; the shared
+`tests/test_pr_ci_scoping.py` regression selects its dependent workflows. Shared
+infrastructure selects each workflow that declares it as an input, using the
+same independent matching rule. Documentation-only changes
+outside installer inputs do not select either build. Each selected workflow
+uploads only its own installer ZIP. A PR download does not carry an unchanged
+mod from Releases. The two-ZIP carry-forward described below applies only to
+published Releases.
+
+Merging main into a medkit-only branch does not make already accepted Session
+Stats changes part of that PR's own diff. If a later commit changes Session
+Stats on that branch, its workflow starts as well. Session Stats checks run its
+own and shared release-infrastructure suites, excluding the medkit builder
+tests. `workflow_dispatch` remains an explicit per-workflow manual override.
+
+Use **Validate Stay Sharp Medkit PR** for the medkit download and **Validate
+Session Stats PR** for the statistics download. Existing Actions runs remain
+in history; changing filters does not delete old artifacts. After merging a CI
+filter fix, refresh existing PR branches from main and trigger a new PR check.
+
+To add another mod, create its own PR workflow with an identifying name, its own
+source/build/test paths, any shared inputs it actually uses, and its own artifact
+path. Existing mod filters do not need a new pairwise condition or a reference
+to the new mod. Keep the source trees and artifact paths disjoint, retain
+read-only PR permissions and an explicit `workflow_dispatch` override, and add
+the new workflow to the scoping regression fixtures.
+
 ## Publishing without cross-mod rebuilds
 
 1. Build and test the changed mod **in its own read-only job**. Upload its
