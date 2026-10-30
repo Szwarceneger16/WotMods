@@ -3,6 +3,20 @@ name: Validate Session Stats PR
 on:
   pull_request:
     branches: [main, ci/sessionstats-build-releases]
+    # Native PR filters use the full branch diff, not just the newest commit.
+    paths:
+      - 'mods/sessionstats/**'
+      - 'scripts/sessionstats/**'
+      - 'scripts/release_version.py'
+      - 'scripts/release_snapshot.sh'
+      - 'scripts/release_installers.py'
+      - 'scripts/privacy_audit.py'
+      - 'tests/test_sessionstats_*.py'
+      - 'tests/test_release_installers.py'
+      - 'tests/test_release_pipeline.py'
+      - 'tests/test_release_snapshot.py'
+      - 'tests/test_pr_ci_scoping.py'
+      - '.github/workflows/sessionstats-*.yml'
   workflow_dispatch:
 
 permissions:
@@ -21,7 +35,10 @@ jobs:
         id: source
         run: python3 scripts/sessionstats/source_state.py
       - name: Test release infrastructure
-        run: python3 -m unittest discover -s tests -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_sessionstats_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_release_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_pr_ci_scoping.py' -v
       - name: Compile verified CPython 2.7.18 for game bytecode
         if: steps.source.outputs.enabled == 'true'
         run: bash scripts/sessionstats/python27.sh
