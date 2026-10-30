@@ -1,4 +1,4 @@
-name: Validate mod PR
+name: Validate Stay Sharp Medkit PR
 
 on:
   pull_request:
@@ -12,6 +12,7 @@ on:
       - 'scripts/release_snapshot.sh'
       - 'scripts/release_installers.py'
       - 'tests/test_release_installers.py'
+      - 'tests/test_staysharp_ci_artifact.py'
       - 'scripts/privacy_audit.py'
       - 'tests/test_mod.py'
       - 'tests/test_packaging.py'
@@ -58,6 +59,12 @@ jobs:
             echo '9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927  dist/com.staysharp.medkitreminder_1.6.0.wotmod' | sha256sum --check --status
           fi
           python3 scripts/privacy_audit.py --scan-dist
+      - name: Package reviewed Stay Sharp installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -- *.wotmod > SHA256SUMS.txt)
+          python3 scripts/release_installers.py package pr-artifact --source dist --mod staysharp
       - name: Test automatic next-release version with the same reviewed sources
         shell: bash
         run: |
@@ -67,3 +74,10 @@ jobs:
           python3 -m unittest discover -s tests -q
           python3 source/build_wotmod.py
           python3 scripts/privacy_audit.py --scan-dist
+      - name: Upload installable Stay Sharp Medkit ZIP without repackaging
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: pr-artifact/StaySharp-Medkit-v*.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
