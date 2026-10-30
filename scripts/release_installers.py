@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATE = (2026, 10, 24, 0, 0, 0)
 SEMVER = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
 CLIENT = '2.4.1.0'
+SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
 KINDS = {
     'staysharp': ('StaySharp-Medkit-v', 'com.staysharp.medkitreminder_', 'Stay Sharp Medkit'),
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
@@ -93,6 +94,15 @@ def installer_name(kind, version):
     return KINDS[kind][0] + version + '.zip'
 
 
+def installed_package(kind, version, report=None):
+    legacy = KINDS[kind][1] + version + '.wotmod'
+    if kind != 'sessionstats':
+        return legacy
+    name = (report or {}).get('installed_package', legacy)
+    if name not in (legacy, SESSIONSTATS_PACKAGE):
+        raise ValueError('Invalid installed package filename')
+    return name
+
 
 def bundled_languages(report, package):
     resource = report.get('languages_resource')
@@ -119,7 +129,8 @@ def verify(path):
     client = report['client_version']
     if not isinstance(client, str) or not re.fullmatch(r'[0-9]+(?:\.[0-9]+){3}', client):
         raise ValueError('Invalid client version')
-    primary = 'mods/' + client + '/' + KINDS[kind][1] + version + '.wotmod'
+    build_report = json.loads(files.get(doc + 'BUILD.json', b'{}')) if kind == 'sessionstats' else None
+    primary = 'mods/' + client + '/' + installed_package(kind, version, build_report)
     if primary not in files:
         raise ValueError('Missing primary mod')
     package = read_zip(io.BytesIO(files[primary]))
@@ -142,7 +153,6 @@ def verify(path):
         wanted.add('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod')
         if not wanted <= files.keys():
             raise ValueError('Missing OpenWG dependency')
-        build_report = json.loads(files.get(doc + 'BUILD.json', b'{}'))
         embedded = build_report.get('languages_resource')
         examples = ('grz.sessionstats.json',) if embedded else ('grz.sessionstats.json', 'grz.sessionstats.languages.json')
         if embedded:
@@ -206,14 +216,16 @@ def package(source, destination, kind, client=CLIENT):
         if report['version'] != version:
             raise ValueError('Build version mismatch')
         client = report['client_target']
+        installed_primary = installed_package(kind, version, report)
+        config_name = 'grz.sessionstats.json' + ('.example' if installed_primary == SESSIONSTATS_PACKAGE else '')
         bundle = read_zip(io.BytesIO(files['wot-statystyki-sesji-v' + version + '.zip']))
         # Check the exact files against the separately verified build; a stale
         # installer must never replace the validated package/config/dependency.
         for name, expected in (
-            ('mods/' + client + '/' + primary, files[primary]),
+            ('mods/' + client + '/' + installed_primary, files[primary]),
             ('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod',
              files['net.openwg.gameface_1.2.2.wotmod']),
-            ('mods/configs/grz.sessionstats.json', files['grz.sessionstats.json']),
+            ('mods/configs/' + config_name, files['grz.sessionstats.json']),
         ):
             if bundle.get(name) != expected:
                 raise ValueError('Installer and verified build disagree')
@@ -232,7 +244,7 @@ def package(source, destination, kind, client=CLIENT):
             if name == 'SHA256SUMS.txt':
                 continue
             if name.startswith('mods/configs/'):
-                payload[name + '.example'] = data
+                payload[name if name.endswith('.json.example') else name + '.example'] = data
             elif name.startswith('mods/'):
                 payload[name] = data
             else:

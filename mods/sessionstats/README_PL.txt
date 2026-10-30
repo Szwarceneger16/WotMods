@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.3.2 • 2026-10-27 • target: Wargaming EU 2.4.1.0
+Version 0.3.3 • 2026-10-30 • target: Wargaming EU 2.4.1.0
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -15,10 +15,12 @@ interfaces cannot guarantee compatibility with future clients.
 This is not an official Wargaming product.
 
 UPDATING AN EXISTING INSTALLATION
-Close the game, remove the previous grz.sessionstats_*.wotmod from the active
-mods directory and replace it with grz.sessionstats_0.3.2.wotmod
-from this package. Place grz.sessionstats.json in mods/configs. Keep only one active
-version of grz.sessionstats. Bundled OpenWG 1.2.2 is unchanged; keep one copy.
+Close the game. On the first update to this stable filename, remove every old
+grz.sessionstats_*.wotmod from the active mods directory. Install the included
+GRZ_Session_Stats.wotmod. Later updates overwrite that same file; the downloaded
+ZIP and the mod's metadata retain their version number. Keep only one active copy
+of Session Stats. Preserve mods/configs/grz.sessionstats.json. Bundled OpenWG 1.2.2
+is unchanged; keep one copy.
 The Windows journal-header defect is recovered only after the original checksum
 verifies. Updating does not require a data reset. Back up the complete AppData
 history first; see docs/WINDOWS_JOURNAL_RECOVERY.md for scope and limits.
@@ -27,8 +29,8 @@ The configuration filename has no release number. Preserve your own
 grz.sessionstats.json instead of overwriting it with the new package's defaults.
 Existing central files are never overwritten or filled with missing fields.
 If the central main file is absent, the mod copies the legacy JSON beside the
-active package, or creates the full defaults when no legacy file exists. Optional
-legacy language overrides are also copied only if their central file is absent.
+active package, or creates the full defaults when no legacy file exists.
+All translations are inside the .wotmod; old external language catalogs are ignored.
 Legacy files stay intact. Copy your custom JSON into mods/configs before extracting
 new package defaults, or install just the .wotmod to let this migration run.
 The configs directory stays in place when the client's version folder changes.
@@ -38,10 +40,10 @@ QUICK INSTALLATION
 2. Extract the ZIP anywhere.
 3. Copy the included mods directory into the World of Tanks root containing
    WorldOfTanks.exe. For client 2.4.1.0, the installed files should include:
-   mods/2.4.1.0/grz.sessionstats_0.3.2.wotmod
-   mods/configs/grz.sessionstats.json
+   mods/2.4.1.0/GRZ_Session_Stats.wotmod
+   mods/configs/grz.sessionstats.json.example
    mods/2.4.1.0/net.openwg/net.openwg.gameface_1.2.2.wotmod
-   Preserve your existing configuration and language overrides when copying.
+   Preserve your existing config. The .json.example is an optional settings sample.
 4. If another mod pack already provides OpenWG Gameface 1.2.2 or newer, retain
    one copy of that library. Install the grz.sessionstats package and any desired
    JSON overrides. Replace an older OpenWG file with the included newer version.
@@ -430,7 +432,7 @@ A separate Windows user provides separate AppData; changing only the game instal
 directory does not. This does not affect main-account progress on Wargaming's server.
 
 UNINSTALLING
-Close the game and remove grz.sessionstats_0.3.2.wotmod from the active mods directory.
+Close the game and remove GRZ_Session_Stats.wotmod from the active mods directory.
 Other mods may require OpenWG. The AppData journal remains; deleting the data
 directory deletes saved statistics. Keep grz.sessionstats.json and optional
 language overrides for a later installation if desired.

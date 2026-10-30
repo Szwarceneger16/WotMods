@@ -18,6 +18,7 @@ from . import VERSION
 
 LOG = logging.getLogger('grz.sessionstats')
 CONFIG_FILENAME = 'grz.sessionstats.json'
+PACKAGE_FILENAME = 'GRZ_Session_Stats.wotmod'
 MAX_XML_BYTES = 256 * 1024
 MAX_XML_NODES = 4096
 MAX_PACKAGE_ROOTS = 32
@@ -125,8 +126,9 @@ def _package_roots(xml_path):
     return list(roots.values())
 
 
-def _find_package(xml_path, package_name, budget):
+def _find_package(xml_path, package_names, budget):
     packages = {}
+    wanted = set(os.path.normcase(name) for name in package_names)
     for root, recursive in _package_roots(xml_path):
         if os.path.islink(root):
             continue
@@ -148,7 +150,7 @@ def _find_package(xml_path, package_name, budget):
                 # unique neighbouring config, so do not follow either one.
                 if os.path.islink(path):
                     continue
-                if os.path.normcase(name) == os.path.normcase(package_name) and os.path.isfile(path):
+                if os.path.normcase(name) in wanted and os.path.isfile(path):
                     packages[os.path.normcase(os.path.abspath(path))] = path
                     if len(packages) > 1:
                         raise _LocationError('multiple_active_packages')
@@ -197,13 +199,16 @@ def _find_config_location(package_name=None, resmgr=None, cwd=None):
     bounded app-directory/cwd fallback be used. The JSON itself may be absent.
     """
     try:
-        if package_name is None:
-            package_name = 'grz.sessionstats_' + VERSION + '.wotmod'
-        variants = _path_variants(package_name)
+        legacy_name = 'grz.sessionstats_' + VERSION + '.wotmod'
+        default_name = package_name is None
+        variants = _path_variants(PACKAGE_FILENAME if default_name else package_name)
         if (len(variants) != 1 or len(variants[0]) > 255 or
-                not re.match(r'^[A-Za-z0-9_.-]+\.wotmod$', variants[0])):
+                (variants[0] != PACKAGE_FILENAME and
+                 not re.match(r'\A[A-Za-z0-9_.-]+\.wotmod\Z', variants[0]))):
             raise _LocationError('invalid_package_name')
-        package_name = variants[0]
+        # The installed name is stable across releases. The exact current
+        # versioned developer artifact remains supported for older callers.
+        package_names = (variants[0], legacy_name) if default_name else (variants[0],)
         if resmgr is None:
             try:
                 import ResMgr as resmgr
@@ -219,14 +224,14 @@ def _find_config_location(package_name=None, resmgr=None, cwd=None):
             xml_path = _physical_xml(resolved)
         budget = [0]
         if xml_path is not None:
-            result = _find_package(xml_path, package_name, budget)
+            result = _find_package(xml_path, package_names, budget)
             if result is None:
                 raise _LocationError('active_package_missing')
             return _config_location(xml_path, result)
         candidates = _fallback_files(resmgr, cwd)
         results = {}
         for candidate in candidates:
-            result = _find_package(candidate, package_name, budget)
+            result = _find_package(candidate, package_names, budget)
             if result is not None:
                 location = _config_location(candidate, result)
                 # A shared/linked configs directory does not make two physical

@@ -30,7 +30,7 @@ def mod(identifier, version, payload=b'payload'):
                     'res/'+identifier+'/module.pyc': payload})
 
 
-def build(directory, kind, version, internal=False):
+def build(directory, kind, version, internal=False, stable=False):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = r.KINDS[kind][1]
     primary = prefix+version+'.wotmod'
@@ -39,6 +39,8 @@ def build(directory, kind, version, internal=False):
         config, language = b'{"language":"auto"}', b'{"languages":{"en":{}}}'
         dependency = mod('net.openwg.gameface', '1.2.2')
         report_data={'version':version, 'client_target':r.CLIENT, 'languages_config_sha256':r.digest(language)}
+        if stable:
+            report_data['installed_package']=r.SESSIONSTATS_PACKAGE
         if internal:
             language=json.dumps({'schema_version':1,'languages':{code:{'title':'Fixture'} for code in ('en','pl','ru','fr','de','es','uk')}}).encode()
             resources=r.read_zip(io.BytesIO((directory/primary).read_bytes()))
@@ -51,9 +53,9 @@ def build(directory, kind, version, internal=False):
         (directory/'net.openwg.gameface_1.2.2.wotmod').write_bytes(dependency)
         (directory/'BUILD.json').write_bytes(report)
         bundled = {
-            'mods/'+r.CLIENT+'/'+primary:(directory/primary).read_bytes(),
+            'mods/'+r.CLIENT+'/'+(r.SESSIONSTATS_PACKAGE if stable else primary):(directory/primary).read_bytes(),
             'mods/'+r.CLIENT+'/net.openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
-            'mods/configs/grz.sessionstats.json':config,
+            'mods/configs/grz.sessionstats.json'+('.example' if stable else ''):config,
             'mods/configs/grz.sessionstats.languages.json':language,
             'BUILD.json':report, 'README_PL.txt':b'Legacy instructions',
             'LICENSE.txt':b'GPL', 'source/src/main.py':b'# corresponding source',
@@ -122,6 +124,54 @@ class InstallerTests(unittest.TestCase):
         (self.source/'BUILD.json').write_text(json.dumps(report))
         r.manifest(self.source)
         with self.assertRaises(ValueError): r.package(self.source,self.out,'sessionstats')
+
+    def test_versioned_zip_contains_only_the_stable_sessionstats_filename(self):
+        build(self.source,'sessionstats','0.3.3',internal=True,stable=True)
+        target=r.package(self.source,self.out,'sessionstats')
+        _,version,client,files,primary=r.verify(target)
+        self.assertEqual(target.name,'Session-Stats-v0.3.3.zip')
+        self.assertEqual(version,'0.3.3')
+        self.assertEqual(primary,'mods/'+client+'/GRZ_Session_Stats.wotmod')
+        self.assertEqual({n for n in files if n.startswith('mods/'+client+'/') and '/net.openwg/' not in n}, {primary})
+        self.assertEqual(files[primary],(self.source/'grz.sessionstats_0.3.3.wotmod').read_bytes())
+
+    def test_extracting_two_releases_overwrites_the_mod_and_preserves_user_config(self):
+        game=self.root/'game'
+        config=game/'mods/configs/grz.sessionstats.json'
+        config.parent.mkdir(parents=True)
+        config.write_bytes(b'{"language":"pl","custom":7}')
+        paths=[]
+        for version in ('0.3.3','0.3.4'):
+            source=self.root/('build-'+version)
+            build(source,'sessionstats',version,internal=True,stable=True)
+            target=r.package(source,self.out,'sessionstats')
+            paths.append(target.name)
+            with zipfile.ZipFile(target) as installer: installer.extractall(game)
+        self.assertEqual(paths,['Session-Stats-v0.3.3.zip','Session-Stats-v0.3.4.zip'])
+        packages=list((game/'mods'/r.CLIENT).glob('*.wotmod'))
+        self.assertEqual([p.name for p in packages],['GRZ_Session_Stats.wotmod'])
+        import xml.etree.ElementTree as ET
+        contents=r.read_zip(packages[0])
+        self.assertEqual(ET.fromstring(contents['meta.xml']).findtext('version'),'0.3.4')
+        self.assertEqual(config.read_bytes(),b'{"language":"pl","custom":7}')
+
+    def test_unknown_installed_filename_in_build_metadata_is_rejected(self):
+        build(self.source,'sessionstats','0.3.3',internal=True,stable=True)
+        report=json.loads((self.source/'BUILD.json').read_bytes())
+        for name in ['../outside.wotmod','GRZ Session Stats.wotmod','GRZ_Session_Stats_0.3.3.wotmod',None]:
+            report['installed_package']=name
+            (self.source/'BUILD.json').write_text(json.dumps(report))
+            r.manifest(self.source)
+            with self.assertRaisesRegex(ValueError,'installed package filename'):
+                r.package(self.source,self.out,'sessionstats')
+
+    def test_legacy_installers_remain_byte_identical_when_carried_forward(self):
+        build(self.source,'sessionstats','0.2.12')
+        path=r.package(self.source,self.out,'sessionstats')
+        before=path.read_bytes()
+        self.assertTrue(r.verify(path)[4].endswith('/grz.sessionstats_0.2.12.wotmod'))
+        r.normalize(self.out)
+        self.assertEqual(path.read_bytes(),before)
 
     def test_legacy_snapshot_migration_retains_exact_production_bytes(self):
         build(self.source,'staysharp','1.6.4')

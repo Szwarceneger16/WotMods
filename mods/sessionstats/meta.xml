@@ -1,6 +1,6 @@
 <root>
     <id>grz.sessionstats</id>
-    <version>0.3.2</version>
+    <version>0.3.3</version>
     <name>Session Stats</name>
     <description>Battles, win rate, WN8, XP and finances. Independent session periods; vehicles, maps and battles.</description>
 </root>

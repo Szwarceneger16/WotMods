@@ -1,15 +1,17 @@
-# Configuration in mods/configs — discovery and sources, 0.3.2
+# Configuration in mods/configs — discovery and sources, 0.3.3
 
 ## Contract
 
 `config_path.find_config_path(package_name=None, resmgr=None, cwd=None)` returns
 the absolute `mods/configs/grz.sessionstats.json` path in the identified physical game root,
-or `None`. The default package name is `grz.sessionstats_<VERSION>.wotmod`.
+or `None`. The default package name is `GRZ_Session_Stats.wotmod`, independent of the mod
+version. The exact current `grz.sessionstats_<VERSION>.wotmod` developer artifact
+is also supported; finding both names is ambiguous.
 It creates no files and changes neither installation nor history. The JSON need
 not exist for discovery; reading, validation and defaults belong to the loader.
 Runtime uses `prepare_config_path` to create a missing central JSON from bounded
-legacy adjacent bytes or built-in defaults. It can also copy optional language
-overrides into mods/configs. Existing targets always win; old files stay intact.
+legacy adjacent bytes or built-in defaults. Translations are internal; old external
+language catalogs are ignored. Existing targets always win; old files stay intact.
 Only the uniquely identified active package is eligible for migration. Atomic
 create-only publication prevents partial destination writes and replacement of
 concurrently created files. Failures produce CONFIG_SETUP diagnostics and leave

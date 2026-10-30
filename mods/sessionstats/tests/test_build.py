@@ -28,12 +28,12 @@ class BuildContracts(unittest.TestCase):
         major, minor, patch = map(int, self.build.VERSION.split('.'))
         version = '%d.%d.%d' % (major, minor, patch + 1)
         source_package = ('grz.sessionstats_' + self.build.VERSION + '.wotmod').encode('ascii')
-        target_package = ('grz.sessionstats_' + version + '.wotmod').encode('ascii')
+        target_package = b'GRZ_Session_Stats.wotmod'
         for name in self.build.RELEASE_GUIDES:
             original = (self.build.ROOT/name).read_bytes()
             rendered = self.build.render_guide(name, original, version, '2.5.0.0')
             self.assertNotIn(source_package, rendered)
-            if source_package in original:
+            if target_package in original:
                 self.assertIn(target_package, rendered)
             self.assertNotIn(b'mods/2.4.1.0/', rendered)
         readme = self.build.render_guide('README_PL.txt', (self.build.ROOT/'README_PL.txt').read_bytes(), version, '2.5.0.0')
@@ -117,16 +117,28 @@ class BuildContracts(unittest.TestCase):
 
     def test_installer_manifest_verifies_from_extracted_archive_root(self):
         files=[]
-        for name, relative in [('grz.sessionstats_0.2.8.wotmod','mods/2.5.0.0/'),
+        for name, relative in [('GRZ_Session_Stats.wotmod','mods/2.5.0.0/'),
                                ('net.openwg.gameface_1.2.2.wotmod','mods/2.5.0.0/net.openwg/'),
-                               ('grz.sessionstats.json','mods/configs/')]:
+                               ('grz.sessionstats.json.example','mods/configs/')]:
             path = self.directory/relative/name
             path.parent.mkdir(parents=True,exist_ok=True)
             path.write_bytes(name.encode('ascii')); files.append(path)
-        manifest = self.build.installer_checksums(files[0], files[1], files[2], '2.5.0.0')
+        config=self.directory/'grz.sessionstats.json'
+        config.write_bytes(files[2].read_bytes())
+        manifest = self.build.installer_checksums(files[0], files[1], config, '2.5.0.0')
         (self.directory/'SHA256SUMS.txt').write_bytes(manifest)
         self.assertEqual(len(manifest.splitlines()),3)
         subprocess.check_output(['sha256sum','-c','SHA256SUMS.txt'],cwd=str(self.directory))
+
+    def test_versioned_build_artifact_is_checksummed_at_the_stable_install_path(self):
+        raw=self.directory/'grz.sessionstats_0.3.3.wotmod'
+        dependency=self.directory/'net.openwg.gameface_1.2.2.wotmod'
+        config=self.directory/'grz.sessionstats.json'
+        for path in (raw,dependency,config): path.write_bytes(path.name.encode('ascii'))
+        result=self.build.installer_checksums(raw,dependency,config,'2.5.0.0')
+        self.assertIn(b'  mods/2.5.0.0/GRZ_Session_Stats.wotmod\n',result)
+        self.assertNotIn(b'grz.sessionstats_0.3.3.wotmod\n',result)
+        self.assertIn(b'  mods/configs/grz.sessionstats.json.example\n',result)
 
 
 if __name__ == '__main__': unittest.main()

@@ -1,5 +1,14 @@
 SESSION STATS — CHANGELOG
 
+0.3.3 • 2026-10-30
+• Keep the download ZIP versioned, but always install GRZ_Session_Stats.wotmod.
+  Extracting later releases overwrites the existing mod instead of adding copies.
+• Keep config discovery working with the stable filename, including paths.xml
+  roots and legacy adjacent-config migration. Duplicate active copies stay ambiguous.
+• Retain verification and byte-for-byte carry-forward of older installers.
+• Remove all old grz.sessionstats_*.wotmod files once when adopting the new name.
+  Existing configuration and battle history remain intact.
+
 0.3.2 • 2026-10-27
 • Align Previous/date order/Next in one equal-height row. Keep the page counter
   beside the list count, independently of button sizing.

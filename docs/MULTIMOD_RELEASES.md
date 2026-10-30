@@ -174,3 +174,18 @@ the GUI saves the selected language to the corresponding active JSON. The shared
 packager verifies the embedded bytes and rejects an external language config in
 new-format builds. Previously published installers retain their legacy validation
 contract and are carried forward unchanged until that mod is updated.
+
+
+Session Stats builds starting with 0.3.3 record
+`"installed_package": "GRZ_Session_Stats.wotmod"` in BUILD.json. Both the raw test
+ZIP and the production installer use that fixed filename under `mods/<client>/`;
+the ZIP filename and internal mod metadata retain the release version. The loose
+verified build artifact remains versioned for existing release tooling. Its bytes
+are installed unchanged at the stable path, and the inner checksum manifest names
+that exact path. Older build reports and installers without the new field retain
+their original versioned paths and carry forward byte-for-byte.
+
+Users must remove old `grz.sessionstats_*.wotmod` files once when adopting the
+stable name. Later extractions overwrite `GRZ_Session_Stats.wotmod`. Production
+installers and the new raw test ZIPs ship only `.json.example` settings and preserve
+existing configs.
