@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.2.12 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.4 (persistent data schema unchanged)
 Release date: 2026-10-26.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
@@ -76,22 +76,22 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.2.12', account_key: string, generated_at: unix seconds,
+ version: '0.3.4', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
  scopes: {
   launch: {label:'Since launch', started_at:seconds, pending:number,
-           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]},
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], tiers:[GROUP], battles:[BATTLE_ROW]},
   manual: {label:'Since reset', started_at:seconds, pending:number,
-           summary:STATS, vehicles:[GROUP], maps:[GROUP], battles:[BATTLE_ROW]}
+           summary:STATS, vehicles:[GROUP], maps:[GROUP], tiers:[GROUP], battles:[BATTLE_ROW]}
  }
 }
 STATS = {
  battles:int, observed_battles:int, missing_results:int, partial_results:int,
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
- xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
+ xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES, credits_net:SERIES,
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -106,7 +106,7 @@ outcomes. Missing results remain listed with unknown outcome and unknown numeric
 values. All group/financial coverage uses observed_battles as denominator. Display
 results/observed and an incomplete-data explanation whenever outcomes are missing;
 never silently present the known subset as the whole registered session.
-GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, stats:STATS}
+GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, started_at:latest battle time, first_started_at:earliest battle time, stats:STATS}
 BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
               outcome:string, tier:int or null, stats:STATS}
 Runtime adds appearance to the snapshot, including snapshots without an active service.
@@ -150,17 +150,17 @@ is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
-The package remains mods/2.4.1.0/grz.sessionstats_0.2.12.wotmod. Bundle complete defaults
+The installed package is mods/2.4.1.0/grz_sessions_stats.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
-existing central file. Copy legacy language overrides only if their destination is absent.
+existing central file during initialization. Never copy or load legacy external language catalogs.
 Keep legacy originals. Use bounded reads and atomic create-only publication; contain
 permission/disk/migration failures. Preserve custom JSON when extracting installer defaults.
 Configuration stays in mods/configs across client-version changes.
 Default language is auto: read helpers.getClientLanguage, normalize supported regional
 codes and fall back to English. Explicit language codes win; never replace an existing
 en override with auto. Resolve original outcome text only for a matching client language;
-custom translations still win. Optional game-language API failures must not stop collection.
+packaged translations are the only fallback. Optional game-language API failures must not stop collection.
 Outcome artwork uses only verified, unchanged local WG notification resources, with
 separate text captions. Missing images retain text; no artwork is bundled or downloaded.
 Keep AppData config.json separate: it still controls hotkey/footer_button on restart.
@@ -202,8 +202,11 @@ field diagnostics to 64 per read plus an omitted-count notice. A missing file is
 default selection, not a result-health warning. See docs/APPEARANCE_CONFIG.md.
 
 config_path.find_config_path(package_name=None, resmgr=None, cwd=None) returns an absolute
-mods/configs/grz.sessionstats.json path or None without writing files. Default package name uses the current VERSION and exact
-grz.sessionstats_<VERSION>.wotmod filename. Do not infer the disk path from virtual __file__.
+mods/configs/grz.sessionstats.json path or None without writing files. The default
+package name is grz_sessions_stats.wotmod, independent of VERSION. Accept the
+exact current grz.sessionstats_<VERSION>.wotmod developer artifact and preceding
+GRZ_Session_Stats.wotmod test filename for compatibility. More than one supported
+active filename is ambiguous. Do not infer the disk path from virtual __file__.
 Prefer an existing physical paths.xml resolved by ResMgr; parse declared *.wotmod paths
 and respect recursive mode. Relative roots are anchored to that physical XML's directory.
 If an authoritative XML is present but invalid or ambiguous, do not fall back to a different
@@ -368,10 +371,35 @@ res/gui/gameface/mods/grz_session_stats/{SessionStats.html,session_stats.css,ses
 res/gui/gen_resources/grz.sessionstats.json -> R.mods.grz.sessionstats.views.SessionStats
 res/grz_session_stats/wn8exp.json (bundled WG table)
 Outside .wotmod: mods/configs/grz.sessionstats.json
-Optional translation overrides: mods/configs/grz.sessionstats.languages.json
+Translation catalogs: res/grz_session_stats/languages.json inside the .wotmod only
   - full default appearance JSON, UTF-8; exact defaults match appearance.py.
   - distinct from res/gui/gen_resources/grz.sessionstats.json resource registration inside
     the archive and from the user's AppData config.json hotkey/footer settings.
 Data persisted outside mods/<version>. No automatic code downloads. No live-game test claimed.
 Historical compatibility: upgrading from 0.2.6 to 0.2.7 required no history reset
 or persisted-data migration.
+
+RESULT ORDERING (0.3.0)
+Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
+ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8,
+                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest}.
+The sort command carries these four fields plus scope, group, account_key and period_id.
+Validate account ownership and current period before changing transient presentation state.
+A successful request resets that grouping to page zero; pagination and totals remain period-wide.
+Metric ordering uses the selected per-battle series statistic, with missing values last.
+Chronology uses the latest/earliest battle for groups and the start time for individual battles.
+Stable IDs resolve remaining ties. Tiers use the original recorded vehicle_tier, including XI;
+unknown tier metadata has a separate group. No persistent schema or saved data is changed.
+
+GUI LANGUAGE SELECTION
+The Language dropdown provides auto/en/pl/ru/fr/de/es/uk only. Auto follows the game.
+Its native command requires the active account and uses the existing protected view lifecycle.
+Save the language property in mods/configs/grz.sessionstats.json, preserving every other
+property. Reject malformed/oversized/future-schema or concurrently changed files. Publish
+with a flushed same-directory temporary file and atomic replacement (MoveFileExW on Py2
+Windows). If ctypes is absent, retain a rollback backup during complete-file renames
+and recover interrupted replacement before preparing defaults. Accept native ASCII
+byte-string locale codes on Python 2 as well as Unicode, with the same allowlist.
+On failure, preserve the previous file and selected language and notify locally.
+Reload the panel and footer labels after success; never reset history, periods or sort state.
+Manual config changes remain supported. The old external language JSON is ignored.

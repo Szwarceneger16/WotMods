@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / 'VERSION').read_text(encoding='ascii').strip()
 ZIP_DATE = (2026, 10, 21, 0, 0, 0)
 MAGIC27 = b'\x03\xf3\r\n'
+INSTALLED_PACKAGE = 'grz_sessions_stats.wotmod'
 # Only these release-identifying fields are stamped; historical prose is retained.
 RELEASE_GUIDES = {
     'README_PL.txt': (r'(?m)^(Version )',),
@@ -46,7 +47,6 @@ def render_guide(relative, content, version, client_version):
     if relative not in RELEASE_GUIDES:
         return content
     text = content.decode('utf-8')
-    text = text.replace('grz.sessionstats_'+VERSION+'.wotmod', 'grz.sessionstats_'+version+'.wotmod')
     text = text.replace('wot-statystyki-sesji-v'+VERSION+'.zip', 'wot-statystyki-sesji-v'+version+'.zip')
     # A source bundle may already be stamped for a different client. Keep
     # installation paths and active target/command fields consistent on rebuild.
@@ -62,13 +62,11 @@ def render_guide(relative, content, version, client_version):
     return text.encode('utf-8')
 
 
-def installer_checksums(package, dependency, config, client_version, languages=None):
+def installer_checksums(package, dependency, config, client_version):
     target = 'mods/'+client_version+'/'
-    entries = [(package, target+package.name),
+    entries = [(package, target+INSTALLED_PACKAGE),
                (dependency, target+'net.openwg/'+dependency.name),
-               (config, 'mods/configs/'+config.name)]
-    if languages is not None:
-        entries.append((languages, 'mods/configs/'+languages.name))
+               (config, 'mods/configs/'+config.name+'.example')]
     return ''.join(digest(path)+'  '+name+'\n' for path, name in entries).encode('ascii')
 
 
@@ -128,7 +126,7 @@ def main():
     sys.path.insert(0, str(ROOT/'src'))
     from grz_session_stats.appearance import CONFIG_FILENAME, default_config
     config_path = ROOT/CONFIG_FILENAME
-    languages_path = ROOT/'grz.sessionstats.languages.json'
+    languages_path = ROOT/'data/languages.json'
     subprocess.check_call([sys.executable, str(ROOT/'tools/sync_languages.py'), '--check'])
     if json.loads(config_path.read_text(encoding='utf-8')) != default_config():
         raise RuntimeError('Shipped appearance configuration must match built-in defaults')
@@ -166,7 +164,6 @@ def main():
             put(z, 'res/gui/gen_resources/grz.sessionstats.json', (ROOT/'resources'/'grz.sessionstats.json').read_bytes())
             for path in sorted((ROOT/'data').glob('*.json')):
                 put(z, 'res/grz_session_stats/'+path.name, path.read_bytes())
-            put(z, 'res/grz_session_stats/languages.json', languages_path.read_bytes())
     entries = check_package(package)
     dependency = ROOT/'third_party'/'openwg'/'net.openwg.gameface_1.2.2.wotmod'
     depmeta = json.loads((dependency.parent/'source.json').read_text())
@@ -175,13 +172,14 @@ def main():
     bundle = dist / ('wot-statystyki-sesji-v'+version_tag+'.zip')
     shutil.copyfile(dependency, dist/dependency.name)
     shutil.copyfile(config_path, dist/CONFIG_FILENAME)
-    inner_checksums = installer_checksums(package, dependency, config_path, args.client_version, languages_path)
+    inner_checksums = installer_checksums(package, dependency, config_path, args.client_version)
     report = {
         'version': version_tag, 'client_target': args.client_version, 'python_bytecode': '2.7',
         'package_compression': 'ZIP_STORED', 'package_entries': entries,
         'package_sha256': digest(package), 'openwg_sha256': digest(dependency),
+        'installed_package': INSTALLED_PACKAGE,
         'appearance_config': CONFIG_FILENAME, 'appearance_config_sha256': digest(config_path),
-        'languages_config': languages_path.name, 'languages_config_sha256': digest(languages_path),
+        'languages_resource': 'res/grz_session_stats/languages.json', 'languages_resource_sha256': digest(languages_path),
         'config_directory': 'mods/configs',
         'expected': json.loads((ROOT/'data'/'wn8-source.json').read_text()),
         'live_client_tested': False,
@@ -189,9 +187,8 @@ def main():
     (dist/'BUILD.json').write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n',encoding='utf-8')
     with zipfile.ZipFile(bundle, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         target = 'mods/'+args.client_version+'/'
-        put(z, target+package.name, package.read_bytes())
-        put(z, 'mods/configs/'+CONFIG_FILENAME, config_path.read_bytes())
-        put(z, 'mods/configs/'+languages_path.name, languages_path.read_bytes())
+        put(z, target+INSTALLED_PACKAGE, package.read_bytes())
+        put(z, 'mods/configs/'+CONFIG_FILENAME+'.example', config_path.read_bytes())
         put(z, target+'net.openwg/'+dependency.name, dependency.read_bytes())
         for name in ['README_PL.txt', 'ZMIANY.txt', 'LICENSE.txt', 'THIRD_PARTY.txt']:
             put(z, name, render_guide(name, (ROOT/name).read_bytes(), version_tag, args.client_version))
@@ -206,7 +203,7 @@ def main():
                     content = re.sub(rb"(?m)^VERSION = '[^']+'$", ("VERSION = '"+version_tag+"'").encode('ascii'), content)
                 relative = path.relative_to(ROOT).as_posix()
                 put(z, 'source/'+relative, render_guide(relative, content, version_tag, args.client_version))
-        for name in ['meta.xml','VERSION','README.md','CONTRACT.txt','LICENSE.txt','README_PL.txt','ZMIANY.txt','THIRD_PARTY.txt',CONFIG_FILENAME,languages_path.name]:
+        for name in ['meta.xml','VERSION','README.md','CONTRACT.txt','LICENSE.txt','README_PL.txt','ZMIANY.txt','THIRD_PARTY.txt',CONFIG_FILENAME]:
             content = (ROOT/name).read_bytes()
             if name == 'meta.xml': content = metadata
             if name == 'VERSION': content = (version_tag+'\n').encode('ascii')

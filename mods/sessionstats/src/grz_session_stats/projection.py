@@ -12,6 +12,25 @@ from .localization import message
 from .loading import complete
 
 PAGE_SIZE = 40
+GROUP_FIELDS = (('vehicles', 'vehicle_id'), ('maps', 'map_id'), ('tiers', 'vehicle_tier'))
+
+
+def tier_name(tier):
+    numerals = ('I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI')
+    return numerals[tier - 1] if isinstance(tier, int) and not isinstance(tier, bool) and 1 <= tier <= len(numerals) else str(tier) if tier is not None else message('unknown.tier')
+
+
+DEFAULT_ORDER = {'metric': 'off', 'statistic': 'avg', 'direction': 'desc', 'chronology': 'newest'}
+
+
+def valid_order(options):
+    return (isinstance(options, dict) and set(options) == set(DEFAULT_ORDER) and
+            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'battle_wn8') and
+            options.get('statistic') in ('min', 'avg', 'max') and
+            options.get('direction') in ('asc', 'desc') and
+            options.get('chronology') in ('newest', 'oldest'))
+
+
 _COUNTS = ('battles', 'observed_battles', 'missing_results', 'partial_results',
            'wins', 'losses', 'draws', 'wn8_count')
 _XP = ('xp_base', 'xp_received', 'free_xp', 'battle_wn8')
@@ -161,6 +180,7 @@ class Totals(object):
         result.update((key, series.snapshot()) for key, series in self.series.items())
         result['wn8'] = wn8_from_totals(dict((key, series.sum()) for key, series in self.actual.items()),
                                       dict((key, series.sum()) for key, series in self.expected.items()))
+        result['credits_net'] = self.money['credits']['net'].snapshot()
         result['currencies'] = {}
         for currency, fields in self.money.items():
             values = {'breakdown': {}, 'breakdown_counts': {}}
@@ -186,6 +206,7 @@ class Group(object):
         self.records = {}
         self.order = []
         self.totals = Totals()
+        self.starts = Series()
 
     def build(self, items):
         complete(self.build_steps(items))
@@ -199,6 +220,8 @@ class Group(object):
             if position % 128 == 0:
                 yield None
         self.order.sort()
+        for step in self.starts.build_steps(item[0].get('started_at') for item in items):
+            yield step
         yield None
         for step in self.totals.build_steps(items):
             yield step
@@ -213,10 +236,14 @@ class Group(object):
             del self.records[identifier]
             _remove(self.order, key)
         self.totals.change(item, direction)
+        self.starts.change(record.get('started_at'), direction)
 
     def metadata(self):
         latest = self.records[self.order[-1][-1]]
         vehicle = self.kind == 'vehicles'
+        if self.kind == 'tiers':
+            tier = latest.get('vehicle_tier')
+            return {'id': self.identifier, 'name': tier_name(tier), 'tier': tier, 'type': None}
         return {'id': self.identifier,
                 'name': (latest.get(self.name_field) or message('unknown.vehicle' if vehicle else 'unknown.map'))[:256],
                 'tier': latest.get('vehicle_tier') if vehicle else None,
@@ -224,6 +251,8 @@ class Group(object):
 
     def snapshot(self):
         row = self.metadata()
+        times = self.starts.snapshot()
+        row['started_at'], row['first_started_at'] = times['max'], times['min']
         row['stats'] = self.totals.snapshot()
         return row
 
@@ -234,9 +263,10 @@ class ScopeIndex(object):
         self.identifier = identifier
         self.records = {}
         self.order = []
-        self.groups = {'vehicles': {}, 'maps': {}}
+        self.groups = dict((kind, {}) for kind, unused in GROUP_FIELDS)
         self.totals = Totals()
         self.pending = 0
+        self._sort_cache = {}
         self.warnings = Counter()
 
     def build(self, items):
@@ -244,6 +274,7 @@ class ScopeIndex(object):
 
     def build_steps(self, items):
         self.records, self.order, self.pending, self.warnings = {}, [], 0, Counter()
+        self._sort_cache = {}
         for position, item in enumerate(items):
             row = item[0]
             self.records[row['arena_id']] = (row, item)
@@ -256,7 +287,7 @@ class ScopeIndex(object):
         yield None
         for step in self.totals.build_steps(items):
             yield step
-        for kind, field in (('vehicles', 'vehicle_id'), ('maps', 'map_id')):
+        for kind, field in GROUP_FIELDS:
             grouped = {}
             for position, item in enumerate(items):
                 row = item[0]
@@ -278,6 +309,7 @@ class ScopeIndex(object):
         self._change(record, item, 1)
 
     def _change(self, record, item, direction):
+        self._sort_cache = {}
         identifier = record['arena_id']
         key = (record.get('started_at') or 0, identifier)
         if direction > 0:
@@ -292,7 +324,7 @@ class ScopeIndex(object):
             self.warnings[warning] += direction
             if not self.warnings[warning]:
                 del self.warnings[warning]
-        for kind, field in (('vehicles', 'vehicle_id'), ('maps', 'map_id')):
+        for kind, field in GROUP_FIELDS:
             group_id = _text(record[field]) if record.get(field) is not None else '__unknown__'
             groups = self.groups[kind]
             if group_id not in groups:
@@ -302,16 +334,49 @@ class ScopeIndex(object):
             if not group.records:
                 del groups[group_id]
 
-    def snapshot(self, label, started_at, pages=None):
-        pages = pages or {}
-        result = {'label': label, 'started_at': started_at, 'pending': self.pending,
-                  'summary': self.totals.snapshot(), 'pagination': {}, 'period_id': self.identifier}
-        for kind in ('vehicles', 'maps', 'battles'):
+    def _ordered(self, kind, options):
+        signature = tuple(options[key] for key in sorted(DEFAULT_ORDER))
+        cached = self._sort_cache.get(kind)
+        if cached and cached[0] == signature:
+            return cached[1]
+        metric, statistic = options['metric'], options['statistic']
+        ascending_time = options['chronology'] == 'oldest'
+        def key(entry):
             if kind == 'battles':
-                ordered = self.order
+                record, item = self.records[entry[1]]
+                identifier, time = record['arena_id'], record.get('started_at')
+                known = record.get('mode') == 'random' and record.get('outcome') in _OUTCOMES
+                value = None
+                if known:
+                    value = (item[1] if metric == 'battle_wn8' else
+                             record.get('currencies', {}).get('credits', {}).get('net') if metric == 'credits_net' else
+                             record.get(metric))
             else:
-                ordered = sorted(self.groups[kind].values(), key=lambda group:
-                                 (-group.totals.counts['battles'], group.metadata()['name'].lower(), group.identifier))
+                identifier = entry.identifier
+                times = entry.starts.ordered
+                time = (times[0] if ascending_time else times[-1]) if times else None
+                series = (entry.totals.money['credits']['net'] if metric == 'credits_net' else
+                          entry.totals.series.get(metric))
+                value = series.snapshot().get(statistic) if series else None
+            chronology = (time is None, (time or 0) if ascending_time else -(time or 0), identifier)
+            if metric == 'off':
+                return chronology
+            return (value is None, (value or 0) if options['direction'] == 'asc' else -(value or 0)) + chronology
+        ordered = sorted(self.order if kind == 'battles' else self.groups[kind].values(), key=key)
+        self._sort_cache[kind] = (signature, ordered)
+        return ordered
+
+    def snapshot(self, label, started_at, pages=None, orders=None):
+        pages, orders = pages or {}, orders or {}
+        result = {'label': label, 'started_at': started_at, 'pending': self.pending,
+                  'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {}, 'period_id': self.identifier}
+        for kind in ('vehicles', 'maps', 'battles', 'tiers'):
+            options = orders.get(kind, DEFAULT_ORDER)
+            options = options if valid_order(options) else DEFAULT_ORDER
+            result['ordering'][kind] = dict(options)
+            # Default battle chronology uses the existing time index without a full copy.
+            direct = kind == 'battles' and options['metric'] == 'off'
+            ordered = self.order if direct else self._ordered(kind, options)
             total = len(ordered)
             page = pages.get(kind, 0)
             if isinstance(page, bool) or not isinstance(page, int):
@@ -320,9 +385,12 @@ class ScopeIndex(object):
             start = page * PAGE_SIZE
             if kind == 'battles':
                 # Slice from the end; never copy/reverse the full history to obtain a page.
-                keys = ordered[max(0, total - start - PAGE_SIZE):total - start]
+                if direct and options['chronology'] == 'newest':
+                    keys = reversed(ordered[max(0, total - start - PAGE_SIZE):total - start])
+                else:
+                    keys = ordered[start:start + PAGE_SIZE]
                 rows = []
-                for key in reversed(keys):
+                for key in keys:
                     record, item = self.records[key[1]]
                     rows.append({'id': record['arena_id'],
                                  'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],

@@ -16,7 +16,7 @@ module.exports = async ({browser,nativeHost,check}) => {
   check('Pagination reports the whole history count',await page.locator('#ss-list-meta').textContent().then(t=>t.includes('125')));
   check('First page disables Previous and enables Next',await page.evaluate(()=>
     document.getElementById('ss-page-previous').disabled && !document.getElementById('ss-page-next').disabled));
-  check('Pagination uses explicit Gameface button labels',await page.locator('#ss-pagination .ss-control-label').count()===2);
+  check('Pagination uses explicit Gameface button labels',await page.locator('#ss-pagination > .ss-button .ss-control-label').count()===2);
   check('Pagination label is visible',await page.locator('#ss-page-label').textContent()==='Page 1 of 4');
   check('Paging buttons share the panel action colors, border and font',await page.evaluate(()=>{
     const next=getComputedStyle(document.getElementById('ss-page-next'));
@@ -25,12 +25,24 @@ module.exports = async ({browser,nativeHost,check}) => {
     return next.backgroundImage!=='none' &&
       ['backgroundImage','color','borderTopColor','borderTopWidth','fontFamily'].every(key=>next[key]===action[key]);
   }));
+  check('Paging buttons remain compact instead of filling a quarter of the panel',await page.evaluate(()=>
+    ['ss-page-previous','ss-page-next'].every(id=>{
+      const button=document.getElementById(id),box=button.getBoundingClientRect();
+      const style=getComputedStyle(button),label=getComputedStyle(button.querySelector('.ss-control-label'));
+      return box.width>=64 && box.width<=100 && box.height<=27 && label.fontSize==='12px' &&
+        style.backgroundImage!=='none';
+    })));
   for(const width of [320,744]) {
     await page.setViewportSize({width,height:820});
     check('Paging controls and counter fit at width '+width,await page.locator('#ss-pagination').evaluate(bar=>{
       const box=bar.getBoundingClientRect();
       return Array.from(bar.children).every(node=>{const child=node.getBoundingClientRect();
         return child.width>0 && child.left>=box.left-1 && child.right<=box.right+1;});
+    }));
+    check('Previous, chronology and Next share one aligned row at width '+width,await page.evaluate(()=>{
+      const boxes=['ss-page-previous','ss-sort-chronology','ss-page-next'].map(id=>document.getElementById(id).getBoundingClientRect());
+      return boxes.every(b=>Math.abs(b.top-boxes[0].top)<=1 && Math.abs(b.height-boxes[0].height)<=1) &&
+        document.getElementById('ss-page-label').getBoundingClientRect().bottom<=boxes[0].top;
     }));
   }
   await page.locator('#ss-page-next').click();
@@ -51,7 +63,7 @@ module.exports = async ({browser,nativeHost,check}) => {
   check('Previous requests the preceding page',await page.evaluate(()=>
     __grzCommands.filter(c=>c.action==='page').pop().page==='2'));
   await page.locator('#ss-scope-manual').click();
-  check('Legacy small scopes hide pagination',!await page.locator('#ss-pagination').isVisible());
+  check('Single-page scopes retain chronological sorting between disabled page controls',await page.locator('#ss-pagination').isVisible() && await page.locator('#ss-page-next').isDisabled());
   await page.locator('#ss-scope-launch').click();
   await page.evaluate(()=>{ window.__beforePages=__grzCommands.filter(c=>c.action==='page').length;
     GRZSessionStats.destroy(); document.getElementById('ss-page-previous').onclick(); });

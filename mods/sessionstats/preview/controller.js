@@ -5,6 +5,11 @@
     var current = fixture.normal;
     var panel = document.getElementById('grz-session-stats');
     window.GRZSessionStats.onAction = function (args) {
+        if (args.action === 'language') {
+            var code = args.language === 'auto' ? 'en' : args.language;
+            var catalog = window.GRZ_DEMO_LANGUAGES.languages[code];
+            if (catalog) { current.localization = {language:code,selected:args.language,messages:catalog}; window.GRZSessionStats.update(current); }
+        }
         if (args.action === 'reset') { current = fixture.reset; }
         if (args.action === 'close') { panel.style.display = 'none'; }
         if (args.action === 'refresh' || args.action === 'reset') {

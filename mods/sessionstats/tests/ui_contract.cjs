@@ -268,7 +268,7 @@ async function nativeHost(browser, options) {
         group:label.closest('.ss-group')?label.closest('.ss-group').getAttribute('data-group-id'):'summary'};
     }).filter(label=>label.height>label.lineHeight+1));
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
-  check('No more-details buttons or accordions',await page.locator('details,[aria-expanded]').count()===0);
+  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
   await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-compact.png')});
   const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
@@ -561,9 +561,12 @@ async function nativeHost(browser, options) {
     await degraded.close();
   }
   await require('./ui-connection.cjs')({browser,nativeHost,check});
+  await require('./ui-language.cjs')({browser,nativeHost,check});
+  await require('./ui-sorting.cjs')({browser,nativeHost,check});
   await require('./ui-pagination.cjs')({browser,nativeHost,check});
   await require('./ui-outcomes.cjs')({browser,nativeHost,check});
   await require('./ui-loading.cjs')({browser,nativeHost,check});
+  await require('./ui-notices.cjs')({browser,nativeHost,check});
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));
@@ -720,7 +723,7 @@ async function nativeHost(browser, options) {
     return reset.length===2 && reset[1].scope==='manual' && reset[1].account_key==='fixture-account-b';
   }));
   await sessions.close();
-  const languages=JSON.parse(fs.readFileSync(path.join(root,'grz.sessionstats.languages.json'),'utf8')).languages;
+  const languages=JSON.parse(fs.readFileSync(path.join(root,'data/languages.json'),'utf8')).languages;
   const localized=await nativeHost(browser,{});
   for(const [language,messages] of Object.entries(languages)) {
     const snapshot=JSON.parse(JSON.stringify(fixtures.normal));

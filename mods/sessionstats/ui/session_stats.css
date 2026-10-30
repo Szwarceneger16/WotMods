@@ -47,25 +47,25 @@ button:disabled { opacity:0.45; }
 .ss-outcomes { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; margin:0 0 6rem; font-size:13rem; line-height:18rem; color:#bebca3; }
 .ss-outcomes span { display:block; margin-right:4rem; }
 .ss-outcomes strong { display:block; margin-right:8rem; color:#e0dcc3; font-weight:normal; }
-.ss-details { display:flex; width:100%; padding:7rem 0 3rem; border-top:1rem solid #303421; }
+.ss-details { display:flex; width:100%; padding:4rem 0 2rem; border-top:1rem solid #303421; }
 .ss-performance { width:45%; padding-right:9rem; }
 .ss-economy { width:55%; padding-left:8rem; border-left:1rem solid #2d3220; }
 .ss-detail-title { margin:0 0 5rem; color:#dfd5b5; font-size:14rem; line-height:18rem; font-weight:bold; }
 /* WoT-style insets and quiet row rules replace the cell grid. Use explicit
    block/flex boxes, supported corner radii and colours for Gameface. */
-.ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:30rem; }
-.ss-metric-head, .ss-money-head { min-height:25rem; margin-bottom:1rem; border-radius:3rem; background:linear-gradient(#292e1f, #222719); color:#c4c1a7; font-size:12rem; line-height:17rem; }
+.ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:26rem; }
+.ss-metric-head, .ss-money-head { min-height:22rem; margin-bottom:1rem; border-radius:3rem; background:linear-gradient(#292e1f, #222719); color:#c4c1a7; font-size:12rem; line-height:17rem; }
 .ss-metric-row, .ss-money-row { border-radius:2rem; background:#181d11; }
 .ss-metric-row + .ss-metric-row, .ss-money-row + .ss-money-row { border-top:1rem solid #2e3522; background:#1a1f13; }
 .ss-metric-row:hover, .ss-money-row:hover { background:#252d1b; }
-.ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:5rem 4rem; line-height:20rem; }
+.ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:3rem 4rem; line-height:20rem; }
 .ss-metric-name { display:block; width:28%; flex-shrink:0; color:#d4ccb0; font-size:13rem; }
 .ss-metric-number { display:block; width:24%; padding-right:3rem; text-align:right; color:#ebe7d4; font-size:16rem; }
 /* Right-aligned numbers retain a 3rem metric / 4rem money trailing inset. There is no
    vertical cell rule; spare leading space belongs to the full amount. */
 .ss-metric-number, .ss-money-value { padding-left:0; }
-.ss-metric-head .ss-metric-name, .ss-metric-head .ss-metric-number, .ss-money-head .ss-money-label, .ss-money-head .ss-money-value { padding-top:4rem; padding-bottom:4rem; font-size:12rem; line-height:17rem; color:#c4c1a7; }
-.ss-free-xp { display:flex; align-items:center; flex-wrap:wrap; font-size:13rem; color:#c3bea3; margin:6rem 4rem 0; line-height:18rem; }
+.ss-metric-head .ss-metric-name, .ss-metric-head .ss-metric-number, .ss-money-head .ss-money-label, .ss-money-head .ss-money-value { padding-top:2rem; padding-bottom:2rem; font-size:12rem; line-height:17rem; color:#c4c1a7; }
+.ss-free-xp { display:flex; align-items:center; flex-wrap:wrap; font-size:13rem; color:#c3bea3; margin:0; line-height:17rem; }
 .ss-free-xp span { display:block; margin-right:4rem; }
 .ss-free-xp strong { display:block; color:#e6dab3; font-size:14rem; font-weight:normal; margin-right:4rem; }
 .ss-money-label { display:block; width:19%; font-size:13rem; color:#d4ccb0; }
@@ -75,28 +75,28 @@ button:disabled { opacity:0.45; }
 .ss-unknown { color:#9a967f; }
 .ss-cell-value { display:block; }
 .ss-cell-coverage { display:block; color:#d2b681; font-size:12rem; line-height:15rem; }
-.ss-battle-measure { display:flex; align-items:center; justify-content:space-between; min-height:34rem; padding:5rem 7rem; border-radius:3rem; background:#181d11; }
+.ss-battle-measure { display:flex; align-items:center; justify-content:space-between; min-height:28rem; padding:2rem 7rem; border-radius:3rem; background:#181d11; }
 .ss-battle-measure + .ss-battle-measure { margin-top:3rem; background:#1c2215; }
 .ss-battle-label { display:block; flex:1; min-width:0; padding-right:10rem; color:#c9c3a7; font-size:13rem; line-height:20rem; }
 .ss-battle-value { display:block; flex-shrink:0; color:#ebe7d4; font-size:18rem; font-weight:bold; line-height:24rem; text-align:right; }
 .ss-battle-value.ss-wn8 { color:#d9dca4; }
-.ss-battle-details .ss-free-xp { margin-top:7rem; }
-.ss-coverage-note { color:#d1b782; font-size:12rem; line-height:16rem; padding-top:3rem; }
+
+.ss-coverage-note { color:#d1b782; font-size:12rem; line-height:16rem; padding-top:0; }
 .ss-data-notices { padding:5rem 0 0; }
 .ss-data-notice { color:#d9bf8b; font-size:13rem; line-height:18rem; margin:2rem 0 0; }
 .ss-explainer { color:#b1b49a; font-size:12rem; margin-top:5rem; line-height:17rem; }
 .ss-group-tabs { display:flex; min-height:30rem; border-top:1rem solid #393b24; border-bottom:1rem solid #655431; border-radius:3rem 3rem 0 0; }
-.ss-group-tab { width:33.333%; padding:4rem 3rem; min-height:30rem; border:0; background:transparent; color:#afaa8b; font-size:14rem; }
+.ss-group-tab { width:25%; padding:4rem 3rem; min-height:30rem; border:0; background:transparent; color:#afaa8b; font-size:14rem; }
 .ss-group-tab:hover { background:#252614; color:#eaddb4; }
 .ss-group-tab.is-active { color:#f1d195; background:linear-gradient(#292614, #35301b); box-shadow:inset 0 -2rem #b17d2b; }
-.ss-list-meta { min-height:24rem; padding:5rem 0 2rem; font-size:12rem; color:#b3b69a; }
-.ss-group { margin-bottom:6rem; padding:7rem 6rem 8rem; border-radius:5rem; background:linear-gradient(#1c2013, #15190e); box-shadow:inset 0 1rem 0 #303722; }
-.ss-group-header { display:flex; align-items:center; min-height:37rem; padding-bottom:3rem; }
+.ss-list-meta { display:flex; align-items:center; justify-content:space-between; min-height:20rem; padding:3rem 1rem 0; font-size:12rem; color:#b3b69a; }
+.ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:5rem; background:linear-gradient(#1c2013, #15190e); box-shadow:inset 0 1rem 0 #303722; }
+.ss-group-header { display:flex; align-items:center; min-height:35rem; padding-bottom:2rem; }
 .ss-group-thumb { display:block; flex-shrink:0; width:54rem; height:32rem; margin-right:8rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-group-name { flex:1; min-width:0; padding-right:8rem; }
 .ss-group-title { color:#e8debf; font-weight:normal; font-size:17rem; line-height:20rem; margin:0; overflow-wrap:break-word; }
 .ss-group-subtitle { color:#b4b599; font-size:12rem; line-height:16rem; margin-top:1rem; }
-.ss-battle-outcome { display:block; flex-shrink:0; margin-left:8rem; padding:4rem 8rem; border-radius:3rem; background:#293020; color:#c5c4aa; font-size:13rem; line-height:18rem; }
+.ss-battle-outcome { display:block; flex-shrink:0; margin-left:8rem; padding:2rem 5rem; border-radius:3rem; background:#293020; color:#c5c4aa; font-size:13rem; line-height:18rem; }
 .ss-outcome-win { background:#2a351d; color:#cedc9d; }
 .ss-outcome-loss { background:#352b1e; color:#dfb493; }
 .ss-outcome-draw, .ss-outcome-unknown { background:#2c2e23; color:#c4c1a7; }
@@ -143,6 +143,7 @@ button:disabled { opacity:0.45; }
      The row label takes a separate line; the three number columns stay equal. */
   .ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { flex-wrap:wrap; }
   .ss-metric-head .ss-metric-name, .ss-money-head .ss-money-label { display:none; }
+  .ss-metric-head .ss-metric-count { display:block; width:100%; padding:0 4rem; }
   .ss-metric-name, .ss-money-label { width:100%; padding-bottom:1rem; }
   .ss-metric-number, .ss-money-value { width:33.333%; }
 }
@@ -157,11 +158,63 @@ button:disabled { opacity:0.45; }
   .ss-footer .ss-button { padding-left:7rem; padding-right:7rem; }
 }
 
-.ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:8rem 1rem; }
-.ss-pagination .ss-button { min-width:84rem; max-width:38%; min-height:25rem; padding:3rem 10rem; }
+.ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:4rem 1rem 6rem; }
+.ss-pagination > .ss-button { min-width:64rem; width:auto; max-width:28%; height:27rem; min-height:27rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
-#ss-page-label { display:block; flex:1; min-width:0; padding:0 8rem; text-align:center; color:#b3b69a; font-size:12rem; line-height:17rem; }
-.ss-outcome-art { width:100rem; max-width:36%; padding:0; background:none; }
-.ss-outcome-image { display:block; width:100rem; max-width:100%; height:58rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
+#ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:#b3b69a; font-size:12rem; line-height:17rem; }
+.ss-language-row { display:flex; align-items:center; justify-content:flex-end; flex-shrink:0; width:205rem; min-height:27rem; margin:0 8rem; }
+.ss-language-caption { display:block; min-width:0; margin-right:8rem; color:#b3b69a; font-size:12rem; }
+.ss-select.ss-language-select { width:145rem; max-width:75%; }
+.ss-language-select .ss-select-options { left:auto; right:0; }
+.ss-page-center { flex:1; min-width:0; padding:0 6rem; }
+.ss-sorting { display:flex; align-items:flex-end; margin:0 1rem 8rem; }
+.ss-sort-field { min-width:0; }
+.ss-sort-statistic { width:23%; padding-right:5rem; }
+.ss-sort-metric { width:42%; padding-right:5rem; }
+.ss-sort-direction { width:35%; }
+.ss-sort-caption { display:block; margin-bottom:2rem; color:#b3b69a; font-size:11rem; line-height:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ss-select { position:relative; width:100%; min-width:0; }
+.ss-select-trigger { width:100%; min-width:0; height:27rem; min-height:27rem; padding:3rem 5rem; justify-content:space-between; }
+.ss-select-trigger .ss-control-label { flex:1; text-align:left; }
+.ss-select-arrow { display:block; flex-shrink:0; width:6rem; height:6rem; margin:-3rem 3rem 0 6rem; border-right:1rem solid currentColor; border-bottom:1rem solid currentColor; transform:rotate(45deg); }
+.ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid #b3b69a; border-radius:3rem; background:#111309; box-shadow:0 3rem 8rem #000; }
+.ss-sort-direction .ss-select-options { left:auto; right:0; }
+.ss-select-option { width:100%; min-height:28rem; padding:4rem 5rem; border:0; background:transparent; color:#b3b69a; justify-content:flex-start; }
+.ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
+@media (max-width:420px) {
+  .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
+  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
+}
+.ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:#e8debf; background:#111309; box-shadow:inset 2rem 0 #b3b69a; }
+.ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
+.ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-outcome-label { display:block; text-align:center; }
-.ss-outcome-art .ss-outcome-label { padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ss-outcome-art .ss-outcome-label { min-width:0; padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Keep optional information above the tables, alongside the vehicle identity. */
+.ss-group-heading, .ss-group-meta, .ss-summary-meta { display:flex; align-items:center; flex-wrap:wrap; min-width:0; }
+.ss-group-heading .ss-coverage-note { margin-left:8rem; }
+.ss-group-meta .ss-group-subtitle { margin-right:10rem; }
+.ss-group-meta .ss-free-xp { font-size:12rem; }
+.ss-group-meta .ss-free-xp strong { font-size:12rem; }
+.ss-summary-meta { margin:3rem 4rem; }
+.ss-summary-meta .ss-coverage-note { margin-left:10rem; }
+.ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
+.ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
+.ss-money-label .ss-cell-coverage { margin-left:3rem; }
+@media (max-width:560px) {
+  .ss-toolbar { flex-wrap:wrap; padding:4rem 0; }
+  .ss-period { width:100%; margin-bottom:3rem; }
+  .ss-language-row { flex:1; min-width:0; width:auto; margin-left:0; justify-content:flex-start; }
+  .ss-language-caption { margin-right:4rem; }
+  .ss-select.ss-language-select { width:125rem; }
+  .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
+  .ss-battle .ss-group-name { width:0; flex:1; }
+  .ss-outcome-image { width:36rem; height:25rem; }
+  .ss-battle-outcome { margin-left:4rem; }
+  .ss-outcome-label { font-size:11rem; }
+}
+@media (max-width:380px) {
+  .ss-language-row { flex:none; width:100%; margin:0 0 4rem; }
+  .ss-xp-picker { margin-left:auto; }
+}

@@ -95,7 +95,7 @@ def main():
     html = re.sub(r'<script(?: type="module")? src="session_stats.js"></script>',
                   lambda m:'<script>\n'+js+'\n</script>', html)
     controller = (output/'controller.js').read_text(encoding='utf-8')
-    demo = '<script>window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
+    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
     html = html.replace('<body>', '<body>\n<div class="demo-toolbar"><span data-i18n="preview.label">Preview · synthetic data</span><button id="demo-reopen" type="button" data-i18n="preview.open">Open panel</button><button id="demo-restart" type="button" data-i18n="preview.restore">Restore example</button></div>')
     html = html.replace('</body>',demo+'\n<script>\n'+controller+'\n</script>\n</body>')
     preview_css = '''

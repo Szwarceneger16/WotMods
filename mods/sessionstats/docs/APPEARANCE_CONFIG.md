@@ -1,11 +1,11 @@
-# Appearance and scrolling configuration — 0.2.12
+# Appearance and scrolling configuration — 0.3.4
 
 ## File placement and applying changes
 
 Place **`grz.sessionstats.json`** in the game installation's **`mods/configs`** directory:
 
 ```text
-mods/2.4.1.0/grz.sessionstats_0.2.12.wotmod
+mods/2.4.1.0/grz_sessions_stats.wotmod
 mods/configs/grz.sessionstats.json
 ```
 
@@ -18,7 +18,7 @@ never overwritten or filled with missing fields. Legacy originals remain intact.
 Do not install packaged defaults over your custom configuration. To migrate an old
 installation automatically, leave the central JSON absent when replacing the .wotmod.
 
-Optional translation overrides use `mods/configs/grz.sessionstats.languages.json`.
+Translation catalogs are bundled inside the mod. Only the language choice is configurable.
 A legacy override is copied only when its central counterpart is absent; no external
 language file is required because the package contains all supported languages.
 Creation uses a complete temporary file and create-only publication; concurrent
@@ -210,6 +210,7 @@ The root `"language": "auto"` is the default and follows the game language,
 with English as fallback. Explicit `en`, `ru`, `fr`, `pl`, `de`, `es` or `uk`
 take priority. Existing `"language": "en"` remains an English override; change
 it to `"auto"` to follow the game. All seven catalogs are bundled in the `.wotmod`.
-The neighboring `grz.sessionstats.languages.json` is optional and editable.
-Removing it preserves bundled translations; embedded English is the final fallback.
-See [LANGUAGES.md](LANGUAGES.md) for overrides and added languages.
+The panel Language dropdown writes this same field and applies it immediately.
+Manual edits still take effect after Refresh or reopening the panel. Other JSON
+settings are preserved. Old external catalogs are ignored; only the bundled seven
+languages are available. See [LANGUAGES.md](LANGUAGES.md).

@@ -17,10 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 DATE = (2026, 10, 24, 0, 0, 0)
 SEMVER = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
 CLIENT = '2.4.1.0'
+SESSIONSTATS_PACKAGE = 'grz_sessions_stats.wotmod'
+PREVIOUS_SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
 KINDS = {
     'staysharp': ('StaySharp-Medkit-v', 'com.staysharp.medkitreminder_', 'Stay Sharp Medkit'),
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
 }
+MEDKIT_INSTALLED_PACKAGE = 'GRZ_Medkit_Reminder.wotmod'
 
 
 def digest(data):
@@ -93,6 +96,29 @@ def installer_name(kind, version):
     return KINDS[kind][0] + version + '.zip'
 
 
+def installed_package(kind, version, report=None):
+    legacy = KINDS[kind][1] + version + '.wotmod'
+    if kind != 'sessionstats':
+        return legacy
+    name = (report or {}).get('installed_package', legacy)
+    if name not in (legacy, SESSIONSTATS_PACKAGE, PREVIOUS_SESSIONSTATS_PACKAGE):
+        raise ValueError('Invalid installed package filename')
+    return name
+
+
+def bundled_languages(report, package):
+    resource = report.get('languages_resource')
+    if resource != 'res/grz_session_stats/languages.json' or 'languages_config_sha256' in report:
+        raise ValueError('Invalid bundled language metadata')
+    if resource not in package or digest(package[resource]) != report.get('languages_resource_sha256'):
+        raise ValueError('Bundled language resource hash mismatch')
+    catalog = json.loads(package[resource].decode('utf-8'))
+    if (type(catalog.get('schema_version')) is not int or catalog['schema_version'] != 1 or
+            set(catalog.get('languages', {})) != {'en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'}):
+        raise ValueError('Bundled language catalog does not match supported languages')
+    return resource
+
+
 def verify(path):
     kind, version = identity(path.name)
     files = read_zip(path)
@@ -105,9 +131,14 @@ def verify(path):
     client = report['client_version']
     if not isinstance(client, str) or not re.fullmatch(r'[0-9]+(?:\.[0-9]+){3}', client):
         raise ValueError('Invalid client version')
-    primary = 'mods/' + client + '/' + KINDS[kind][1] + version + '.wotmod'
+    build_report = json.loads(files.get(doc + 'BUILD.json', b'{}')) if kind == 'sessionstats' else None
+    primary = 'mods/' + client + '/' + installed_package(kind, version, build_report)
     if primary not in files:
-        raise ValueError('Missing primary mod')
+        stable = 'mods/' + client + '/' + MEDKIT_INSTALLED_PACKAGE
+        if kind == 'staysharp' and stable in files:
+            primary = stable
+        else:
+            raise ValueError('Missing primary mod')
     package = read_zip(io.BytesIO(files[primary]))
     import xml.etree.ElementTree as ET
     meta = ET.fromstring(package['meta.xml'])
@@ -128,7 +159,13 @@ def verify(path):
         wanted.add('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod')
         if not wanted <= files.keys():
             raise ValueError('Missing OpenWG dependency')
-        for filename in ('grz.sessionstats.json', 'grz.sessionstats.languages.json'):
+        embedded = build_report.get('languages_resource')
+        examples = ('grz.sessionstats.json',) if embedded else ('grz.sessionstats.json', 'grz.sessionstats.languages.json')
+        if embedded:
+            bundled_languages(build_report, package)
+            if 'mods/configs/grz.sessionstats.languages.json.example' in files:
+                raise ValueError('External translations in bundled-language installer')
+        for filename in examples:
             if 'mods/configs/' + filename + '.example' not in files:
                 raise ValueError('Missing configuration example')
     elif 'mods/configs/staysharp.medkit.json.example' not in files:
@@ -185,25 +222,36 @@ def package(source, destination, kind, client=CLIENT):
         if report['version'] != version:
             raise ValueError('Build version mismatch')
         client = report['client_target']
+        installed_primary = installed_package(kind, version, report)
+        config_name = 'grz.sessionstats.json' + ('.example' if installed_primary in
+            (SESSIONSTATS_PACKAGE, PREVIOUS_SESSIONSTATS_PACKAGE) else '')
         bundle = read_zip(io.BytesIO(files['wot-statystyki-sesji-v' + version + '.zip']))
         # Check the exact files against the separately verified build; a stale
         # installer must never replace the validated package/config/dependency.
         for name, expected in (
-            ('mods/' + client + '/' + primary, files[primary]),
+            ('mods/' + client + '/' + installed_primary, files[primary]),
             ('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod',
              files['net.openwg.gameface_1.2.2.wotmod']),
-            ('mods/configs/grz.sessionstats.json', files['grz.sessionstats.json']),
+            ('mods/configs/' + config_name, files['grz.sessionstats.json']),
         ):
             if bundle.get(name) != expected:
                 raise ValueError('Installer and verified build disagree')
-        language = bundle['mods/configs/grz.sessionstats.languages.json']
-        if digest(language) != report['languages_config_sha256']:
-            raise ValueError('Language configuration hash mismatch')
+        embedded = report.get('languages_resource')
+        if embedded:
+            resources = read_zip(io.BytesIO(files[primary]))
+            bundled_languages(report, resources)
+            if 'mods/configs/grz.sessionstats.languages.json' in bundle:
+                raise ValueError('External translations in bundled-language build')
+        else:
+            # Preserve previously published installers byte-for-byte on carry-forward.
+            language = bundle['mods/configs/grz.sessionstats.languages.json']
+            if digest(language) != report['languages_config_sha256']:
+                raise ValueError('Language configuration hash mismatch')
         for name, data in bundle.items():
             if name == 'SHA256SUMS.txt':
                 continue
             if name.startswith('mods/configs/'):
-                payload[name + '.example'] = data
+                payload[name if name.endswith('.json.example') else name + '.example'] = data
             elif name.startswith('mods/'):
                 payload[name] = data
             else:

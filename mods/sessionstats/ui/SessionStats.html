@@ -21,6 +21,7 @@
       </div>
       <div class="ss-toolbar">
         <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
+        <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
         <div class="ss-xp-picker" role="group" aria-label="Experience type" data-i18n-aria="xp.group">
           <button id="ss-xp-base" class="ss-control ss-small-toggle is-active" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="xp.base">Base XP</span></button>
           <button id="ss-xp-received" class="ss-control ss-small-toggle" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="xp.received">Received XP</span></button>
@@ -34,13 +35,21 @@
       <nav id="ss-group-tabs" class="ss-group-tabs" aria-label="Group results" data-i18n-aria="groups.label">
         <button id="ss-group-vehicles" type="button" tabindex="0" class="ss-control ss-group-tab is-active" aria-pressed="true"><span class="ss-control-label" data-i18n="groups.vehicles">Vehicles</span></button>
         <button id="ss-group-maps" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.maps">Maps</span></button>
+        <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
         <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
       </nav>
-      <div id="ss-list-meta" class="ss-list-meta"></div>
+      <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
       <div id="ss-pagination" class="ss-pagination" style="display:none">
         <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
-        <span id="ss-page-label" aria-live="polite"></span>
+        <div class="ss-page-center">
+          <div id="ss-sort-chronology" class="ss-select"></div>
+        </div>
         <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
+      </div>
+      <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
+        <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
+        <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
+        <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
       </div>
       <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
     </div>

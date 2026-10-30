@@ -157,7 +157,7 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await page.evaluate(()=>JSON.stringify(testCallbacks)===JSON.stringify([['add',41],['remove',41],['add',57]])));
     check('Native footer content is preserved throughout activity transitions',
       await page.locator('.SessionStats_base_original').textContent()==='19' && await page.locator('#native-button').count()===1);
-    const languages=JSON.parse(fs.readFileSync(path.join(root,'grz.sessionstats.languages.json'),'utf8')).languages;
+    const languages=JSON.parse(fs.readFileSync(path.join(root,'data/languages.json'),'utf8')).languages;
     for(const [language,messages] of Object.entries(languages)) {
       await page.evaluate(messages=>{
         testModel.activity=JSON.stringify({pending:3,processing:true,labels:messages});emitChange();

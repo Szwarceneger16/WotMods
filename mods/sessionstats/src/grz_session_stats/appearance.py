@@ -236,25 +236,25 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-outcomes { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; margin:0 0 6rem; font-size:13rem; line-height:18rem; color:{{colors.outcome_summary_text}}; }
 .ss-outcomes span { display:block; margin-right:4rem; }
 .ss-outcomes strong { display:block; margin-right:8rem; color:{{colors.outcome_summary_value_text}}; font-weight:normal; }
-.ss-details { display:flex; width:100%; padding:7rem 0 3rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-details { display:flex; width:100%; padding:4rem 0 2rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-performance { width:45%; padding-right:9rem; }
 .ss-economy { width:55%; padding-left:8rem; border-left:1rem solid {{colors.economy_separator_border_left}}; }
 .ss-detail-title { margin:0 0 5rem; color:{{colors.detail_title_text}}; font-size:14rem; line-height:18rem; font-weight:bold; }
 /* WoT-style insets and quiet row rules replace the cell grid. Use explicit
    block/flex boxes, supported corner radii and colours for Gameface. */
-.ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:30rem; }
-.ss-metric-head, .ss-money-head { min-height:25rem; margin-bottom:1rem; border-radius:{{radii.table_header}}rem; background:linear-gradient({{colors.table_header_background_start}}, {{colors.table_header_background_end}}); color:{{colors.table_header_text}}; font-size:12rem; line-height:17rem; }
+.ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:26rem; }
+.ss-metric-head, .ss-money-head { min-height:22rem; margin-bottom:1rem; border-radius:{{radii.table_header}}rem; background:linear-gradient({{colors.table_header_background_start}}, {{colors.table_header_background_end}}); color:{{colors.table_header_text}}; font-size:12rem; line-height:17rem; }
 .ss-metric-row, .ss-money-row { border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
 .ss-metric-row + .ss-metric-row, .ss-money-row + .ss-money-row { border-top:1rem solid {{colors.table_row_following_border_top}}; background:{{colors.table_row_following_background}}; }
 .ss-metric-row:hover, .ss-money-row:hover { background:{{colors.table_row_hover_background}}; }
-.ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:5rem 4rem; line-height:20rem; }
+.ss-metric-name, .ss-metric-number, .ss-money-label, .ss-money-value { padding:3rem 4rem; line-height:20rem; }
 .ss-metric-name { display:block; width:28%; flex-shrink:0; color:{{colors.metric_label_text}}; font-size:13rem; }
 .ss-metric-number { display:block; width:24%; padding-right:3rem; text-align:right; color:{{colors.metric_value_text}}; font-size:16rem; }
 /* Right-aligned numbers retain a 3rem metric / 4rem money trailing inset. There is no
    vertical cell rule; spare leading space belongs to the full amount. */
 .ss-metric-number, .ss-money-value { padding-left:0; }
-.ss-metric-head .ss-metric-name, .ss-metric-head .ss-metric-number, .ss-money-head .ss-money-label, .ss-money-head .ss-money-value { padding-top:4rem; padding-bottom:4rem; font-size:12rem; line-height:17rem; color:{{colors.table_header_cell_text}}; }
-.ss-free-xp { display:flex; align-items:center; flex-wrap:wrap; font-size:13rem; color:{{colors.free_xp_label_text}}; margin:6rem 4rem 0; line-height:18rem; }
+.ss-metric-head .ss-metric-name, .ss-metric-head .ss-metric-number, .ss-money-head .ss-money-label, .ss-money-head .ss-money-value { padding-top:2rem; padding-bottom:2rem; font-size:12rem; line-height:17rem; color:{{colors.table_header_cell_text}}; }
+.ss-free-xp { display:flex; align-items:center; flex-wrap:wrap; font-size:13rem; color:{{colors.free_xp_label_text}}; margin:0; line-height:17rem; }
 .ss-free-xp span { display:block; margin-right:4rem; }
 .ss-free-xp strong { display:block; color:{{colors.free_xp_value_text}}; font-size:14rem; font-weight:normal; margin-right:4rem; }
 .ss-money-label { display:block; width:19%; font-size:13rem; color:{{colors.money_label_text}}; }
@@ -264,28 +264,28 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-unknown { color:{{colors.unknown_text}}; }
 .ss-cell-value { display:block; }
 .ss-cell-coverage { display:block; color:{{colors.partial_count_text}}; font-size:12rem; line-height:15rem; }
-.ss-battle-measure { display:flex; align-items:center; justify-content:space-between; min-height:34rem; padding:5rem 7rem; border-radius:{{radii.battle_measure}}rem; background:{{colors.battle_measure_background}}; }
+.ss-battle-measure { display:flex; align-items:center; justify-content:space-between; min-height:28rem; padding:2rem 7rem; border-radius:{{radii.battle_measure}}rem; background:{{colors.battle_measure_background}}; }
 .ss-battle-measure + .ss-battle-measure { margin-top:3rem; background:{{colors.battle_measure_following_background}}; }
 .ss-battle-label { display:block; flex:1; min-width:0; padding-right:10rem; color:{{colors.battle_label_text}}; font-size:13rem; line-height:20rem; }
 .ss-battle-value { display:block; flex-shrink:0; color:{{colors.battle_value_text}}; font-size:18rem; font-weight:bold; line-height:24rem; text-align:right; }
 .ss-battle-value.ss-wn8 { color:{{colors.battle_wn8_text}}; }
-.ss-battle-details .ss-free-xp { margin-top:7rem; }
-.ss-coverage-note { color:{{colors.coverage_notice_text}}; font-size:12rem; line-height:16rem; padding-top:3rem; }
+
+.ss-coverage-note { color:{{colors.coverage_notice_text}}; font-size:12rem; line-height:16rem; padding-top:0; }
 .ss-data-notices { padding:5rem 0 0; }
 .ss-data-notice { color:{{colors.data_notice_text}}; font-size:13rem; line-height:18rem; margin:2rem 0 0; }
 .ss-explainer { color:{{colors.explanation_text}}; font-size:12rem; margin-top:5rem; line-height:17rem; }
 .ss-group-tabs { display:flex; min-height:30rem; border-top:1rem solid {{colors.group_tabs_border_top}}; border-bottom:1rem solid {{colors.group_tabs_border_bottom}}; border-radius:{{radii.group_tabs}}rem {{radii.group_tabs}}rem 0 0; }
-.ss-group-tab { width:33.333%; padding:4rem 3rem; min-height:30rem; border:0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
+.ss-group-tab { width:25%; padding:4rem 3rem; min-height:30rem; border:0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
 .ss-group-tab:hover { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}; }
-.ss-list-meta { min-height:24rem; padding:5rem 0 2rem; font-size:12rem; color:{{colors.list_meta_text}}; }
-.ss-group { margin-bottom:6rem; padding:7rem 6rem 8rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); box-shadow:inset 0 1rem 0 {{colors.group_card_shadow}}; }
-.ss-group-header { display:flex; align-items:center; min-height:37rem; padding-bottom:3rem; }
+.ss-list-meta { display:flex; align-items:center; justify-content:space-between; min-height:20rem; padding:3rem 1rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
+.ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); box-shadow:inset 0 1rem 0 {{colors.group_card_shadow}}; }
+.ss-group-header { display:flex; align-items:center; min-height:35rem; padding-bottom:2rem; }
 .ss-group-thumb { display:block; flex-shrink:0; width:54rem; height:32rem; margin-right:8rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-group-name { flex:1; min-width:0; padding-right:8rem; }
 .ss-group-title { color:{{colors.group_title_text}}; font-weight:normal; font-size:17rem; line-height:20rem; margin:0; overflow-wrap:break-word; }
 .ss-group-subtitle { color:{{colors.group_subtitle_text}}; font-size:12rem; line-height:16rem; margin-top:1rem; }
-.ss-battle-outcome { display:block; flex-shrink:0; margin-left:8rem; padding:4rem 8rem; border-radius:{{radii.battle_outcome}}rem; background:{{colors.battle_outcome_background}}; color:{{colors.battle_outcome_text}}; font-size:13rem; line-height:18rem; }
+.ss-battle-outcome { display:block; flex-shrink:0; margin-left:8rem; padding:2rem 5rem; border-radius:{{radii.battle_outcome}}rem; background:{{colors.battle_outcome_background}}; color:{{colors.battle_outcome_text}}; font-size:13rem; line-height:18rem; }
 .ss-outcome-win { background:{{colors.win_background}}; color:{{colors.win_text}}; }
 .ss-outcome-loss { background:{{colors.loss_background}}; color:{{colors.loss_text}}; }
 .ss-outcome-draw, .ss-outcome-unknown { background:{{colors.draw_background}}; color:{{colors.draw_text}}; }
@@ -332,6 +332,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
      The row label takes a separate line; the three number columns stay equal. */
   .ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { flex-wrap:wrap; }
   .ss-metric-head .ss-metric-name, .ss-money-head .ss-money-label { display:none; }
+  .ss-metric-head .ss-metric-count { display:block; width:100%; padding:0 4rem; }
   .ss-metric-name, .ss-money-label { width:100%; padding-bottom:1rem; }
   .ss-metric-number, .ss-money-value { width:33.333%; }
 }
@@ -346,14 +347,66 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-footer .ss-button { padding-left:7rem; padding-right:7rem; }
 }
 
-.ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:8rem 1rem; }
-.ss-pagination .ss-button { min-width:84rem; max-width:38%; min-height:25rem; padding:3rem 10rem; }
+.ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:4rem 1rem 6rem; }
+.ss-pagination > .ss-button { min-width:64rem; width:auto; max-width:28%; height:27rem; min-height:27rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
-#ss-page-label { display:block; flex:1; min-width:0; padding:0 8rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
-.ss-outcome-art { width:100rem; max-width:36%; padding:0; background:none; }
-.ss-outcome-image { display:block; width:100rem; max-width:100%; height:58rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
+#ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
+.ss-language-row { display:flex; align-items:center; justify-content:flex-end; flex-shrink:0; width:205rem; min-height:27rem; margin:0 8rem; }
+.ss-language-caption { display:block; min-width:0; margin-right:8rem; color:{{colors.list_meta_text}}; font-size:12rem; }
+.ss-select.ss-language-select { width:145rem; max-width:75%; }
+.ss-language-select .ss-select-options { left:auto; right:0; }
+.ss-page-center { flex:1; min-width:0; padding:0 6rem; }
+.ss-sorting { display:flex; align-items:flex-end; margin:0 1rem 8rem; }
+.ss-sort-field { min-width:0; }
+.ss-sort-statistic { width:23%; padding-right:5rem; }
+.ss-sort-metric { width:42%; padding-right:5rem; }
+.ss-sort-direction { width:35%; }
+.ss-sort-caption { display:block; margin-bottom:2rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ss-select { position:relative; width:100%; min-width:0; }
+.ss-select-trigger { width:100%; min-width:0; height:27rem; min-height:27rem; padding:3rem 5rem; justify-content:space-between; }
+.ss-select-trigger .ss-control-label { flex:1; text-align:left; }
+.ss-select-arrow { display:block; flex-shrink:0; width:6rem; height:6rem; margin:-3rem 3rem 0 6rem; border-right:1rem solid currentColor; border-bottom:1rem solid currentColor; transform:rotate(45deg); }
+.ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_tabs}}rem; background:{{colors.window_background}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
+.ss-sort-direction .ss-select-options { left:auto; right:0; }
+.ss-select-option { width:100%; min-height:28rem; padding:4rem 5rem; border:0; background:{{colors.body_background}}; color:{{colors.list_meta_text}}; justify-content:flex-start; }
+.ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
+@media (max-width:420px) {
+  .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
+  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
+}
+.ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
+.ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
+.ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-outcome-label { display:block; text-align:center; }
-.ss-outcome-art .ss-outcome-label { padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ss-outcome-art .ss-outcome-label { min-width:0; padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Keep optional information above the tables, alongside the vehicle identity. */
+.ss-group-heading, .ss-group-meta, .ss-summary-meta { display:flex; align-items:center; flex-wrap:wrap; min-width:0; }
+.ss-group-heading .ss-coverage-note { margin-left:8rem; }
+.ss-group-meta .ss-group-subtitle { margin-right:10rem; }
+.ss-group-meta .ss-free-xp { font-size:12rem; }
+.ss-group-meta .ss-free-xp strong { font-size:12rem; }
+.ss-summary-meta { margin:3rem 4rem; }
+.ss-summary-meta .ss-coverage-note { margin-left:10rem; }
+.ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
+.ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
+.ss-money-label .ss-cell-coverage { margin-left:3rem; }
+@media (max-width:560px) {
+  .ss-toolbar { flex-wrap:wrap; padding:4rem 0; }
+  .ss-period { width:100%; margin-bottom:3rem; }
+  .ss-language-row { flex:1; min-width:0; width:auto; margin-left:0; justify-content:flex-start; }
+  .ss-language-caption { margin-right:4rem; }
+  .ss-select.ss-language-select { width:125rem; }
+  .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
+  .ss-battle .ss-group-name { width:0; flex:1; }
+  .ss-outcome-image { width:36rem; height:25rem; }
+  .ss-battle-outcome { margin-left:4rem; }
+  .ss-outcome-label { font-size:11rem; }
+}
+@media (max-width:380px) {
+  .ss-language-row { flex:none; width:100%; margin:0 0 4rem; }
+  .ss-xp-picker { margin-left:auto; }
+}
 '''
 
 FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow the native rem scale. */

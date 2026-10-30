@@ -77,10 +77,10 @@ class LocalizationTests(unittest.TestCase):
         for configured, expected in (('en', 'en'), ('fr', 'fr'), ('zz', 'en')):
             self.assertEqual(loc.Localizer(configured, client_language='pl').language, expected)
 
-    def test_auto_supports_external_regions_before_their_base_language(self):
+    def test_external_regions_cannot_add_supported_languages(self):
         self.write({'pt': {'title': 'Base'}, 'pt-BR': {'title': 'Regional'}})
-        self.assertEqual(loc.Localizer('auto', self.path, client_language='pt_br').text('title'), 'Regional')
-        self.assertEqual(loc.Localizer('auto', self.path, client_language='pt_PT').text('title'), 'Base')
+        self.assertEqual(loc.Localizer('auto', self.path, client_language='pt_br').text('title'), self.catalog['en']['title'])
+        self.assertEqual(loc.Localizer('auto', self.path, client_language='pt_PT').text('title'), self.catalog['en']['title'])
 
     def test_native_outcomes_follow_only_the_selected_game_language(self):
         native = {'outcome.win': 'WG victory fixture', 'outcome.loss': 'WG loss fixture',
@@ -93,14 +93,14 @@ class LocalizationTests(unittest.TestCase):
             translator = loc.Localizer(configured, client_language=game, native_messages=native)
             self.assertEqual(translator.text('outcome.win'), self.catalog[translator.language]['outcome.win'])
 
-    def test_native_labels_survive_unchanged_shipped_catalog_but_custom_entries_win(self):
+    def test_external_catalog_cannot_override_native_labels(self):
         self.write(self.catalog)
         native = {'outcome.win': 'WG fixture'}
         self.assertEqual(loc.Localizer('auto', self.path, client_language='pl', native_messages=native)
                          .text('outcome.win'), 'WG fixture')
         self.write({'pl': {'outcome.win': 'Custom victory'}})
         self.assertEqual(loc.Localizer('auto', self.path, client_language='pl', native_messages=native)
-                         .text('outcome.win'), 'Custom victory')
+                         .text('outcome.win'), 'WG fixture')
 
     def test_missing_or_malformed_native_text_retains_per_outcome_fallback(self):
         for invalid in (None, 23, '#battle_results:status/win', '', '<b>Win</b>',
@@ -133,13 +133,13 @@ class LocalizationTests(unittest.TestCase):
             else:
                 sys.modules['helpers'] = previous
 
-    def test_overrides_are_partial_and_new_languages_are_supported(self):
+    def test_external_overrides_and_new_languages_are_ignored(self):
         self.write({'pl': {'title': 'Własny tytuł'}, 'pt-BR': {'title': 'Estatísticas'}})
         translator = loc.Localizer('pl', self.path)
-        self.assertEqual(translator.text('title'), 'Własny tytuł')
+        self.assertEqual(translator.text('title'), self.catalog['pl']['title'])
         self.assertEqual(translator.text('refresh'), self.catalog['pl']['refresh'])
         added = loc.Localizer('pt-BR', self.path)
-        self.assertEqual(added.language, 'pt-BR')
+        self.assertEqual(added.language, 'en')
         self.assertEqual(added.text('refresh'), 'Refresh')
 
     def test_invalid_values_and_unsafe_placeholders_fall_back_per_message(self):
@@ -148,7 +148,7 @@ class LocalizationTests(unittest.TestCase):
             self.write({'en': {'status.pending': invalid, 'refresh': 'Reload'}})
             translator = loc.Localizer('en', self.path)
             self.assertEqual(translator.text('status.pending', 3), 'Pending: 3')
-            self.assertEqual(translator.text('refresh'), 'Reload')
+            self.assertEqual(translator.text('refresh'), self.catalog['en']['refresh'])
 
     def test_malformed_duplicate_nonfinite_oversized_catalogs_restore_bundled_language(self):
         for raw in (b'{', b'[]', b'{"schema_version":true,"languages":{}}',
@@ -166,7 +166,7 @@ class LocalizationTests(unittest.TestCase):
             raw = stream.read()
         with io.open(self.path, 'wb') as stream:
             stream.write(b'\xef\xbb\xbf' + raw)
-        self.assertEqual(loc.Localizer('fr', self.path).text('refresh'), 'Recharger')
+        self.assertEqual(loc.Localizer('fr', self.path).text('refresh'), self.catalog['fr']['refresh'])
         os.unlink(self.path)
         self.assertEqual(loc.Localizer('fr', self.path).text('refresh'), 'Actualiser')
 
@@ -207,13 +207,13 @@ class LocalizationTests(unittest.TestCase):
         for error_type in DECODER_ERRORS:
             with self.failing_decoder(raw, error_type) as calls:
                 translator = loc.Localizer('uk', self.path, catalog=self.catalog)
-            self.assertEqual(calls, [error_type])
+            self.assertEqual(calls, [])
             self.assertEqual(translator.language, 'uk')
             self.assertEqual(translator.messages, self.catalog['uk'])
 
     def test_source_catalog_recursion_uses_the_embedded_english_fallback(self):
         import types
-        source_path = os.path.join(os.path.dirname(loc.__file__), '..', '..', loc.FILENAME)
+        source_path = os.path.join(os.path.dirname(loc.__file__), '..', '..', 'data', 'languages.json')
         with io.open(source_path, 'rb') as stream:
             raw = stream.read()
         resource_manager = types.ModuleType(str('ResMgr'))
@@ -257,7 +257,7 @@ class LocalizationTests(unittest.TestCase):
                 with self.failing_decoder(raw, error_type) as calls:
                     mod.on_action({'action': 'refresh'})
                     payload = mod.snapshot()
-                self.assertEqual(calls, [error_type])
+                self.assertEqual(calls, [])
                 self.assertEqual(payload['appearance'], presentation)
                 self.assertEqual(payload['localization']['language'], 'uk')
                 self.assertEqual(payload['localization']['messages'], self.catalog['uk'])
@@ -297,6 +297,56 @@ class LocalizationTests(unittest.TestCase):
                 self.assertEqual(translator.translate(english), expected, code + ':' + key)
                 self.assertEqual(translator.translate(polish), expected, code + ':' + key)
 
+    def test_legacy_and_canonical_notices_collapse_only_after_translation(self):
+        raw = [loc.LEGACY_POLISH['normalize.reserve'], loc.ENGLISH['normalize.reserve'],
+               loc.ENGLISH['normalize.finance'], loc.LEGACY_POLISH['normalize.finance'],
+               'Synthetic custom notice', 'Synthetic custom notice']
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot({'warnings': list(raw), 'scopes': {}})
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['normalize.reserve'],
+                self.catalog[code]['normalize.finance'], 'Synthetic custom notice'])
+        self.assertEqual(len(raw), 6)
+
+    def test_notice_dedup_keeps_different_parameters_and_unknown_text(self):
+        raw = [loc.ENGLISH['runtime.backlog'].format(1),
+               loc.LEGACY_POLISH['runtime.backlog'].format(1),
+               loc.ENGLISH['runtime.backlog'].format(2),
+               'Synthetic failure A', 'Synthetic failure B']
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot({'warnings': list(raw), 'scopes': {}})
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['runtime.backlog'].format(1),
+                self.catalog[code]['runtime.backlog'].format(2), 'Synthetic failure A', 'Synthetic failure B'])
+
+    def test_translated_notice_dedup_does_not_change_saved_battles_or_totals(self):
+        from test_core import StatsService, Clock as ServiceClock, result
+        clock = ServiceClock(100)
+        service = StatsService(self.directory, 'EU:notice-test', 'launch', EXPECTED, clock)
+        clock.value = 120
+        service.record_result(result('one', warnings=[loc.LEGACY_POLISH['normalize.reserve']]))
+        service.record_result(result('two', warnings=[loc.ENGLISH['normalize.reserve']]))
+        saved = copy.deepcopy(service._state)
+        snapshot = service.snapshot()
+        self.assertEqual(len(snapshot['warnings']), 2)
+        for code in self.catalog:
+            rendered = loc.Localizer(code).snapshot(copy.deepcopy(snapshot))
+            self.assertEqual(rendered['warnings'], [self.catalog[code]['normalize.reserve']])
+            self.assertEqual(rendered['scopes']['launch']['summary'], snapshot['scopes']['launch']['summary'])
+        self.assertEqual(service._state, saved)
+        self.assertEqual(service.store.load(), saved)
+
+    def test_notice_correction_keeps_other_battles_notices_until_they_are_corrected(self):
+        from test_core import StatsService, Clock as ServiceClock, result
+        clock = ServiceClock(100)
+        service = StatsService(self.directory, 'EU:notice-test', 'launch', EXPECTED, clock)
+        clock.value = 120
+        for key, template in (('one', loc.LEGACY_POLISH), ('two', loc.ENGLISH)):
+            service.record_result(result(key, warnings=[template['normalize.reserve']]))
+        service.record_result(result('one', reconcile=True, warnings=[]))
+        self.assertEqual(loc.Localizer('en').snapshot(service.snapshot())['warnings'],
+                         [loc.ENGLISH['normalize.reserve']])
+        service.record_result(result('two', reconcile=True, warnings=[]))
+        self.assertEqual(loc.Localizer('en').snapshot(service.snapshot())['warnings'], [])
+
     def test_native_notifications_escape_user_catalog_markup_at_final_boundary(self):
         import types
         pushed = []
@@ -308,7 +358,7 @@ class LocalizationTests(unittest.TestCase):
         sys.modules['gui'] = gui
         try:
             self.write({'en': {'runtime.garage': '<img src="private"> & test'}})
-            message = loc.Localizer('en', self.path).text('runtime.garage')
+            message = '<img src="private"> & test'
             self.assertTrue(GameAPI.__new__(GameAPI).notify(message))
             self.assertEqual(pushed, ['&lt;img src="private"&gt; &amp; test'])
         finally:
@@ -338,7 +388,7 @@ class LocalizationTests(unittest.TestCase):
             mod.on_action({'action':'refresh'})
             payload = mod.snapshot()
             self.assertEqual(payload['localization']['language'], 'uk')
-            self.assertEqual(payload['localization']['messages']['refresh'], 'Оновити зараз')
+            self.assertEqual(payload['localization']['messages']['refresh'], self.catalog['uk']['refresh'])
             self.assertEqual(service._state, saved)
             self.assertEqual(payload['scopes']['launch']['summary']['observed_battles'], 1)
             mod._notify(loc.message('runtime.garage'))

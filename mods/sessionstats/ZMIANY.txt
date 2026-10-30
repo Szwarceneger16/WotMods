@@ -1,5 +1,59 @@
 SESSION STATS — CHANGELOG
 
+0.3.4 • 2026-10-30
+• Use the requested lowercase installed filename grz_sessions_stats.wotmod.
+  ZIP downloads and internal metadata retain their release version.
+• Recognize the preceding GRZ_Session_Stats.wotmod test filename for config
+  discovery, while rejecting duplicate current/previous names together.
+• Verify the new stable Medkit installer alongside Session Stats. Preserve older
+  Session Stats and Medkit installers byte-for-byte when carrying them forward.
+• Remove GRZ_Session_Stats.wotmod once when replacing the earlier 0.3.3 test build.
+
+0.3.3 • 2026-10-30
+• Keep the download ZIP versioned, but always install GRZ_Session_Stats.wotmod.
+  Extracting later releases overwrites the existing mod instead of adding copies.
+• Keep config discovery working with the stable filename, including paths.xml
+  roots and legacy adjacent-config migration. Duplicate active copies stay ambiguous.
+• Retain verification and byte-for-byte carry-forward of older installers.
+• Remove all old grz.sessionstats_*.wotmod files once when adopting the new name.
+  Existing configuration and battle history remain intact.
+
+0.3.2 • 2026-10-27
+• Align Previous/date order/Next in one equal-height row. Keep the page counter
+  beside the list count, independently of button sizing.
+• Restore compact cards and table rows. Put Victory/Defeat captions beside the
+  unchanged artwork, WN8 coverage beside the name and Free XP above the tables.
+• Show identical financial coverage once by the currency name; preserve separate
+  counts whenever income, costs and net have different coverage.
+• Put shared XP/battle-WN8 coverage in the metric header, keeping partial rows
+  compact. Different metric coverage retains its independent count.
+• Put Language in the existing toolbar, saving a separate row of panel space.
+• Accept native Python 2 byte-string language commands. Support embedded Windows
+  clients without ctypes with rollback and interrupted-write recovery.
+• All seven language catalogs remain inside the .wotmod; the config stores only
+  the selected language along with the user's other existing settings.
+
+0.3.1 • 2026-10-26
+• Deduplicate data notices after translation. Legacy Polish and canonical English
+  copies of the same warning now produce one visible message and one notice count.
+  The original saved records and numerical statistics remain unchanged.
+• Apply the same notice handling during history loading and failures. Distinct
+  errors and parameter values remain visible; unknown text is rendered literally.
+• Explain x/y as battles with the given value out of all recorded battles, in all
+  seven languages. Per-value descriptions retain each metric's own coverage.
+• Size Previous/Next to their captions instead of 25% of the panel width, while
+  retaining the panel button style, 25rem minimum height and disabled states.
+
+0.3.0 • 2026-10-26
+• Add global Min/Avg/Max sorting by Base XP, Received XP, net credits and battle WN8, ascending or descending.
+• Add independent newest/oldest date ordering between Previous and Next.
+• Add Tiers with the same totals and sorting in all session scopes, including tier XI and unknown metadata.
+• Add two compact rows of Gameface-compatible dropdown controls and seven-language captions.
+• Return to page one after sorting; preserve full-period totals and bounded native payloads.
+• Bundle all seven translations internally; ignore and stop distributing external catalogs.
+• Add a GUI language dropdown that saves the existing config, applies immediately and preserves all other settings.
+• Include the accepted Windows journal recovery fixes from 0.2.12.
+
 0.2.12 • 2026-10-26
 
 • Create storage files with an explicitly binary OS descriptor on Windows.

@@ -57,7 +57,7 @@ def changed(owner, name, value):
 class ConfigPathTests(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp(prefix='grz-config-path-')
-        self.package = 'grz.sessionstats_' + VERSION + '.wotmod'
+        self.package = cp.PACKAGE_FILENAME
         self.capture = Capture()
         self.old_disabled = cp.LOG.disabled
         self.old_level = cp.LOG.level
@@ -256,6 +256,36 @@ class ConfigPathTests(unittest.TestCase):
         package = self.install(base, name='test.stats_4.wotmod')
         self.assertEqual(self.locate(base, package_name='test.stats_4.wotmod'), self.expected(base))
 
+    def test_stable_package_name_finds_config_across_mod_versions(self):
+        base = self.game()
+        package = self.install(base)
+        for version in ('0.3.3', '0.3.4', '1.0.0'):
+            with changed(cp, 'VERSION', version):
+                self.write(package, version.encode('ascii'))
+                self.assertEqual(self.locate(base), self.expected(base))
+
+    def test_exact_current_versioned_artifact_remains_supported(self):
+        base = self.game()
+        self.install(base, name='grz.sessionstats_' + VERSION + '.wotmod')
+        self.assertEqual(self.locate(base), self.expected(base))
+
+    def test_previous_stable_test_filename_remains_supported(self):
+        base = self.game()
+        self.install(base, name=cp.PREVIOUS_PACKAGE_FILENAME)
+        self.assertEqual(self.locate(base), self.expected(base))
+
+    def test_current_and_previous_stable_names_are_ambiguous(self):
+        base = self.game()
+        self.install(base)
+        self.install(base, name=cp.PREVIOUS_PACKAGE_FILENAME)
+        self.failed(self.locate(base), 'multiple_active_packages')
+
+    def test_stable_and_current_versioned_packages_are_ambiguous(self):
+        base = self.game()
+        self.install(base)
+        self.install(base, name='grz.sessionstats_' + VERSION + '.wotmod')
+        self.failed(self.locate(base), 'multiple_active_packages')
+
     def test_authoritative_malformed_xml_never_uses_another_installation(self):
         active, other = self.game('active'), self.game('other')
         self.install(other)
@@ -409,7 +439,8 @@ class ConfigPathTests(unittest.TestCase):
         self.failed(self.locate(base), 'xml_paths_structure')
 
     def test_package_name_cannot_escape_the_active_directory(self):
-        for value in ('../grz.wotmod', 'sub/grz.wotmod', 'sub\\grz.wotmod', '', 12):
+        for value in ('../grz.wotmod', 'sub/grz.wotmod', 'sub\\grz.wotmod', '', 12,
+                      'grz_sessions_stats.wotmod\n', 'GRZ Session Stats.wotmod'):
             self.capture.records[:] = []
             self.failed(cp.find_config_path(package_name=value, resmgr=Resources(), cwd=self.root),
                         'invalid_package_name')
