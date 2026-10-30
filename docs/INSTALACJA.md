@@ -1,47 +1,70 @@
-# Stay Sharp Medkit Reminder 1.6.0 — installation and testing
+# Stay Sharp Medkit Reminder 1.7.0 - installation and test
 
-## Behavior
+## Install
 
-Displays an orange gradient frame around the medkit, brightening for two seconds and fading for two seconds. It runs only during battle when the player's vehicle has the active perk effect allowing medkit use, the medkit is ready and the HUD is visible. It does not activate the medkit, play sounds or change game statistics.
+1. Close World of Tanks EU completely.
+2. Keep a backup of your last working build outside the active mods folder.
+3. When switching from versioned filenames, remove older
+   `com.staysharp.medkitreminder_*.wotmod` files from the active
+   `mods/<current_game_version>/` folder once; install only one version.
+4. Download `StaySharp-Medkit-v<version>.zip` from GitHub Releases and extract it
+   into the folder containing `WorldOfTanks.exe`, preserving the nested paths.
+   The installer puts `GRZ_Medkit_Reminder.wotmod` in `mods/<game_version>/`;
+   future updates overwrite that same filename. The ZIP and internal mod
+   metadata keep the release version. Check that the target game version
+   matches your client. All frames, code and the voice bank are
+   bundled. There are no separate DLLs, speech tools or sound downloads.
+5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
+   before starting: a shared `audio_mods.xml` needs all installed banks.
+6. The optional template is `mods/configs/staysharp.medkit.json.example`; it is
+   not loaded. Preserve any existing `.json` when updating. To configure before
+   startup, copy the example and remove only its final `.example`. Otherwise,
+   start the game normally: the mod creates `mods/configs/staysharp.medkit.json`
+   with `{"language":"auto"}` when the directory is writable. To force Polish,
+   change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
+7. Installer metadata, checksums, audio instructions and voice attribution are
+   included under `docs/staysharp/`. Session Stats is the separate second ZIP;
+   its existing installer is carried forward without being rebuilt.
 
-## Installation
+## In-game verification
 
-1. Close World of Tanks.
-2. Keep a backup of the confirmed working version 1.5.0 outside `mods`.
-3. **Remove the old 1.5.0 file from the active `mods/<game_version>/` directory.** Two versions of the same mod must not run together.
-4. Copy `com.staysharp.medkitreminder_1.6.0.wotmod` into the game directory, for example `C:\Games\World_of_Tanks_EU\mods\2.4.1.0\`. Use the current client-version directory if an update changed its name.
-5. Start the game normally.
+- Before battle starts and during equipment selection, expect no outline or
+  extra audio.
+- With the Stay Sharp perk permitting medkit use and the kit available,
+  expect the original four-second orange pulse and one **"Medkit is ready"**
+  voice after one second, in the selected language. There should be no additional immediate ping on
+  top of the game's cooldown-complete sound.
+- If you leave the kit ready, expect its normal **activation effect** four
+  seconds after the announcement and every four seconds thereafter.
+- Check arcade, sniper, SPG top-down and trajectory cameras. Switching camera
+  modes must not repeat the voice or reset the reminder interval.
+- Use the medkit; the outline and extra sounds must stop during cooldown.
+  The next eligible readiness interval should produce one new voice.
+- Hide/show the HUD: silence while hidden, no duplicate voice when restored.
+- Check an injury/stun warning, perk permission loss, own vehicle destruction,
+  battle end and return to the garage. No reminder should continue there.
+- Test `language: auto` with your game language, then force another supported
+  code in the configuration and restart. Confirm that the spoken language
+  changes while timing and the native repeated effect remain the same.
+- Change WoT master/voice notification volume and mute; check the voice
+  follows the game settings. The repeated native effect follows its existing
+  game audio channel. Restore your preferred volume afterward.
+- If other sound mods are installed, verify their effects still work too.
 
-No separate `.py`, `.dds`, `.swf`, shaders, sound banks or DLLs are needed. The `.wotmod` contains `meta.xml`, a `.pyc` and all 21 DDS frames under WoT resource paths.
+Offline checks cannot confirm native bank loading, final voice loudness or
+client rendering. If there is no voice, inspect the game's sound errors and
+verify the `staysharp_medkit.bnk` loading entry. Keep the previous working
+build until the new one has passed an actual battle test.
 
-## In-game checks
+## Diagnostics and removal
 
-- No frame should appear before the countdown or during configuration selection.
-- After battle starts, a ready medkit on a vehicle with the relevant perk should pulse in a four-second cycle.
-- Check arcade, sniper, top-down artillery and trajectory views.
-- The frame should disappear after medkit use and during cooldown, then return when ready.
-- Native crew-injury warnings and WoT highlighting should take priority.
-- Leaving battle should remove the frames and stop their animation.
+Local log: `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
-## Diagnostics
+`ready voice unavailable` or `native medkit reminder unavailable` means an
+API call failed and that path was disabled for the battle. Wwise can also
+report failures only in `python.log`. `overlay suspended` explains why the
+visual and audio reminder paused. Logs remain local and are not uploaded.
 
-The local log is written to:
-
-`%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`
-
-Useful entries:
-
-- `v1.6.0 loaded; component events` — game-event subscriptions installed.
-- `battle panel populated` — component discovered through registration events, without replacing methods.
-- `HUD registration rejected: ...` — incompatible client/layout; graphics remain disabled.
-- `equipment state=incompatible_hud_...` — unexpected mid-battle change; the frame is disabled.
-- `GFX disabled by compatibility preflight: ...` — required renderer interface unavailable.
-- `overlay mounted: hud_child` — overlay attached below the HUD component.
-- `overlay mounted: gui_root` — legacy graphical fallback when the HUD component is unavailable.
-- `PULSE alive` — animation frames are still being updated.
-
-If the game exits unexpectedly, **remove 1.6.0**, return to the verified 1.5.0 version and provide the end of the log for diagnosis. Offline checks do not replace a real WoT client test.
-
-## WoT updates
-
-If the API is unchanged, moving the same `.wotmod` to the new `mods/<game_version>` directory is sufficient. Changed HUD structures or APIs should disable the mod without guessing frame placement, and may require a mod update. The `.pyc` uses CPython 2.7 bytecode matching the verified client; a different interpreter requires rebuilding.
+To uninstall, remove this mod's `.wotmod`. If you manually merged a bank
+entry into a separate audio configuration, remove only the
+`staysharp_medkit.bnk` entry, preserving all other sound mods.

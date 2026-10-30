@@ -203,6 +203,7 @@ class InstallerTests(unittest.TestCase):
         build(self.source,'staysharp','1.6.4')
         build(self.source,'sessionstats','0.2.11')
         original={p.name:p.read_bytes() for p in self.source.glob('*.wotmod')}
+        original[r.MEDKIT_INSTALLED_PACKAGE] = original['com.staysharp.medkitreminder_1.6.4.wotmod']
         r.normalize(self.source)
         (self.source/'SHA256SUMS.txt').unlink()
         reports=r.verify_directory(self.source)
@@ -355,6 +356,67 @@ class SnapshotInstallerTests(unittest.TestCase):
                     'StaySharp-Medkit-v1.6.5.zip','StaySharp-Medkit-v*.zip'],
                     env=env,capture_output=True,text=True)
                 self.assertEqual(result.returncode,75,result.stderr)
+
+
+class StableMedkitInstallerTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.out = self.root / 'installers'
+        self.out.mkdir()
+
+    def packaged(self, version):
+        source = self.root / ('build-' + version)
+        build(source, 'staysharp', version)
+        path = r.package(source, self.out, 'staysharp')
+        return path, r.verify(path)
+
+    def test_two_versioned_downloads_overwrite_one_mod_without_touching_user_config(self):
+        game = self.root / 'game'
+        config = game / 'mods/configs/staysharp.medkit.json'
+        config.parent.mkdir(parents=True)
+        config.write_bytes(b'{"language":"pl","custom":7}')
+        for version in ('1.7.0', '1.7.1'):
+            path, (_, actual_version, client, files, primary) = self.packaged(version)
+            self.assertEqual(path.name, 'StaySharp-Medkit-v' + version + '.zip')
+            self.assertEqual(actual_version, version)
+            self.assertEqual(primary, 'mods/' + client + '/GRZ_Medkit_Reminder.wotmod')
+            raw = self.root / ('build-' + version) / ('com.staysharp.medkitreminder_' + version + '.wotmod')
+            self.assertEqual(files[primary], raw.read_bytes())
+            with zipfile.ZipFile(path) as installer:
+                installer.extractall(game)
+        packages = list((game / 'mods' / r.CLIENT).glob('*.wotmod'))
+        self.assertEqual([p.name for p in packages], ['GRZ_Medkit_Reminder.wotmod'])
+        import xml.etree.ElementTree as ET
+        installed = r.read_zip(packages[0])
+        meta = ET.fromstring(installed['meta.xml'])
+        self.assertEqual(meta.findtext('version'), '1.7.1')
+        self.assertEqual(meta.findtext('id'), 'com.staysharp.medkitreminder')
+        self.assertEqual(config.read_bytes(), b'{"language":"pl","custom":7}')
+
+    def test_legacy_versioned_installer_is_verified_and_carried_byte_for_byte(self):
+        path, (_, version, client, files, primary) = self.packaged('1.6.4')
+        legacy = 'mods/' + client + '/com.staysharp.medkitreminder_1.6.4.wotmod'
+        files[legacy] = files.pop(primary)
+        del files['docs/staysharp/SHA256SUMS.txt']
+        r.write_installer(self.out, 'staysharp', version, client, files)
+        before = path.read_bytes()
+        self.assertEqual(r.verify(path)[4], legacy)
+        r.normalize(self.out)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_stable_filename_cannot_hide_wrong_version_or_duplicate_legacy_package(self):
+        for duplicate in (False, True):
+            with self.subTest(duplicate=duplicate):
+                _, (_, version, client, files, primary) = self.packaged('1.7.0')
+                if duplicate:
+                    files['mods/' + client + '/com.staysharp.medkitreminder_1.7.0.wotmod'] = files[primary]
+                else:
+                    files[primary] = mod('com.staysharp.medkitreminder', '1.7.1')
+                del files['docs/staysharp/SHA256SUMS.txt']
+                with self.assertRaises(ValueError):
+                    r.write_installer(self.out, 'staysharp', version, client, files)
 
 
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,50 @@
+Stay Sharp ready voices - AI-generated neural speech
+
+This audio was created with Boson AI's Higgs Audio - https://www.boson.ai/higgs-audio
+
+All seven prerecorded announcements were generated offline with Higgs TTS 3
+4B. These are synthetic voices; no real-person voice reference was used.
+The game receives finished PCM audio only, not a model or speech generator.
+
+Model: https://huggingface.co/bosonai/higgs-tts-3-4b
+Model revision: 239f63fb7b02b1aa085f98d9efae5e35cc5523e8
+Model weights SHA-256:
+2f7965264c360b38180885006944aa16bd1de20f4e6cff79f6473bfcf8ae3d5a
+Local Transformers port:
+https://huggingface.co/multimodalart/higgs-audio-v3-tts-4b-transformers
+Port revision: 30f01593ee6a12efa586c92455afe4b76e45095d
+The port uses the original model weights unchanged.
+Codec: https://huggingface.co/bosonai/higgs-audio-v2-tokenizer
+Codec revision: 815a03f1b57dcb5ae918db415f22cd0c8a6f0f54
+
+Source model terms:
+Boson Higgs TTS 3 Research and Non-Commercial License, including the
+Creator Use Grant in Section II-A. This notice provides the creator
+acknowledgment for the generated audio. Refer to the original terms:
+https://huggingface.co/bosonai/higgs-tts-3-4b/blob/239f63fb7b02b1aa085f98d9efae5e35cc5523e8/LICENSE
+Audio attribution does not relicense the mod's source code. No model
+weights, model derivatives or inference software are distributed here.
+
+Announcements:
+en: Medkit is ready!
+pl: Apteczka gotowa!
+ru: Аптечка готова!
+fr: Trousse de soins prête!
+de: Das Medikit ist bereit!
+es: Botiquín listo!
+uk: Аптечка готова!
+
+Generation and processing:
+- Local CPU inference inside a network-disabled rootless container.
+- Determination and projected-voice control tags; no voice-cloning prompt.
+- Pitch-preserving tempo +7% using FFmpeg atempo=1.07, constant gain to
+  approximately -20 LUFS, then mono 16-bit PCM at 16 kHz, under two seconds.
+- No intercom filter, added ambience, reverb or pitch shift.
+- Ukrainian was generated in an explicit Ukrainian sentence context;
+  only the complete ready announcement was extracted for the package.
+- Source/model/codec revisions, seeds, generation settings, crop details,
+  full WAV and PCM checksums are in assets/voices/manifest.json.
+
+Local speech recognition checked the wording. Polish and English were
+auditioned by the project owner. This does not certify every language's
+accent, naturalness, native bank loading or volume inside the game.

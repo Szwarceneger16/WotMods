@@ -180,12 +180,19 @@ def write_installer(directory, kind, version, client, files):
     files[doc + 'INSTALLER.json'] = (json.dumps({
         'format': 1, 'mod': kind, 'version': version, 'client_version': client
     }, sort_keys=True) + '\n').encode('ascii')
+    upgrade = ('Target client: ' + client + '. Remove older versions of this same mod\n'
+               'from the active mods/' + client + '/ folder before starting the game.\n\n')
+    if kind == 'staysharp':
+        upgrade = ('Target client: ' + client + '. Installed file: ' + MEDKIT_INSTALLED_PACKAGE + '.\n'
+                   'When upgrading from versioned filenames, first remove the old\n'
+                   'com.staysharp.medkitreminder_*.wotmod files from mods/' + client + '/.\n'
+                   'Later updates overwrite the same ' + MEDKIT_INSTALLED_PACKAGE + ' file.\n'
+                   'The ZIP filename and the mod metadata retain the version number.\n\n')
     files[doc + 'INSTALL.txt'] = (
         KINDS[kind][2] + ' ' + version + '\n\n'
         'Close World of Tanks. Extract this ZIP into the game installation folder\n'
         '(the folder containing WorldOfTanks.exe), preserving the mods/ paths.\n'
-        'Target client: ' + client + '. Remove older versions of this same mod\n'
-        'from the active mods/' + client + '/ folder before starting the game.\n\n'
+        + upgrade +
         'The mod works with its built-in defaults. Configuration examples in\n'
         'mods/configs/ end in .json.example and are not loaded. To customize,\n'
         'copy the desired example, remove only .example, then edit the JSON.\n'
@@ -259,7 +266,7 @@ def package(source, destination, kind, client=CLIENT):
                 # for each mod separate when both ZIPs are extracted together.
                 payload['docs/sessionstats/' + name] = data
     else:
-        payload['mods/' + client + '/' + primary] = files[primary]
+        payload['mods/' + client + '/' + MEDKIT_INSTALLED_PACKAGE] = files[primary]
         sample = ROOT / 'staysharp.medkit.example.json'
         payload['mods/configs/staysharp.medkit.json.example'] = (
             sample.read_bytes() if sample.is_file() else b'{\n  "language": "auto"\n}\n')

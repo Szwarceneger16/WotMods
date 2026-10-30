@@ -7,6 +7,7 @@ Nothing is fetched or installed at runtime.
 """
 import base64
 import hashlib
+import importlib.util
 import os
 import re
 import zlib
@@ -18,6 +19,9 @@ from xml.etree import ElementTree
 HERE = Path(__file__).resolve().parent
 SOURCE = HERE / 'mod_staysharp_medkit.py'
 ASSETS = HERE.parent / 'assets'
+_audio_spec = importlib.util.spec_from_file_location('staysharp_audio_builder', HERE / 'build_audio_bank.py')
+audio = importlib.util.module_from_spec(_audio_spec)
+_audio_spec.loader.exec_module(audio)
 MOD_ID = 'com.staysharp.medkitreminder'
 BASE_VERSION = (HERE.parent / 'VERSION').read_text(encoding='ascii').strip()
 VERSION = os.environ.get('WOTMOD_VERSION', BASE_VERSION)
@@ -121,8 +125,8 @@ def load_frames():
     return out
 
 
-def verify(target, source, frames):
-    wanted = {'meta.xml', PYC_PATH} | {p for p, _ in frames}
+def verify(target, source, frames, sounds):
+    wanted = {'meta.xml', PYC_PATH} | {p for p, _ in frames + sounds}
     with zipfile.ZipFile(target) as archive:
         assert archive.testzip() is None
         assert set(archive.namelist()) == wanted
@@ -131,7 +135,7 @@ def verify(target, source, frames):
         pyc = archive.read(PYC_PATH)
         assert pyc.startswith(MAGIC_PY27)
         assert source in pyc
-        for path, bytes_ in frames:
+        for path, bytes_ in frames + sounds:
             assert archive.read(path) == bytes_
         meta = ElementTree.fromstring(archive.read('meta.xml'))
         assert meta.findtext('id') == MOD_ID
@@ -143,22 +147,23 @@ def build():
     dest.mkdir(exist_ok=True)
     source = render_source()
     frames = load_frames()
+    sounds = audio.resources()
     pyc = make_py27_entrypoint(source)
     metadata = (('<?xml version="1.0" encoding="UTF-8"?>\n'
                  '<root>\n'
                  '  <id>{}</id>\n'
                  '  <version>{}</version>\n'
                  '  <name>Stay Sharp - Medkit Reminder</name>\n'
-                 '  <description>Silent 4-second pulsing medkit outline, camera-independent.</description>\n'
+                 '  <description>Medkit outline with delayed ready voice and native WoT sound reminders.</description>\n'
                  '</root>\n').format(MOD_ID, VERSION)).encode('utf-8')
     target = dest / ('%s_%s.wotmod' % (MOD_ID,VERSION))
     with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_STORED) as archive:
-        for path, payload in [('meta.xml', metadata), (PYC_PATH, pyc)] + frames:
+        for path, payload in [('meta.xml', metadata), (PYC_PATH, pyc)] + frames + sounds:
             info=zipfile.ZipInfo(path, date_time=(2026,10,21,11,0,0))
             info.compress_type=zipfile.ZIP_STORED
             info.create_system=0
             archive.writestr(info, payload)
-    verify(target,source,frames)
+    verify(target,source,frames,sounds)
     sha = hashlib.sha256(target.read_bytes()).hexdigest()
     print('Build:',target,'bytes:',target.stat().st_size,'SHA256:',sha)
     return target

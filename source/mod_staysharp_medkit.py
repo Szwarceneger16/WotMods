@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.6.1 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.7.0 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
 no lifecycle monkeypatches; subscribes to native ComponentEvent lifecycle.
 It preserves the working v1.5.0 rendering and detects incompatible HUD
-shapes before attempting to paint. No sound, SWF replacement or downloads.
+shapes before attempting to paint. Bundled ready voice and native medkit SFX;
+no SWF replacement or downloads.
 """
 from __future__ import absolute_import
 
+import errno
+import json
 import os
+import sys
 import time
 import traceback
 
@@ -24,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.6.1'
+VERSION = '1.7.0'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -32,6 +36,11 @@ HALF_PULSE = 2.0               # 0%->100% in 2 s, then 100%->0% in 2 s
 PULSE_TICK = 0.10              # 10 texture switches/s, never allocate new GUI roots
 STATE_TICK = 0.25
 STABLE_READY_DELAY = 0.90
+READY_VOICE_DELAY = 1.0
+READY_VOICE_EVENT = 'staysharp_medkit_ready'
+VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
+CONFIG_FILENAME = 'staysharp.medkit.json'
+CONFIG_MAX_BYTES = 4096
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
 OFFSET_Y = 0.0
@@ -67,6 +76,243 @@ _event_bus = None
 _event_scope = None
 _consumables_alias = None
 _log_file = None
+_audio_key = None
+_audio_since = None
+_audio_announced = False
+_audio_next_reminder = None
+_voice_player = None
+_voice_disabled = False
+_effect_sound = None
+_effect_compact = None
+_effect_disabled = False
+_audio_suspended = True
+_language = 'en'
+
+
+def _language_code(value):
+    try:
+        string_type = basestring
+    except NameError:
+        string_type = str
+    if not isinstance(value, string_type):
+        return None
+    return value.strip().lower().replace('_', '-').split('-')[0]
+
+
+def _game_roots(value, xml=False):
+    """Confirm physical installation roots, including native UTF-8 paths."""
+    try:
+        text_type = unicode
+    except NameError:
+        text_type = str
+    variants = []
+    if isinstance(value, text_type):
+        variants.append(value)
+    elif isinstance(value, bytes):
+        for encoding in ('utf-8', sys.getfilesystemencoding() or 'utf-8'):
+            try:
+                decoded = value.decode(encoding)
+                if decoded not in variants:
+                    variants.append(decoded)
+            except (UnicodeError, LookupError):
+                pass
+    roots = set()
+    for path in variants:
+        if not path or '\x00' in path or not os.path.isabs(path):
+            continue
+        if xml:
+            if os.path.basename(path).lower() != 'paths.xml' or not os.path.isfile(path):
+                continue
+            directories = (os.path.dirname(path),)
+        else:
+            directories = (path, os.path.dirname(path))
+        for root in directories:
+            if os.path.isfile(os.path.join(root, 'paths.xml')) and os.path.isdir(os.path.join(root, 'mods')):
+                roots.add(os.path.normcase(os.path.realpath(root)))
+    return roots
+
+
+def _config_path():
+    """Use mods/configs outside version folders; never guess a game version."""
+    try:
+        getter = getattr(ResMgr, 'resolveToAbsolutePath', None)
+        roots = _game_roots(getter('../paths.xml'), xml=True) if callable(getter) else set()
+        if roots:
+            return (os.path.join(next(iter(roots)), 'mods', 'configs', CONFIG_FILENAME)
+                    if len(roots) == 1 else None)
+    except Exception:
+        pass
+    roots = set()
+    try:
+        getter = getattr(ResMgr, 'appDirectory', None)
+        if callable(getter):
+            roots.update(_game_roots(getter()))
+    except Exception:
+        pass
+    try:
+        roots.update(_game_roots(getattr(os, 'getcwdu', os.getcwd)()))
+    except Exception:
+        pass
+    return (os.path.join(next(iter(roots)), 'mods', 'configs', CONFIG_FILENAME)
+            if len(roots) == 1 else None)
+
+
+def _load_language():
+    """Read a bounded local JSON once at startup; never overwrite user data."""
+    global _language
+    selected = 'auto'
+    path = _config_path()
+    if path is not None:
+        folder = os.path.dirname(path)
+        try:
+            try:
+                with open(path, 'rb') as handle:
+                    raw = handle.read(CONFIG_MAX_BYTES + 1)
+            except IOError as error:
+                if error.errno != errno.ENOENT:
+                    raise
+                if not os.path.isdir(folder):
+                    try:
+                        os.makedirs(folder)
+                    except OSError:
+                        if not os.path.isdir(folder):
+                            raise
+                # Exclusive creation protects an existing config in a race.
+                try:
+                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                except OSError as error:
+                    if error.errno != errno.EEXIST:
+                        raise
+                else:
+                    with os.fdopen(fd, 'wb') as handle:
+                        handle.write(b'{\n  "language": "auto"\n}\n')
+                with open(path, 'rb') as handle:
+                    raw = handle.read(CONFIG_MAX_BYTES + 1)
+            if len(raw) > CONFIG_MAX_BYTES:
+                raise ValueError('configuration exceeds size limit')
+            config = json.loads(raw.decode('utf-8-sig'))
+            if not isinstance(config, dict):
+                raise ValueError('configuration must be a JSON object')
+            value = _language_code(config.get('language', 'auto'))
+            if value not in VOICE_LANGUAGES + ('auto',):
+                raise ValueError('unsupported voice language')
+            selected = value
+        except Exception:
+            # Do not echo file contents or a private filesystem path.
+            _log('invalid or unreadable configuration; using automatic language')
+    if selected == 'auto':
+        try:
+            from helpers import getClientLanguage
+            selected = _language_code(getClientLanguage())
+        except Exception:
+            selected = None
+    _language = selected if selected in VOICE_LANGUAGES else 'en'
+    _log('ready voice language=' + _language)
+
+
+def _ready_voice_event():
+    return READY_VOICE_EVENT if _language == 'en' else READY_VOICE_EVENT + '_' + _language
+
+
+def _suspend_audio():
+    """Stop current audio, retaining the one-announcement-per-ready latch."""
+    global _audio_next_reminder, _audio_suspended
+    _audio_next_reminder = None
+    if _audio_suspended:
+        return
+    _audio_suspended = True
+    if _voice_player is not None:
+        try:
+            _voice_player.stop()
+        except Exception:
+            _exception('voice stop failed')
+    if _effect_sound is not None:
+        try:
+            _effect_sound.stop()
+        except Exception:
+            _exception('native reminder stop failed')
+
+
+def _reset_audio():
+    global _audio_key, _audio_since, _audio_announced
+    _suspend_audio()
+    _audio_key = None
+    _audio_since = None
+    _audio_announced = False
+
+
+def _track_audio_ready(panel, slot):
+    """Track actual readiness even while the player temporarily hides HUD."""
+    global _audio_key, _audio_since
+    key = (slot, panel._cds[slot]) if slot is not None else None
+    if key != _audio_key:
+        _reset_audio()
+        _audio_key = key
+        if key is not None:
+            _audio_since = _time()
+
+
+def _play_medkit_effect(compact):
+    """Use the same descriptor-to-event mapping as WoT's activation code."""
+    global _effect_sound, _effect_compact, _effect_disabled
+    if _effect_disabled:
+        return
+    try:
+        import SoundGroups
+        from gui.battle_control.controllers.consumables.equipment_ctrl import EquipmentSound
+        if _effect_sound is None or _effect_compact != compact:
+            if _effect_sound is not None:
+                _effect_sound.stop()
+            event = EquipmentSound._soundMap.get(compact)
+            if not event:
+                raise ValueError('no native medkit activation sound for descriptor')
+            _effect_sound = SoundGroups.g_instance.getSound2D(event)
+            _effect_compact = compact
+        result = _effect_sound.play()
+        if result is not None and not result:
+            raise RuntimeError('native medkit playback failed')
+    except Exception:
+        _effect_disabled = True
+        _exception('native medkit reminder unavailable; disabled for battle')
+
+
+def _play_ready_voice(compact):
+    global _voice_player, _voice_disabled
+    if not _voice_disabled:
+        try:
+            if _voice_player is None:
+                import SoundGroups
+                _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
+            result = _voice_player.play()
+            if result is not None and not result:
+                raise RuntimeError('ready voice playback failed')
+            return
+        except Exception:
+            _voice_disabled = True
+            _exception('ready voice unavailable; using native medkit effect for battle')
+    _play_medkit_effect(compact)
+
+
+def _update_audio():
+    """Run on the existing state tick; no extra callbacks or catch-up bursts."""
+    global _audio_announced, _audio_next_reminder, _audio_suspended
+    if not _overlay_active or _audio_key is None:
+        _suspend_audio()
+        return
+    now = _time()
+    if now - _audio_since < READY_VOICE_DELAY:
+        return
+    _audio_suspended = False
+    if not _audio_announced:
+        _audio_announced = True
+        _play_ready_voice(_audio_key[1])
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+    elif _audio_next_reminder is None:
+        # Resume at the next complete pulse without repeating the voice.
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+    elif now >= _audio_next_reminder:
+        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        _play_medkit_effect(_audio_key[1])
 
 
 def _log(message):
@@ -549,6 +795,7 @@ def _set_frame(level):
 
 def _hide_overlay(reason='not_ready'):
     global _overlay_active, _frame
+    _suspend_audio()
     _cancel_pulse()
     if not _overlay_active:
         return
@@ -709,7 +956,7 @@ def _show_overlay(slot, geometry):
             _frame_switches = 0
             _last_pulse_report = _time()
             _set_frame(0)
-            _log('overlay ACTIVE slot=%d, mount=%s, frames 0..%d, silent; depth=%.3f' % (slot, _overlay_mount, FRAME_LEVELS, GUI_DEPTH))
+            _log('overlay ACTIVE slot=%d, mount=%s, frames 0..%d; depth=%.3f' % (slot, _overlay_mount, FRAME_LEVELS, GUI_DEPTH))
             _schedule_pulse()
     except Exception:
         _graphics_disabled = True
@@ -765,11 +1012,17 @@ def _refresh(panel):
         _last_hud_status = hud_reason
         _log('native HUD visibility=' + hud_reason)
     if not shown:
+        if hud_reason == 'native_panel_hidden':
+            slot, _ = _probe_medkit(panel)
+            _track_audio_ready(panel, slot)
+        else:
+            _reset_audio()
         _ready_slot, _ready_since = None, None
         _hide_overlay(hud_reason)
         return
 
     slot, reason = _probe_medkit(panel)
+    _track_audio_ready(panel, slot)
     if reason != _last_reason:
         _last_reason = reason
         _log('equipment state=' + reason + (' slot=%d' % slot if slot is not None else ''))
@@ -794,6 +1047,7 @@ def _refresh(panel):
         _hide_overlay('panel_geometry_unavailable_' + origin)
         return
     _show_overlay(slot, geometry)
+    _update_audio()
 
 def _check_state():
     global _state_callback, _error_count, _graphics_disabled
@@ -825,10 +1079,15 @@ def _activate(panel):
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
+    global _voice_player, _voice_disabled, _effect_disabled, _effect_sound, _effect_compact
     if panel is _panel:
         return
     if _panel is not None:
         _deactivate(_panel)
+    _reset_audio()
+    _voice_player = None
+    _voice_disabled, _effect_disabled = False, False
+    _effect_sound, _effect_compact = None, None
     _panel = panel
     _ready_slot = None
     _ready_since = None
@@ -853,6 +1112,7 @@ def _deactivate(panel):
     _ready_slot = None
     _ready_since = None
     _cancel_state()
+    _reset_audio()
     _delete_overlay()
     _log('battle panel disposed')
 
@@ -892,6 +1152,7 @@ def init():
     global _event_bus, _event_scope, _consumables_alias
     if _event_listeners:
         return
+    _load_language()
     try:
         from gui.shared import g_eventBus, EVENT_BUS_SCOPE
         from gui.shared.events import ComponentEvent
@@ -918,7 +1179,7 @@ def init():
                     pass
                 raise
             _event_listeners.append((event_type, handler))
-        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, v1.5 graphics unchanged, silent')
+        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, ready voice + native medkit reminders')
     except Exception:
         _exception('component event subscription failed; mod disabled')
         fini()
