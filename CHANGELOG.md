@@ -2,6 +2,7 @@
 
 ## 1.7.0
 
+- Install the mod as `GRZ_Medkit_Reminder.wotmod` so updates replace one file; keep the release version in the installer ZIP name and internal mod metadata. Preserve existing immutable installers with the older versioned filenames.
 - Add a single bundled ready voice after one second of eligible readiness, using WoT/Wwise only.
 - Replace all seven ready announcements with offline-generated Higgs TTS 3 speech, following the owner-auditioned Polish and English delivery. Apply pitch-preserving tempo +7% with FFmpeg atempo, match loudness near -20 LUFS, and package 16 kHz mono PCM under two seconds. Include model/codec revisions, full WAV and PCM hashes, Ukrainian language-context provenance and Boson creator attribution. The mod ships only finished audio.
 - Bundle the same seven spoken languages as Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`) and a small optional `mods/configs/staysharp.medkit.json` language selector, defaulting to the game language. Validate configuration with safe automatic/English fallback.

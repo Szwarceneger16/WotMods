@@ -4,12 +4,15 @@
 
 1. Close World of Tanks EU completely.
 2. Keep a backup of your last working build outside the active mods folder.
-3. Remove older `com.staysharp.medkitreminder_*.wotmod` files from the active
-   `mods/<current_game_version>/` folder; install only one version.
+3. When switching from versioned filenames, remove older
+   `com.staysharp.medkitreminder_*.wotmod` files from the active
+   `mods/<current_game_version>/` folder once; install only one version.
 4. Download `StaySharp-Medkit-v<version>.zip` from GitHub Releases and extract it
    into the folder containing `WorldOfTanks.exe`, preserving the nested paths.
-   The installer puts the `.wotmod` in `mods/<game_version>/`; check that its
-   target version matches your client. All frames, code and the voice bank are
+   The installer puts `GRZ_Medkit_Reminder.wotmod` in `mods/<game_version>/`;
+   future updates overwrite that same filename. The ZIP and internal mod
+   metadata keep the release version. Check that the target game version
+   matches your client. All frames, code and the voice bank are
    bundled. There are no separate DLLs, speech tools or sound downloads.
 5. If you already use sound mods, check [audio loading and coexistence](AUDIO.md#loading-and-coexistence-with-other-sound-mods)
    before starting: a shared `audio_mods.xml` needs all installed banks.

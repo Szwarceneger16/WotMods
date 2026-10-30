@@ -25,8 +25,8 @@ The mod uses the regular consumables HUD and works independently of arcade, snip
 ## Installation
 
 1. Close World of Tanks EU.
-2. Remove every older `com.staysharp.medkitreminder_*.wotmod` from the active version folder.
-3. Extract the installer ZIP into the folder containing `WorldOfTanks.exe`. It already contains `mods/<game_version>/` and `mods/configs/`. Check that its target version matches your client.
+2. When switching from versioned filenames, remove every older `com.staysharp.medkitreminder_*.wotmod` from the active version folder once.
+3. Extract `StaySharp-Medkit-v<version>.zip` into the folder containing `WorldOfTanks.exe`. It installs `mods/<game_version>/GRZ_Medkit_Reminder.wotmod` and the config example. Later updates overwrite that same `.wotmod`; the ZIP name and internal mod metadata retain the version. Check that the target game version matches your client.
 4. Start WoT. To uninstall Stay Sharp, remove its `.wotmod` file.
 
 Configurations are optional `mods/configs/*.json.example` files and are not loaded. To customize a supported setting, copy its example and remove only the final `.example`. Keep existing `.json` files when updating. Stay Sharp 1.7.0 uses the language example for its spoken reminder; `auto` follows the client language. Instructions and metadata are under `docs/<mod>/` inside each ZIP.

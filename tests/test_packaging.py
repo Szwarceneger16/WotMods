@@ -318,7 +318,7 @@ class Tests(unittest.TestCase):
             self.assertEqual(first.read_bytes(), second.read_bytes())
             kind, version, client, files, primary = installers.verify(first)
             self.assertEqual((kind, version), ('staysharp', build.VERSION))
-            self.assertEqual(primary, 'mods/' + client + '/' + self.target.name)
+            self.assertEqual(primary, 'mods/' + client + '/GRZ_Medkit_Reminder.wotmod')
             self.assertEqual(files[primary], verified)
             self.assertEqual(files['mods/configs/staysharp.medkit.json.example'],
                              (ROOT / 'staysharp.medkit.example.json').read_bytes())
