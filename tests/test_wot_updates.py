@@ -128,7 +128,7 @@ class DispatchTests(unittest.TestCase):
                          'assets':[{'name':p.name, 'digest':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in self.out.iterdir()]}
         self.dispatched = []
         self.pending = False
-        self.env = patch.dict('os.environ', {'GITHUB_REF':'refs/heads/main', 'GITHUB_REPOSITORY':'example/repo', 'WOT_CLIENT_VERSION':'2.4.1.1'})
+        self.env = patch.dict('os.environ', {'GITHUB_REF':'refs/heads/main', 'GITHUB_REPOSITORY':'example/repo', 'WOT_CLIENT_VERSION':r.CLIENT.rsplit('.',1)[0]+'.'+str(int(r.CLIENT.rsplit('.',1)[1])+1)})
         self.env.start()
         self.addCleanup(self.env.stop)
 
