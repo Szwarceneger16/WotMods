@@ -17,6 +17,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 RSS = 'https://worldoftanks.eu/pl/rss/news/updates/'
+RSS_SOURCES = (RSS, 'https://worldoftanks.eu/en/rss/news/updates/', 'https://worldoftanks.eu/pl/rss/news/')
 HOST = 'https://wgus-woteu.wargaming.net'
 GUID = 'WOT.EU.PRODUCTION'
 TTL = 24 * 60 * 60
@@ -65,14 +66,27 @@ def rss_items(data):
     for item in root.findall('./channel/item')[:30]:
         link = item.findtext('link', '').strip()
         u = urllib.parse.urlsplit(link)
-        if u.scheme != 'https' or u.netloc != 'worldoftanks.eu' or not u.path.startswith('/pl/news/updates/'):
+        if u.scheme != 'https' or u.netloc != 'worldoftanks.eu':
             raise ValueError('Unexpected RSS article URL')
+        if not re.match(r'^/(?:pl|en)/news/updates/', u.path):
+            continue  # The official general-news RSS fallback also contains other categories.
         published = email.utils.parsedate_to_datetime(item.findtext('pubDate', '')).timestamp()
         items.append({'title': item.findtext('title', '').strip(), 'url': link,
                       'published_at': published, 'description': item.findtext('description', '')})
     if not items:
         raise ValueError('Empty update feed')
     return items
+
+
+def fetch_feed(get=fetch):
+    errors = []
+    for url in RSS_SOURCES:
+        try:
+            data = get(url)
+            return url, data, rss_items(data)
+        except Exception as exc:
+            errors.append(url + ': ' + type(exc).__name__ + ': ' + str(exc))
+    raise ValueError('No valid official update RSS: ' + '; '.join(errors))
 
 
 def client_chain(meta, chain):
@@ -146,8 +160,7 @@ def archive_directory(volumes, get=fetch):
 
 
 def collect(get=fetch, inspect=archive_directory):
-    feed = get(RSS)
-    items = rss_items(feed)
+    feed_url, feed, items = fetch_feed(get)
     # Retain actual patch-note pages as evidence; RSS descriptions are summaries.
     for item in items[:3]:
         try:
@@ -172,7 +185,7 @@ def collect(get=fetch, inspect=archive_directory):
             # This is the *actual mods path*, never the client build or patch suffix.
             return {'client_version': directory, 'client_build': chain[-1]['to'], 'directory_patch': patch['to'],
                     'source': chain_url, 'archive_urls': [v['url'] for v in patch['files']],
-                    'rss_url': RSS, 'rss_sha256': hashlib.sha256(feed).hexdigest(), 'items': items}
+                    'rss_url': feed_url, 'rss_sha256': hashlib.sha256(feed).hexdigest(), 'items': items}
     raise ValueError('No exact mods directory found in the production install chain')
 
 
@@ -222,7 +235,7 @@ def main():
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.writelines('%s=%s\n' % pair for pair in outputs.items())
-    summary = ['### World of Tanks EU update check', '', 'Source: ' + RSS,
+    summary = ['### World of Tanks EU update check', '', 'RSS source: ' + state.get('data', {}).get('rss_url', RSS),
                'Fresh evidence: ' + str(fresh), 'Live mods directory: ' + (version or 'unavailable'),
                'Last successful fetch (UTC epoch): ' + str(state.get('fetched_at', 'never')),
                'Cache refreshed: ' + str(refreshed)]

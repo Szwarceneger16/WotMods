@@ -7,10 +7,11 @@
 ## Sources and HTTP 403
 
 - Official update RSS: https://worldoftanks.eu/pl/rss/news/updates/
+- Official fallback feeds: https://worldoftanks.eu/en/rss/news/updates/ and https://worldoftanks.eu/pl/rss/news/ (filtered to update articles).
 - Example patch notes: https://worldoftanks.eu/pl/news/updates/micro-patch-2-4-1-3/
 - Official client updater: `https://wgus-woteu.wargaming.net`, application **WOT.EU.PRODUCTION**.
 
-The client identifies itself with an explicit WotMods User-Agent and requests XML. These headers were checked against the RSS and patch-note page on a GitHub-hosted runner (HTTP 200). No browser cookies, credentials, proxy bypass or anti-bot challenge solver is used. HTTP errors and HTML challenge pages are failures. SteamDB is not a runtime dependency.
+The client identifies itself with an explicit WotMods User-Agent and requests XML. These headers were checked against the RSS and patch-note page on a GitHub-hosted runner (HTTP 200). No browser cookies, credentials, proxy bypass or anti-bot challenge solver is used. HTTP errors and HTML challenge pages (including HTTP 200 challenges) are rejected; the checker tries the official English update feed and general Polish RSS before recording a failure. SteamDB is not a runtime dependency.
 
 The updater follows only the production **install** chain and walks its connected client patches. It reads actual `mods/<four-component-version>/readme.txt` entries from the latest applicable archive headers. It does not use RSS titles, micropatch suffixes, launcher build numbers, common tests or preload chains to construct a directory. Sparse temporary files hold only the first 64 KiB and last 2 MiB of selected archive volumes. `7z l` reads their directory metadata; no client files or remote code are extracted/executed. The RSS and up to three matching article pages are retained alongside the exact client build, archive URLs and last successful fetch timestamp.
 

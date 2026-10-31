@@ -92,6 +92,18 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 w.rss_items(bad)
 
+    def test_official_fallback_rejects_html_even_on_http_200(self):
+        calls = []
+        body = b'<rss><channel><item><title>Micropatch</title><link>https://worldoftanks.eu/en/news/updates/micro/</link><pubDate>Mon, 26 Oct 2026 16:00:00 GMT</pubDate></item></channel></rss>'
+        def get(url):
+            calls.append(url)
+            return b'<html>Loading site please wait</html>' if url == w.RSS else body
+        url, data, items = w.fetch_feed(get)
+        self.assertEqual(url, w.RSS_SOURCES[1])
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(items[0]['title'], 'Micropatch')
+        with self.assertRaises(ValueError): w.fetch_feed(lambda url: b'<html>challenge</html>')
+
     def test_chain_requires_eu_production_install(self):
         meta = w.xml(b'<protocol><predefined_section><app_id>WOT.EU.PRODUCTION</app_id></predefined_section></protocol>')
         def chain(kind='install', old='0'):
