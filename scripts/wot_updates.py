@@ -3,6 +3,7 @@
 import argparse
 import email.utils
 import hashlib
+import html
 import json
 import os
 from pathlib import Path
@@ -149,7 +150,15 @@ def collect(get=fetch, inspect=archive_directory):
     items = rss_items(feed)
     # Retain actual patch-note pages as evidence; RSS descriptions are summaries.
     for item in items[:3]:
-        item['article_html'] = get(item['url'], maximum=1024 * 1024).decode('utf-8')
+        try:
+            body = get(item['url'], maximum=1024 * 1024).decode('utf-8')
+            match = re.search(r'<title[^>]*>(.*?)</title>', body, re.I | re.S)
+            title = html.unescape(match.group(1)).strip() if match else ''
+            if item['title'].casefold() not in title.casefold():
+                raise ValueError('Article response does not match the official RSS title (possible HTML challenge)')
+            item['article_html'] = body
+        except Exception as exc:
+            item['article_error'] = type(exc).__name__ + ': ' + str(exc)
     meta_url = HOST + '/api/v1/metadata/?' + urllib.parse.urlencode(dict(guid=GUID, chain_id='unknown', protocol_version='7.2'))
     meta = xml(get(meta_url))
     query = dict(game_id=GUID, protocol_version='7.2', metadata_protocol_version='7.2', installation_id='WotMods',
@@ -221,6 +230,8 @@ def main():
         summary += ['', 'Refresh error (last-good data retained): ' + state['error']]
     for item in state.get('data', {}).get('items', [])[:5]:
         summary.append('- ' + item['title'].replace('\n', ' ') + ': ' + item['url'])
+        if item.get('article_error'):
+            summary.append('  Patch-note text unavailable: ' + item['article_error'].replace('\n', ' '))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('\n'.join(summary) + '\n')

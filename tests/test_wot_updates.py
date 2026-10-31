@@ -111,6 +111,64 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * 2)
         with self.assertRaises(ValueError): needs_rebuild('2.4.1.1', ['2.4.1.0'])
 
+class DispatchTests(unittest.TestCase):
+    def setUp(self):
+        import hashlib
+        from test_release_installers import build, r
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.out = self.root / 'installers'
+        self.out.mkdir()
+        for kind, version in [('staysharp', '1.7.0'), ('sessionstats', '0.3.4')]:
+            source = self.root / kind
+            build(source, kind, version)
+            r.package(source, self.out, kind)
+        self.metadata = {'immutable':True, 'draft':False, 'prerelease':False, 'tag_name':'fixture',
+                         'assets':[{'name':p.name, 'digest':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in self.out.iterdir()]}
+        self.dispatched = []
+        self.pending = False
+        self.env = patch.dict('os.environ', {'GITHUB_REF':'refs/heads/main', 'GITHUB_REPOSITORY':'example/repo', 'WOT_CLIENT_VERSION':'2.4.1.1'})
+        self.env.start()
+        self.addCleanup(self.env.stop)
+
+    def gh(self, *args):
+        import shutil
+        if args[0] == 'api': return json.dumps(self.metadata)
+        if args[:2] == ('release', 'download'):
+            destination = Path(args[args.index('--dir') + 1])
+            for p in self.out.iterdir():shutil.copyfile(p, destination/p.name)
+            return ''
+        if args[:2] == ('run', 'list'): return json.dumps([{'status':'queued'}] if self.pending else [])
+        if args[:2] == ('workflow', 'run'):
+            self.dispatched.append(args[2]);return ''
+        raise AssertionError(args)
+
+    def test_dispatches_both_existing_main_publishers(self):
+        import wot_dispatch as d
+        with patch.object(d, 'gh', side_effect=self.gh): d.main()
+        self.assertEqual(self.dispatched, ['release.yml', 'sessionstats-release.yml'])
+
+    def test_pending_publishers_are_not_duplicated(self):
+        import wot_dispatch as d
+        self.pending=True
+        with patch.object(d, 'gh', side_effect=self.gh): d.main()
+        self.assertEqual(self.dispatched, [])
+
+    def test_mutable_or_corrupt_release_cannot_dispatch(self):
+        import wot_dispatch as d
+        self.metadata['immutable']=False
+        with patch.object(d, 'gh', side_effect=self.gh), self.assertRaises(ValueError): d.main()
+        self.metadata['immutable']=True
+        self.metadata['assets'][0]['digest']='sha256:invalid'
+        with patch.object(d, 'gh', side_effect=self.gh), self.assertRaises(ValueError): d.main()
+        self.assertEqual(self.dispatched, [])
+
+    def test_feature_branch_cannot_dispatch(self):
+        import wot_dispatch as d
+        with patch.dict('os.environ', {'GITHUB_REF':'refs/heads/feature'}), patch.object(d, 'gh') as gh, self.assertRaises(ValueError): d.main()
+        gh.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

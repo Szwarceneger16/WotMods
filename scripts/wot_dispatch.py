@@ -49,8 +49,8 @@ def main():
             if digest != asset.get('digest'):
                 raise ValueError('Downloaded immutable asset digest mismatch')
         reports = release_installers.verify_directory(Path(tmp))
-        # verify_directory validates cross-mod paths/resources; use each ZIP's report.
-        versions = [release_installers.verify(p)[2] for p in Path(tmp).iterdir()]
+        # verify_directory validates both installers and cross-mod paths/resources.
+        versions = [report[2] for report in reports]
         if not needs_rebuild(target, versions):
             print('Both verified installers already target ' + target)
             return

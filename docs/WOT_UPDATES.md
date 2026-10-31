@@ -1,6 +1,6 @@
 # World of Tanks EU update monitoring
 
-`Check World of Tanks EU updates` is a shared preflight of both PR builds and both production publishers. It reads `.wot-update-cache/state.json` through GitHub Actions cache. A successful fetch remains fresh for **24 elapsed hours**, irrespective of calendar date. Cache keys are immutable per run; restore selects the newest entry with the schema prefix. Only the small preflight is serialized. Branch/PR caches remain isolated from the default branch's production cache by GitHub's cache scoping rules.
+`Check World of Tanks EU updates` is a shared preflight of both PR builds and both production publishers. It reads `.wot-update-cache/state.json` through GitHub Actions cache. A successful fetch remains fresh for **24 elapsed hours**, irrespective of calendar date. Cache keys are immutable per run; restore selects the newest entry with the schema and parser-revision prefix. Only the small preflight is serialized. Branch/PR caches remain isolated from the default branch's production cache by GitHub's cache scoping rules.
 
 `Refresh World of Tanks EU at 06:00` runs daily at **06:00 Europe/Warsaw**, including DST changes. That scheduled run forces a refresh so an incidental build shortly before 06:00 does not hide the morning update. Therefore a scheduled refresh can occur less than 24 hours after an earlier build fetch. GitHub may delay scheduled jobs. Manual runs use the normal TTL. Workflows become active after merging to main.
 
@@ -12,7 +12,9 @@
 
 The client identifies itself with an explicit WotMods User-Agent and requests XML. These headers were checked against the RSS and patch-note page on a GitHub-hosted runner (HTTP 200). No browser cookies, credentials, proxy bypass or anti-bot challenge solver is used. HTTP errors and HTML challenge pages are failures. SteamDB is not a runtime dependency.
 
-The updater follows only the production **install** chain and walks its connected client patches. It reads actual `mods/<four-component-version>/readme.txt` entries from the latest applicable archive headers. It does not use RSS titles, micropatch suffixes, launcher build numbers, common tests or preload chains to construct a directory. Sparse temporary files hold only the first 64 KiB and last 2 MiB of selected archive volumes. `7z l` reads their directory metadata; no client files or remote code are extracted/executed. The RSS and three latest full article pages are retained alongside the exact client build, archive URLs and last successful fetch timestamp.
+The updater follows only the production **install** chain and walks its connected client patches. It reads actual `mods/<four-component-version>/readme.txt` entries from the latest applicable archive headers. It does not use RSS titles, micropatch suffixes, launcher build numbers, common tests or preload chains to construct a directory. Sparse temporary files hold only the first 64 KiB and last 2 MiB of selected archive volumes. `7z l` reads their directory metadata; no client files or remote code are extracted/executed. The RSS and up to three matching article pages are retained alongside the exact client build, archive URLs and last successful fetch timestamp.
+
+An article response whose title does not match RSS is marked unavailable, rather than treating an HTML challenge as patch notes. This does not invalidate independently verified RSS and client-directory evidence.
 
 RSS articles can announce a future release or common test. They are news evidence only. The live production install chain supplies the directory.
 
