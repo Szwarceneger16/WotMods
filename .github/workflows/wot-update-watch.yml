@@ -1,0 +1,34 @@
+name: Refresh World of Tanks EU at 06:00
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+      timezone: Europe/Warsaw
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
+    with:
+      force: ${{ github.event_name == 'schedule' }}
+      strict: true
+  rebuild:
+    if: github.ref == 'refs/heads/main'
+    needs: updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compare verified immutable installers and dispatch existing publishers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+        run: python3 scripts/wot_dispatch.py
