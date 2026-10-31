@@ -96,7 +96,7 @@ def check_package(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--python27', required=True, help='Path to a CPython 2.7 interpreter')
-    parser.add_argument('--client-version', default='2.4.1.0')
+    parser.add_argument('--client-version', default='2.4.1.1')
     parser.add_argument('--version', default=os.environ.get('SESSIONSTATS_VERSION', VERSION))
     args = parser.parse_args()
     global_version = args.version
