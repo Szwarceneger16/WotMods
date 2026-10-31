@@ -4,6 +4,7 @@
 
 - Repeat the bundled ready voice instead of the native medkit activation sound; do not fall back to that sound on audio errors.
 - Add Ctrl+Alt+M to toggle the reminder for the current battle.
+- Record bounded diagnostics for audio resource visibility, resolved bank configuration, voice attempts, API results and battle controls.
 - In-game verification of the voice bank and hotkey is still required.
 
 ## 1.7.0

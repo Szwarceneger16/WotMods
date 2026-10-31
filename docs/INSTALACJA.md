@@ -50,10 +50,21 @@ build until the new one has passed an actual battle test.
 
 Local log: `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
-`ready voice unavailable` means an
-API call failed and that path was disabled for the battle. Wwise can also
-report failures only in `python.log`. `overlay suspended` explains why the
-visual and audio reminder paused. Logs remain local and are not uploaded.
+The log records the mod version, selected voice event, readiness transitions,
+whether the game resource manager can see the bank, whether the resolved
+`audio_mods.xml` mentions it, playback attempts and their API results, and the
+battle hotkey. It does not list other mods from the audio configuration.
+Playback attempts are sampled after the first three; counts are also recorded
+at battle end. Logs are local, rotate at roughly 512 KiB, and are not uploaded.
+If rotation occurs, include `staysharp.log.old` as well.
+
+`bank_visible=True` and `bank_entry=yes` do not prove that Wwise loaded the
+bank. `result=none` or `result=truthy` means only that no failure was reported
+by the Python call; `audible=unknown` is intentional. `ready voice unavailable`
+means the API reported an error and audio was disabled for that battle.
+Wwise may report additional failures only in the game's `python.log`.
+`overlay suspended` explains why the reminder paused. The game's `python.log`
+may contain information from WoT and other mods; review it before sharing.
 
 To uninstall, remove this mod's `.wotmod`. If you manually merged a bank
 entry into a separate audio configuration, remove only the

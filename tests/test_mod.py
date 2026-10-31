@@ -1394,6 +1394,54 @@ class Tests(unittest.TestCase):
         self.key_event.emit(event)
         self.assertTrue(self.mod._reminder_enabled)
 
+    def test_audio_diagnostics_identify_resolved_config_without_listing_other_mods(self):
+        class Section:
+            def __init__(self, value='', children=None):
+                self.asString=value
+                self.children=children or {}
+            def __getitem__(self, key): return self.children.get(key)
+            def values(self): return list(self.children.values())
+        banks=Section(children={'a':Section('other-private-name.bnk'),
+                                'b':Section(' ', {'name':Section('staysharp_medkit.bnk')})})
+        self.resmgr.openSection=lambda path:Section(children={'loadBanks':banks})
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_visible=True',messages)
+        self.assertIn('bank_entry=yes',messages)
+        self.assertNotIn('other-private-name',messages)
+        self.missing.add('audioww/staysharp_medkit.bnk')
+        self.resmgr.openSection=lambda path:Section(children={'loadBanks':Section()})
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_visible=False',messages)
+        self.assertIn('bank_entry=no',messages)
+
+    def test_voice_diagnostics_record_attempts_without_claiming_audibility(self):
+        with patch.object(self.mod, '_log') as log:
+            self.state(21)
+            self.emit_unregister()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('audio create event=staysharp_medkit_ready',messages)
+        self.assertIn('audio handle present=True',messages)
+        self.assertIn('audio play attempt=1 result=none isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio play attempt=2 result=none isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio battle_end attempts=2 failures=0 disabled=False',messages)
+
+    def test_diagnostic_exception_redacts_values_and_does_not_disable_audio(self):
+        def failed(path):
+            raise ValueError('private user path and arbitrary content')
+        self.resmgr.openSection=failed
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_entry=unknown',messages)
+        self.assertIn('exception=ValueError',messages)
+        self.assertNotIn('private user path',messages)
+        self.visible_start()
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
+
     def test_128_destroyed_vehicle_cancels_audio(self):
         self.visible_start()
         self.world.avatar.vehicle.health=0

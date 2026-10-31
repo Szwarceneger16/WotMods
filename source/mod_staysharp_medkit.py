@@ -86,6 +86,8 @@ _reminder_enabled = True
 _key_handler = None
 _audio_suspended = True
 _language = 'en'
+_voice_attempts = 0
+_voice_failures = 0
 
 
 def _language_code(value):
@@ -213,6 +215,44 @@ def _ready_voice_event():
     return READY_VOICE_EVENT if _language == 'en' else READY_VOICE_EVENT + '_' + _language
 
 
+def _audio_diagnostics():
+    """Inspect resolved resources, without claiming a bank is loaded or audible."""
+    try:
+        present = bool(ResMgr.isFile('audioww/staysharp_medkit.bnk'))
+        _log('audio resource bank_visible=%s' % present)
+    except Exception:
+        _exception('audio resource bank_visibility=unknown')
+    try:
+        root = ResMgr.openSection('audioww/audio_mods.xml')
+        if root is None:
+            _log('audio config resolved=missing bank_entry=unknown')
+            return
+        banks = root['loadBanks']
+        if banks is None:
+            _log('audio config resolved=yes loadBanks=missing bank_entry=no')
+            return
+        # Do not log other mods' names or dump the shared XML.
+        found = False
+        count = 0
+        truncated = False
+        for section in banks.values():
+            if count >= 128:
+                truncated = True
+                break
+            count += 1
+            name = section.asString
+            if not name or not name.strip():
+                child = section['name']
+                name = child.asString if child is not None else ''
+            if name.strip().lower() == 'staysharp_medkit.bnk':
+                found = True
+                break
+        state = 'yes' if found else ('unknown' if truncated else 'no')
+        _log('audio config resolved=yes bank_entry=%s scan_limited=%s' % (state, truncated))
+    except Exception:
+        _exception('audio config resolved=unknown bank_entry=unknown')
+
+
 def _suspend_audio():
     """Stop current audio, retaining the one-announcement-per-ready latch."""
     global _audio_next_reminder, _audio_suspended
@@ -223,6 +263,7 @@ def _suspend_audio():
     if _voice_player is not None:
         try:
             _voice_player.stop()
+            _log('audio voice stop requested')
         except Exception:
             _exception('voice stop failed')
 
@@ -244,20 +285,39 @@ def _track_audio_ready(panel, slot):
         _audio_key = key
         if key is not None:
             _audio_since = _time()
+            _log('audio readiness=ready slot=%d voice_delay=%.2fs' % (slot, READY_VOICE_DELAY))
+        else:
+            _log('audio readiness=not_ready')
 
 
 def _play_ready_voice():
-    global _voice_player, _voice_disabled
+    global _voice_player, _voice_disabled, _voice_attempts, _voice_failures
     if _voice_disabled:
         return
+    _voice_attempts += 1
+    report = _voice_attempts <= 3 or _voice_attempts % 10 == 0
     try:
         if _voice_player is None:
             import SoundGroups
+            _log('audio create event=' + _ready_voice_event())
             _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
+            _log('audio handle present=%s' % (_voice_player is not None))
         result = _voice_player.play()
+        result_label = 'none' if result is None else ('truthy' if result else 'false')
+        if report:
+            playing = 'unknown'
+            try:
+                state = getattr(_voice_player, 'isPlaying', None)
+                if isinstance(state, bool):
+                    playing = str(state)
+            except Exception:
+                pass
+            _log('audio play attempt=%d result=%s isPlaying=%s audible=unknown' % (
+                _voice_attempts, result_label, playing))
         if result is not None and not result:
             raise RuntimeError('ready voice playback failed')
     except Exception:
+        _voice_failures += 1
         _voice_disabled = True
         _exception('ready voice unavailable; audio disabled for battle')
 
@@ -327,7 +387,11 @@ def _log(message):
 
 def _exception(message):
     _log(message)
-    _log(traceback.format_exc())
+    exc_type, unused_value, tb = sys.exc_info()
+    frames = traceback.extract_tb(tb)[-8:] if tb is not None else []
+    locations = ' > '.join('%s:%s:%s' % (os.path.basename(path), line, name)
+                           for path, line, name, unused_source in frames)
+    _log('exception=%s frames=%s' % (getattr(exc_type, '__name__', 'unknown'), locations))
 
 
 def _time():
@@ -1075,6 +1139,7 @@ def _subscribe_hotkey():
         handler = InputHandler.g_instance
         handler.onKeyDown += _on_key_down
         _key_handler = handler
+        _log('hotkey subscribed=Ctrl+Alt+M')
     except Exception:
         _exception('reminder hotkey subscription failed')
 
@@ -1094,7 +1159,7 @@ def _activate(panel):
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
-    global _voice_player, _voice_disabled, _reminder_enabled
+    global _voice_player, _voice_disabled, _reminder_enabled, _voice_attempts, _voice_failures
     if panel is _panel:
         return
     if _panel is not None:
@@ -1102,6 +1167,8 @@ def _activate(panel):
     _reset_audio()
     _voice_player = None
     _voice_disabled = False
+    _voice_attempts = 0
+    _voice_failures = 0
     _reminder_enabled = True
     _panel = panel
     _ready_slot = None
@@ -1116,6 +1183,8 @@ def _activate(panel):
     _last_camera_view = None
     _last_vehicle_source = None
     _subscribe_hotkey()
+    _log('audio battle_start mod_version=%s language=%s event=%s' % (VERSION, _language, _ready_voice_event()))
+    _audio_diagnostics()
     _log('battle panel populated; renderer deferred; HUD visibility required')
     _schedule_state()
 
@@ -1124,6 +1193,8 @@ def _deactivate(panel):
     global _panel, _ready_slot, _ready_since
     if panel is None or panel is not _panel:
         return
+    _log('audio battle_end attempts=%d failures=%d disabled=%s' % (
+        _voice_attempts, _voice_failures, _voice_disabled))
     _unsubscribe_hotkey()
     _panel = None
     _ready_slot = None
