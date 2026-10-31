@@ -5,7 +5,7 @@
 | Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `Session-Stats-v<version>.zip`, including OpenWG and configuration examples |
 | Stay Sharp — Medkit Reminder | [source](source), description below | `StaySharp-Medkit-v<version>.zip`, including installation paths and a configuration example |
 
-Both mods can be installed independently. [Latest shared release snapshot](../../releases/latest). Unchanged packages are carried forward byte-for-byte; each mod builds independently. See [release flow](docs/MULTIMOD_RELEASES.md).
+Both mods can be installed independently. [Latest shared release snapshot](../../releases/latest). Each mod builds independently; unchanged installers are carried forward byte-for-byte unless the target game directory changes. See [release flow](docs/MULTIMOD_RELEASES.md).
 Sources, tests and licenses are separate; the Session Stats license does not cover the medkit mod.
 Integration rules: [mods/sessionstats/README.md](mods/sessionstats/README.md).
 
@@ -61,7 +61,7 @@ See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](
 No custom HTTP client, third-party publication service or Java is involved; GitHub's own CLI and built-in `GITHUB_TOKEN` handle the release. Neither the workflow nor a separate recovery script deletes an existing Release. If publication is interrupted, check the draft manually; the pipeline fails safely instead of guessing what to remove.
 
 The historical first run created an empty **draft `v1.6.1`**. It is not public as a downloadable release and does not prevent the next distinct build (now using the `staysharp-v<version>` namespace). Before merging the simplified release workflow, enable **Settings → Releases → Enable release immutability** for future published assets and tags. Multiple mods are built separately. Shared GitHub Releases keep unchanged mod
-packages byte-for-byte: publish jobs use GitHub Actions `queue: max` to avoid
+packages byte-for-byte when the game directory is unchanged: publish jobs use GitHub Actions `queue: max` to avoid
 simultaneous-merge races and skip obsolete same-mod builds. See
 [mod independence and concurrent merges](docs/MULTIMOD_RELEASES.md).
 
