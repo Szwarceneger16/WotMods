@@ -6,26 +6,17 @@ speech, external process, background thread or runtime download is used.
 
 ## Behavior
 
-- Once the existing Stay Sharp eligibility probe reports a usable medkit,
-  wait one second, then say **"Medkit is ready" once**. Readiness is sampled
-  by the existing 250 ms state tick, so the delay from the game's transition
-  can be up to 250 ms longer. The visual stable-ready check also applies.
-- Starting four seconds after the announcement, play the equipped medkit's
-  **native activation effect** every four seconds, matching the full pulse
-  period. The descriptor-to-event mapping comes from WoT's `EquipmentSound`
-  class; it is not a cooldown-complete sound or a simulated keypress.
-- Pause/stop while the reminder is suppressed. Use/cooldown, losing the
-  perk's permission, injury/stun warnings, replay/spectator mode, destruction
-  and battle end suppress audio together with the existing outline.
-- Hiding/showing the HUD pauses/resumes repetition without another voice
-  announcement for the same readiness interval. Readiness is still polled
-  while hidden, so using the medkit during that time rearms the next voice.
-  Changing arcade/sniper/SPG views does not rearm it.
-- A frame stall emits at most one due reminder. There is no catch-up burst.
-- If the sound API raises or returns a failure, disable that audio path for
-  the battle. Voice failure falls back to the native effect. The outline
-  continues. Wwise errors that only appear in the game's own log cannot be
-  detected reliably by Python.
+- Once a usable medkit is detected, wait one second and play the selected
+  voice. Repeat it every four seconds while the reminder is active.
+- Press **Ctrl+Alt+M** in battle to turn the visual and audio reminder off or
+  back on. It starts enabled in the next battle. The shortcut is ignored while
+  battle chat is focused and does not consume the game's key event.
+- Use/cooldown, injury/stun warnings, hiding the HUD, spectator mode,
+  destruction and battle end suppress the reminder. A frame stall never
+  generates a catch-up burst.
+- If the sound API reports failure, audio is disabled for that battle and
+  the outline continues. No native medkit sound is used as a fallback.
+  Wwise may report errors only in the game's log.
 
 ## Language configuration
 
@@ -73,7 +64,7 @@ The installation is identified through WoT's resource resolver and physical
 If the installation cannot be identified uniquely, the mod uses automatic
 language without writing configuration elsewhere. Existing AppData config
 files are not read or migrated. The diagnostic log location is unchanged.
-The repeated medkit activation effect remains the native game sound.
+No native medkit activation effect is used.
 
 ## Bank and volume
 
@@ -81,8 +72,7 @@ The package contains `res/audioww/staysharp_medkit.bnk`, with seven events: the 
 `staysharp_medkit_ready_<code>` for the other six languages. Each embedded
 mono PCM voice is under two seconds long; only the selected one is played.
 The sound routes to the game's existing **VOICE_GUI** bus, inheriting WoT's
-master/voice notification volume and mute controls. The native effect keeps
-its original game routing. No existing game event, bus or voiceover bank is
+master/voice notification volume and mute controls. No existing game event, bus or voiceover bank is
 replaced. Sound settings and the final loudness must be checked in-game.
 
 `source/build_audio_bank.py` serializes the small Wwise 2023.1 / bank-version

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- Repeat the bundled ready voice instead of the native medkit activation sound; do not fall back to that sound on audio errors.
+- Add Ctrl+Alt+M to toggle the reminder for the current battle.
+- In-game verification of the voice bank and hotkey is still required.
+
 ## 1.7.0
 
 - Install the mod as `GRZ_Medkit_Reminder.wotmod` so updates replace one file; keep the release version in the installer ZIP name and internal mod metadata. Preserve existing immutable installers with the older versioned filenames.

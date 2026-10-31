@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.7.0 - installation and test
+# Stay Sharp Medkit Reminder 1.7.1 - installation and test
 
 ## Install
 
@@ -30,26 +30,16 @@
 
 - Before battle starts and during equipment selection, expect no outline or
   extra audio.
-- With the Stay Sharp perk permitting medkit use and the kit available,
-  expect the original four-second orange pulse and one **"Medkit is ready"**
-  voice after one second, in the selected language. There should be no additional immediate ping on
-  top of the game's cooldown-complete sound.
-- If you leave the kit ready, expect its normal **activation effect** four
-  seconds after the announcement and every four seconds thereafter.
-- Check arcade, sniper, SPG top-down and trajectory cameras. Switching camera
-  modes must not repeat the voice or reset the reminder interval.
-- Use the medkit; the outline and extra sounds must stop during cooldown.
-  The next eligible readiness interval should produce one new voice.
-- Hide/show the HUD: silence while hidden, no duplicate voice when restored.
-- Check an injury/stun warning, perk permission loss, own vehicle destruction,
-  battle end and return to the garage. No reminder should continue there.
-- Test `language: auto` with your game language, then force another supported
-  code in the configuration and restart. Confirm that the spoken language
-  changes while timing and the native repeated effect remain the same.
-- Change WoT master/voice notification volume and mute; check the voice
-  follows the game settings. The repeated native effect follows its existing
-  game audio channel. Restore your preferred volume afterward.
-- If other sound mods are installed, verify their effects still work too.
+- With the perk permitting use and the medkit ready, expect the orange pulse
+  and the selected voice after one second, repeated every four seconds.
+  There must be no native medkit activation effect from this mod.
+- Press Ctrl+Alt+M to turn the outline and voice off, then press it again to
+  restore them. The reminder starts enabled in the next battle. Verify the
+  shortcut does not react while battle chat is focused.
+- Check arcade, sniper and artillery cameras, cooldown, HUD visibility,
+  warnings, destruction and battle end. The reminder must stop when ineligible.
+- Test automatic and manually selected languages and WoT voice volume.
+- If other sound mods are installed, verify that their effects still work.
 
 Offline checks cannot confirm native bank loading, final voice loudness or
 client rendering. If there is no voice, inspect the game's sound errors and
@@ -60,7 +50,7 @@ build until the new one has passed an actual battle test.
 
 Local log: `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
-`ready voice unavailable` or `native medkit reminder unavailable` means an
+`ready voice unavailable` means an
 API call failed and that path was disabled for the battle. Wwise can also
 report failures only in `python.log`. `overlay suspended` explains why the
 visual and audio reminder paused. Logs remain local and are not uploaded.
