@@ -154,7 +154,7 @@ def build():
                  '  <id>{}</id>\n'
                  '  <version>{}</version>\n'
                  '  <name>Stay Sharp - Medkit Reminder</name>\n'
-                 '  <description>Medkit outline with delayed ready voice and native WoT sound reminders.</description>\n'
+                 '  <description>Medkit outline with repeating ready voice and a battle toggle.</description>\n'
                  '</root>\n').format(MOD_ID, VERSION)).encode('utf-8')
     target = dest / ('%s_%s.wotmod' % (MOD_ID,VERSION))
     with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_STORED) as archive:

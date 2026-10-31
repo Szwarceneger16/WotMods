@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.7.0 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.7.1 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
 no lifecycle monkeypatches; subscribes to native ComponentEvent lifecycle.
 It preserves the working v1.5.0 rendering and detects incompatible HUD
-shapes before attempting to paint. Bundled ready voice and native medkit SFX;
+shapes before attempting to paint. Bundled ready voice;
 no SWF replacement or downloads.
 """
 from __future__ import absolute_import
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.7.0'
+VERSION = '1.7.1'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -82,11 +82,12 @@ _audio_announced = False
 _audio_next_reminder = None
 _voice_player = None
 _voice_disabled = False
-_effect_sound = None
-_effect_compact = None
-_effect_disabled = False
+_reminder_enabled = True
+_key_handler = None
 _audio_suspended = True
 _language = 'en'
+_voice_attempts = 0
+_voice_failures = 0
 
 
 def _language_code(value):
@@ -214,6 +215,44 @@ def _ready_voice_event():
     return READY_VOICE_EVENT if _language == 'en' else READY_VOICE_EVENT + '_' + _language
 
 
+def _audio_diagnostics():
+    """Inspect resolved resources, without claiming a bank is loaded or audible."""
+    try:
+        present = bool(ResMgr.isFile('audioww/staysharp_medkit.bnk'))
+        _log('audio resource bank_visible=%s' % present)
+    except Exception:
+        _exception('audio resource bank_visibility=unknown')
+    try:
+        root = ResMgr.openSection('audioww/audio_mods.xml')
+        if root is None:
+            _log('audio config resolved=missing bank_entry=unknown')
+            return
+        banks = root['loadBanks']
+        if banks is None:
+            _log('audio config resolved=yes loadBanks=missing bank_entry=no')
+            return
+        # Do not log other mods' names or dump the shared XML.
+        found = False
+        count = 0
+        truncated = False
+        for section in banks.values():
+            if count >= 128:
+                truncated = True
+                break
+            count += 1
+            name = section.asString
+            if not name or not name.strip():
+                child = section['name']
+                name = child.asString if child is not None else ''
+            if name.strip().lower() == 'staysharp_medkit.bnk':
+                found = True
+                break
+        state = 'yes' if found else ('unknown' if truncated else 'no')
+        _log('audio config resolved=yes bank_entry=%s scan_limited=%s' % (state, truncated))
+    except Exception:
+        _exception('audio config resolved=unknown bank_entry=unknown')
+
+
 def _suspend_audio():
     """Stop current audio, retaining the one-announcement-per-ready latch."""
     global _audio_next_reminder, _audio_suspended
@@ -224,13 +263,9 @@ def _suspend_audio():
     if _voice_player is not None:
         try:
             _voice_player.stop()
+            _log('audio voice stop requested')
         except Exception:
             _exception('voice stop failed')
-    if _effect_sound is not None:
-        try:
-            _effect_sound.stop()
-        except Exception:
-            _exception('native reminder stop failed')
 
 
 def _reset_audio():
@@ -250,47 +285,42 @@ def _track_audio_ready(panel, slot):
         _audio_key = key
         if key is not None:
             _audio_since = _time()
+            _log('audio readiness=ready slot=%d voice_delay=%.2fs' % (slot, READY_VOICE_DELAY))
+        else:
+            _log('audio readiness=not_ready')
 
 
-def _play_medkit_effect(compact):
-    """Use the same descriptor-to-event mapping as WoT's activation code."""
-    global _effect_sound, _effect_compact, _effect_disabled
-    if _effect_disabled:
+def _play_ready_voice():
+    global _voice_player, _voice_disabled, _voice_attempts, _voice_failures
+    if _voice_disabled:
         return
+    _voice_attempts += 1
+    report = _voice_attempts <= 3 or _voice_attempts % 10 == 0
     try:
-        import SoundGroups
-        from gui.battle_control.controllers.consumables.equipment_ctrl import EquipmentSound
-        if _effect_sound is None or _effect_compact != compact:
-            if _effect_sound is not None:
-                _effect_sound.stop()
-            event = EquipmentSound._soundMap.get(compact)
-            if not event:
-                raise ValueError('no native medkit activation sound for descriptor')
-            _effect_sound = SoundGroups.g_instance.getSound2D(event)
-            _effect_compact = compact
-        result = _effect_sound.play()
-        if result is not None and not result:
-            raise RuntimeError('native medkit playback failed')
+        if _voice_player is None:
+            import SoundGroups
+            _log('audio create event=' + _ready_voice_event())
+            _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
+            _log('audio handle present=%s' % (_voice_player is not None))
+        result = _voice_player.play()
+        result_label = 'none' if result is None else ('truthy' if result else 'false')
+        if report:
+            playing = 'unknown'
+            try:
+                state = getattr(_voice_player, 'isPlaying', None)
+                if isinstance(state, bool):
+                    playing = str(state)
+            except Exception:
+                pass
+            result_type = type(result).__name__
+            _log('audio play attempt=%d result=%s result_type=%s isPlaying=%s audible=unknown' % (
+                _voice_attempts, result_label, result_type, playing))
+        # WoT's own callers do not interpret play()'s return value as a
+        # success flag. A falsey result can coexist with isPlaying=True.
     except Exception:
-        _effect_disabled = True
-        _exception('native medkit reminder unavailable; disabled for battle')
-
-
-def _play_ready_voice(compact):
-    global _voice_player, _voice_disabled
-    if not _voice_disabled:
-        try:
-            if _voice_player is None:
-                import SoundGroups
-                _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
-            result = _voice_player.play()
-            if result is not None and not result:
-                raise RuntimeError('ready voice playback failed')
-            return
-        except Exception:
-            _voice_disabled = True
-            _exception('ready voice unavailable; using native medkit effect for battle')
-    _play_medkit_effect(compact)
+        _voice_failures += 1
+        _voice_disabled = True
+        _exception('ready voice unavailable; audio disabled for battle')
 
 
 def _update_audio():
@@ -305,14 +335,14 @@ def _update_audio():
     _audio_suspended = False
     if not _audio_announced:
         _audio_announced = True
-        _play_ready_voice(_audio_key[1])
+        _play_ready_voice()
         _audio_next_reminder = now + 2.0 * HALF_PULSE
     elif _audio_next_reminder is None:
         # Resume at the next complete pulse without repeating the voice.
         _audio_next_reminder = now + 2.0 * HALF_PULSE
     elif now >= _audio_next_reminder:
         _audio_next_reminder = now + 2.0 * HALF_PULSE
-        _play_medkit_effect(_audio_key[1])
+        _play_ready_voice()
 
 
 def _log(message):
@@ -358,7 +388,11 @@ def _log(message):
 
 def _exception(message):
     _log(message)
-    _log(traceback.format_exc())
+    exc_type, unused_value, tb = sys.exc_info()
+    frames = traceback.extract_tb(tb)[-8:] if tb is not None else []
+    locations = ' > '.join('%s:%s:%s' % (os.path.basename(path), line, name)
+                           for path, line, name, unused_source in frames)
+    _log('exception=%s frames=%s' % (getattr(exc_type, '__name__', 'unknown'), locations))
 
 
 def _time():
@@ -998,6 +1032,9 @@ def _animate():
 def _refresh(panel):
     global _ready_slot, _ready_since, _last_reason, _last_panel_active
     global _last_hud_status, _last_geometry_source, _last_geometry_camera, _last_camera_view
+    if not _reminder_enabled:
+        _hide_overlay('disabled_by_player')
+        return
     panel_active = getattr(panel, 'isActive', None)
     camera = _camera_view(panel)
     if camera != _last_camera_view:
@@ -1074,20 +1111,66 @@ def _check_state():
         _exception('state scheduler failed')
 
 
+def _on_key_down(event):
+    global _reminder_enabled
+    if _panel is None:
+        return
+    try:
+        import Keys
+        if (event.key != Keys.KEY_M or not event.isKeyDown()
+                or event.isRepeatedEvent() or not event.isCtrlDown()
+                or not event.isAltDown() or event.isShiftDown()):
+            return
+        from messenger import MessengerEntry
+        if MessengerEntry.g_instance.gui.isFocused():
+            return
+        _reminder_enabled = not _reminder_enabled
+        if not _reminder_enabled:
+            _reset_audio()
+            _hide_overlay('disabled_by_player')
+        _log('reminder ' + ('enabled' if _reminder_enabled else 'disabled') + ' by hotkey')
+    except Exception:
+        _exception('reminder hotkey unavailable')
+
+
+def _subscribe_hotkey():
+    global _key_handler
+    try:
+        from gui import InputHandler
+        handler = InputHandler.g_instance
+        handler.onKeyDown += _on_key_down
+        _key_handler = handler
+        _log('hotkey subscribed=Ctrl+Alt+M')
+    except Exception:
+        _exception('reminder hotkey subscription failed')
+
+
+def _unsubscribe_hotkey():
+    global _key_handler
+    if _key_handler is not None:
+        try:
+            _key_handler.onKeyDown -= _on_key_down
+        except Exception:
+            _exception('reminder hotkey unsubscription failed')
+        _key_handler = None
+
+
 def _activate(panel):
     global _panel, _ready_slot, _ready_since, _graphics_disabled, _error_count
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
-    global _voice_player, _voice_disabled, _effect_disabled, _effect_sound, _effect_compact
+    global _voice_player, _voice_disabled, _reminder_enabled, _voice_attempts, _voice_failures
     if panel is _panel:
         return
     if _panel is not None:
         _deactivate(_panel)
     _reset_audio()
     _voice_player = None
-    _voice_disabled, _effect_disabled = False, False
-    _effect_sound, _effect_compact = None, None
+    _voice_disabled = False
+    _voice_attempts = 0
+    _voice_failures = 0
+    _reminder_enabled = True
     _panel = panel
     _ready_slot = None
     _ready_since = None
@@ -1100,6 +1183,9 @@ def _activate(panel):
     _last_geometry_camera = None
     _last_camera_view = None
     _last_vehicle_source = None
+    _subscribe_hotkey()
+    _log('audio battle_start mod_version=%s language=%s event=%s' % (VERSION, _language, _ready_voice_event()))
+    _audio_diagnostics()
     _log('battle panel populated; renderer deferred; HUD visibility required')
     _schedule_state()
 
@@ -1108,6 +1194,9 @@ def _deactivate(panel):
     global _panel, _ready_slot, _ready_since
     if panel is None or panel is not _panel:
         return
+    _log('audio battle_end attempts=%d failures=%d disabled=%s' % (
+        _voice_attempts, _voice_failures, _voice_disabled))
+    _unsubscribe_hotkey()
     _panel = None
     _ready_slot = None
     _ready_since = None
@@ -1179,7 +1268,7 @@ def init():
                     pass
                 raise
             _event_listeners.append((event_type, handler))
-        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, ready voice + native medkit reminders')
+        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, repeating ready voice and battle hotkey')
     except Exception:
         _exception('component event subscription failed; mod disabled')
         fini()
