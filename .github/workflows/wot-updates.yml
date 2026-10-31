@@ -47,8 +47,8 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .wot-update-cache
-          key: wot-eu-evidence-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: wot-eu-evidence-v1-
+          key: wot-eu-evidence-v1-${{ hashFiles('scripts/wot_updates.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: wot-eu-evidence-v1-${{ hashFiles('scripts/wot_updates.py') }}-
       - name: Refresh only expired evidence (always refresh at 06:00)
         id: refresh
         env:
@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: .wot-update-cache
-          key: wot-eu-evidence-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          key: wot-eu-evidence-v1-${{ hashFiles('scripts/wot_updates.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Require fresh evidence for production
         if: steps.refresh.outputs.fresh != 'true' && (inputs.strict || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |

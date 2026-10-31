@@ -225,7 +225,7 @@ def main():
             stream.write('\n'.join(summary) + '\n')
     print(json.dumps(outputs))
     if not fresh:
-        print('::warning::Official EU evidence could not be refreshed; publication must remain blocked.')
+        print('::warning::Official EU evidence could not be refreshed; publication must remain blocked. ' + state.get('error', '').replace('\n', ' '))
 
 
 if __name__ == '__main__':
