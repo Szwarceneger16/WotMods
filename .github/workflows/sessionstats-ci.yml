@@ -5,6 +5,10 @@ on:
     branches: [main, ci/sessionstats-build-releases]
     # Native PR filters use the full branch diff, not just the newest commit.
     paths:
+      - '.github/workflows/wot-updates.yml'
+      - 'scripts/wot_updates.py'
+      - 'scripts/wot_dispatch.py'
+      - 'tests/test_wot_updates.py'
       - 'mods/sessionstats/**'
       - 'scripts/sessionstats/**'
       - 'scripts/release_version.py'
@@ -23,7 +27,12 @@ permissions:
   contents: read
 
 jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
+    with:
+      strict: false
   sessionstats:
+    needs: updates
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

@@ -5,6 +5,10 @@ on:
     branches: [main]
     # Only Stay Sharp sources and its build/release machinery cause a release.
     paths:
+      - '.github/workflows/wot-updates.yml'
+      - 'scripts/wot_updates.py'
+      - 'scripts/wot_dispatch.py'
+      - 'tests/test_wot_updates.py'
       - 'source/**'
       - 'assets/**'
       - 'VERSION'
@@ -19,10 +23,15 @@ permissions:
 
 # Independent builds can run in parallel. Only publication is serialized.
 jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
   build:
+    needs: updates
     name: Test and build (read-only)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
@@ -62,7 +71,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release (write after successful build)
-    needs: build
+    needs: [build, updates]
     if: github.ref == 'refs/heads/main'
     # ALL mod publishers must share this lock from latest snapshot through upload.
     # queue:max preserves rapid merge events instead of canceling pending runs.
@@ -79,6 +88,7 @@ jobs:
     # revision, used only when GitHub hides the bypass actor list from this token.
     environment: staysharp-release
     env:
+      WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
       RELEASE_VERSION: ${{ needs.build.outputs.version }}
       RELEASE_TAG: ${{ needs.build.outputs.tag }}
     steps:
@@ -111,7 +121,7 @@ jobs:
           set -euo pipefail
           # Acquire the shared publish lock BEFORE reading Latest. A reverse-
           # ordered older build exits 75 rather than rolling back a newer mod.
-          python3 scripts/release_installers.py package release --source dist --mod staysharp
+          python3 scripts/release_installers.py package release --source dist --mod staysharp --client-version "$WOT_CLIENT_VERSION"
           if bash scripts/release_snapshot.sh release \
               "StaySharp-Medkit-v${RELEASE_VERSION}.zip" \
               'StaySharp-Medkit-v*.zip'; then
