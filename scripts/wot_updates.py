@@ -29,7 +29,7 @@ VERSION = r'(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){3}'
 
 def xml(data):
     if b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
-        raise ValueError('XML declarations with external entities are not allowed')
+        raise ValueError('Unexpected XML DTD/entity or HTML response: ' + repr(data[:100]))
     return ET.fromstring(data)
 
 
@@ -50,6 +50,7 @@ def fetch(url, maximum=4 * 1024 * 1024, start=None, length=None):
         if start is not None and (response.status != 206 or not response.headers.get('Content-Range', '').startswith('bytes %d-%d/' % (start, start + length - 1))):
             raise ValueError('CDN did not honor the exact byte range')
         data = response.read(maximum + 1)
+        print('Fetched %s: HTTP %s, %s, %d bytes' % (url, response.status, response.headers.get('Content-Type', ''), len(data)))
         if len(data) > maximum or (start is not None and len(data) != length):
             raise ValueError('Unexpected response size')
         return data
