@@ -14,9 +14,10 @@ speech, external process, background thread or runtime download is used.
 - Use/cooldown, injury/stun warnings, hiding the HUD, spectator mode,
   destruction and battle end suppress the reminder. A frame stall never
   generates a catch-up burst.
-- If the sound API reports failure, audio is disabled for that battle and
+- If the sound API raises an exception, audio is disabled for that battle and
   the outline continues. No native medkit sound is used as a fallback.
-  Wwise may report errors only in the game's log.
+  Falsey `play()` returns are not interpreted as failure: their meaning is
+  not established. Wwise may report errors only in the game's log.
 
 ## Language configuration
 

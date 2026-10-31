@@ -59,9 +59,11 @@ at battle end. Logs are local, rotate at roughly 512 KiB, and are not uploaded.
 If rotation occurs, include `staysharp.log.old` as well.
 
 `bank_visible=True` and `bank_entry=yes` do not prove that Wwise loaded the
-bank. `result=none` or `result=truthy` means only that no failure was reported
-by the Python call; `audible=unknown` is intentional. `ready voice unavailable`
-means the API reported an error and audio was disabled for that battle.
+bank. The meaning of `play()` return values is not established, so the mod
+logs them without treating falsey values as failures. `isPlaying=True` and
+`audible=unknown` do not prove that the player can hear the voice.
+`ready voice unavailable` means the Python API raised an exception and audio
+was disabled for that battle.
 Wwise may report additional failures only in the game's `python.log`.
 `overlay suspended` explains why the reminder paused. The game's `python.log`
 may contain information from WoT and other mods; review it before sharing.

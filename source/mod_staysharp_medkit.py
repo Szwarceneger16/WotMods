@@ -312,10 +312,11 @@ def _play_ready_voice():
                     playing = str(state)
             except Exception:
                 pass
-            _log('audio play attempt=%d result=%s isPlaying=%s audible=unknown' % (
-                _voice_attempts, result_label, playing))
-        if result is not None and not result:
-            raise RuntimeError('ready voice playback failed')
+            result_type = type(result).__name__
+            _log('audio play attempt=%d result=%s result_type=%s isPlaying=%s audible=unknown' % (
+                _voice_attempts, result_label, result_type, playing))
+        # WoT's own callers do not interpret play()'s return value as a
+        # success flag. A falsey result can coexist with isPlaying=True.
     except Exception:
         _voice_failures += 1
         _voice_disabled = True

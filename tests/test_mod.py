@@ -1425,8 +1425,8 @@ class Tests(unittest.TestCase):
         messages='\n'.join(call.args[0] for call in log.call_args_list)
         self.assertIn('audio create event=staysharp_medkit_ready',messages)
         self.assertIn('audio handle present=True',messages)
-        self.assertIn('audio play attempt=1 result=none isPlaying=unknown audible=unknown',messages)
-        self.assertIn('audio play attempt=2 result=none isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio play attempt=1 result=none result_type=NoneType isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio play attempt=2 result=none result_type=NoneType isPlaying=unknown audible=unknown',messages)
         self.assertIn('audio battle_end attempts=2 failures=0 disabled=False',messages)
 
     def test_diagnostic_exception_redacts_values_and_does_not_disable_audio(self):
@@ -1506,11 +1506,19 @@ class Tests(unittest.TestCase):
         self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
         self.assertIsNone(self.mod._audio_next_reminder)
 
-    def test_playback_false_disables_audio_without_native_fallback(self):
-        self.sounds[self.mod.READY_VOICE_EVENT]=types.SimpleNamespace(play=lambda:False,stop=lambda:None)
-        self.visible_start()
-        self.assertEqual(self.audio_plays,[])
-        self.assertTrue(self.mod._voice_disabled)
+    def test_falsey_play_result_does_not_disable_future_voice_attempts(self):
+        for result in (False, 0, None):
+            with self.subTest(result=result):
+                calls=[]
+                self.sounds[self.mod.READY_VOICE_EVENT]=types.SimpleNamespace(
+                    play=lambda:calls.append(self.world.clock) or result,
+                    stop=lambda:None, isPlaying=True)
+                self.mod._voice_player=None
+                self.mod._voice_disabled=False
+                self.mod._play_ready_voice()
+                self.mod._play_ready_voice()
+                self.assertEqual(len(calls),2)
+                self.assertFalse(self.mod._voice_disabled)
 
 
     def write_language_config(self, value):
