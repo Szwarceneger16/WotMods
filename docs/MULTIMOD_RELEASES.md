@@ -64,7 +64,11 @@ the new workflow to the scoping regression fixtures.
    no-op). If versions are equal, verify the package bytes match; equal
    versions with different bytes fail closed.
 5. Replace only the current mod's old files; copy every other mod's published
-   installer **byte-for-byte**, without invoking its builder.
+   installer **byte-for-byte**, without invoking its builder, when the game
+   directory is unchanged. When it changes, the verified installer is repacked
+   for the new directory with unchanged mod binaries and an explicit note that
+   this does not establish in-game compatibility. Newer targets cannot be
+   downgraded. The other mod's own workflow builds it independently.
    Use a temporary global manifest for assembly, remove it before uploading, publish a new GitHub Release and
    verify all uploaded bytes while **still holding the mutex**.
 
