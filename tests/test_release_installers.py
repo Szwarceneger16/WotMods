@@ -107,6 +107,27 @@ class InstallerTests(unittest.TestCase):
         path=r.package(self.source,self.out,'sessionstats')
         self.assertEqual(first,path.read_bytes())
 
+    def test_new_client_retargets_both_installers_without_changing_mod_bytes(self):
+        self.both()
+        before = r.verify_directory(self.out)
+        old_packages = {kind: {name.split('/', 2)[2]: data for name, data in files.items()
+                               if name.startswith('mods/' + client + '/')}
+                        for kind, _, client, files, _ in before}
+        r.normalize(self.out, '2.5.0.0')
+        (self.out/'SHA256SUMS.txt').unlink()
+        after = r.verify_directory(self.out)
+        self.assertEqual({report[2] for report in after}, {'2.5.0.0'})
+        for kind, _, client, files, _ in after:
+            self.assertEqual(old_packages[kind], {name.split('/', 2)[2]: data
+                              for name, data in files.items()
+                              if name.startswith('mods/' + client + '/')})
+            self.assertIn(b'not an in-game compatibility test', files['docs/'+kind+'/COMPATIBILITY.txt'])
+
+    def test_retarget_refuses_to_publish_an_older_game_client(self):
+        self.both()
+        with self.assertRaisesRegex(ValueError, 'downgrade'):
+            r.normalize(self.out, '2.3.0.0')
+
     def test_internal_catalog_stays_inside_mod_and_only_main_config_is_installed(self):
         build(self.source,'sessionstats','0.3.0',internal=True)
         target=r.package(self.source,self.out,'sessionstats')

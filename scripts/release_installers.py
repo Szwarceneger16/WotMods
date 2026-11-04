@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Package verified builds, migrate legacy snapshots, and write release download notes.
 
-No builds or GitHub mutations happen here. Unchanged current-format installers
-are validated and carried byte-for-byte by release_snapshot.sh.
+No builds or GitHub mutations happen here. Current-format installers are
+validated and carried byte-for-byte unless their game directory must change.
 """
 import argparse
 import hashlib
@@ -16,7 +16,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DATE = (2026, 10, 24, 0, 0, 0)
 SEMVER = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
-CLIENT = '2.4.1.0'
+CLIENT = '2.4.1.1'
 SESSIONSTATS_PACKAGE = 'grz_sessions_stats.wotmod'
 PREVIOUS_SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
 KINDS = {
@@ -287,11 +287,38 @@ def normalize(directory, client=CLIENT):
         if set(files) - set(modern):
             raise ValueError('Mixed legacy/current snapshot')
         seen = set()
+        reports = []
         for name in modern:
-            kind = verify(directory / name)[0]
+            report = verify(directory / name)
+            kind = report[0]
             if kind in seen:
                 raise ValueError('Multiple versions of the same installer')
             seen.add(kind)
+            reports.append(report)
+        # A new game directory requires both installers to move together.
+        # Verify all source archives first and never roll a newer target back.
+        target = tuple(map(int, client.split('.')))
+        if any(tuple(map(int, report[2].split('.'))) > target for report in reports):
+            raise ValueError('Refusing to downgrade a newer game client target')
+        with tempfile.TemporaryDirectory() as temporary:
+            for kind, version, previous, payload, _ in reports:
+                if previous == client:
+                    continue
+                doc = 'docs/' + kind + '/'
+                payload = dict(payload)
+                del payload[doc + 'SHA256SUMS.txt']
+                prefix = 'mods/' + previous + '/'
+                payload = {(('mods/' + client + '/' + name[len(prefix):])
+                            if name.startswith(prefix) else name): data
+                           for name, data in payload.items()}
+                payload[doc + 'COMPATIBILITY.txt'] = (
+                    'Installer retargeted from ' + previous + ' to ' + client + '.\n'
+                    'The mod binaries were carried forward unchanged; this is not an in-game compatibility test.\n'
+                    'Historical build metadata and source documentation describe the original build.\n'
+                ).encode('ascii')
+                write_installer(Path(temporary), kind, version, client, payload)
+            for path in Path(temporary).iterdir():
+                (directory / path.name).write_bytes(path.read_bytes())
     else:
         check_manifest(files)
         with tempfile.TemporaryDirectory() as temporary:
@@ -352,6 +379,8 @@ def notes(directory, output, repository, tag):
     lines += ['', '## Installation', '',
         'Close WoT and extract the ZIP into the folder containing `WorldOfTanks.exe`. '
         'Keep the nested `mods/` folders. Both installers target client **' + reports[0][2] + '**.', '',
+        'A matching install path does not by itself confirm in-game compatibility. '
+        'An installer may carry forward unchanged mod binaries from an earlier client.', '',
         'Session Stats includes OpenWG Gameface. Install either mod or both. '
         'Remove older `.wotmod` versions of the same mod from the active version folder.', '',
         'Configuration files are optional examples in `mods/configs/*.json.example`. '
