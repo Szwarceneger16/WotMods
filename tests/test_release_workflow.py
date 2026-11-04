@@ -25,7 +25,7 @@ class GitHubNativeReleaseTests(unittest.TestCase):
         self.assertIn('contents: read', WORKFLOW)
         self.assertIn('contents: write', WORKFLOW)
         self.assertLess(WORKFLOW.index('contents: read'), WORKFLOW.index('contents: write'))
-        self.assertIn('needs: build', WORKFLOW)
+        self.assertIn('needs: [build, updates]', WORKFLOW)
         self.assertIn("if: github.ref == 'refs/heads/main'", WORKFLOW)
 
     def test_first_party_actions_pinned_to_full_commit_sha(self):
