@@ -11,17 +11,17 @@
 - Example patch notes: https://worldoftanks.eu/pl/news/updates/micro-patch-2-4-1-3/
 - Official client updater: `https://wgus-woteu.wargaming.net`, application **WOT.EU.PRODUCTION**.
 
-The client identifies itself with an explicit WotMods User-Agent and requests XML. These headers were checked against the RSS and patch-note page on a GitHub-hosted runner (HTTP 200). No browser cookies, credentials, proxy bypass or anti-bot challenge solver is used. HTTP errors and HTML challenge pages (including HTTP 200 challenges) are rejected; the checker tries the official English update feed and general Polish RSS before recording a failure. SteamDB is not a runtime dependency.
+The client identifies itself with an explicit WotMods User-Agent and requests XML. These headers were checked against the RSS and patch-note page on a GitHub-hosted runner (HTTP 200). No browser cookies, credentials, proxy bypass or anti-bot challenge solver is used. HTTP errors and HTML challenge pages (including HTTP 200 challenges) are rejected. The checker tries the official English update feed and general Polish RSS before marking patch notes unavailable. SteamDB is not a runtime dependency.
 
-The updater follows only the production **install** chain and walks its connected client patches. It reads actual `mods/<four-component-version>/readme.txt` entries from the latest applicable archive headers. It does not use RSS titles, micropatch suffixes, launcher build numbers, common tests or preload chains to construct a directory. Sparse temporary files hold only the first 64 KiB and last 2 MiB of selected archive volumes. `7z l` reads their directory metadata; no client files or remote code are extracted/executed. The RSS and up to three matching article pages are retained alongside the exact client build, archive URLs and last successful fetch timestamp.
+The updater follows only the production **install** chain and walks its connected client patches. It reads actual `mods/<four-component-version>/readme.txt` entries from the latest applicable archive headers. It does not use RSS titles, micropatch suffixes, launcher build numbers, common tests or preload chains to construct a directory. Sparse temporary files hold only the first 64 KiB and last 2 MiB of selected archive volumes. `7z l` reads their directory metadata; no client files or remote code are extracted/executed. Once this evidence is verified, the checker attempts to retain the RSS and up to three matching article pages alongside the exact client build, archive URLs and last successful fetch timestamp.
 
-An article response whose title does not match RSS is marked unavailable, rather than treating an HTML challenge as patch notes. This does not invalidate independently verified RSS and client-directory evidence.
+An article response whose title does not match RSS is marked unavailable, rather than treating an HTML challenge as patch notes. RSS and article failures are listed separately in the summary. Freshness and the release gate depend on the verified EU production install chain and the actual archive directory.
 
 RSS articles can announce a future release or common test. They are news evidence only. The live production install chain supplies the directory.
 
 ## Failure behavior
 
-A failed refresh retains the last-good data and its successful timestamp; it does not extend the TTL. A 15-minute failed-attempt backoff prevents repeated build requests from hammering an unavailable source. Failed evidence blocks production, including a forced refresh failure while an older cache entry is still under 24 hours old. PR builds report source failure as a warning and can still validate code. Every job summary links the recent official announcements and reports freshness.
+A failed Game Center refresh retains the last-good data and its successful timestamp; it does not extend the TTL. A 15-minute failed-attempt backoff prevents repeated build requests from hammering an unavailable source. Failed evidence blocks production, including a forced refresh failure while an older cache entry is still under 24 hours old. PR builds report source failure as a warning and can still validate code. Every job summary reports Game Center freshness and links any available recent official announcements.
 
 ## Rebuild and publication
 
