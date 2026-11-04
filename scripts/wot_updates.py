@@ -30,8 +30,10 @@ VERSION = r'(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){3}'
 
 
 def xml(data):
+    if data[:256].lstrip().lower().startswith((b'<!doctype html', b'<html')):
+        raise ValueError('Received an HTML page instead of XML')
     if b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
-        raise ValueError('Unexpected XML DTD/entity or HTML response: ' + repr(data[:100]))
+        raise ValueError('Unexpected XML DTD or entity')
     return ET.fromstring(data)
 
 
@@ -159,8 +161,11 @@ def archive_directory(volumes, get=fetch):
         return directory_from_listing(result.stdout)
 
 
-def collect(get=fetch, inspect=archive_directory):
-    feed_url, feed, items = fetch_feed(get)
+def collect_patch_notes(get):
+    try:
+        feed_url, feed, items = fetch_feed(get)
+    except ValueError as exc:
+        return {'rss_error': str(exc), 'items': []}
     # Retain actual patch-note pages as evidence; RSS descriptions are summaries.
     for item in items[:3]:
         try:
@@ -172,6 +177,10 @@ def collect(get=fetch, inspect=archive_directory):
             item['article_html'] = body
         except Exception as exc:
             item['article_error'] = type(exc).__name__ + ': ' + str(exc)
+    return {'rss_url': feed_url, 'rss_sha256': hashlib.sha256(feed).hexdigest(), 'items': items}
+
+
+def collect(get=fetch, inspect=archive_directory):
     meta_url = HOST + '/api/v1/metadata/?' + urllib.parse.urlencode(dict(guid=GUID, chain_id='unknown', protocol_version='7.2'))
     meta = xml(get(meta_url))
     query = dict(game_id=GUID, protocol_version='7.2', metadata_protocol_version='7.2', installation_id='WotMods',
@@ -183,9 +192,12 @@ def collect(get=fetch, inspect=archive_directory):
         directory = inspect(patch['files'])
         if directory:
             # This is the *actual mods path*, never the client build or patch suffix.
-            return {'client_version': directory, 'client_build': chain[-1]['to'], 'directory_patch': patch['to'],
-                    'source': chain_url, 'archive_urls': [v['url'] for v in patch['files']],
-                    'rss_url': feed_url, 'rss_sha256': hashlib.sha256(feed).hexdigest(), 'items': items}
+            evidence = {'client_version': directory, 'client_build': chain[-1]['to'], 'directory_patch': patch['to'],
+                        'source': chain_url, 'archive_urls': [v['url'] for v in patch['files']]}
+            # Patch news is supplemental. Game Center provides the production
+            # install chain and the archive entries that identify the mods path.
+            evidence.update(collect_patch_notes(get))
+            return evidence
     raise ValueError('No exact mods directory found in the production install chain')
 
 
@@ -240,19 +252,26 @@ def main():
             parser.error('EU update evidence is expired or invalid; start a new release run.')
         return
     state, refreshed, fresh = update_cache(args.cache, force=args.force)
-    version = state.get('data', {}).get('client_version', '') if fresh else ''
+    data = state.get('data')
+    if not isinstance(data, dict):
+        data = {}
+    version = data.get('client_version', '') if fresh else ''
     outputs = {'refreshed': str(refreshed).lower(), 'fresh': str(fresh).lower(), 'client_version': version,
                'fetched_at': str(state['fetched_at']) if fresh else ''}
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.writelines('%s=%s\n' % pair for pair in outputs.items())
-    summary = ['### World of Tanks EU update check', '', 'RSS source: ' + state.get('data', {}).get('rss_url', RSS),
-               'Fresh evidence: ' + str(fresh), 'Live mods directory: ' + (version or 'unavailable'),
+    summary = ['### World of Tanks EU update check', '',
+               'Fresh Game Center evidence: ' + str(fresh), 'Live mods directory: ' + (version or 'unavailable'),
                'Last successful fetch (UTC epoch): ' + str(state.get('fetched_at', 'never')),
                'Cache refreshed: ' + str(refreshed)]
+    if data.get('rss_url'):
+        summary.append('Patch-note RSS: ' + data['rss_url'])
+    elif data.get('rss_error'):
+        summary += ['', 'Patch-note RSS unavailable: ' + data['rss_error'].replace('\n', ' ')]
     if state.get('error'):
         summary += ['', 'Refresh error (last-good data retained): ' + state['error']]
-    for item in state.get('data', {}).get('items', [])[:5]:
+    for item in data.get('items', [])[:5]:
         summary.append('- ' + item['title'].replace('\n', ' ') + ': ' + item['url'])
         if item.get('article_error'):
             summary.append('  Patch-note text unavailable: ' + item['article_error'].replace('\n', ' '))
@@ -261,7 +280,7 @@ def main():
             stream.write('\n'.join(summary) + '\n')
     print(json.dumps(outputs))
     if not fresh:
-        print('::warning::Official EU evidence could not be refreshed; publication must remain blocked. ' + state.get('error', '').replace('\n', ' '))
+        print('::warning::Official EU Game Center evidence could not be refreshed; publication must remain blocked. ' + state.get('error', '').replace('\n', ' '))
 
 
 if __name__ == '__main__':
