@@ -30,7 +30,7 @@ def mod(identifier, version, payload=b'payload'):
                     'res/'+identifier+'/module.pyc': payload})
 
 
-def build(directory, kind, version, internal=False, stable=False, installed_name=None):
+def build(directory, kind, version, internal=False, stable=False, installed_name=None, client=r.CLIENT):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = r.KINDS[kind][1]
     primary = prefix+version+'.wotmod'
@@ -38,7 +38,7 @@ def build(directory, kind, version, internal=False, stable=False, installed_name
     if kind == 'sessionstats':
         config, language = b'{"language":"auto"}', b'{"languages":{"en":{}}}'
         dependency = mod('net.openwg.gameface', '1.2.2')
-        report_data={'version':version, 'client_target':r.CLIENT, 'languages_config_sha256':r.digest(language)}
+        report_data={'version':version, 'client_target':client, 'languages_config_sha256':r.digest(language)}
         if stable:
             report_data['installed_package']=installed_name or r.SESSIONSTATS_PACKAGE
         if internal:
@@ -53,8 +53,8 @@ def build(directory, kind, version, internal=False, stable=False, installed_name
         (directory/'net.openwg.gameface_1.2.2.wotmod').write_bytes(dependency)
         (directory/'BUILD.json').write_bytes(report)
         bundled = {
-            'mods/'+r.CLIENT+'/'+((installed_name or r.SESSIONSTATS_PACKAGE) if stable else primary):(directory/primary).read_bytes(),
-            'mods/'+r.CLIENT+'/net.openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
+            'mods/'+client+'/'+((installed_name or r.SESSIONSTATS_PACKAGE) if stable else primary):(directory/primary).read_bytes(),
+            'mods/'+client+'/net.openwg/net.openwg.gameface_1.2.2.wotmod':dependency,
             'mods/configs/grz.sessionstats.json'+('.example' if stable else ''):config,
             'mods/configs/grz.sessionstats.languages.json':language,
             'BUILD.json':report, 'README_PL.txt':b'Legacy instructions',
@@ -127,6 +127,13 @@ class InstallerTests(unittest.TestCase):
         self.both()
         with self.assertRaisesRegex(ValueError, 'downgrade'):
             r.normalize(self.out, '2.3.0.0')
+
+    def test_legacy_migration_rejects_a_downgrade_without_changing_source_assets(self):
+        build(self.source, 'sessionstats', '0.2.12', client='2.5.0.0')
+        before = r.directory_files(self.source)
+        with self.assertRaisesRegex(ValueError, 'downgrade'):
+            r.normalize(self.source, r.CLIENT)
+        self.assertEqual(r.directory_files(self.source), before)
 
     def test_internal_catalog_stays_inside_mod_and_only_main_config_is_installed(self):
         build(self.source,'sessionstats','0.3.0',internal=True)
@@ -332,7 +339,9 @@ class SnapshotInstallerTests(unittest.TestCase):
                 latest=root/'legacy'
                 latest.mkdir()
                 build(latest,'staysharp','1.6.4')
-                build(latest,'sessionstats','0.2.11')
+                legacy_client = '2.4.1.0'
+                build(latest, 'sessionstats', '0.2.11', client=legacy_client)
+                legacy_assets = r.directory_files(latest)
                 binpath=root/'bin'
                 binpath.mkdir()
                 (binpath/'gh').write_text(FAKE_GH)
@@ -353,14 +362,24 @@ class SnapshotInstallerTests(unittest.TestCase):
                     dest,version=jobs[kind]
                     env=dict(os.environ,PATH=str(binpath)+os.pathsep+os.environ['PATH'],
                         GITHUB_REPOSITORY='example/WotMods',FAKE_RELEASE_LIST=str(listing),
-                        FAKE_RELEASE_DIR=str(latest))
+                        FAKE_RELEASE_DIR=str(latest), WOT_CLIENT_VERSION=r.CLIENT)
                     result=subprocess.run(['bash',str(ROOT/'scripts/release_snapshot.sh'),str(dest),
                         r.installer_name(kind,version),r.KINDS[kind][0]+'*.zip'],
                         env=env,capture_output=True,text=True)
                     self.assertEqual(result.returncode,0,result.stdout+result.stderr)
                     (dest/'SHA256SUMS.txt').unlink()
-                    r.verify_directory(dest)
-                    if latest.name!='legacy':
+                    reports = r.verify_directory(dest)
+                    self.assertEqual({report[2] for report in reports}, {r.CLIENT})
+                    if latest.name == 'legacy':
+                        self.assertEqual(r.directory_files(latest), legacy_assets)
+                        if kind == 'staysharp':
+                            stats = next(report for report in reports if report[0] == 'sessionstats')
+                            self.assertEqual(stats[3][stats[4]], legacy_assets['grz.sessionstats_0.2.11.wotmod'])
+                            self.assertEqual(stats[3]['mods/' + r.CLIENT +
+                                '/net.openwg/net.openwg.gameface_1.2.2.wotmod'],
+                                legacy_assets['net.openwg.gameface_1.2.2.wotmod'])
+                            self.assertEqual(stats[3]['docs/sessionstats/BUILD.json'], legacy_assets['BUILD.json'])
+                    else:
                         other=next(p for p in latest.glob('*.zip') if p.name.startswith(r.KINDS[order[0]][0]))
                         self.assertEqual(other.read_bytes(),(dest/other.name).read_bytes())
                     latest=dest
