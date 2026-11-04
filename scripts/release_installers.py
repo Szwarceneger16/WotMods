@@ -182,12 +182,18 @@ def write_installer(directory, kind, version, client, files):
     }, sort_keys=True) + '\n').encode('ascii')
     upgrade = ('Target client: ' + client + '. Remove older versions of this same mod\n'
                'from the active mods/' + client + '/ folder before starting the game.\n\n')
-    if kind == 'staysharp':
+    mod_dir = 'mods/' + client + '/'
+    if kind == 'staysharp' and mod_dir + MEDKIT_INSTALLED_PACKAGE in files:
         upgrade = ('Target client: ' + client + '. Installed file: ' + MEDKIT_INSTALLED_PACKAGE + '.\n'
                    'When upgrading from versioned filenames, first remove the old\n'
                    'com.staysharp.medkitreminder_*.wotmod files from mods/' + client + '/.\n'
                    'Later updates overwrite the same ' + MEDKIT_INSTALLED_PACKAGE + ' file.\n'
                    'The ZIP filename and the mod metadata retain the version number.\n\n')
+    elif kind == 'staysharp':
+        filename = installed_package(kind, version)
+        upgrade = ('Target client: ' + client + '. Installed file: ' + filename + '.\n'
+                   'Remove any other versions of this same mod from ' + mod_dir + '\n'
+                   'before starting the game. Keep the installed ' + filename + ' file.\n\n')
     files[doc + 'INSTALL.txt'] = (
         KINDS[kind][2] + ' ' + version + '\n\n'
         'Close World of Tanks. Extract this ZIP into the game installation folder\n'

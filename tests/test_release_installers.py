@@ -427,6 +427,25 @@ class StableMedkitInstallerTests(unittest.TestCase):
         r.normalize(self.out)
         self.assertEqual(path.read_bytes(), before)
 
+    def test_retargeted_legacy_medkit_instructions_keep_the_actual_package(self):
+        path, (_, version, client, files, primary) = self.packaged('1.6.4')
+        filename = 'com.staysharp.medkitreminder_1.6.4.wotmod'
+        payload = files.pop(primary)
+        files['mods/' + client + '/' + filename] = payload
+        del files['docs/staysharp/SHA256SUMS.txt']
+        r.write_installer(self.out, 'staysharp', version, client, files)
+
+        target = '2.5.0.0'
+        r.normalize(self.out, target)
+        _, _, actual, retargeted, installed = r.verify(path)
+        self.assertEqual(actual, target)
+        self.assertEqual(installed, 'mods/' + target + '/' + filename)
+        self.assertEqual(retargeted[installed], payload)
+        instructions = retargeted['docs/staysharp/INSTALL.txt'].decode('utf-8')
+        self.assertIn('Installed file: ' + filename, instructions)
+        self.assertIn('Keep the installed ' + filename, instructions)
+        self.assertNotIn('com.staysharp.medkitreminder_*.wotmod', instructions)
+
     def test_stable_filename_cannot_hide_wrong_version_or_duplicate_legacy_package(self):
         for duplicate in (False, True):
             with self.subTest(duplicate=duplicate):
