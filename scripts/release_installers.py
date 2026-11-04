@@ -284,6 +284,42 @@ def package(source, destination, kind, client=CLIENT):
     return write_installer(destination, kind, version, client, payload)
 
 
+def retarget_installers(directory, client):
+    seen = set()
+    reports = []
+    for path in sorted(directory.iterdir()):
+        report = verify(path)
+        kind = report[0]
+        if kind in seen:
+            raise ValueError('Multiple versions of the same installer')
+        seen.add(kind)
+        reports.append(report)
+    # A new game directory requires both installers to move together.
+    # Verify all source archives first and never roll a newer target back.
+    target = tuple(map(int, client.split('.')))
+    if any(tuple(map(int, report[2].split('.'))) > target for report in reports):
+        raise ValueError('Refusing to downgrade a newer game client target')
+    with tempfile.TemporaryDirectory() as temporary:
+        for kind, version, previous, payload, _ in reports:
+            if previous == client:
+                continue
+            doc = 'docs/' + kind + '/'
+            payload = dict(payload)
+            del payload[doc + 'SHA256SUMS.txt']
+            prefix = 'mods/' + previous + '/'
+            payload = {(('mods/' + client + '/' + name[len(prefix):])
+                        if name.startswith(prefix) else name): data
+                       for name, data in payload.items()}
+            payload[doc + 'COMPATIBILITY.txt'] = (
+                'Installer retargeted from ' + previous + ' to ' + client + '.\n'
+                'The mod binaries were carried forward unchanged; this is not an in-game compatibility test.\n'
+                'Historical build metadata and source documentation describe the original build.\n'
+            ).encode('ascii')
+            write_installer(Path(temporary), kind, version, client, payload)
+        for path in Path(temporary).iterdir():
+            (directory / path.name).write_bytes(path.read_bytes())
+
+
 def normalize(directory, client=CLIENT):
     """Validate a new snapshot, or convert a checksum-verified legacy snapshot."""
     directory = Path(directory)
@@ -292,39 +328,7 @@ def normalize(directory, client=CLIENT):
     if modern:
         if set(files) - set(modern):
             raise ValueError('Mixed legacy/current snapshot')
-        seen = set()
-        reports = []
-        for name in modern:
-            report = verify(directory / name)
-            kind = report[0]
-            if kind in seen:
-                raise ValueError('Multiple versions of the same installer')
-            seen.add(kind)
-            reports.append(report)
-        # A new game directory requires both installers to move together.
-        # Verify all source archives first and never roll a newer target back.
-        target = tuple(map(int, client.split('.')))
-        if any(tuple(map(int, report[2].split('.'))) > target for report in reports):
-            raise ValueError('Refusing to downgrade a newer game client target')
-        with tempfile.TemporaryDirectory() as temporary:
-            for kind, version, previous, payload, _ in reports:
-                if previous == client:
-                    continue
-                doc = 'docs/' + kind + '/'
-                payload = dict(payload)
-                del payload[doc + 'SHA256SUMS.txt']
-                prefix = 'mods/' + previous + '/'
-                payload = {(('mods/' + client + '/' + name[len(prefix):])
-                            if name.startswith(prefix) else name): data
-                           for name, data in payload.items()}
-                payload[doc + 'COMPATIBILITY.txt'] = (
-                    'Installer retargeted from ' + previous + ' to ' + client + '.\n'
-                    'The mod binaries were carried forward unchanged; this is not an in-game compatibility test.\n'
-                    'Historical build metadata and source documentation describe the original build.\n'
-                ).encode('ascii')
-                write_installer(Path(temporary), kind, version, client, payload)
-            for path in Path(temporary).iterdir():
-                (directory / path.name).write_bytes(path.read_bytes())
+        retarget_installers(directory, client)
     else:
         check_manifest(files)
         with tempfile.TemporaryDirectory() as temporary:
@@ -341,6 +345,7 @@ def normalize(directory, client=CLIENT):
                 r'(?:com\.staysharp\.medkitreminder_|grz\.sessionstats_|net\.openwg\.gameface_).+\.wotmod|wot-statystyki-sesji-v.+\.zip', n)
                 for n in files):
                 raise ValueError('Unknown legacy release asset')
+            retarget_installers(output, client)
             converted = {p.name: p.read_bytes() for p in output.iterdir()}
             for p in directory.iterdir():
                 p.unlink()

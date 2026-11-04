@@ -128,6 +128,13 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'downgrade'):
             r.normalize(self.out, '2.3.0.0')
 
+    def test_legacy_migration_rejects_a_downgrade_without_changing_source_assets(self):
+        build(self.source, 'sessionstats', '0.2.12', client='2.5.0.0')
+        before = r.directory_files(self.source)
+        with self.assertRaisesRegex(ValueError, 'downgrade'):
+            r.normalize(self.source, r.CLIENT)
+        self.assertEqual(r.directory_files(self.source), before)
+
     def test_internal_catalog_stays_inside_mod_and_only_main_config_is_installed(self):
         build(self.source,'sessionstats','0.3.0',internal=True)
         target=r.package(self.source,self.out,'sessionstats')
@@ -372,7 +379,9 @@ class SnapshotInstallerTests(unittest.TestCase):
                 latest=root/'legacy'
                 latest.mkdir()
                 build(latest,'staysharp','1.6.4')
-                build(latest,'sessionstats','0.2.11')
+                legacy_client = '2.4.1.0'
+                build(latest, 'sessionstats', '0.2.11', client=legacy_client)
+                legacy_assets = r.directory_files(latest)
                 binpath=root/'bin'
                 binpath.mkdir()
                 (binpath/'gh').write_text(FAKE_GH)
@@ -399,8 +408,18 @@ class SnapshotInstallerTests(unittest.TestCase):
                         env=env,capture_output=True,text=True)
                     self.assertEqual(result.returncode,0,result.stdout+result.stderr)
                     (dest/'SHA256SUMS.txt').unlink()
-                    r.verify_directory(dest)
-                    if latest.name!='legacy':
+                    reports = r.verify_directory(dest)
+                    self.assertEqual({report[2] for report in reports}, {r.CLIENT})
+                    if latest.name == 'legacy':
+                        self.assertEqual(r.directory_files(latest), legacy_assets)
+                        if kind == 'staysharp':
+                            stats = next(report for report in reports if report[0] == 'sessionstats')
+                            self.assertEqual(stats[3][stats[4]], legacy_assets['grz.sessionstats_0.2.11.wotmod'])
+                            self.assertEqual(stats[3]['mods/' + r.CLIENT +
+                                '/net.openwg/net.openwg.gameface_1.2.2.wotmod'],
+                                legacy_assets['net.openwg.gameface_1.2.2.wotmod'])
+                            self.assertEqual(stats[3]['docs/sessionstats/BUILD.json'], legacy_assets['BUILD.json'])
+                    else:
                         other=next(p for p in latest.glob('*.zip') if p.name.startswith(r.KINDS[order[0]][0]))
                         self.assertEqual(other.read_bytes(),(dest/other.name).read_bytes())
                     latest=dest
