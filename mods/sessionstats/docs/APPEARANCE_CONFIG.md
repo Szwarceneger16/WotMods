@@ -28,7 +28,7 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-12 corner radii, three opacity settings and a scrolling multiplier. An unavailable file,
+13 corner radii, three opacity settings and a scrolling multiplier. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
 
@@ -59,10 +59,11 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.garage_wn8_text` | `"#bdc0c2"` | Small WN8 label |
 | `colors.garage_spinner_border` | `"rgba(207,190,140,0.25)"` | Translucent spinner segment |
 | `colors.garage_spinner_border_top_color` | `"#dfd3a4"` | Bright spinner segment |
-| `radii.window` | `4` | Window corners |
-| `radii.table_header` | `3` | Table-header corners |
-| `radii.table_row` | `2` | Table-row corners |
-| `radii.group_card` | `5` | Vehicle/map/battle card corners |
+| `radii.window` | `8` | Window corners |
+| `radii.control` | `5` | Button and dropdown corners |
+| `radii.table_header` | `5` | Table-header corners |
+| `radii.table_row` | `4` | Table-row corners |
+| `radii.group_card` | `7` | Vehicle/map/battle card corners |
 | `radii.garage_spinner` | `5` | Spinner corners |
 | `opacity.window` | `1.0` | Entire panel, including text |
 | `opacity.garage_button` | `1.0` | Entire garage button |

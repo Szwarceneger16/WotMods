@@ -20,8 +20,8 @@ const captions = {
 async function serveUI(page) {
   await page.route('http://grz-session.test/**',async route=>{
     const name=new URL(route.request().url()).pathname.slice(1);
-    if(!['SessionStats.html','session_stats.js','session_stats.css'].includes(name)) { await route.abort(); return; }
-    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':'text/html');
+    if(!['SessionStats.html','session_stats.js','session_stats.css','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html');
     await route.fulfill({status:200,contentType,body:fs.readFileSync(path.join(root,'ui',name))});
   });
 }

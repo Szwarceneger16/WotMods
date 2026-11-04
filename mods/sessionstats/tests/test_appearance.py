@@ -101,7 +101,7 @@ class AppearanceTests(unittest.TestCase):
         self.assertEqual(actual['colors']['window_background'], '#111309')
         self.assertEqual(actual['colors']['window_border'], '#246')
         self.assertEqual(actual['radii']['window'], 6)
-        self.assertEqual(actual['radii']['group_card'], 5)
+        self.assertEqual(actual['radii']['group_card'], style.DEFAULT_CONFIG['radii']['group_card'])
         self.assertEqual(actual['scroll']['speed_multiplier'], 2)
         log = self.output.getvalue()
         self.assertIn('CONFIG field=colors.window_background', log)

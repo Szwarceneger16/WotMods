@@ -9,9 +9,14 @@
 <body>
   <div id="grz-session-stats" class="ss-window">
     <header id="ss-titlebar" class="ss-titlebar">
-      <h1 data-i18n="title">Session statistics</h1>
-      <span class="ss-game-mode" data-i18n="mode.random">Random battles</span>
-      <button id="ss-time-point" class="ss-control ss-button ss-time-point" type="button" style="display:none"><span class="ss-control-label" data-i18n="timeline.create">Create time point</span></button>
+      <div class="ss-title-identity">
+        <h1 data-i18n="title">Session statistics</h1>
+        <span class="ss-game-mode" data-i18n="mode.random">Random battles</span>
+      </div>
+      <div id="ss-title-actions" class="ss-title-actions">
+        <button id="ss-time-point" class="ss-control ss-button ss-time-point" type="button" style="display:none"><span class="ss-control-label" data-i18n="timeline.create">Create time point</span></button>
+        <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
+      </div>
       <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" data-i18n="close.symbol">×</span></button>
     </header>
     <div class="ss-controls">
@@ -26,7 +31,6 @@
       </div>
       <div class="ss-toolbar">
         <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
-        <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
         <div class="ss-xp-picker" role="group" aria-label="Experience type" data-i18n-aria="xp.group">
           <button id="ss-xp-base" class="ss-control ss-small-toggle is-active" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="xp.base">Base XP</span></button>
           <button id="ss-xp-received" class="ss-control ss-small-toggle" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="xp.received">Received XP</span></button>

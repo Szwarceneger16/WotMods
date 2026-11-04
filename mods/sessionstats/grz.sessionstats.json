@@ -143,17 +143,18 @@
     "garage_spinner_border_top_color": "#dfd3a4"
   },
   "radii": {
-    "window": 4,
-    "titlebar": 3,
+    "window": 8,
+    "titlebar": 7,
+    "control": 5,
     "scrollbar_thumb": 3,
-    "table_header": 3,
-    "table_row": 2,
-    "battle_measure": 3,
-    "group_tabs": 3,
-    "group_card": 5,
-    "battle_outcome": 3,
-    "panel_footer": 3,
-    "confirmation": 5,
+    "table_header": 5,
+    "table_row": 4,
+    "battle_measure": 5,
+    "group_tabs": 5,
+    "group_card": 7,
+    "battle_outcome": 5,
+    "panel_footer": 7,
+    "confirmation": 8,
     "garage_spinner": 5
   },
   "opacity": {

@@ -30,8 +30,8 @@ async function makePage(browser, native) {
     }
     await page.route('http://grz-wheel.test/**', async route => {
         const name = new URL(route.request().url()).pathname.slice(1);
-        if (!['SessionStats.html','session_stats.css','session_stats.js'].includes(name)) { await route.abort(); return; }
-        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
+        if (!['SessionStats.html','session_stats.css','session_stats.js','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
     });
     await page.goto('http://grz-wheel.test/SessionStats.html');
     await page.waitForFunction(native => window.GRZSessionStats && window.GRZSessionStats.getState().nativeBound === native, native);

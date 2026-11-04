@@ -50,7 +50,7 @@
     var nodes = {};
     var ids = ['started', 'summary', 'groups', 'scroll', 'status', 'reset',
         'reset-overlay', 'reset-cancel', 'reset-confirm', 'close', 'refresh',
-        'group-tabs', 'list-meta', 'titlebar', 'timeline', 'time-point', 'resize-grip'];
+        'group-tabs', 'list-meta', 'titlebar', 'title-actions', 'timeline', 'time-point', 'resize-grip'];
     var i;
     for (i = 0; i < ids.length; i += 1) { nodes[ids[i]] = document.getElementById('ss-' + ids[i]); }
 
@@ -909,7 +909,7 @@
         if (!event || event.button !== 0 || state.dialog || state.dragging) { return; }
         var target = event.target;
         while (target && target !== nodes.titlebar) {
-            if (target === nodes.close || target.tagName === 'BUTTON') { return; }
+            if (target === nodes['title-actions'] || target === nodes.close || target.tagName === 'BUTTON') { return; }
             target = target.parentNode;
         }
         if (target !== nodes.titlebar) { return; }

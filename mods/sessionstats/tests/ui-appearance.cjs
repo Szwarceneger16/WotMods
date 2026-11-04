@@ -57,8 +57,8 @@ async function panel(browser) {
     },snapshot());
     await page.route('http://grz-appearance.test/**',async route=>{
         const name=new URL(route.request().url()).pathname.slice(1);
-        if(!['SessionStats.html','session_stats.css','session_stats.js'].includes(name)){await route.abort();return;}
-        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html',
+        if(!['SessionStats.html','session_stats.css','session_stats.js','session_stats_camo.png'].includes(name)){await route.abort();return;}
+        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html',
             body:fs.readFileSync(path.join(root,'ui',name))});
     });
     await page.goto('http://grz-appearance.test/SessionStats.html');

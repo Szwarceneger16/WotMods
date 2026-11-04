@@ -6,6 +6,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   await page.evaluate(() => {
     const payload = JSON.parse(model.payload);
     payload.account_key = 'fixture-account';
+    payload.localization = {language:'en', selected:'auto', messages:{}};
     const timeline = payload.scopes.timeline = JSON.parse(JSON.stringify(payload.scopes.manual));
     timeline.from_point = timeline.to_point = '';
     timeline.time_points = [['first', 1700000000], ['last', 1700100000]];
@@ -25,7 +26,32 @@ module.exports = async function ({browser, nativeHost, check}) {
     document.querySelector('#ss-timeline-from .ss-select-trigger').textContent === 'Beginning of history' &&
     document.querySelector('#ss-timeline-to .ss-select-trigger').textContent === 'Now' &&
     document.querySelector('#ss-reset').style.display === 'none'));
-  await page.locator('#ss-time-point').click();
+  async function controlsFit(wrapped) {
+    return page.evaluate(wrapped => {
+      const box = selector => document.querySelector(selector).getBoundingClientRect();
+      const title = box('.ss-title-identity');
+      const actions = box('#ss-title-actions');
+      const timePoint = box('#ss-time-point');
+      const language = box('#ss-language .ss-select-trigger');
+      const close = box('#ss-close');
+      return timePoint.right < language.left && language.right <= close.left &&
+        Math.abs(timePoint.top - language.top) < 1 &&
+        (wrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
+        [...document.querySelectorAll('.ss-timeline-field')].every(field => {
+          const label = field.firstElementChild.getBoundingClientRect();
+          const control = field.querySelector('.ss-select-trigger').getBoundingClientRect();
+          return control.width > 0 && label.right < control.left &&
+            control.right <= field.getBoundingClientRect().right + 1;
+        });
+    }, wrapped);
+  }
+  check('Title actions and both timeline selectors fit at 200 percent', await controlsFit(false));
+  const timePoint = page.locator('#ss-time-point');
+  const buttonShadow = await timePoint.evaluate(button => getComputedStyle(button).boxShadow);
+  await timePoint.hover();
+  check('Time-point button gains depth on hover',
+    await timePoint.evaluate(button => getComputedStyle(button).boxShadow) !== buttonShadow);
+  await timePoint.click();
   await page.locator('#ss-timeline-from .ss-select-trigger').click();
   await page.locator('#ss-timeline-from [data-value="first"]').click();
   check('Creating and selecting a time point are account-scoped native actions', await page.evaluate(() =>
@@ -60,5 +86,14 @@ module.exports = async function ({browser, nativeHost, check}) {
   await page.waitForFunction(() => __nativeSize[0] === 780 && __nativeSize[1] === 680);
   check('A change to 100 percent keeps the same logical window size',
     await page.evaluate(() => document.documentElement.style.fontSize === '1px'));
+  await page.setViewportSize({width:480, height:740});
+  await page.evaluate(() => {
+    const payload = JSON.parse(model.payload);
+    payload.viewport = {width:480, height:740, scale:1};
+    model.payload = JSON.stringify(payload);
+    __grzEvents['viewEnv.onDataChanged']();
+  });
+  await page.waitForFunction(() => __nativeSize[0] === 460);
+  check('Title actions wrap together and timeline selectors fit in a narrow window', await controlsFit(true));
   await page.close();
 };
