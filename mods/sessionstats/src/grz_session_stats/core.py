@@ -886,14 +886,17 @@ class StatsService(object):
             return False
         candidate = self._candidate()
         candidate['time_points'] = dict(points)
-        candidate['time_points'][uuid.uuid4().hex] = timestamp
+        candidate['time_points'][_text(uuid.uuid4().hex)] = timestamp
         return self._commit(candidate, {})
 
     def set_timeline_range(self, start, end):
         if not self._timeline_enabled or not self.ready or self._closed:
             return False
+        if not all(isinstance(value, (text_type, bytes)) for value in (start, end)):
+            return False
+        start, end = _text(start), _text(end)
         points = self._time_points()
-        if any(not isinstance(value, text_type) or (value and value not in points) for value in (start, end)):
+        if (start and start not in points) or (end and end not in points):
             return False
         if start and end and points[start] >= points[end]:
             return False

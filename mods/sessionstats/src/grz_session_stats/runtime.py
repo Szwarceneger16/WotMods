@@ -1421,13 +1421,7 @@ class Runtime(object):
             if action == 'time_point':
                 self.active_service.create_time_point()
             else:
-                endpoints = (getter('from_point'), getter('to_point'))
-                try:
-                    endpoints = tuple(value.decode('ascii') if isinstance(value, bytes)
-                                      and not isinstance(value, text_type) else value for value in endpoints)
-                except UnicodeError:
-                    return
-                self.active_service.set_timeline_range(*endpoints)
+                self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
             self._window_call('refresh')
         elif action == 'reset' and self.active_service is not None:
             # Confirmation is performed by the local UI before emitting reset.
