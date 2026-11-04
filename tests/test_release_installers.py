@@ -393,7 +393,7 @@ class SnapshotInstallerTests(unittest.TestCase):
                     dest,version=jobs[kind]
                     env=dict(os.environ,PATH=str(binpath)+os.pathsep+os.environ['PATH'],
                         GITHUB_REPOSITORY='example/WotMods',FAKE_RELEASE_LIST=str(listing),
-                        FAKE_RELEASE_DIR=str(latest))
+                        FAKE_RELEASE_DIR=str(latest), WOT_CLIENT_VERSION=r.CLIENT)
                     result=subprocess.run(['bash',str(ROOT/'scripts/release_snapshot.sh'),str(dest),
                         r.installer_name(kind,version),r.KINDS[kind][0]+'*.zip'],
                         env=env,capture_output=True,text=True)
