@@ -133,6 +133,58 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(items[0]['title'], 'Micropatch')
         with self.assertRaises(ValueError): w.fetch_feed(lambda url: b'<html>challenge</html>')
 
+    def test_html_from_every_rss_does_not_block_verified_live_archive(self):
+        calls = []
+        metadata = b'<protocol><version>1</version><predefined_section><app_id>WOT.EU.PRODUCTION</app_id></predefined_section></protocol>'
+        chain = b"""<protocol><patches_chain type="install"><patch><part>client</part>
+            <version_from>0</version_from><version_to>2.4.1.24108</version_to>
+            <files><file><name>wot_2.4.1.5504_eu_test/wot_2.4.1_client.wgpkg</name>
+            <size>12000</size></file></files></patch></patches_chain>
+            <web_seeds><url>https://dl-wot-gc.wargaming.net/eu/patches/</url></web_seeds></protocol>"""
+
+        def get(url):
+            calls.append(url)
+            if url in w.RSS_SOURCES:
+                return b'<!DOCTYPE html><html><title>Loading site please wait...</title></html>'
+            if url.startswith(w.HOST + '/api/v1/metadata/'):
+                return metadata
+            self.assertTrue(url.startswith(w.HOST + '/api/v1/patches_chain/'))
+            return chain
+
+        def inspect(volumes):
+            self.assertEqual(volumes[0]['size'], 12000)
+            return w.directory_from_listing('Path = mods/2.4.1.1/readme.txt\n')
+
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            cache = root / 'state.json'
+            state, refreshed, fresh = w.update_cache(cache, collect_fn=lambda: w.collect(get, inspect))
+            self.assertTrue(refreshed)
+            self.assertTrue(fresh)
+            self.assertIsNone(state['error'])
+            self.assertEqual(state['data']['client_version'], '2.4.1.1')
+            self.assertEqual(state['data']['client_build'], '2.4.1.24108')
+            self.assertEqual(calls[2:], list(w.RSS_SOURCES))
+            self.assertIn('Received an HTML page instead of XML', state['data']['rss_error'])
+            self.assertNotIn('<html>', state['data']['rss_error'])
+
+            output, summary = root / 'output', root / 'summary'
+            with patch.dict('os.environ', {'GITHUB_OUTPUT': str(output), 'GITHUB_STEP_SUMMARY': str(summary)}), \
+                    patch.object(sys, 'argv', ['wot_updates.py', '--cache', str(cache)]), \
+                    contextlib.redirect_stdout(io.StringIO()) as stdout:
+                w.main()
+            self.assertIn('fresh=true', output.read_text())
+            self.assertIn('client_version=2.4.1.1', output.read_text())
+            self.assertIn('Patch-note RSS unavailable:', summary.read_text())
+            self.assertNotIn('::warning::', stdout.getvalue())
+
+    def test_valid_news_cannot_replace_missing_archive_evidence(self):
+        with patch.object(w, 'client_chain', return_value=[{'to': '2.4.1.24108', 'files': []}]), \
+                patch.object(w, 'collect_patch_notes', return_value={'items': []}) as notes:
+            with self.assertRaisesRegex(ValueError, 'No exact mods directory'):
+                w.collect(get=lambda url: b'<protocol/>', inspect=lambda volumes: None)
+        notes.assert_not_called()
+
     def test_chain_requires_eu_production_install(self):
         meta = w.xml(b'<protocol><predefined_section><app_id>WOT.EU.PRODUCTION</app_id></predefined_section></protocol>')
         def chain(kind='install', old='0'):

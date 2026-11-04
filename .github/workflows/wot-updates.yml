@@ -47,7 +47,7 @@ jobs:
       - name: Test cache and production-source validation
         run: python3 -m unittest discover -s tests -p test_wot_updates.py -v
       - name: Restore latest update evidence
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: .wot-update-cache
           key: wot-eu-evidence-v1-${{ hashFiles('scripts/wot_updates.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -62,13 +62,13 @@ jobs:
           python3 scripts/wot_updates.py "${args[@]}"
       - name: Save successful evidence or bounded failure backoff
         if: steps.refresh.outputs.refreshed == 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: .wot-update-cache
           key: wot-eu-evidence-v1-${{ hashFiles('scripts/wot_updates.py') }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Require fresh evidence for production
         if: steps.refresh.outputs.fresh != 'true' && (inputs.strict || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
-          echo '::error::EU update evidence is unavailable or stale. Inspect the summary; no publication is authorized.'
+          echo '::error::EU Game Center evidence is unavailable or stale. Inspect the summary; no publication is authorized.'
           exit 1
 
