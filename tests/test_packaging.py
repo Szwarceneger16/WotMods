@@ -154,7 +154,7 @@ class Tests(unittest.TestCase):
         chunks,offsets=self.bank_chunks()
         self.assertEqual(set(chunks),{b'BKHD',b'DIDX',b'DATA',b'HIRC',b'STID'})
         version,bank_id,language,alignment,project,kind=struct.unpack_from('<6I',chunks[b'BKHD'])
-        self.assertEqual((version,language,alignment,kind),(150,0,16,0))
+        self.assertEqual((version,language,alignment,kind),(150,393239870,16,0))
         self.assertEqual(bank_id,build.audio.short_id('staysharp_medkit'))
         self.assertEqual(offsets[b'DATA']%16,0)
         self.assertEqual(len(chunks[b'DIDX']),12*7)

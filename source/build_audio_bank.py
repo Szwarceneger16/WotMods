@@ -107,7 +107,9 @@ def build_bank():
         index.extend(u32(short_id(event + '_pcm')) + u32(len(media)) + u32(len(voice)))
         media.extend(voice)
         graph.extend(_graph(event, len(voice)))
-    header = (u32(BANK_VERSION) + u32(bank_id) + u32(0) + u32(16)
+    # All recordings are embedded in one language-neutral bank. Wwise 2023.1
+    # identifies this bank language by the short ID of SFX.
+    header = (u32(BANK_VERSION) + u32(bank_id) + u32(short_id('SFX')) + u32(16)
               + u32(0) + u32(0) + bytes(16))
     # Align embedded media to the bank's declared 16-byte boundary.
     prefix = chunk('BKHD', header) + chunk('DIDX', bytes(index))
