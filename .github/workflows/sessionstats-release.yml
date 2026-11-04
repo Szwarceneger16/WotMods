@@ -89,6 +89,7 @@ jobs:
     environment: sessionstats-release
     env:
       WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+      WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}
       RELEASE_VERSION: ${{ needs.build.outputs.version }}
       RELEASE_TAG: ${{ needs.build.outputs.tag }}
     steps:
@@ -228,6 +229,8 @@ jobs:
           # GitHub CLI stages Releases as drafts. Create the Git tag FIRST
           # and verify the exact commit before allowing release creation.
           refs="$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")"
+          # The publish lock and environment approval can outlive preflight evidence.
+          python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
           if [[ -z "$refs" ]]; then
             git tag "$tag" "$GITHUB_SHA"
             git push origin "refs/tags/$tag"
@@ -239,6 +242,7 @@ jobs:
           check_remote_tag
 
           if [[ "$state" == absent ]]; then
+            python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
             gh release create "$tag" release/*.zip \
               --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
               --title "WotMods — Session Stats ${RELEASE_VERSION}" --notes-file release-notes.md --generate-notes

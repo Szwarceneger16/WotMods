@@ -14,6 +14,8 @@ on:
         value: ${{ jobs.check.outputs.client_version }}
       fresh:
         value: ${{ jobs.check.outputs.fresh }}
+      fetched_at:
+        value: ${{ jobs.check.outputs.fetched_at }}
   workflow_dispatch:
   pull_request:
     paths:
@@ -37,6 +39,7 @@ jobs:
     outputs:
       client_version: ${{ steps.refresh.outputs.client_version }}
       fresh: ${{ steps.refresh.outputs.fresh }}
+      fetched_at: ${{ steps.refresh.outputs.fetched_at }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

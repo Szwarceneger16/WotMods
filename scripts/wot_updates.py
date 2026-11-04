@@ -189,6 +189,10 @@ def collect(get=fetch, inspect=archive_directory):
     raise ValueError('No exact mods directory found in the production install chain')
 
 
+def evidence_is_fresh(fetched_at, now):
+    return fetched_at > 0 and 0 <= now - fetched_at < TTL
+
+
 def update_cache(path, now=None, force=False, collect_fn=collect):
     now = time.time() if now is None else now
     path = Path(path)
@@ -200,9 +204,9 @@ def update_cache(path, now=None, force=False, collect_fn=collect):
             previous = {}
     except (OSError, ValueError):
         previous = {}
-    age = now - previous.get('fetched_at', 0)
     if (not force and not previous.get('error') and isinstance(previous.get('data'), dict)
-            and re.fullmatch(VERSION, previous['data'].get('client_version', '')) and 0 <= age < TTL):
+            and re.fullmatch(VERSION, previous['data'].get('client_version', ''))
+            and evidence_is_fresh(previous.get('fetched_at', 0), now)):
         return previous, False, True
     if not force and 0 <= now - previous.get('attempted_at', 0) < BACKOFF and previous.get('error'):
         return previous, False, False
@@ -228,10 +232,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cache', type=Path, default=Path('.wot-update-cache/state.json'))
     parser.add_argument('--force', action='store_true')
+    parser.add_argument('--require-fresh', type=float, metavar='FETCHED_AT',
+                        help='check the original preflight timestamp without refreshing')
     args = parser.parse_args()
+    if args.require_fresh is not None:
+        if not evidence_is_fresh(args.require_fresh, time.time()):
+            parser.error('EU update evidence is expired or invalid; start a new release run.')
+        return
     state, refreshed, fresh = update_cache(args.cache, force=args.force)
     version = state.get('data', {}).get('client_version', '') if fresh else ''
-    outputs = {'refreshed': str(refreshed).lower(), 'fresh': str(fresh).lower(), 'client_version': version}
+    outputs = {'refreshed': str(refreshed).lower(), 'fresh': str(fresh).lower(), 'client_version': version,
+               'fetched_at': str(state['fetched_at']) if fresh else ''}
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
             stream.writelines('%s=%s\n' % pair for pair in outputs.items())

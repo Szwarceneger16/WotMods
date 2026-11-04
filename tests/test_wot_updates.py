@@ -1,4 +1,7 @@
+import contextlib
+import io
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -72,6 +75,32 @@ class CacheTests(unittest.TestCase):
         result = w.update_cache(self.path, now=100000, collect_fn=lambda: {'client_version':'2.4.1_3'})
         self.assertFalse(result[2])
         self.assertNotIn('fetched_at', result[0])
+
+
+class PublicationFreshnessTests(unittest.TestCase):
+    def test_publish_guard_uses_original_fetch_time_and_never_refreshes(self):
+        with patch.object(w.time, 'time', return_value=100000 + w.TTL), \
+                patch.object(w, 'update_cache') as refresh:
+            for timestamp in ('100000', '0', '999999', 'nan', 'inf', ''):
+                with self.subTest(timestamp=timestamp), contextlib.redirect_stderr(io.StringIO()), \
+                        patch.object(sys, 'argv', ['wot_updates.py', '--require-fresh', timestamp]), \
+                        self.assertRaises(SystemExit) as failure:
+                    w.main()
+                self.assertEqual(failure.exception.code, 2)
+            with patch.object(sys, 'argv', ['wot_updates.py', '--require-fresh', '100000.5']):
+                w.main()
+            refresh.assert_not_called()
+
+    def test_both_publishers_check_freshness_before_remote_writes(self):
+        root = Path(w.__file__).resolve().parents[1]
+        for workflow in ('release.yml', 'sessionstats-release.yml'):
+            with self.subTest(workflow=workflow):
+                publish = (root / '.github/workflows' / workflow).read_text().split('  publish:', 1)[1]
+                guard = 'python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"'
+                self.assertIn('WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}', publish)
+                before_tag, before_create = (m.start() for m in re.finditer(re.escape(guard), publish))
+                self.assertLess(before_tag, publish.index('git push origin "refs/tags/$tag"'))
+                self.assertLess(before_create, publish.index('gh release create "$tag"'))
 
 
 class EvidenceTests(unittest.TestCase):
