@@ -407,6 +407,23 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-language-row { flex:none; width:100%; margin:0 0 4rem; }
   .ss-xp-picker { margin-left:auto; }
 }
+
+.ss-time-point { margin-left:auto; max-width:42%; }
+.ss-timeline { position:relative; z-index:21; align-items:center; padding:7rem 0 0; }
+.ss-timeline-field { display:flex; flex:1; min-width:0; align-items:center; color:{{colors.table_header_text}}; }
+.ss-timeline-field + .ss-timeline-field { margin-left:12rem; }
+.ss-timeline-field > span { flex-shrink:0; margin-right:6rem; }
+.ss-timeline-field .ss-select-options { width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
+.ss-more-button { margin-left:7rem; }
+.ss-more-panel { padding:7rem 8rem 5rem; border-top:1rem solid {{colors.group_tabs_border_bottom}}; line-height:19rem; overflow-wrap:break-word; }
+.ss-more-panel p { margin:2rem 0; }
+.ss-more-title { margin:7rem 0 3rem; color:{{colors.session_tab_active_text}}; font-size:14rem; }
+.ss-more-mission { padding:4rem 0; border-bottom:1rem solid {{colors.details_separator_border_top}}; }
+.ss-more-caption { color:{{colors.period_text}}; font-size:12rem; }
+.ss-footer { padding-right:25rem; }
+.ss-resize-grip { position:absolute; right:1rem; bottom:1rem; width:20rem; height:20rem; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
+.ss-resize-grip::before { content:""; display:block; margin:5rem 3rem 3rem 5rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; }
+.ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }
 '''
 
 FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow the native rem scale. */

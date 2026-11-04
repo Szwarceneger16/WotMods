@@ -92,7 +92,7 @@ class FakeWindow(object):
 
 class FakeAPI(object):
     EVENT_NAMES = ('onAccountBecomePlayer', 'onAccountShowGUI', 'onClientSynchronize',
-                   'onAvatarReady', 'onAvatarBecomePlayer', 'onAccountBecomeNonPlayer',
+                   'onArenaCreated', 'onAvatarReady', 'onAvatarBecomePlayer', 'onAccountBecomeNonPlayer',
                    'onBattleResultsReceived')
 
     def __init__(self):
@@ -191,6 +191,21 @@ class RuntimeTests(unittest.TestCase):
     def summary(self, scope='launch', service=None):
         service = service or self.mod.active_service
         return service.snapshot()['scopes'][scope]['summary']
+
+    def test_crucible_stage_is_captured_before_lobby_state_is_cleared(self):
+        stage = 'challenge:8:2'
+        self.api.active_crucible = lambda: {
+            'active_crucible': stage, 'missions': {stage: {'kind': 'crucible', 'stage': 2}}}
+        self.api.events.onArenaCreated()
+        self.api.active_crucible = lambda: {}
+        self.begin()
+        self.garage()
+        raw = raw_result()
+        raw['personal']['avatar']['questsProgress'] = {stage + ':fail': ('group', {}, {'bonusCount': 1})}
+        self.api.events.onBattleResultsReceived(True, raw)
+        details = self.mod.snapshot()['scopes']['timeline']['battles'][0]['details']
+        self.assertEqual(details['active_crucible'], stage)
+        self.assertEqual(details['missions'][stage]['status'], 'failed')
 
     def test_missing_account_snapshot_uses_current_package_version(self):
         self.mod.active_service = None

@@ -190,6 +190,7 @@ class StatsWindow(object):
         self._events = []
         self._generation = 0
         self._watchdog_id = None
+        self._preferred_size = None
         self._reported_size = None
         self._native_size = None
         self._published_viewport = None
@@ -246,6 +247,8 @@ class StatsWindow(object):
         payload = dict(self._snapshot())
         viewport = self._viewport(parent)
         payload['viewport'] = viewport
+        if self._preferred_size is not None:
+            payload['window_size'] = self._preferred_size
         self._published_viewport = viewport
         return json.dumps(payload, ensure_ascii=True, separators=(',', ':'), allow_nan=False)
 
@@ -357,7 +360,7 @@ class StatsWindow(object):
 
     def _fallback_size(self, viewport):
         scale = viewport['scale']
-        requested = self._reported_size or tuple(int(math.ceil(value * scale)) for value in LOGICAL_SIZE)
+        requested = self._reported_size or tuple(int(math.ceil(value * scale)) for value in (self._preferred_size or LOGICAL_SIZE))
         # HTML is responsible for sizing its texture. Before its first report,
         # use our known design size instead of the native full-screen default.
         return tuple(min(value, max(1, viewport[key] - 20)) if viewport[key] > 0 else value
@@ -457,14 +460,14 @@ class StatsWindow(object):
             self._drag_active = True
             self._user_position = True
             self._center_signature = None
-            self._log_once('drag_started', logging.INFO, 'GRZ UI: native title-bar drag started.')
+            self._log_once('drag_started', logging.INFO, 'GRZ UI: native window adjustment started.')
             self._finish_watchdog_if_ready()
         elif active in (False, 'false', 'False', '0'):
             was_active = self._drag_active
             self._drag_active = False
             if was_active:
                 self._log_once('drag_finished', logging.INFO,
-                               'GRZ UI: native title-bar drag finished at %s.', self._window_position())
+                               'GRZ UI: native window adjustment finished at %s.', self._window_position())
                 self._keep_visible()
 
     def _on_ready(self, native):
@@ -551,7 +554,8 @@ class StatsWindow(object):
                                _positive(_read(arg, 'scale'), 16))
                 self._finish_watchdog_if_ready()
             return
-        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag'):
+        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag',
+                          'size_preference', 'time_point', 'timeline_range'):
             return
         self._log_once('command_' + action, logging.INFO, 'GRZ UI: command %s received.', action)
         if action == 'close':
@@ -563,6 +567,10 @@ class StatsWindow(object):
             self._place('viewport', force=True)
         elif action == 'drag':
             self._on_drag(_read(arg, 'active'))
+        elif action == 'size_preference':
+            size = _dimensions((_read(arg, 'width'), _read(arg, 'height')))
+            if size is not None:
+                self._preferred_size = size
         else:
             self._on_action(arg)
 

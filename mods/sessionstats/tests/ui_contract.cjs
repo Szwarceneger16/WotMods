@@ -784,6 +784,7 @@ async function nativeHost(browser, options) {
   check('Legacy payload without localization restores English',
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
+  await require('./ui-timeline-details.cjs')({browser,nativeHost,check});
   check('No browser JavaScript errors',errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};

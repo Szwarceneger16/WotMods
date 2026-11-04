@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.3.4 • 2026-10-30 • target: Wargaming EU 2.4.1.0
+Version 0.4.0 • 2026-11-04 • target: Wargaming EU 2.4.1.1
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -40,10 +40,10 @@ QUICK INSTALLATION
 1. Close World of Tanks.
 2. Extract the ZIP anywhere.
 3. Copy the included mods directory into the World of Tanks root containing
-   WorldOfTanks.exe. For client 2.4.1.0, the installed files should include:
-   mods/2.4.1.0/grz_sessions_stats.wotmod
+   WorldOfTanks.exe. For client 2.4.1.1, the installed files should include:
+   mods/2.4.1.1/grz_sessions_stats.wotmod
    mods/configs/grz.sessionstats.json.example
-   mods/2.4.1.0/net.openwg/net.openwg.gameface_1.2.2.wotmod
+   mods/2.4.1.1/net.openwg/net.openwg.gameface_1.2.2.wotmod
    Preserve your existing config. The .json.example is an optional settings sample.
 4. If another mod pack already provides OpenWG Gameface 1.2.2 or newer, retain
    one copy of that library. Install the grz.sessionstats package and any desired
@@ -57,7 +57,7 @@ Nothing belongs in res_mods. The source directory, PODGLAD.html, README and
 license files do not need to be in the game directory. Python is not required
 on the player's computer.
 
-If the active mods directory is not 2.4.1.0, use your client's version directory
+If the active mods directory is not 2.4.1.1, use your client's version directory
 for the .wotmod files. Both configuration JSON files stay in mods/configs. Moving files alone does not establish compatibility
 with a new client. This adapter uses interfaces from the 2.4.1 branch.
 
@@ -84,14 +84,15 @@ changes the language and wheel speed while preserving all other defaults.
 
 HOW THE PANEL WORKS
 • The header shows completed battles, win rate and the full WN8 number.
-• Two default period tabs: "Since launch" and "Since reset". Both belong to the
+• Two default period tabs: "Since launch" and "Timeline". Both belong to the
   active account. The optional installation tab has its own persistent manual
   reset and is hidden by default.
 • "Base XP" is selected initially. "Received XP" switches all visible experience
   statistics to the values including bonuses awarded by the game.
 • Summary and details are visible immediately. Vehicles / Maps / Battles appear
   below, with Vehicles selected on opening. Scroll the whole panel vertically;
-  there are no accordions. Wheel down moves toward later results; wheel up moves
+  use "More" on a battle card for missions, Battle Pass and bonuses. Wheel down
+  moves toward later results; wheel up moves
   back. At multiplier 1.0, a regular in-game wheel step moves one quarter of the
   visible list height, including small native input values. JSON changes speed
   without changing direction. Tables use larger text, soft edges and subtle rows.
@@ -185,15 +186,13 @@ the supplied filename and one copy. If the configuration module itself is
 unavailable, the bundled static styles and default wheel behavior remain usable.
 
 TWO INDEPENDENT ACCOUNT PERIODS
-Both periods and the manual reset are separate for every account and region.
-Switching accounts displays that account's history; returning restores the earlier
-account's scope. Resetting account B does not reset account A. Their histories
-are not combined.
-"Since launch" starts a new period in a new game process. Returning from battle
-to the garage or reconnecting within the same process does not reset it.
-"Since reset" persists across game launches until manually reset. Its "Reset period"
-button asks for confirmation. It does not reset "Since launch"; midnight does
-not reset either period.
+Both tabs are separate for every account and region. "Since launch" starts a
+new period in a new game process. Returning from battle or reconnecting in the
+same process preserves it. "Timeline" opens on all recorded history. Use
+"Create time point" in the title bar and choose saved points in "From" and "To"
+to filter by battle start time. Earlier manual resets appear as time points.
+Drag the bottom-right corner to resize. The size is remembered for the running
+game process and follows WoT's interface scale.
 
 OPTIONAL INSTALLATION SESSION
 To display the third tab, add this section to grz.sessionstats.json:
@@ -203,7 +202,7 @@ The tab is hidden by default; the existing account scopes remain separate.
 
 Installation history combines accounts observed in this installation and
 survives game restarts, along with its own manual reset boundary. Only its
-explicit reset starts a new period. Neither reset changes the other histories.
+explicit reset starts a new installation period.
 Late results retain their original installation period after restarting.
 The shared ledger uses atomic, checksummed local storage and a hashed game-root
 identity independent of the client version directory. Separate installations
@@ -333,7 +332,7 @@ Standard Windows data location:
 %APPDATA%/grz_wot_session_stats/
 
 Paste this path into Explorer. Each account/region has a subdirectory derived
-from its identifier, not its nickname. Data is outside mods/2.4.1.0, so moving
+from its identifier, not its nickname. Data is outside mods/2.4.1.1, so moving
 the mod to a new client version does not erase the manual period. Saves append
 checksummed changes to mirrored journals and retain three atomic commit descriptors.
 Back up the entire account/installation directory while the game is closed,
@@ -416,9 +415,11 @@ FIRST IN-GAME CHECK
    base/received XP and credit/bond net values with that battle's native report.
    After returning early, check the spinner and tooltip; after full settlement,
    it should stop unless another result is pending.
-3. Restart the game: "Since launch" has zero battles; "Since reset" retains the
-   result. Manual reset clears only the second period. An incomplete old result
-   alone should not start the spinner; the panel explains the missing data.
+3. Create time points and compare a filtered period with the whole Timeline.
+   Restart the game and verify that the points and history are still present.
+   Compare the "More" card with the native result for a Crucible battle.
+4. At 200% interface scale, check the title bar, timeline menus and resize grip.
+   Change the size, close the panel and confirm that the next opening uses it.
 If the panel fails to open, a result is missing or a warning appears, retain the
 indicated log and rotated copies plus game.log from that launch (and python.log
 if the client creates it). If the dedicated log fails, search game.log for
@@ -428,7 +429,7 @@ detail screen. Without these, the cause cannot be confirmed.
 COMMON TEST
 A separate test client does not guarantee separate local account history. The
 journal is keyed by account and region. If Common Test returns the same pair and
-both clients use the same AppData, they can share the local "Since reset" scope.
+both clients use the same AppData, they can share the local Timeline.
 A separate Windows user provides separate AppData; changing only the game install
 directory does not. This does not affect main-account progress on Wargaming's server.
 
@@ -446,7 +447,7 @@ source/tools/make_preview.py — real UI preview using synthetic data.
 source/preview/PODGLAD.html and PODGLAD.html — previews without game data input.
 
 Building requires Python 3 and CPython 2.7 developer tools:
-python3 tools/build.py --python27 /path/to/python2.7 --client-version 2.4.1.0
+python3 tools/build.py --python27 /path/to/python2.7 --client-version 2.4.1.1
 Run Python tests from source:
 python2.7 -m unittest discover -s tests -p "test_*.py" -v
 python3 -m unittest discover -s tests -p "test_*.py" -v

@@ -274,6 +274,10 @@ def normalize_result(results, context=None, random_bonus_type=1,
         'warnings': warnings, 'complete': False, 'reconcile': True,
         'xp_bonus_applied': False,
     }
+    from .battle_details import result_details
+    details = result_details(avatar, data, context.get('active_crucible'))
+    if details:
+        result['details'] = details
     if context.get('_loading'):
         fields = []
         for field, source in (('vehicle_name', 'name'), ('vehicle_tier', 'tier'), ('vehicle_type', 'type')):

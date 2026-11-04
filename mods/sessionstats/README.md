@@ -1,11 +1,22 @@
 # Session Stats for World of Tanks
 
-Version 0.3.4 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.4.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
 their contents are English.
-Both default scopes and manual resets are isolated per account and region.
+The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
+history. Use **Create time point** in the title bar, then pick **From** and **To**
+to filter by battle start time. The start is inclusive and the end is exclusive.
+Earlier manual resets appear as time points and saved battles remain available.
+The account and region determine which history and time points are shown.
+
+In **Battles → More**, the card lists recorded missions, the active Crucible stage
+and its reported result, Battle Pass points and the available bonus breakdown.
+Older saved battles may have no mission or bonus details. The bottom-right grip
+resizes the window and keeps the size across garage openings during the same
+game process. The panel follows the resolved WoT interface scale.
+
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
 Its shared history and independent manual reset persist across game restarts;
 the tab is hidden by default. See [ACCOUNT_SESSIONS.md](docs/ACCOUNT_SESSIONS.md).
