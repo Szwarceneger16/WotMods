@@ -1082,21 +1082,20 @@ class Runtime(object):
         context['_loading'] = (getattr(service, 'loading', False) or
                                (self._instance_session is not None and self._instance_session.service.loading))
         self.monitor.check(results, context, self.api.random_bonus_type, source)
+        resolver = getattr(self.api, 'mission_metadata', None) if account_key == self.active_key else None
+
+        def resolve_missions(missions):
+            try:
+                resolver(missions)
+            except Exception:
+                self._warn_once('missions', 'Mission names are unavailable.', visible=False)
+
         record = normalize_result(results, context=context,
                                   random_bonus_type=self.api.random_bonus_type,
-                                  vehicle_resolver=self.api.vehicle_info, map_resolver=self.api.map_info)
+                                  vehicle_resolver=self.api.vehicle_info, map_resolver=self.api.map_info,
+                                  mission_resolver=resolve_missions if callable(resolver) else None)
         if record is None:
             return False
-        if account_key == self.active_key:
-            resolve = getattr(self.api, 'mission_metadata', None)
-            if callable(resolve):
-                for target in record.get('_deferred_candidates', [record]):
-                    missions = target.get('details', {}).get('missions')
-                    if missions:
-                        try:
-                            resolve(missions)
-                        except Exception:
-                            self._warn_once('missions', 'Mission names are unavailable.', visible=False)
         if source == 'late_cache':
             # An expired request can still carry the only available result.
             # Fill unknowns, but never revise facts from a newer delivery.

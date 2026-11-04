@@ -277,7 +277,13 @@
       "more.bonus.platoon.xp": "Platoon: +{0} XP",
       "more.kind.daily_bonus": "Bonus daily mission",
       "more.bonus.premium.credits": "Premium account: ×{0} credits",
-      "more.bonus.premium.xp": "Premium account: ×{0} XP"
+      "more.bonus.premium.xp": "Premium account: ×{0} XP",
+      "more.kind.daily_epic": "Epic daily reward",
+      "more.kind.battle_matters": "Battle Matters",
+      "more.mission.reset": "Streak reset",
+      "more.mission.honors": "Completed with honors",
+      "more.progress.vehicles": "Unique vehicles: {0} → {1}",
+      "more.bonus.event.bonds": "Mission or event reward: +{0} bonds"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -555,7 +561,13 @@
       "more.bonus.platoon.xp": "Pluton: +{0} PD",
       "more.kind.daily_bonus": "Dzienna misja bonusowa",
       "more.bonus.premium.credits": "Konto premium: ×{0} kredytów",
-      "more.bonus.premium.xp": "Konto premium: ×{0} PD"
+      "more.bonus.premium.xp": "Konto premium: ×{0} PD",
+      "more.kind.daily_epic": "Epicka nagroda dzienna",
+      "more.kind.battle_matters": "Bitwa ma znaczenie",
+      "more.mission.reset": "Seria przerwana",
+      "more.mission.honors": "Ukończona z wyróżnieniem",
+      "more.progress.vehicles": "Unikalne pojazdy: {0} → {1}",
+      "more.bonus.event.bonds": "Nagroda za misję lub wydarzenie: +{0} obligacji"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -833,7 +845,13 @@
       "more.bonus.plus.free_xp": "WoT Plus: +{0} свободного опыта",
       "more.bonus.plus.crew_xp": "WoT Plus: +{0} опыта экипажа",
       "more.bonus.premium_vehicle.xp": "Премиум машина: +{0} опыта",
-      "more.bonus.platoon.xp": "Взвод: +{0} опыта"
+      "more.bonus.platoon.xp": "Взвод: +{0} опыта",
+      "more.kind.daily_epic": "Эпическая ежедневная награда",
+      "more.kind.battle_matters": "Боевое обучение",
+      "more.mission.reset": "Серия прервана",
+      "more.mission.honors": "Выполнена с отличием",
+      "more.progress.vehicles": "Уникальные машины: {0} → {1}",
+      "more.bonus.event.bonds": "Награда за задачу или событие: +{0} бон"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1111,7 +1129,13 @@
       "more.bonus.plus.free_xp": "WoT Plus : +{0} EXP libre",
       "more.bonus.plus.crew_xp": "WoT Plus : +{0} EXP d’équipage",
       "more.bonus.premium_vehicle.xp": "Véhicule premium : +{0} EXP",
-      "more.bonus.platoon.xp": "Peloton : +{0} EXP"
+      "more.bonus.platoon.xp": "Peloton : +{0} EXP",
+      "more.kind.daily_epic": "Récompense quotidienne épique",
+      "more.kind.battle_matters": "L’essentiel du combat",
+      "more.mission.reset": "Série interrompue",
+      "more.mission.honors": "Terminée avec les honneurs",
+      "more.progress.vehicles": "Véhicules uniques : {0} → {1}",
+      "more.bonus.event.bonds": "Récompense de mission ou d’événement : +{0} obligations"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1389,7 +1413,13 @@
       "more.bonus.plus.free_xp": "WoT Plus: +{0} freie EP",
       "more.bonus.plus.crew_xp": "WoT Plus: +{0} Besatzungs-EP",
       "more.bonus.premium_vehicle.xp": "Premiumfahrzeug: +{0} EP",
-      "more.bonus.platoon.xp": "Zug: +{0} EP"
+      "more.bonus.platoon.xp": "Zug: +{0} EP",
+      "more.kind.daily_epic": "Epische Tagesbelohnung",
+      "more.kind.battle_matters": "Gefechtsgrundlagen",
+      "more.mission.reset": "Serie unterbrochen",
+      "more.mission.honors": "Mit Auszeichnung abgeschlossen",
+      "more.progress.vehicles": "Unterschiedliche Fahrzeuge: {0} → {1}",
+      "more.bonus.event.bonds": "Auftrags- oder Ereignisbelohnung: +{0} Anleihen"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1667,7 +1697,13 @@
       "more.bonus.plus.free_xp": "WoT Plus: +{0} EXP libre",
       "more.bonus.plus.crew_xp": "WoT Plus: +{0} EXP de tripulación",
       "more.bonus.premium_vehicle.xp": "Vehículo prémium: +{0} EXP",
-      "more.bonus.platoon.xp": "Pelotón: +{0} EXP"
+      "more.bonus.platoon.xp": "Pelotón: +{0} EXP",
+      "more.kind.daily_epic": "Recompensa diaria épica",
+      "more.kind.battle_matters": "Fundamentos de combate",
+      "more.mission.reset": "Racha interrumpida",
+      "more.mission.honors": "Completada con honores",
+      "more.progress.vehicles": "Vehículos distintos: {0} → {1}",
+      "more.bonus.event.bonds": "Recompensa de misión o evento: +{0} bonos"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1945,7 +1981,13 @@
       "more.bonus.plus.free_xp": "WoT Plus: +{0} вільного досвіду",
       "more.bonus.plus.crew_xp": "WoT Plus: +{0} досвіду екіпажу",
       "more.bonus.premium_vehicle.xp": "Преміум машина: +{0} досвіду",
-      "more.bonus.platoon.xp": "Взвод: +{0} досвіду"
+      "more.bonus.platoon.xp": "Взвод: +{0} досвіду",
+      "more.kind.daily_epic": "Епічна щоденна нагорода",
+      "more.kind.battle_matters": "Основи бою",
+      "more.mission.reset": "Серію перервано",
+      "more.mission.honors": "Виконано з відзнакою",
+      "more.progress.vehicles": "Унікальні машини: {0} → {1}",
+      "more.bonus.event.bonds": "Нагорода за завдання чи подію: +{0} бонів"
     }
   }
 }

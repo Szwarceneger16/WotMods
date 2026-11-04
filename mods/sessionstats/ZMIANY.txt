@@ -1,7 +1,9 @@
 SESSION STATS — CHANGELOG
 
 0.4.0 • 2026-11-04
-• Add battle details for missions, Crucible outcomes, Battle Pass points and bonuses.
+• Add daily, weekly, campaign and event mission results alongside Crucible outcomes,
+  Battle Pass points and bonuses. Identify personal operations and honors.
+• Include account-level bond awards in the same battle finances as vehicle earnings.
 • Replace the account reset tab with a timeline of saved points and prior reset boundaries.
 • Add a resize grip that respects the game's interface scale.
 

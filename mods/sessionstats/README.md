@@ -11,8 +11,12 @@ to filter by battle start time. The start is inclusive and the end is exclusive.
 Earlier manual resets appear as time points and saved battles remain available.
 The account and region determine which history and time points are shown.
 
-In **Battles → More**, the card lists recorded missions, the active Crucible stage
-and its reported result, Battle Pass points and the available bonus breakdown.
+In **Battles → More**, the card lists recorded daily, bonus, weekly, personal
+campaign and event missions, along with the active Crucible stage and its
+reported result. Personal missions show the operation name and completion with
+honors when the additional objective is confirmed. The card also shows Battle
+Pass points and the available bonus breakdown. The finance tables include
+vehicle and account-level bonds reported for each recorded Random Battle.
 Older saved battles may have no mission or bonus details. The bottom-right grip
 resizes the window and keeps the size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.

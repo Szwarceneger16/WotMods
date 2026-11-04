@@ -4,18 +4,19 @@ from __future__ import unicode_literals
 
 import re
 
-from .normalize import _number, _text, integer_types, text_type
+from .normalize import _integer, _number, _text, integer_types, text_type
 
-MISSION_LIMIT = 32
+MISSION_LIMIT = 64
 MISSION_ID = re.compile(r'\A[A-Za-z0-9_:.\-]{1,96}\Z')
 CRUCIBLE_ID = re.compile(r'\Achallenge:[0-9]{1,20}:([0-9]{1,6})(:fail)?\Z')
 MARKUP = re.compile(r'<[^>]*>')
-MISSION_KINDS = ('crucible', 'daily', 'daily_bonus', 'weekly', 'premium', 'personal', 'other')
-MISSION_STATES = ('observed', 'progress', 'failed', 'completed')
+MISSION_KINDS = ('crucible', 'daily', 'daily_bonus', 'daily_epic', 'weekly',
+                 'premium', 'personal', 'battle_matters', 'other')
+MISSION_STATES = ('observed', 'progress', 'reset', 'failed', 'completed', 'honors')
 POINT_FIELDS = {'battle': 'bpTopPoints', 'missions': 'eventBattlePassPoints',
                 'vehicle': 'bpBonusPoints'}
 BONUS_FIELDS = {
-    'eventCredits': 'credits', 'eventXP': 'xp', 'eventFreeXP': 'free_xp',
+    'eventCredits': 'credits', 'eventXP': 'xp', 'eventFreeXP': 'free_xp', 'eventCrystal': 'bonds',
     'boosterCredits': 'credits', 'boosterXP': 'xp', 'boosterFreeXP': 'free_xp',
     'boosterTMenXP': 'crew_xp', 'orderCredits': 'credits', 'orderXP': 'xp',
     'orderFreeXP': 'free_xp', 'orderTMenXP': 'crew_xp',
@@ -60,18 +61,25 @@ def clean_details(value):
     missions = {}
     incoming = _mapping(value.get('missions'))
     # Reserve a place for the observed Crucible even when many quests report results.
-    keys = sorted(key for key in incoming if isinstance(key, text_type) and MISSION_ID.match(key))
+    keys = [key for key in incoming if isinstance(key, text_type) and MISSION_ID.match(key)]
+
+    def display_priority(key):
+        state = _mapping(incoming[key]).get('status')
+        return (-MISSION_STATES.index(state) if state in MISSION_STATES else 0, key)
+
+    keys.sort(key=display_priority)
     if active in keys:
         keys.remove(active)
         keys.insert(0, active)
     for key in keys[:MISSION_LIMIT]:
         row = _mapping(incoming[key])
         mission = {}
-        for field, size in (('name', 160), ('description', 420)):
+        for field, size in (('name', 160), ('operation', 160), ('description', 420)):
             label = _label(row.get(field), size)
             if label:
                 mission[field] = label
-        for field, options in (('kind', MISSION_KINDS), ('status', MISSION_STATES)):
+        for field, options in (('kind', MISSION_KINDS), ('status', MISSION_STATES),
+                               ('progress_kind', ('battles', 'vehicles'))):
             if row.get(field) in options:
                 mission[field] = row[field]
         for field in ('stage', 'before', 'after'):
@@ -92,7 +100,9 @@ def merge_details(existing, incoming, revise):
             combined = dict(existing.get(field, {}))
             for key, item in value.items():
                 if field == 'missions':
-                    row = dict(combined.get(key, {}))
+                    legacy = combined.pop('pm2:' + key[len('personal:'):], {}) if key.startswith('personal:') else {}
+                    legacy = dict((name, value) for name, value in legacy.items() if name != 'status')
+                    row = dict(combined.get(key, legacy))
                     for name, entry in item.items():
                         previous = row.get(name)
                         if name == 'status' and previous is not None:
@@ -129,7 +139,7 @@ def _pass_points(avatar):
     return points
 
 
-def result_details(avatar, vehicle, active=None):
+def result_details(avatar, vehicle, active=None, mission_resolver=None):
     details = {'pass_points': _pass_points(avatar), 'bonuses': {}, 'missions': {}}
     if active:
         details['active_crucible'] = active
@@ -139,7 +149,7 @@ def result_details(avatar, vehicle, active=None):
         if amount is not None and amount > base:
             details['bonuses'][field] = amount
         # Account-level event amounts and vehicle-level amounts are separate.
-        if field in ('eventCredits', 'eventXP', 'eventFreeXP'):
+        if field in ('eventCredits', 'eventXP', 'eventFreeXP', 'eventCrystal'):
             account_amount = _bounded_number(avatar.get(field))
             if account_amount:
                 details['bonuses'][field] = (details['bonuses'].get(field) or 0) + account_amount
@@ -150,6 +160,7 @@ def result_details(avatar, vehicle, active=None):
         details['suicide'] = any(isinstance(mask, integer_types) and mask >= 0 and mask & 2
                                  for mask in fairplay[1:3])
 
+    missions = details['missions']
     progress = dict(_mapping(avatar.get('questsProgress')))
     progress.update(_mapping(vehicle.get('questsProgress')))
     for raw_id, entry in progress.items():
@@ -167,7 +178,7 @@ def result_details(avatar, vehicle, active=None):
             # The client reports a separate fail quest when a shield is used.
             # A merely active Crucible or an unchanged counter is not a loss.
             if complete:
-                row = details['missions'].setdefault(quest_id[:-5], {})
+                row = missions.setdefault(quest_id[:-5], {})
                 if row.get('status') != 'completed':
                     row.update(kind='crucible', stage=int(challenge.group(1)), status='failed')
             continue
@@ -175,7 +186,7 @@ def result_details(avatar, vehicle, active=None):
         after = _bounded_number(current.get('battlesCount'))
         if not complete and previous == current and quest_id != active:
             continue
-        row = details['missions'].setdefault(quest_id, {})
+        row = missions.setdefault(quest_id, {})
         status = 'completed' if complete else 'progress' if previous != current else 'observed'
         if status == 'completed' or row.get('status') != 'failed':
             row['status'] = status
@@ -183,51 +194,136 @@ def result_details(avatar, vehicle, active=None):
             row.update(kind='crucible', stage=int(challenge.group(1)))
         if before is not None and after is not None and before != after:
             row.update(before=before, after=after)
+        unique_vehicles = current.get('battlesUniqueVehicles')
+        if isinstance(unique_vehicles, (dict, list, tuple, set, frozenset)):
+            previous_vehicles = previous.get('battlesUniqueVehicles', ())
+            if isinstance(previous_vehicles, (dict, list, tuple, set, frozenset)):
+                if len(previous_vehicles) != len(unique_vehicles):
+                    row.update(before=len(previous_vehicles), after=len(unique_vehicles), progress_kind='vehicles')
 
-    personal = dict(_mapping(avatar.get('PM2Progress')))
-    personal.update(_mapping(vehicle.get('PM2Progress')))
-    for mission_id, progress in personal.items():
-        mission_id = _text(mission_id)
-        if mission_id.isdigit() and isinstance(progress, dict) and progress:
-            details['missions']['pm2:' + mission_id] = {
-                'kind': 'personal', 'status': 'completed' if any(value is True for value in progress.values()) else 'progress'}
+    for owner in (avatar, vehicle):
+        for mission_id, subquests in _mapping(owner.get('PM2Progress')).items():
+            mission_id = _integer(mission_id)
+            if mission_id is None or mission_id > 10 ** 6 or not _mapping(subquests):
+                continue
+            row = missions.setdefault('personal:{0}'.format(mission_id), {'kind': 'personal', 'status': 'progress'})
+            completed = row.setdefault('_completed_conditions', set())
+            completed.update(_text(key) for key, value in subquests.items()
+                             if value is True and MISSION_ID.match(_text(key)))
+
+    if mission_resolver is not None and missions:
+        mission_resolver(missions)
     return clean_details(details)
 
 
+def _quest_labels(quest, row):
+    name = _label(quest.getUserName(), 160)
+    if name:
+        row['name'] = name
+    for getter in ('getConditionsDescription', 'getUserDescription', 'getDescription'):
+        read = getattr(quest, getter, None)
+        description = _label(read(), 420) if callable(read) else ''
+        if description:
+            row['description'] = description
+            break
+
+
+def _personal_mission_rows(missions, ids, quests, operations):
+    # PM1–PM4 can report main and additional conditions as separate quest IDs
+    # for the same mission. Only the named additional condition grants honors.
+    normalized = {}
+    source_keys = []
+    for key, mission_id in sorted(ids.items()):
+        quest = quests.get(mission_id)
+        if quest is None:
+            missions[key]['kind'] = 'personal'
+            continue
+        row = missions[key].copy()
+        source_keys.append(key)
+        target_id = 'personal:{0}'.format(mission_id)
+        if '_completed_conditions' in row:
+            conditions = row.pop('_completed_conditions')
+        else:
+            conditions = {key} if row.get('status') == 'completed' else set()
+        if quest.getAddQuestID() in conditions:
+            row['status'] = 'honors'
+        elif quest.getMainQuestID() in conditions:
+            row['status'] = 'completed'
+        elif row.get('status') == 'completed':
+            # Award-list and technical subquests do not confirm an objective.
+            row['status'] = 'progress'
+        row['kind'] = 'personal'
+        other = normalized.get(target_id, {})
+        if MISSION_STATES.index(row['status']) >= MISSION_STATES.index(other.get('status', 'observed')):
+            combined = other.copy()
+            combined.update(row)
+        else:
+            combined = row.copy()
+            combined.update(other)
+        normalized[target_id] = combined
+
+    for key in source_keys:
+        del missions[key]
+    missions.update(normalized)
+    for mission_id in set(ids.values()):
+        quest = quests.get(mission_id)
+        if quest is None:
+            continue
+        row = missions['personal:{0}'.format(mission_id)]
+        operation = operations.get(quest.getOperationID())
+        if operation is not None:
+            row['operation'] = _label(operation.getUserName(), 160)
+        _quest_labels(quest, row)
+
+
 def game_mission_metadata(missions):
-    """Resolve names using the same local cache as the native results view."""
-    from gui.server_events.events_helpers import isDailyQuest, isPremium, isWeeklyQuest
+    """Resolve missions from the native post-battle catalog, including PM4."""
+    from gui.server_events.events_helpers import (
+        isBattleMattersQuestID, isDailyEpicReward, isDailyQuest, isPremium, isWeeklyQuest)
     from helpers import dependency
+    from personal_missions import PM_BRANCH, g_cache
     from skeletons.gui.server_events import IEventsCache
 
     cache = dependency.instance(IEventsCache)
-    public = cache.getQuests(lambda quest: quest.getID() in missions)
-    hidden = cache.getHiddenQuests(lambda quest: quest.getID() in missions, makeRelations=False)
-    personal = cache.getPersonalMissions().getAllQuests() if any(key.startswith('pm2:') for key in missions) else {}
-    for key, row in missions.items():
-        if key.startswith('pm2:'):
-            quest = personal.get(int(key[4:]))
-        else:
-            quest = public.get(key) or hidden.get(key)
-            if row.get('kind') != 'crucible':
-                for kind, matches in (('premium', isPremium), ('daily', isDailyQuest), ('weekly', isWeeklyQuest)):
-                    if matches(key):
-                        row['kind'] = kind
-                        break
+    personal_ids = {}
+    for key in missions:
+        if key.startswith('personal:') and key[len('personal:'):].isdigit():
+            personal_ids[key] = int(key[len('personal:'):])
+        elif g_cache.isPersonalMission(key):
+            personal_ids[key] = g_cache.getPersonalMissionIDByUniqueID(key)
+
+    if personal_ids:
+        personal = cache.getPersonalMissions()
+        _personal_mission_rows(missions, personal_ids, personal.getAllQuests(PM_BRANCH.ALL_NAMES),
+                               personal.getAllOperations(PM_BRANCH.ALL_NAMES))
+    ordinary = set(missions) - set('personal:{0}'.format(identifier) for identifier in personal_ids.values())
+    if not ordinary:
+        return
+    public = cache.getQuests(lambda quest: quest.getID() in ordinary)
+    hidden = cache.getHiddenQuests(lambda quest: quest.getID() in ordinary, makeRelations=False)
+    kinds = (('daily_epic', isDailyEpicReward), ('premium', isPremium), ('daily', isDailyQuest),
+             ('weekly', isWeeklyQuest), ('battle_matters', isBattleMattersQuestID))
+    for key in ordinary:
+        row = missions[key]
+        if row.get('kind') == 'personal':
+            continue
+        if row.get('kind') != 'crucible':
+            for kind, matches in kinds:
+                if matches(key):
+                    row['kind'] = kind
+                    break
+        quest = public.get(key) or hidden.get(key)
         if quest is None:
             continue
-        name = _label(quest.getUserName(), 160)
-        if name:
-            row['name'] = name
+        _quest_labels(quest, row)
         is_bonus = getattr(quest, 'isBonus', None)
         if row.get('kind') == 'daily' and callable(is_bonus) and is_bonus():
             row['kind'] = 'daily_bonus'
-        for getter in ('getConditionsDescription', 'getUserDescription', 'getDescription'):
-            read = getattr(quest, getter, None)
-            description = _label(read(), 420) if callable(read) else ''
-            if description:
-                row['description'] = description
-                break
+        bonus_conditions = getattr(quest, 'bonusCond', None)
+        if (row.get('status') == 'progress' and row.get('before', 0) > 0 and row.get('after') == 0
+                and row.get('progress_kind') != 'vehicles' and bonus_conditions is not None
+                and bonus_conditions.isInRow()):
+            row['status'] = 'reset'
 
 
 def game_active_crucible():

@@ -2,17 +2,23 @@
 from __future__ import unicode_literals
 
 import shutil
+import sys
 import tempfile
 import unittest
 
 from test_core import EXPECTED, result
 from test_normalize import raw_result
-from test_runtime import Clock
+import test_runtime as runtime_fixtures
+from test_runtime import Clock, Obj
+from grz_session_stats.battle_details import game_mission_metadata
 from grz_session_stats.core import StatsService
+from grz_session_stats.sessions import InstallationSession
 from grz_session_stats.normalize import normalize_result
 
 
 class TimelineAndBattleDetailsTests(unittest.TestCase):
+    inject_module = runtime_fixtures.NativeBindingTests.__dict__['inject_module']
+
     def setUp(self):
         self.directory = tempfile.mkdtemp()
         self.clock = Clock(100)
@@ -91,3 +97,101 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertEqual(restored.result_context('1')['active_crucible'], active)
         mission = restored.timeline_snapshot()['battles'][0]['details']['missions'][active]
         self.assertEqual(mission, {'kind': 'crucible', 'stage': 2, 'name': 'Fixture mission', 'status': 'completed'})
+
+    def test_all_mission_sources_resolve_to_named_outcomes_and_fossa_honors(self):
+        self.modules = {}
+        inject = self.inject_module
+
+        def restore_modules():
+            for name, original in self.modules.items():
+                if original is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = original
+
+        self.addCleanup(restore_modules)
+        branches = ('regular', 'pm2', 'pm3', 'pm4')
+        fossa = Obj(getUserName=lambda: 'Fixture Fossa mission',
+                    getUserDescription=lambda: 'Fixture objective',
+                    getMainQuestID=lambda: 'fixture_pm4_main',
+                    getAddQuestID=lambda: 'fixture_pm4_add',
+                    getOperationID=lambda: 11)
+        old = Obj(getUserName=lambda: 'Fixture PM2 mission',
+                  getMainQuestID=lambda: 'fixture_pm2_main',
+                  getAddQuestID=lambda: 'fixture_pm2_add', getOperationID=lambda: 5)
+        daily = Obj(getID=lambda: 'dq:fixture', getUserName=lambda: 'Fixture daily',
+                    isBonus=lambda: True, bonusCond=Obj(isInRow=lambda: True))
+        weekly = Obj(getID=lambda: 'wq::fixture', getUserName=lambda: 'Fixture weekly')
+        special = Obj(getID=lambda: 'seasonal:fixture', getUserName=lambda: 'Fixture seasonal')
+
+        def get_quests(requested):
+            self.assertEqual(requested, branches)
+            return {123: fossa, 456: old}
+
+        def get_operations(requested):
+            self.assertEqual(requested, branches)
+            return {11: Obj(getUserName=lambda: 'Operation Fossa')}
+
+        quest_cache = Obj(getAllQuests=get_quests, getAllOperations=get_operations)
+        cache = Obj(getQuests=lambda predicate: {q.getID(): q for q in (daily, weekly) if predicate(q)},
+                    getHiddenQuests=lambda predicate, makeRelations: {
+                        special.getID(): special} if predicate(special) else {},
+                    getPersonalMissions=lambda: quest_cache)
+        ids = {'fixture_pm4_main': 123, 'fixture_pm4_add': 123}
+        inject('helpers', dependency=Obj(instance=lambda unused: cache))
+        inject('skeletons.gui.server_events', IEventsCache=object())
+        inject('personal_missions', PM_BRANCH=Obj(ALL_NAMES=branches),
+               g_cache=Obj(isPersonalMission=lambda key: key in ids,
+                           getPersonalMissionIDByUniqueID=lambda key: ids[key]))
+        inject('gui.server_events.events_helpers',
+               isDailyEpicReward=lambda key: 'QUEST_EPIC_REWARD' in key,
+               isDailyQuest=lambda key: key.startswith('dq:'),
+               isWeeklyQuest=lambda key: key.startswith('wq::'),
+               isBattleMattersQuestID=lambda key: key.startswith('battle_matters'),
+               isPremium=lambda key: key.startswith('prem_acc'))
+
+        raw = raw_result()
+        done = ('fixture', {}, {'bonusCount': 1})
+        raw['personal']['avatar']['questsProgress'] = {
+            'dq:fixture': ('fixture', {'battlesCount': 3}, {'battlesCount': 0}),
+            'dq:QUEST_EPIC_REWARD': done,
+            'seasonal:fixture': done,
+            'fixture_pm4_main': done,
+        }
+        raw['personal'][1]['questsProgress'] = {'wq::fixture': done, 'fixture_pm4_add': done}
+        raw['personal'][1]['PM2Progress'] = {
+            456: {'fixture_pm2_add': False, 'fixture_pm2_main': True, 'technical': True}}
+        missions = normalize_result(raw, mission_resolver=game_mission_metadata)['details']['missions']
+        self.assertEqual(len(missions), 6)
+        self.assertEqual(missions['personal:123'], {
+            'kind': 'personal', 'name': 'Fixture Fossa mission', 'operation': 'Operation Fossa',
+            'description': 'Fixture objective', 'status': 'honors'})
+        self.assertEqual(missions['personal:456']['status'], 'completed')
+        self.assertEqual(missions['dq:fixture']['kind'], 'daily_bonus')
+        self.assertEqual(missions['dq:fixture']['status'], 'reset')
+        self.assertEqual(missions['dq:QUEST_EPIC_REWARD']['kind'], 'daily_epic')
+        self.assertEqual(missions['wq::fixture']['kind'], 'weekly')
+        self.assertEqual(missions['wq::fixture']['status'], 'completed')
+        self.assertEqual(missions['seasonal:fixture']['name'], 'Fixture seasonal')
+
+    def test_battle_and_account_bond_earnings_reach_every_statistics_group_once(self):
+        raw = raw_result()
+        raw['personal']['avatar'].update(crystal=13, eventCrystal=13)
+        raw['personal'][1]['eventCrystal'] = 30  # Already included in the vehicle's 40.
+        record = normalize_result(raw)
+        self.clock.value = record['started_at'] + 1
+        self.service.begin_battle(record['arena_id'], started_at=record['started_at'], mode='random')
+        self.assertTrue(self.service.record_result(record))
+        installation = InstallationSession(self.directory, self.directory, 'first', EXPECTED, self.clock)
+        self.assertTrue(installation.begin('EU:7', record))
+        self.assertTrue(installation.result('EU:7', record))
+        scopes = [self.service.snapshot()['scopes']['launch'], self.service.timeline_snapshot(),
+                  installation.snapshot()[0]]
+        for scope in scopes:
+            for stats in [scope['summary']] + [scope[group][0]['stats'] for group in ('vehicles', 'maps', 'tiers', 'battles')]:
+                bonds = stats['currencies']['bonds']
+                self.assertEqual((bonds['income'], bonds['costs'], bonds['net']), (53, 12, 41))
+        self.assertEqual(record['details']['bonuses']['eventCrystal'], 43)
+        del raw['personal'][1]['crystal']
+        del raw['personal']['avatar']['crystal']
+        self.assertEqual(normalize_result(raw)['currencies']['bonds']['income'], 53)

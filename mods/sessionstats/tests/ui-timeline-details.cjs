@@ -11,8 +11,11 @@ module.exports = async function ({browser, nativeHost, check}) {
     timeline.time_points = [['first', 1700000000], ['last', 1700100000]];
     timeline.battles[0].details = {
       pass_points:{credited:33, battle:8, missions:10, vehicle:15},
-      missions:{'challenge:8:2':{kind:'crucible', name:'<b>Fixture stage</b>', stage:2, status:'failed'}},
-      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20},
+      missions:{
+        'challenge:8:2':{kind:'crucible', name:'<b>Fixture stage</b>', stage:2, status:'failed'},
+        'personal:123':{kind:'personal', name:'Fixture mission', operation:'Operation Fossa', status:'honors'},
+      },
+      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20, eventCrystal:43},
     };
     model.payload = JSON.stringify(payload);
     __grzEvents['viewEnv.onDataChanged']();
@@ -36,6 +39,8 @@ module.exports = async function ({browser, nativeHost, check}) {
   check('More renders confirmed mission, points and bonus as plain text',
     text.includes('33 points earned') && text.includes('shield used') &&
     text.includes('First victory: ×2 XP') && text.includes('<b>Fixture stage</b>') &&
+    text.includes('Operation Fossa') && text.includes('Completed with honors') &&
+    text.includes('Mission or event reward: +43 bonds') &&
     await details.locator('b').count() === 0);
   await page.locator('.ss-more-button').first().click();
   check('More closes in its own battle card', await details.isHidden());
