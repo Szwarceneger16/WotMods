@@ -1,6 +1,6 @@
 # Stay Sharp audio
 
-The mod uses **WoT's Wwise engine for both sounds**, via
+The mod uses **WoT's Wwise engine for the bundled voice**, via
 `SoundGroups.g_instance.getSound2D(...).play()`. No Windows playback, OS
 speech, external process, background thread or runtime download is used.
 
@@ -9,8 +9,14 @@ speech, external process, background thread or runtime download is used.
 - Once a usable medkit is detected, wait one second and play the selected
   voice. Repeat it every four seconds while the reminder is active.
 - Press **Ctrl+Alt+M** in battle to turn the visual and audio reminder off or
-  back on. It starts enabled in the next battle. The shortcut is ignored while
+  back on. The shortcut is ignored while
   battle chat is focused and does not consume the game's key event.
+- Hold Ctrl for the game's mouse cursor and click either icon above the medkit.
+  The power icon toggles the whole reminder. The speaker icon toggles voice
+  independently, allowing the orange pulse to continue with voice switched off.
+  Controls appear in arcade and artillery views and hide in the ordinary
+  sniper view. Both toggles apply for the current battle. The next battle
+  starts with the configured defaults, which enable both controls.
 - Use/cooldown, injury/stun warnings, hiding the HUD, spectator mode,
   destruction and battle end suppress the reminder. A frame stall never
   generates a catch-up burst.
@@ -42,7 +48,10 @@ writable. Without a readable file it uses the automatic default:
 
 ```json
 {
-  "language": "auto"
+  "language": "auto",
+  "enabled": true,
+  "voice_enabled": true,
+  "voice_volume": 70
 }
 ```
 
@@ -54,6 +63,11 @@ inside the installer as `mods/configs/staysharp.medkit.json.example` (remove
 only `.example` to activate it), and as `staysharp.medkit.example.json` in the repository; copy it to
 `mods/configs/staysharp.medkit.json` if you want to prepare the setting before
 the first game launch.
+
+Older configurations containing only `language` use the enabled defaults and
+70 percent voice volume. `voice_volume` accepts a number from 0 to 100.
+The mod applies it to the voice sound object as a gain from 0.0 to 1.0,
+in addition to the game's master and voice bus volume settings.
 
 **Restart WoT after editing this file.** Configuration is read once at mod
 startup, never on animation/state ticks. A missing file is created with
@@ -77,7 +91,10 @@ master/voice notification volume and mute controls. No existing game event, bus 
 replaced. Sound settings and the final loudness must be checked in-game.
 
 `source/build_audio_bank.py` serializes the small Wwise 2023.1 / bank-version
-150 subset directly. Rebuilding requires only Python's standard library;
+150 subset directly, including the Wargaming bank-header representation.
+The four header fields use the encoding documented by
+[OpenWG.Utils](https://github.com/Aslain/wows.openwg.utils/tree/9f6733e48ffda5149beb34d43e8817059472d2fc/src/wwise).
+Rebuilding requires only Python's standard library;
 it verifies the original WAV checksum before building Wwise PCM media and
 all seven Sound -> Play Action -> Event graphs. IDs use Wwise's lowercase FNV-1.
 All seven recordings are **AI-generated neural speech**, created offline
@@ -152,11 +169,37 @@ Offline tests cover announcement timing, repetition, cancellation, camera
 and HUD transitions, failed audio calls, package resources, PCM content,
 IDs and bank references. The existing bank layout was previously parsed
 independently with **wwiser v20260808**, with all 21 HIRC objects consumed
-and no parse errors. This recording refresh keeps the same bank builder;
-current packaging tests compare every embedded PCM payload to its source
+and no parse errors. The current builder encodes the header for the Wargaming
+reader. Packaging tests independently decode those header fields and compare
+every embedded PCM payload to its source
 and provenance checksums. These checks do not prove native engine loading
 or audible output.
 There is no WoT client in the build environment: perform the in-game checks
 in [the installation guide](INSTALACJA.md) before calling this version
 confirmed stable. A future Wwise upgrade may require updating the bank
 format; Python/API and visual compatibility are separate concerns.
+
+## OpenWG.Utils format reference notice
+
+MIT License
+
+Copyright (c) 2017-2022 OpenWG.Utils Contributors
+Copyright (c) 2024 OpenWG.Utils Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

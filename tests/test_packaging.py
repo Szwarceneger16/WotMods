@@ -31,9 +31,9 @@ class Tests(unittest.TestCase):
     def test_02_single_file_is_zip(self):
         self.assertTrue(zipfile.is_zipfile(self.target))
 
-    def test_03_exactly_27_files(self):
+    def test_03_exactly_31_files(self):
         with zipfile.ZipFile(self.target) as z:
-            self.assertEqual(len(z.namelist()),27)
+            self.assertEqual(len(z.namelist()),31)
 
     def test_04_all_zipstored(self):
         with zipfile.ZipFile(self.target) as z:
@@ -66,6 +66,8 @@ class Tests(unittest.TestCase):
         with zipfile.ZipFile(self.target) as z:
             names={x for x in z.namelist() if x.endswith('.dds')}
         expected={'res/gui/maps/staysharp/medkit_pulse_%02d.dds'%i for i in range(21)}
+        expected.update('res/gui/maps/staysharp/control_%s_%s.dds' % (kind, state)
+                        for kind in ('power', 'voice') for state in ('on', 'off'))
         self.assertEqual(names,expected)
 
     def test_10_each_dds_128x128_argb8888(self):
@@ -153,7 +155,13 @@ class Tests(unittest.TestCase):
     def test_21_native_bank_header_and_aligned_embedded_media(self):
         chunks,offsets=self.bank_chunks()
         self.assertEqual(set(chunks),{b'BKHD',b'DIDX',b'DATA',b'HIRC',b'STID'})
-        version,bank_id,language,alignment,project,kind=struct.unpack_from('<6I',chunks[b'BKHD'])
+        raw = struct.unpack_from('<6I', chunks[b'BKHD'])
+        # Independent published OpenWG header representation. Plain v150 is
+        # rejected by the Wargaming reader before it registers any events.
+        self.assertEqual(raw[0], 0xD2F5B201)
+        masks = (0xD2F5B297, 0xC57DA87E, 0xD10C0503, 0x6B0403D4)
+        version,bank_id,language,alignment = tuple(value ^ mask for value, mask in zip(raw[:4], masks))
+        project,kind = raw[4:]
         self.assertEqual((version,language,alignment,kind),(150,393239870,16,0))
         self.assertEqual(bank_id,build.audio.short_id('staysharp_medkit'))
         self.assertEqual(offsets[b'DATA']%16,0)

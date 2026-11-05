@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.7.1 - installation and test
+# Stay Sharp Medkit Reminder 1.8.0 - installation and test
 
 ## Install
 
@@ -20,7 +20,9 @@
    not loaded. Preserve any existing `.json` when updating. To configure before
    startup, copy the example and remove only its final `.example`. Otherwise,
    start the game normally: the mod creates `mods/configs/staysharp.medkit.json`
-   with `{"language":"auto"}` when the directory is writable. To force Polish,
+   with automatic language, reminder and voice enabled, and 70 percent voice
+   volume when the directory is writable. A previous language-only configuration
+   uses these same defaults. To force Polish,
    change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
 7. Installer metadata, checksums, audio instructions and voice attribution are
    included under `docs/staysharp/`. Session Stats is the separate second ZIP;
@@ -34,11 +36,18 @@
   and the selected voice after one second, repeated every four seconds.
   There must be no native medkit activation effect from this mod.
 - Press Ctrl+Alt+M to turn the outline and voice off, then press it again to
-  restore them. The reminder starts enabled in the next battle. Verify the
+  restore them. Hold Ctrl to use the mouse cursor and click the power or
+  speaker icon above the medkit to toggle the reminder or voice separately.
+  The next battle restores the configured defaults. Verify the
   shortcut does not react while battle chat is focused.
+- Verify both icons appear in arcade and artillery views. The normal tank
+  sniper view hides the icons. The speaker switch can mute the voice while
+  the medkit outline keeps pulsing.
 - Check arcade, sniper and artillery cameras, cooldown, HUD visibility,
   warnings, destruction and battle end. The reminder must stop when ineligible.
 - Test automatic and manually selected languages and WoT voice volume.
+- Check the local log shows `settings enabled=True voice_enabled=True voice_volume=70`
+  for a default configuration and `audio voice volume=70` when the voice is created.
 - If other sound mods are installed, verify that their effects still work.
 
 Offline checks cannot confirm native bank loading, final voice loudness or

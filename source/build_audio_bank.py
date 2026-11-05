@@ -20,6 +20,9 @@ EVENT_NAME = 'staysharp_medkit_ready'
 BUS_NAME = 'VOICE_GUI'
 BANK_VERSION = 150
 LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
+# Public Wargaming bank-header encoding documented by OpenWG.Utils (MIT).
+# https://github.com/Aslain/wows.openwg.utils/blob/9f6733e48ffda5149beb34d43e8817059472d2fc/src/wwise/api_wwise.cpp
+WG_HEADER_XOR = (0xD2F5B297, 0xC57DA87E, 0xD10C0503, 0x6B0403D4)
 
 
 def u32(value):
@@ -109,7 +112,11 @@ def build_bank():
         graph.extend(_graph(event, len(voice)))
     # All recordings are embedded in one language-neutral bank. Wwise 2023.1
     # identifies this bank language by the short ID of SFX.
-    header = (u32(BANK_VERSION) + u32(bank_id) + u32(short_id('SFX')) + u32(16)
+    # WoT's Wargaming reader expects the first four BKHD words encoded.
+    # The fourth word combines uint16 alignment and device-allocation flags.
+    # The project ID, bank type and bank hash remain plain Wwise v150 data.
+    fields = (BANK_VERSION, bank_id, short_id('SFX'), 16)
+    header = (b''.join(u32(value ^ mask) for value, mask in zip(fields, WG_HEADER_XOR))
               + u32(0) + u32(0) + bytes(16))
     # Align embedded media to the bank's declared 16-byte boundary.
     prefix = chunk('BKHD', header) + chunk('DIDX', bytes(index))

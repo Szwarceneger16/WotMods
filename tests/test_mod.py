@@ -313,6 +313,12 @@ class Tests(unittest.TestCase):
         spec.loader.exec_module(self.mod)
         self.orig_populate=Panel._populate
         self.orig_dispose=Panel._dispose
+        # Historical overlay regressions count overlay roots separately.
+        # HUD-control tests explicitly enable their native GUI path.
+        self.controls_patch=None
+        if not getattr(self, 'TEST_CONTROLS', False):
+            self.controls_patch=patch.object(self.mod, '_sync_controls')
+            self.controls_patch.start()
         self.mod.init()
         self.panel=Panel(self.item)
         self.emit_register()
@@ -326,6 +332,8 @@ class Tests(unittest.TestCase):
 
     def tearDown(self):
         self.mod.fini()
+        if self.controls_patch is not None:
+            self.controls_patch.stop()
         self.patch.stop()
         self.env.stop()
         self.temp.cleanup()
@@ -1528,7 +1536,58 @@ class Tests(unittest.TestCase):
 
     def test_137_missing_config_is_created_with_auto_language(self):
         path=self.game/'mods'/'configs'/'staysharp.medkit.json'
-        self.assertEqual(json.loads(path.read_text()),{'language':'auto'})
+        self.assertEqual(json.loads(path.read_text()),{
+            'language':'auto', 'enabled':True, 'voice_enabled':True, 'voice_volume':70})
+
+    def test_audio_defaults_apply_to_legacy_language_only_configuration(self):
+        path=self.write_language_config({'language':'pl'})
+        original=path.read_bytes()
+        self.mod._load_language()
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertTrue(self.mod._voice_enabled)
+        self.mod._voice_player=None
+        self.visible_start()
+        self.assertEqual(self.sounds['staysharp_medkit_ready_pl'].volume,0.7)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_voice_toggle_keeps_visual_reminder_and_rearms_audio_when_enabled(self):
+        self.visible_start()
+        before=len(self.audio_plays)
+        self.mod._toggle_voice()
+        self.state(24)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(len(self.audio_plays),before)
+        self.mod._toggle_voice()
+        self.state(5)
+        self.assertEqual(len(self.audio_plays),before+1)
+
+    def test_configured_defaults_and_volume_are_applied_in_next_battle(self):
+        self.write_language_config({'enabled':False,'voice_enabled':False,'voice_volume':35})
+        self.mod._load_language()
+        self.emit_unregister()
+        self.emit_register()
+        self.state(20)
+        self.assertFalse(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays,[])
+        self.mod._toggle_reminder()
+        self.state(6)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays,[])
+        self.mod._toggle_voice()
+        self.state(5)
+        self.assertEqual(self.sounds[self.mod.READY_VOICE_EVENT].volume,0.35)
+        self.emit_unregister()
+        self.emit_register()
+        self.assertFalse(self.mod._reminder_enabled)
+        self.assertFalse(self.mod._voice_enabled)
+
+    def test_invalid_audio_settings_restore_safe_defaults(self):
+        for invalid in ('70',True,-1,101,None,float('nan')):
+            self.write_language_config({'voice_volume':invalid,'enabled':0,'voice_enabled':'false'})
+            self.mod._load_language()
+            self.assertEqual(self.mod._voice_volume,70)
+            self.assertTrue(self.mod._reminder_enabled)
+            self.assertTrue(self.mod._voice_enabled)
 
     def test_138_all_manual_languages_select_their_own_voice(self):
         for language in ('en','pl','ru','fr','de','es','uk'):

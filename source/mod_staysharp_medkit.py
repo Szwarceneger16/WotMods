@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.7.1 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.0 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.7.1'
+VERSION = '1.8.0'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -83,11 +83,17 @@ _audio_next_reminder = None
 _voice_player = None
 _voice_disabled = False
 _reminder_enabled = True
+_voice_enabled = True
+_default_reminder_enabled = True
+_default_voice_enabled = True
+_voice_volume = 70
 _key_handler = None
 _audio_suspended = True
 _language = 'en'
 _voice_attempts = 0
 _voice_failures = 0
+_controls = []
+_controls_disabled = False
 
 
 def _language_code(value):
@@ -160,8 +166,10 @@ def _config_path():
 
 def _load_language():
     """Read a bounded local JSON once at startup; never overwrite user data."""
-    global _language
+    global _language, _default_reminder_enabled, _default_voice_enabled, _voice_volume
+    global _reminder_enabled, _voice_enabled
     selected = 'auto'
+    config = {}
     path = _config_path()
     if path is not None:
         folder = os.path.dirname(path)
@@ -186,7 +194,7 @@ def _load_language():
                         raise
                 else:
                     with os.fdopen(fd, 'wb') as handle:
-                        handle.write(b'{\n  "language": "auto"\n}\n')
+                        handle.write(b'{\n  "language": "auto",\n  "enabled": true,\n  "voice_enabled": true,\n  "voice_volume": 70\n}\n')
                 with open(path, 'rb') as handle:
                     raw = handle.read(CONFIG_MAX_BYTES + 1)
             if len(raw) > CONFIG_MAX_BYTES:
@@ -201,6 +209,23 @@ def _load_language():
         except Exception:
             # Do not echo file contents or a private filesystem path.
             _log('invalid or unreadable configuration; using automatic language')
+    if not isinstance(config, dict):
+        config = {}
+    _default_reminder_enabled = config.get('enabled', True)
+    if not isinstance(_default_reminder_enabled, bool):
+        _default_reminder_enabled = True
+        _log('invalid enabled setting; using true')
+    _default_voice_enabled = config.get('voice_enabled', True)
+    if not isinstance(_default_voice_enabled, bool):
+        _default_voice_enabled = True
+        _log('invalid voice_enabled setting; using true')
+    _voice_volume = config.get('voice_volume', 70)
+    if (isinstance(_voice_volume, bool) or not isinstance(_voice_volume, (int, long, float))
+            or not 0 <= _voice_volume <= 100):
+        _voice_volume = 70
+        _log('invalid voice_volume setting; using 70')
+    _reminder_enabled = _default_reminder_enabled
+    _voice_enabled = _default_voice_enabled
     if selected == 'auto':
         try:
             from helpers import getClientLanguage
@@ -209,6 +234,8 @@ def _load_language():
             selected = None
     _language = selected if selected in VOICE_LANGUAGES else 'en'
     _log('ready voice language=' + _language)
+    _log('settings enabled=%s voice_enabled=%s voice_volume=%s' % (
+        _reminder_enabled, _voice_enabled, _voice_volume))
 
 
 def _ready_voice_event():
@@ -292,7 +319,7 @@ def _track_audio_ready(panel, slot):
 
 def _play_ready_voice():
     global _voice_player, _voice_disabled, _voice_attempts, _voice_failures
-    if _voice_disabled:
+    if _voice_disabled or not _voice_enabled or not _reminder_enabled:
         return
     _voice_attempts += 1
     report = _voice_attempts <= 3 or _voice_attempts % 10 == 0
@@ -302,6 +329,8 @@ def _play_ready_voice():
             _log('audio create event=' + _ready_voice_event())
             _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
             _log('audio handle present=%s' % (_voice_player is not None))
+            _voice_player.volume = _voice_volume / 100.0
+            _log('audio voice volume=%s' % _voice_volume)
         result = _voice_player.play()
         result_label = 'none' if result is None else ('truthy' if result else 'false')
         if report:
@@ -326,7 +355,7 @@ def _play_ready_voice():
 def _update_audio():
     """Run on the existing state tick; no extra callbacks or catch-up bursts."""
     global _audio_announced, _audio_next_reminder, _audio_suspended
-    if not _overlay_active or _audio_key is None:
+    if not _voice_enabled or not _overlay_active or _audio_key is None:
         _suspend_audio()
         return
     now = _time()
@@ -806,6 +835,178 @@ def _geometry(panel, slot):
              1.0 - 2.0 * center_y / height,
              BORDER_SIZE * scale), 'centered_layout_' + native_origin)
 
+class _ControlClick(object):
+    """Consume only Ctrl-cursor left clicks inside this button's native quad."""
+    def __init__(self, action):
+        self.action = action
+        self.pressed = False
+
+    def mouseButtonFocus(self, enabled):
+        if not enabled:
+            self.pressed = False
+
+    def handleMouseButtonEvent(self, *args):
+        try:
+            import Keys
+            event = args[-1]
+            if event.key != Keys.KEY_LEFTMOUSE or not _controls_cursor_active():
+                self.pressed = False
+                return False
+            if event.isKeyDown():
+                self.pressed = True
+            elif self.pressed:
+                self.pressed = False
+                if self.action == 'power':
+                    _toggle_reminder()
+                else:
+                    _toggle_voice()
+                if _panel is not None:
+                    _sync_controls(_panel)
+            return True
+        except Exception:
+            self.pressed = False
+            _exception('HUD control click failed')
+            return False
+
+    def handleMouseClickEvent(self, component):
+        # Native GUI may also dispatch this after the handled button-up.
+        return True
+
+
+def _controls_cursor_active():
+    if _panel is None or not any(entry[0].visible for entry in _controls):
+        return False
+    try:
+        import Keys
+        return bool(BigWorld.isKeyDown(Keys.KEY_LCONTROL) or BigWorld.isKeyDown(Keys.KEY_RCONTROL))
+    except Exception:
+        return False
+
+
+def _control_slot(panel):
+    shown, unused_reason = _hud_visibility(panel)
+    if not shown:
+        return None
+    session = getattr(panel, 'sessionProvider', None)
+    if session is None or session.isReplayPlaying:
+        return None
+    player = BigWorld.player()
+    if player is None or player.isObserver() or not getattr(player, 'isVehicleAlive', True):
+        return None
+    vehicle, unused_reason = _resolve_player_vehicle(panel, player)
+    if vehicle is None or getattr(vehicle, 'health', 0) <= 0:
+        return None
+    if _camera_view(panel) == 2:
+        descriptor = getattr(vehicle, 'typeDescriptor', None)
+        tags = getattr(getattr(descriptor, 'type', None), 'tags', ())
+        if 'SPG' not in tags:
+            return None
+    valid, unused_reason = _panel_contract(panel)
+    if not valid:
+        return None
+    controller = getattr(getattr(session, 'shared', None), 'equipments', None)
+    iterator = getattr(controller, 'iterEquipmentsByTag', None)
+    if not callable(iterator):
+        return None
+    for compact, item in iterator(MEDKIT_TAG):
+        if item is None or compact not in panel._cds:
+            continue
+        slot = panel._cds.index(compact)
+        valid, unused_reason = _slot_contract(panel, slot, compact)
+        if valid:
+            return slot
+    return None
+
+
+def _hide_controls():
+    for component, unused_owner, unused_mount, handler in _controls:
+        component.visible = False
+        component.mouseButtonFocus = False
+        handler.pressed = False
+
+
+def _delete_controls():
+    entries = list(_controls)
+    _controls[:] = []
+    for component, owner, mount, handler in entries:
+        handler.pressed = False
+        try:
+            component.visible = False
+            component.mouseButtonFocus = False
+            component.script = None
+            if mount == 'hud_child':
+                owner.delChild(component)
+            else:
+                GUI.delRoot(component)
+        except Exception:
+            _exception('HUD control cleanup failed')
+
+
+def _sync_controls(panel):
+    """Keep switches usable when the outline/voice or the medkit are inactive."""
+    global _controls_disabled
+    if _controls_disabled:
+        return
+    try:
+        slot = _control_slot(panel)
+        geometry, unused_reason = _geometry(panel, slot) if slot is not None else (None, None)
+        if geometry is None:
+            _hide_controls()
+            return
+        if not _controls:
+            for action in ('power', 'voice'):
+                for state in ('on', 'off'):
+                    if not ResMgr.isFile('gui/maps/staysharp/control_%s_%s.dds' % (action, state)):
+                        raise ValueError('HUD control texture unavailable')
+            hud = getattr(getattr(panel, 'app', None), 'component', None)
+            has_parent = hud is not None and callable(getattr(hud, 'addChild', None)) and callable(getattr(hud, 'delChild', None))
+            for action in ('power', 'voice'):
+                path = 'gui/maps/staysharp/control_%s_on.dds' % action
+                component = GUI.Simple(path)
+                handler = _ControlClick(action)
+                mount = 'hud_child' if has_parent else 'gui_root'
+                # Record ownership before native attachment for partial-failure cleanup.
+                _controls.append((component, hud, mount, handler))
+                component.widthMode = GUI.Simple.eSizeMode.PIXEL
+                component.heightMode = GUI.Simple.eSizeMode.PIXEL
+                component.horizontalPositionMode = GUI.Simple.ePositionMode.CLIP
+                component.verticalPositionMode = GUI.Simple.ePositionMode.CLIP
+                component.horizontalAnchor = GUI.Simple.eHAnchor.CENTER
+                component.verticalAnchor = GUI.Simple.eVAnchor.CENTER
+                component.materialFX = GUI.Simple.eMaterialFX.BLEND
+                component.filterType = GUI.Simple.eFilterType.LINEAR
+                component.focus = False
+                component.moveFocus = False
+                component.mouseButtonFocus = False
+                component.visible = False
+                component.colour = (255, 255, 255, 255)
+                component.script = handler
+                if has_parent:
+                    hud.addChild(component, 'staysharp_control_' + action)
+                else:
+                    GUI.addRoot(component)
+            _log('HUD controls created; Ctrl+click power or voice above medkit')
+        width, height = GUI.screenResolution()[:2]
+        size = geometry[2] * (24.0 / BORDER_SIZE)
+        y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height
+        for index, entry in enumerate(_controls):
+            component = entry[0]
+            action = 'power' if index == 0 else 'voice'
+            enabled = _reminder_enabled if index == 0 else _voice_enabled
+            path = 'gui/maps/staysharp/control_%s_%s.dds' % (action, 'on' if enabled else 'off')
+            if component.textureName != path:
+                component.textureName = path
+            component.size = (size, size)
+            component.position = (geometry[0] + (index * 2 - 1) * (size + 3.0 * _interface_scale(panel)) / width,
+                                  y, GUI_DEPTH)
+            component.visible = True
+            component.mouseButtonFocus = True
+    except Exception:
+        _controls_disabled = True
+        _exception('HUD controls disabled after GUI failure')
+        _delete_controls()
+
+
 def _set_frame(level):
     """Update a single component's texture; no shader/colour writes per tick.
 
@@ -1032,6 +1233,7 @@ def _animate():
 def _refresh(panel):
     global _ready_slot, _ready_since, _last_reason, _last_panel_active
     global _last_hud_status, _last_geometry_source, _last_geometry_camera, _last_camera_view
+    _sync_controls(panel)
     if not _reminder_enabled:
         _hide_overlay('disabled_by_player')
         return
@@ -1112,7 +1314,6 @@ def _check_state():
 
 
 def _on_key_down(event):
-    global _reminder_enabled
     if _panel is None:
         return
     try:
@@ -1124,13 +1325,29 @@ def _on_key_down(event):
         from messenger import MessengerEntry
         if MessengerEntry.g_instance.gui.isFocused():
             return
-        _reminder_enabled = not _reminder_enabled
-        if not _reminder_enabled:
-            _reset_audio()
-            _hide_overlay('disabled_by_player')
-        _log('reminder ' + ('enabled' if _reminder_enabled else 'disabled') + ' by hotkey')
+        _toggle_reminder()
     except Exception:
         _exception('reminder hotkey unavailable')
+
+
+def _toggle_reminder():
+    global _reminder_enabled
+    if _panel is None:
+        return
+    _reminder_enabled = not _reminder_enabled
+    _reset_audio()
+    if not _reminder_enabled:
+        _hide_overlay('disabled_by_player')
+    _log('reminder enabled=%s for current battle' % _reminder_enabled)
+
+
+def _toggle_voice():
+    global _voice_enabled
+    if _panel is None:
+        return
+    _voice_enabled = not _voice_enabled
+    _reset_audio()
+    _log('voice enabled=%s for current battle' % _voice_enabled)
 
 
 def _subscribe_hotkey():
@@ -1160,7 +1377,8 @@ def _activate(panel):
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
-    global _voice_player, _voice_disabled, _reminder_enabled, _voice_attempts, _voice_failures
+    global _voice_player, _voice_disabled, _reminder_enabled, _voice_enabled, _voice_attempts, _voice_failures
+    global _controls_disabled
     if panel is _panel:
         return
     if _panel is not None:
@@ -1170,7 +1388,9 @@ def _activate(panel):
     _voice_disabled = False
     _voice_attempts = 0
     _voice_failures = 0
-    _reminder_enabled = True
+    _controls_disabled = False
+    _reminder_enabled = _default_reminder_enabled
+    _voice_enabled = _default_voice_enabled
     _panel = panel
     _ready_slot = None
     _ready_since = None
@@ -1202,6 +1422,7 @@ def _deactivate(panel):
     _ready_since = None
     _cancel_state()
     _reset_audio()
+    _delete_controls()
     _delete_overlay()
     _log('battle panel disposed')
 

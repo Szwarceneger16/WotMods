@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0
+
+- Write the Wargaming-compatible Wwise bank header so WoT can read the bundled voice bank.
+- Enable the reminder and voice by default, with a configurable voice volume of 70 percent.
+- Add separate clickable reminder and voice status icons above the medkit. Keep them in arcade and artillery views and hide them in the regular sniper view.
+- Apply HUD and shortcut toggles for the current battle, then restore configured defaults in the next battle.
+
 ## 1.7.1
 
 - Repeat the bundled ready voice instead of the native medkit activation sound; do not fall back to that sound on audio errors.

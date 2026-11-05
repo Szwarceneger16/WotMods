@@ -1,3 +1,6 @@
 {
-  "language": "auto"
+  "language": "auto",
+  "enabled": true,
+  "voice_enabled": true,
+  "voice_volume": 70
 }

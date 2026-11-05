@@ -18,6 +18,12 @@ When the perk allows using a ready medkit, an orange frame around its original H
 
 The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint, all required DDS frames, and its own small voice soundbank.
 
+The reminder and voice default to enabled, at **70% voice volume**. Hold Ctrl
+and click the power or speaker icon above the medkit to toggle the reminder
+or voice for the current battle. Icons are visible in arcade and artillery
+views and hide in the ordinary sniper view. Configuration defaults are
+restored in the next battle.
+
 ## Downloads
 
 **[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip` or `Session-Stats-v<version>.zip`. Each release offers both installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the two installers.
