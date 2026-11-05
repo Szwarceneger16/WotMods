@@ -771,6 +771,9 @@ class Runtime(object):
         self._bonus_account_key = None
         self._publish_activity()
         for service in list(self.services.values()) + ([self._instance_session.service] if self._instance_session else []):
+            cancel_timeline = getattr(service, 'cancel_timeline', None)
+            if callable(cancel_timeline):
+                cancel_timeline()
             if getattr(service, "loading", False):
                 service.cancel_loading()
         for callback_id in (self._tick_id, self._bonus_callback_id, self._load_id):
@@ -841,7 +844,8 @@ class Runtime(object):
         services = list(self.services.values())
         if self._instance_session is not None:
             services.append(self._instance_session.service)
-        return [service for service in services if getattr(service, 'loading', False)]
+        return [service for service in services if getattr(service, 'loading', False) or
+                getattr(service, 'timeline_loading', False)]
 
     def _schedule_loading(self):
         if not self.running or self._load_id is not None or not self._loading_services():
@@ -864,9 +868,13 @@ class Runtime(object):
             if services and not self.api.in_battle():
                 service = services[self._load_cursor % len(services)]
                 self._load_cursor += 1
-                service.advance_loading()
-                if not service.loading:
-                    if service.ready and self._instance_session is not None:
+                history = service.loading
+                if history:
+                    service.advance_loading()
+                else:
+                    service.advance_timeline()
+                if not service.loading and not getattr(service, 'timeline_loading', False):
+                    if history and service.ready and self._instance_session is not None:
                         for account_key, account_service in self.services.items():
                             if account_service is service:
                                 self._backfill_installation(account_key, service)
@@ -1421,6 +1429,7 @@ class Runtime(object):
                 self.active_service.create_time_point(getter('name'))
             else:
                 self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
+                self._schedule_loading()
             self._window_call('refresh')
         elif action == 'reset' and self.active_service is not None:
             # Confirmation is performed by the local UI before emitting reset.

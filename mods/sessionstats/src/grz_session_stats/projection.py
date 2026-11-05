@@ -308,6 +308,11 @@ class ScopeIndex(object):
             self._change(old[0], old[1], -1)
         self._change(record, item, 1)
 
+    def discard(self, identifier):
+        old = self.records.get(identifier)
+        if old is not None:
+            self._change(old[0], old[1], -1)
+
     def _change(self, record, item, direction):
         self._sort_cache = {}
         identifier = record['arena_id']
