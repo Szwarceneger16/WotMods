@@ -218,6 +218,10 @@ async function footer(browser) {
         check('Invalid optional bridge speed values fall back to the original wheel step',true);
 
         await page.locator('#ss-group-vehicles').click();
+        // Clicking the tab scrolls it into view after the wheel cases. Compare
+        // appearance roundtrips at the same scroll anchor as the initial paint.
+        await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=0;});
+        await frames(page);
         await pushPanel(page,{...presentation.custom,panel_css:42});
         check('Malformed panel CSS restores static paint while statistics keep rendering',
             await page.locator('#grz-session-stats-appearance').count()===0 &&
@@ -225,6 +229,8 @@ async function footer(browser) {
             await page.locator('.ss-group').count()>0);
         await pushPanel(page,presentation.custom);
         await pushPanel(page,null);
+        check('Appearance fallback preserves the reset scroll anchor',
+            await page.locator('#ss-scroll').evaluate(node=>node.scrollTop===0));
         check('A missing appearance payload clears previous overrides and restores the exact default panel',
             await page.locator('#grz-session-stats-appearance').count()===0 &&
             JSON.stringify(baseline)===JSON.stringify(await paint(page,'#grz-session-stats')));
