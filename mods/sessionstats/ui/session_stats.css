@@ -187,7 +187,7 @@ button:disabled { opacity:0.45; }
 .ss-select.ss-language-select { flex:1 1 0rem; width:0; }
 .ss-language-select .ss-select-options { left:auto; right:0; }
 .ss-page-center { flex:1 1 160rem; min-width:0; padding:0 6rem; }
-.ss-sorting { display:flex; flex-wrap:wrap; align-items:flex-end; flex:0 1 362rem; min-width:0; width:362rem; max-width:100%; margin:0 0 5rem; }
+.ss-sorting { display:flex; flex-wrap:nowrap; align-items:flex-end; flex:0 1 362rem; min-width:0; width:362rem; max-width:100%; margin:0 0 5rem; }
 .ss-sort-field { min-width:0; }
 .ss-sort-statistic { flex:0 1 84rem; width:84rem; max-width:100%; padding-right:5rem; }
 .ss-sort-metric { flex:0 1 144rem; width:144rem; max-width:100%; padding-right:5rem; }

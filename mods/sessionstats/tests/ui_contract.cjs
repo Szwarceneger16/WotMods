@@ -191,6 +191,7 @@ async function nativeHost(browser, options) {
 (async function () {
   const browser = await chromium.launch({executablePath:process.env.GRZ_CHROME,headless:true,args:['--no-sandbox']});
   try {
+  await require('./ui-locale-screenshots.cjs')({browser,nativeHost,check});
   const page = await browser.newPage({viewport:{width:744,height:730},colorScheme:'dark',timezoneId:'UTC'});
   page.on('pageerror',e=>errors.push(String(e)));
   await serveUI(page);
@@ -789,7 +790,6 @@ async function nativeHost(browser, options) {
   await require('./ui-timeline-details.cjs')({browser,nativeHost,check});
   await require('./ui-upper-layout.cjs')({browser,nativeHost,check});
   await require('./ui-resize-input.cjs')({browser,nativeHost,check});
-  await require('./ui-locale-screenshots.cjs')({browser,nativeHost,check});
   check('No browser JavaScript errors',errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};
