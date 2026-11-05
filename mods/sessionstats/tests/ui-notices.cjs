@@ -1,7 +1,9 @@
 /* Notice counts and coverage explanations must reflect the visible data. */
 const fs=require('fs'), path=require('path');
 module.exports=async({browser,nativeHost,check})=>{
-  const page=await nativeHost(browser,{});
+  // This suite checks elapsed hover time. The default native host freezes
+  // window.setTimeout for connection-retry tests, so use its real clock here.
+  const page=await nativeHost(browser,{realTimers:true});
   const original=await page.evaluate(()=>JSON.parse(model.payload));
   const render=async payload=>page.evaluate(value=>{model.payload=JSON.stringify(value);GRZSessionStats.update(model.payload);},payload);
   const copy=()=>JSON.parse(JSON.stringify(original));
@@ -49,10 +51,6 @@ module.exports=async({browser,nativeHost,check})=>{
       'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.');
   const performance=page.locator('#ss-summary .ss-performance');
   const info=performance.locator('.ss-info-button');
-  await page.locator('#ss-help-tooltip').evaluate(tooltip => {
-    // A new Gameface tooltip can have no measured size until its next frame.
-    tooltip.getBoundingClientRect=()=>({left:0,right:0,top:0,bottom:0,width:0,height:0});
-  });
   await performance.hover({position:{x:5,y:5}});
   await page.waitForTimeout(3100);
   check('Ordinary section hover has no help target or tooltip',
@@ -66,8 +64,26 @@ module.exports=async({browser,nativeHost,check})=>{
   await page.mouse.move(infoBox.x+7,infoBox.y+5);
   await page.waitForTimeout(600);
   check('Pointer movement restarts the full hover delay',await page.locator('#ss-help-tooltip').isHidden());
+  await page.locator('#ss-help-tooltip').evaluate(tooltip => {
+    // A new Gameface tooltip can have no measured size until its next frame.
+    // Count production reads, then restore the real method before Playwright
+    // checks actual visibility (which also requires a nonempty measured box).
+    tooltip.__grzOriginalBounds=tooltip.getBoundingClientRect;
+    tooltip.__grzBoundsReads=0;
+    tooltip.getBoundingClientRect=function () {
+      this.__grzBoundsReads++;
+      return {left:0,right:0,top:0,bottom:0,width:0,height:0};
+    };
+  });
   await page.waitForTimeout(500);
+  const tooltipAudit=await page.locator('#ss-help-tooltip').evaluate(tooltip=>{
+    const audit={reads:tooltip.__grzBoundsReads,display:getComputedStyle(tooltip).display};
+    tooltip.getBoundingClientRect=tooltip.__grzOriginalBounds;
+    delete tooltip.__grzOriginalBounds;delete tooltip.__grzBoundsReads;
+    return audit;
+  });
   check('A stationary info icon opens its own explanation after one second',
+    tooltipAudit.reads===0 && tooltipAudit.display==='block' &&
     await info.getAttribute('aria-describedby')==='ss-help-tooltip' && await info.getAttribute('aria-expanded')==='true' &&
     await page.locator('#ss-help-tooltip').isVisible() &&
     await page.locator('#ss-help-tooltip').textContent().then(t=>
