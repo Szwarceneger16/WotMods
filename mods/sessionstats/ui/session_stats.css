@@ -24,16 +24,16 @@ button:disabled { opacity:0.45; }
 .ss-close:hover, .ss-close:focus { color:#f5e3a5; background:#252614; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
 .ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid #050601; border-radius:5rem; }
-.ss-scope { position:relative; flex:1 1 0rem; min-width:0; width:0; height:30rem; border:0; background:linear-gradient(#383a2c, #16190e 58%, #1c2014); color:#ada98b; padding:4rem 6rem; border-radius:5rem; box-shadow:inset 0 1rem #646149; }
+.ss-scope { position:relative; flex:1 1 auto; min-width:0; width:auto; height:30rem; border:0; background:linear-gradient(#383a2c, #16190e 58%, #1c2014); color:#ada98b; padding:4rem 6rem; border-radius:5rem; box-shadow:inset 0 1rem #646149; }
 .ss-scope + .ss-scope { border-left:1rem solid #050601; }
 .ss-scope:hover, .ss-scope:focus { color:#eee1b5; box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 0 0 5rem rgba(213,191,132,0.12); }
 .ss-scope.is-active { color:#f0d392; background:linear-gradient(#494329, #2e2915 56%, #151309); text-shadow:0 0 7rem #b77923; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:#e7a23b; border-right:1rem solid #ffdda0; border-bottom:1rem solid #ffdda0; transform:rotate(45deg); }
 .ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; min-height:37rem; padding-top:4rem; }
 .ss-period { display:block; flex:0 1 184rem; min-width:0; width:184rem; max-width:100%; font-size:12rem; color:#aaa68c; margin:0 8rem 4rem 0; }
-.ss-xp-picker { display:flex; flex:0 0 212rem; width:212rem; max-width:100%; margin-bottom:4rem; border:1rem solid #444329; border-radius:5rem; }
-.ss-small-toggle { width:98rem; border:0; background:#0e1008; color:#aaa78b; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:5rem; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
-#ss-xp-received { width:112rem; }
+.ss-xp-picker { display:flex; flex:0 0 auto; min-width:212rem; width:auto; max-width:100%; margin-bottom:4rem; border:1rem solid #444329; border-radius:5rem; }
+.ss-small-toggle { flex:1 0 auto; min-width:98rem; width:auto; border:0; background:#0e1008; color:#aaa78b; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:5rem; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
+#ss-xp-received { min-width:112rem; }
 .ss-small-toggle.is-active { background:linear-gradient(#4c482f, #292814); color:#e8d8a7; box-shadow:inset 0 1rem #807446; }
 .ss-small-toggle:hover, .ss-small-toggle:focus { color:#f1e4bb; box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 0 0 5rem rgba(213,191,132,0.12); }
 .ss-scroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:0 12rem 10rem; }
@@ -237,7 +237,7 @@ button:disabled { opacity:0.45; }
 .ss-time-point-controls { display:flex; align-items:center; flex:1 1 250rem; min-width:0; margin-right:8rem; border:1rem solid #555944; border-radius:5rem; background:#111309; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
 .ss-time-point-name { display:block; flex:1 1 0rem; width:0; min-width:0; height:29rem; padding:4rem 7rem; margin:0; border:0; border-radius:0 5rem 5rem 0; background:transparent; color:#dfd4ae; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
 .ss-time-point-name:focus { outline:none; box-shadow:inset 0 0 6rem rgba(213,191,132,0.12); }
-.ss-time-point { flex:0 0 122rem; min-width:0; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid #555944; border-radius:5rem 0 0 5rem; }
+.ss-time-point { flex:0 0 auto; min-width:122rem; width:auto; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid #555944; border-radius:5rem 0 0 5rem; }
 .ss-has-help { cursor:help; }
 .ss-help-tooltip { display:none; position:absolute; z-index:60; width:320rem; padding:9rem 11rem; border:1rem solid #7b6940; border-radius:5rem; background:#111309; color:#e5e2cb; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem #000, inset 0 1rem rgba(213,191,132,0.12); pointer-events:none; }
 .ss-info-button { display:flex; align-items:center; justify-content:center; flex:0 0 14rem; min-width:14rem; width:14rem; height:14rem; padding:0; margin:0 0 0 5rem; border:1rem solid #555944; border-radius:8rem; color:#aaa68c; background:#111309; font-family:Arial, sans-serif; font-size:11rem; font-style:italic; font-weight:bold; line-height:12rem; cursor:help; }
@@ -269,8 +269,8 @@ button:disabled { opacity:0.45; }
 .ss-resize-n { top:0; bottom:auto; }
 .ss-resize-e, .ss-resize-w { top:16rem; bottom:16rem; width:6rem; height:auto; cursor:ew-resize; }
 .ss-resize-w { left:0; right:auto; }
-.ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 240rem; min-width:0; }
-.ss-more-mission-block { flex:1 1 310rem; min-width:0; padding:0 4rem 4rem; }
+.ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 100%; min-width:0; width:100%; }
+.ss-more-mission-block { flex:1 1 100%; min-width:0; width:100%; padding:0 4rem 4rem; }
 .ss-more-reward-block { flex:1 1 220rem; min-width:0; padding:0 4rem 4rem; }
 .ss-more-table { display:block; width:100%; margin:0; border:1rem solid #303421; border-radius:4rem; background:#181d11; }
 .ss-more-table .ss-more-body { display:block; width:100%; }
@@ -280,6 +280,9 @@ button:disabled { opacity:0.45; }
 .ss-more-value .ss-more-amount { flex:0 1 46%; text-align:right; color:#ebe7d4; }
 .ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:#f0d392; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
+.ss-more-pass .ss-more-body { display:flex; flex-wrap:wrap; align-items:stretch; }
+.ss-more-pass .ss-more-value { flex:1 1 130rem; min-width:0; width:auto; border-right:1rem solid #303421; border-bottom:0; }
+.ss-more-pass .ss-more-value:last-child { border-right:0; }
 .ss-more-value:nth-child(even) { background:#1a1f13; }
 .ss-more-mission:first-child { border-top:0; }
 .ss-more-mission:nth-child(even) { background:#1a1f13; }

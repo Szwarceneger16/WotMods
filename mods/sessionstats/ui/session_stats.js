@@ -766,7 +766,7 @@
         if (hasNumber(points.credited) || ['battle', 'missions', 'vehicle'].some(function (key) { return hasNumber(points[key]); })) {
             var pass = append(rewards, element('div', 'ss-more-reward-block'));
             append(pass, element('h3', 'ss-more-title', t('more.pass')));
-            var passTable = rewardTable(pass);
+            var passTable = rewardTable(pass, 'ss-more-pass');
             if (hasNumber(points.credited)) { rewardRow(passTable, t('more.pass.total', [number(points.credited)])); }
             ['battle', 'missions', 'vehicle'].forEach(function (key) {
                 if (points[key] > 0) { rewardRow(passTable, t('more.pass.' + key, [number(points[key])])); }
@@ -805,6 +805,7 @@
         var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
         if (keys.length || battle.xp_bonus_applied) {
             var bonusBlock = append(panel, element('div', 'ss-more-reward-block ss-more-bonus-block'));
+            if (missionBlock) { panel.insertBefore(bonusBlock, missionBlock); }
             append(bonusBlock, element('h3', 'ss-more-title', t('more.bonuses')));
             var columns = ['finance.credits', 'more.column.xp', 'more.column.free_xp', 'more.column.crew_xp', 'finance.bonds'];
             var sources = [
