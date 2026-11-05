@@ -469,7 +469,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-battle-stream .ss-economy { width:100%; padding:5rem 0 0; margin-top:3rem; border-left:0; border-top:1rem solid {{colors.details_separator_border_top}}; }
 @media (max-width:480px) {
   .ss-title-actions { flex:1 1 100%; width:100%; }
-  .ss-language-row { margin-left:auto; margin-top:4rem; }
+  .ss-language-row { margin-left:auto; margin-top:0; }
   .ss-time-point-controls { margin-right:0; }
 }
 '''
