@@ -31,6 +31,60 @@ module.exports = async function ({browser, nativeHost, check}) {
     document.querySelector('#ss-timeline-from .ss-select-trigger').textContent === 'Beginning of history' &&
     document.querySelector('#ss-timeline-to .ss-select-trigger').textContent === 'Now' &&
     document.querySelector('#ss-reset').style.display === 'none'));
+  await page.evaluate(() => { window.__timelineReadySnapshot = JSON.parse(model.payload); });
+  for (const scopedState of ['loading', 'error']) {
+    await page.evaluate(scopedState => {
+      const payload = JSON.parse(JSON.stringify(__timelineReadySnapshot));
+      payload.loading = false; payload.load_error = '';
+      const timeline = payload.scopes.timeline;
+      timeline.loading = scopedState === 'loading';
+      timeline.load_error = scopedState === 'error' ? 'Synthetic selected range failure' : '';
+      timeline.from_point = scopedState === 'error' ? 'first' : '';
+      window.__timelineRangeCount = __grzCommands.filter(command => command.action === 'timeline_range').length;
+      model.payload = JSON.stringify(payload); __grzEvents['viewEnv.onDataChanged']();
+    }, scopedState);
+    check('Selected range ' + scopedState + ' keeps both timeline bounds available',
+      await page.locator('#ss-timeline-from .ss-select-trigger').isVisible() &&
+      await page.locator('#ss-timeline-to .ss-select-trigger').isVisible() &&
+      await page.locator('#ss-timeline-from .ss-select-trigger').isEnabled() &&
+      await page.locator('#ss-timeline-to .ss-select-trigger').isEnabled());
+    check('Selected range ' + scopedState + ' hides incomplete totals and battle rows',
+      await page.locator('#ss-summary .ss-kpi-value').count() === 0 &&
+      await page.locator('#ss-groups .ss-group').count() === 0 &&
+      await page.locator('#ss-page-label').textContent() === '' &&
+      await page.locator('#ss-status').textContent() === (scopedState === 'error' ?
+        'Synthetic selected range failure' : 'Loading history. New battle results are being saved.'));
+    const field = scopedState === 'loading' ? 'from' : 'to';
+    const point = scopedState === 'loading' ? 'first' : 'last';
+    await page.locator('#ss-timeline-' + field + ' .ss-select-trigger').click();
+    await page.locator('#ss-timeline-' + field + ' [data-value="' + point + '"]').click();
+    check('Selected range ' + scopedState + ' can be replaced with a newly selected bound',
+      await page.evaluate(scopedState => {
+        const commands = __grzCommands.filter(command => command.action === 'timeline_range');
+        const command = commands[commands.length - 1];
+        return commands.length === __timelineRangeCount + 1 && command.account_key === 'fixture-account' &&
+          command.from_point === 'first' && command.to_point === (scopedState === 'error' ? 'last' : '');
+      }, scopedState));
+  }
+  await page.evaluate(() => {
+    const payload = JSON.parse(JSON.stringify(__timelineReadySnapshot));
+    payload.loading = true; payload.load_error = '';
+    model.payload = JSON.stringify(payload); __grzEvents['viewEnv.onDataChanged']();
+  });
+  check('Global history loading keeps timeline bounds unavailable and time-point creation disabled',
+    !await page.locator('#ss-timeline-from .ss-select-trigger').isVisible() &&
+    !await page.locator('#ss-timeline-to .ss-select-trigger').isVisible() &&
+    await page.locator('#ss-time-point').isDisabled() &&
+    await page.locator('#ss-summary .ss-kpi-value').count() === 0 &&
+    await page.locator('#ss-groups .ss-group').count() === 0);
+  await page.evaluate(() => {
+    model.payload = JSON.stringify(__timelineReadySnapshot); __grzEvents['viewEnv.onDataChanged']();
+  });
+  check('Completing the scoped request restores the original timeline fixture and totals',
+    await page.locator('#ss-timeline-from .ss-select-trigger').textContent() === 'Beginning of history' &&
+    await page.locator('#ss-timeline-to .ss-select-trigger').textContent() === 'Now' &&
+    await page.locator('#ss-summary .ss-kpi-value').count() > 0 &&
+    await page.locator('#ss-groups .ss-group').count() > 0);
   async function controlsFit(wrapped) {
     return page.evaluate(wrapped => {
       const box = selector => document.querySelector(selector).getBoundingClientRect();

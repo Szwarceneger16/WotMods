@@ -1107,7 +1107,9 @@
             state.timePointEdited = false;
         }
         if (!state.timePointEdited) { nodes['time-point-name'].value = date(Date.now() / 1000, false); }
-        renderTimeline(timeline, loading || !!loadError);
+        // A selected projection can be replaced while it is loading or has
+        // failed; only unavailable durable account history locks the filters.
+        renderTimeline(timeline, !!payload.loading || !!payload.load_error);
         if (scopeName() === 'timeline') { nodes.started.textContent = ''; }
         if (loading || loadError) {
             showReset(false);
