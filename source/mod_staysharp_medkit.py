@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.0 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.1 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.0'
+VERSION = '1.8.1'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -37,6 +37,8 @@ PULSE_TICK = 0.10              # 10 texture switches/s, never allocate new GUI r
 STATE_TICK = 0.25
 STABLE_READY_DELAY = 0.90
 READY_VOICE_DELAY = 1.0
+READY_VOICE_LEAD = 0.5
+READY_VOICE_REPEAT = 10.0
 READY_VOICE_EVENT = 'staysharp_medkit_ready'
 VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
 CONFIG_FILENAME = 'staysharp.medkit.json'
@@ -78,6 +80,10 @@ _consumables_alias = None
 _log_file = None
 _audio_key = None
 _audio_since = None
+_audio_due = None
+_battle_voice_due = None
+_cooldown_deadlines = {}
+_equipment_controller = None
 _audio_announced = False
 _audio_next_reminder = None
 _voice_player = None
@@ -296,23 +302,111 @@ def _suspend_audio():
 
 
 def _reset_audio():
-    global _audio_key, _audio_since, _audio_announced
+    global _audio_key, _audio_since, _audio_due, _audio_announced
     _suspend_audio()
     _audio_key = None
     _audio_since = None
+    _audio_due = None
     _audio_announced = False
 
 
-def _track_audio_ready(panel, slot):
-    """Track actual readiness even while the player temporarily hides HUD."""
-    global _audio_key, _audio_since
+def _track_battle_start(panel):
+    """Translate the client's server-time battle start to the local audio clock."""
+    global _battle_voice_due
+    if _battle_voice_due is not None:
+        return
+    arena = getattr(BigWorld.player(), 'arena', None)
+    if getattr(arena, 'period', None) != ARENA_PERIOD.BATTLE:
+        return
+    elapsed = 0.0
+    try:
+        end = float(arena.periodEndTime)
+        length = float(arena.periodLength)
+        value = float(BigWorld.serverTime()) - (end - length)
+        if end > 0 and length > 0 and 0 <= value <= length:
+            elapsed = value
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        pass
+    _battle_voice_due = _time() + max(0.0, READY_VOICE_DELAY - elapsed)
+    _log('audio schedule initial_delay=%.2fs lead=%.2fs repeat=%.2fs' % (
+        max(0.0, _battle_voice_due - _time()), READY_VOICE_LEAD, READY_VOICE_REPEAT))
+
+
+def _on_equipment_updated(compact, item):
+    """Native remaining time is a snapshot, timestamp it once per server update."""
+    previous = _cooldown_deadlines.pop(compact, None)
+    try:
+        if item is None or not item.isInCooldown() or item.getQuantity() <= 0:
+            return
+        remaining = item.getTimeRemaining()
+        if isinstance(remaining, bool) or not isinstance(remaining, (int, long, float)):
+            return
+        if not 0 < remaining < 86400:
+            return
+        deadline = _time() + remaining
+        if (_audio_key is not None and _audio_key[1] == compact and
+                (previous is None or previous[0] is not item or deadline > previous[1] + STATE_TICK)):
+            _reset_audio()
+        _cooldown_deadlines[compact] = (item, deadline)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return
+
+
+def _subscribe_equipment(panel):
+    global _equipment_controller
+    session = getattr(panel, 'sessionProvider', None)
+    controller = getattr(getattr(session, 'shared', None), 'equipments', None)
+    if controller is None:
+        return
+    try:
+        controller.onEquipmentUpdated += _on_equipment_updated
+        _equipment_controller = controller
+        _log('audio cooldown updates subscribed=yes')
+    except Exception:
+        # Without a timestamp, announce at actual readiness instead of guessing.
+        _exception('audio cooldown updates unavailable; ready-state fallback')
+
+
+def _unsubscribe_equipment():
+    global _equipment_controller
+    controller = _equipment_controller
+    _equipment_controller = None
+    if controller is not None:
+        try:
+            controller.onEquipmentUpdated -= _on_equipment_updated
+        except Exception:
+            _exception('audio cooldown unsubscription failed')
+    _cooldown_deadlines.clear()
+
+
+def _cooldown_soon(compact, item):
+    record = _cooldown_deadlines.get(compact)
+    if record is None or record[0] is not item:
+        return False
+    try:
+        if not item.isInCooldown() or item.getQuantity() <= 0:
+            return False
+    except (AttributeError, TypeError):
+        return False
+    remaining = record[1] - _time()
+    # Preserve the in-flight announcement across the server's READY update.
+    grace = 2.0 if _audio_announced and _audio_key is not None and _audio_key[1] == compact else 0.0
+    return -grace <= remaining <= READY_VOICE_LEAD
+
+
+def _track_audio_ready(panel, slot, reason='ready'):
+    """Keep the same announcement latch from anticipation through actual READY."""
+    global _audio_key, _audio_since, _audio_due
     key = (slot, panel._cds[slot]) if slot is not None else None
     if key != _audio_key:
         _reset_audio()
         _audio_key = key
         if key is not None:
             _audio_since = _time()
-            _log('audio readiness=ready slot=%d voice_delay=%.2fs' % (slot, READY_VOICE_DELAY))
+            _audio_due = (_audio_since if reason == 'cooldown_soon' else
+                          max(_audio_since, _battle_voice_due or _audio_since))
+            _log('audio readiness=%s slot=%d voice_delay=%.2fs' % (
+                reason, slot, _audio_due - _audio_since))
         else:
             _log('audio readiness=not_ready')
 
@@ -352,25 +446,28 @@ def _play_ready_voice():
         _exception('ready voice unavailable; audio disabled for battle')
 
 
-def _update_audio():
+def _update_audio(eligible=False, anticipating=False):
     """Run on the existing state tick; no extra callbacks or catch-up bursts."""
     global _audio_announced, _audio_next_reminder, _audio_suspended
-    if not _voice_enabled or not _overlay_active or _audio_key is None:
+    if (not _voice_enabled or not _reminder_enabled or _graphics_disabled
+            or not (_overlay_active or eligible) or _audio_key is None):
         _suspend_audio()
         return
     now = _time()
-    if now - _audio_since < READY_VOICE_DELAY:
+    if _audio_due is None or now < _audio_due:
         return
     _audio_suspended = False
     if not _audio_announced:
         _audio_announced = True
         _play_ready_voice()
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        _audio_next_reminder = now + READY_VOICE_REPEAT
+    elif anticipating:
+        return
     elif _audio_next_reminder is None:
-        # Resume at the next complete pulse without repeating the voice.
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        # Resume after a full voice interval without replaying on HUD visibility.
+        _audio_next_reminder = now + READY_VOICE_REPEAT
     elif now >= _audio_next_reminder:
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        _audio_next_reminder = now + READY_VOICE_REPEAT
         _play_ready_voice()
 
 
@@ -606,7 +703,7 @@ def _resolve_player_vehicle(panel, avatar):
     return (None, 'vehicle_entity_unavailable')
 
 
-def _probe_medkit(panel):
+def _probe_medkit(panel, for_audio=False):
     """Return ready slot and reason. Check the *real* player tank, not camera.
 
     The equipment is ready only if the game reports it usable and explicitly
@@ -661,7 +758,8 @@ def _probe_medkit(panel):
         if item is None:
             continue
         had_medkit = True
-        if not item.isAvailableToUse:
+        anticipating = for_audio and _cooldown_soon(compact, item)
+        if not item.isAvailableToUse and not anticipating:
             continue
         descriptor = item.getDescriptor()
         if descriptor is None or descriptor.name not in enabled:
@@ -669,7 +767,7 @@ def _probe_medkit(panel):
         # Native _MedKitItem._canActivate uses avatar.vehicle when avatar
         # is omitted. Explicit avatar selects BigWorld.entity(playerVehicleID)
         # in sniper/strategic/arty modes and prevents the camera-only bug.
-        if not item.canActivate(avatar=player)[0]:
+        if not anticipating and not item.canActivate(avatar=player)[0]:
             continue
         try:
             slot = slots.index(compact)
@@ -678,10 +776,19 @@ def _probe_medkit(panel):
         valid, slot_reason = _slot_contract(panel, slot, compact)
         if not valid:
             return (None, 'incompatible_hud_' + slot_reason)
-        # The game's injury/stun warning must always have priority.
-        if slot in getattr(panel, '_equipmentsGlowCallbacks', {}):
+        # Keep native visual warnings on top. The same callback map also
+        # contains the ordinary green READY flash: it must not cut the voice
+        # that started just before zero, or delay an actual-ready announcement.
+        ready_flash = False
+        if for_audio and bool(getattr(item, 'becomeReady', False)):
+            try:
+                warning = getattr(panel, '_canApplyingGlowEquipment', None)
+                ready_flash = callable(warning) and not warning(item)
+            except Exception:
+                pass
+        if slot in getattr(panel, '_equipmentsGlowCallbacks', {}) and not ready_flash:
             return (None, 'vanilla_equipment_glow_priority')
-        return (slot, 'ready')
+        return (slot, 'cooldown_soon' if anticipating else 'ready')
     return (None, 'medkit_unavailable' if had_medkit else 'medkit_not_equipped')
 
 def _hud_visibility(panel):
@@ -836,41 +943,73 @@ def _geometry(panel, slot):
              BORDER_SIZE * scale), 'centered_layout_' + native_origin)
 
 class _ControlClick(object):
-    """Consume only Ctrl-cursor left clicks inside this button's native quad."""
-    def __init__(self, action):
+    """Route both native mouse and root key events through one click latch."""
+    def __init__(self, action, component):
         self.action = action
+        self.component = component
         self.pressed = False
+
+    def focus(self, enabled):
+        if not enabled:
+            self.pressed = False
 
     def mouseButtonFocus(self, enabled):
         if not enabled:
             self.pressed = False
 
+    def handleKeyEvent(self, event):
+        # BigWorld first offers mouse buttons to ONE native hit candidate.
+        # If that candidate declines, focused roots get the same key event.
+        # Do our own bounds check here rather than depending on the Flash
+        # parent's native hit transform/clip rectangle.
+        return self._handle(event)
+
     def handleMouseButtonEvent(self, *args):
+        return self._handle(args[-1])
+
+    def _handle(self, event):
         try:
             import Keys
-            event = args[-1]
-            if event.key != Keys.KEY_LEFTMOUSE or not _controls_cursor_active():
+            if event.key != Keys.KEY_LEFTMOUSE:
+                return False
+            if not self.component.visible or not _controls_cursor_active():
                 self.pressed = False
                 return False
+            width, height = GUI.screenResolution()[:2]
+            x, y = event.cursorPosition
+            center = self.component.position
+            size = self.component.size
+            inside = (abs(x - center[0]) < float(size[0]) / width and
+                      abs(y - center[1]) < float(size[1]) / height)
             if event.isKeyDown():
-                self.pressed = True
-            elif self.pressed:
+                self.pressed = inside
+                return inside
+            if self.pressed:
                 self.pressed = False
-                if self.action == 'power':
-                    _toggle_reminder()
-                else:
-                    _toggle_voice()
-                if _panel is not None:
-                    _sync_controls(_panel)
-            return True
+                if inside:
+                    _log('HUD control click: ' + self.action)
+                    if self.action == 'power':
+                        _toggle_reminder()
+                    else:
+                        _toggle_voice()
+                    if _panel is not None:
+                        _sync_controls(_panel)
+                # Also swallow release outside after a captured press; never
+                # leak half of a UI click into firing/other battle controls.
+                return True
+            return False
         except Exception:
             self.pressed = False
             _exception('HUD control click failed')
             return False
 
-    def handleMouseClickEvent(self, component):
-        # Native GUI may also dispatch this after the handled button-up.
-        return True
+    def handleMouseClickEvent(self, *args):
+        # Native GUI also posts this after down/up. The shared latch above
+        # already handled the click; do not toggle again or consume plain clicks.
+        return False
+
+    def handleAxisEvent(self, event):
+        return False
 
 
 def _controls_cursor_active():
@@ -878,7 +1017,15 @@ def _controls_cursor_active():
         return False
     try:
         import Keys
-        return bool(BigWorld.isKeyDown(Keys.KEY_LCONTROL) or BigWorld.isKeyDown(Keys.KEY_RCONTROL))
+        cursor = GUI.mcursor()
+        if not cursor.active or not cursor.visible:
+            return False
+        app = getattr(_panel, 'app', None)
+        modal = getattr(app, 'isModalViewShown', None)
+        if callable(modal) and modal():
+            return False
+        return bool((BigWorld.isKeyDown(Keys.KEY_LCONTROL) or BigWorld.isKeyDown(Keys.KEY_RCONTROL)) and
+                    _control_slot(_panel) is not None)
     except Exception:
         return False
 
@@ -921,6 +1068,7 @@ def _control_slot(panel):
 def _hide_controls():
     for component, unused_owner, unused_mount, handler in _controls:
         component.visible = False
+        component.focus = False
         component.mouseButtonFocus = False
         handler.pressed = False
 
@@ -932,6 +1080,7 @@ def _delete_controls():
         handler.pressed = False
         try:
             component.visible = False
+            component.focus = False
             component.mouseButtonFocus = False
             component.script = None
             if mount == 'hud_child':
@@ -958,15 +1107,12 @@ def _sync_controls(panel):
                 for state in ('on', 'off'):
                     if not ResMgr.isFile('gui/maps/staysharp/control_%s_%s.dds' % (action, state)):
                         raise ValueError('HUD control texture unavailable')
-            hud = getattr(getattr(panel, 'app', None), 'component', None)
-            has_parent = hud is not None and callable(getattr(hud, 'addChild', None)) and callable(getattr(hud, 'delChild', None))
             for action in ('power', 'voice'):
                 path = 'gui/maps/staysharp/control_%s_on.dds' % action
                 component = GUI.Simple(path)
-                handler = _ControlClick(action)
-                mount = 'hud_child' if has_parent else 'gui_root'
+                handler = _ControlClick(action, component)
                 # Record ownership before native attachment for partial-failure cleanup.
-                _controls.append((component, hud, mount, handler))
+                _controls.append((component, None, 'gui_root', handler))
                 component.widthMode = GUI.Simple.eSizeMode.PIXEL
                 component.heightMode = GUI.Simple.eSizeMode.PIXEL
                 component.horizontalPositionMode = GUI.Simple.ePositionMode.CLIP
@@ -981,11 +1127,12 @@ def _sync_controls(panel):
                 component.visible = False
                 component.colour = (255, 255, 255, 255)
                 component.script = handler
-                if has_parent:
-                    hud.addChild(component, 'staysharp_control_' + action)
-                else:
-                    GUI.addRoot(component)
-            _log('HUD controls created; Ctrl+click power or voice above medkit')
+                # GUI.addRoot sorts by z at attachment. Assign the final depth
+                # FIRST so root key dispatch reaches these before the full-screen
+                # Wulf/Flash battle surface (z=0.5), without changing its hooks.
+                component.position = (0.0, 0.0, GUI_DEPTH)
+                GUI.addRoot(component)
+            _log('HUD controls created; independent input roots; Ctrl+click power or voice above medkit')
         width, height = GUI.screenResolution()[:2]
         size = geometry[2] * (24.0 / BORDER_SIZE)
         y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height
@@ -1000,6 +1147,7 @@ def _sync_controls(panel):
             component.position = (geometry[0] + (index * 2 - 1) * (size + 3.0 * _interface_scale(panel)) / width,
                                   y, GUI_DEPTH)
             component.visible = True
+            component.focus = True
             component.mouseButtonFocus = True
     except Exception:
         _controls_disabled = True
@@ -1028,9 +1176,10 @@ def _set_frame(level):
     _frame = level
 
 
-def _hide_overlay(reason='not_ready'):
+def _hide_overlay(reason='not_ready', suspend_audio=True):
     global _overlay_active, _frame
-    _suspend_audio()
+    if suspend_audio:
+        _suspend_audio()
     _cancel_pulse()
     if not _overlay_active:
         return
@@ -1234,6 +1383,7 @@ def _refresh(panel):
     global _ready_slot, _ready_since, _last_reason, _last_panel_active
     global _last_hud_status, _last_geometry_source, _last_geometry_camera, _last_camera_view
     _sync_controls(panel)
+    _track_battle_start(panel)
     if not _reminder_enabled:
         _hide_overlay('disabled_by_player')
         return
@@ -1252,8 +1402,8 @@ def _refresh(panel):
         _log('native HUD visibility=' + hud_reason)
     if not shown:
         if hud_reason == 'native_panel_hidden':
-            slot, _ = _probe_medkit(panel)
-            _track_audio_ready(panel, slot)
+            slot, reason = _probe_medkit(panel, for_audio=True)
+            _track_audio_ready(panel, slot, reason)
         else:
             _reset_audio()
         _ready_slot, _ready_since = None, None
@@ -1261,21 +1411,21 @@ def _refresh(panel):
         return
 
     slot, reason = _probe_medkit(panel)
-    _track_audio_ready(panel, slot)
+    audio_slot, audio_reason = (slot, reason) if slot is not None else _probe_medkit(panel, for_audio=True)
+    _track_audio_ready(panel, audio_slot, audio_reason)
     if reason != _last_reason:
         _last_reason = reason
         _log('equipment state=' + reason + (' slot=%d' % slot if slot is not None else ''))
     if slot is None:
         _ready_slot, _ready_since = None, None
+        if audio_slot is not None:
+            geometry, _ = _geometry(panel, audio_slot)
+            if geometry is not None:
+                _hide_overlay(reason, suspend_audio=False)
+                _update_audio(eligible=True, anticipating=audio_reason == 'cooldown_soon')
+                return
         _hide_overlay(reason)
         return
-    if slot != _ready_slot:
-        _ready_slot, _ready_since = slot, _time()
-        _hide_overlay('slot_changed')
-        return
-    if _time() - _ready_since < STABLE_READY_DELAY:
-        return
-
     geometry, origin = _geometry(panel, slot)
     if origin != _last_geometry_source or camera != _last_geometry_camera:
         _last_geometry_source = origin
@@ -1285,8 +1435,14 @@ def _refresh(panel):
     if geometry is None:
         _hide_overlay('panel_geometry_unavailable_' + origin)
         return
+    _update_audio(eligible=True)
+    if slot != _ready_slot:
+        _ready_slot, _ready_since = slot, _time()
+        _hide_overlay('slot_changed', suspend_audio=False)
+        return
+    if _time() - _ready_since < STABLE_READY_DELAY:
+        return
     _show_overlay(slot, geometry)
-    _update_audio()
 
 def _check_state():
     global _state_callback, _error_count, _graphics_disabled
@@ -1378,12 +1534,14 @@ def _activate(panel):
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
     global _voice_player, _voice_disabled, _reminder_enabled, _voice_enabled, _voice_attempts, _voice_failures
-    global _controls_disabled
+    global _controls_disabled, _battle_voice_due
     if panel is _panel:
         return
     if _panel is not None:
         _deactivate(_panel)
     _reset_audio()
+    _battle_voice_due = None
+    _cooldown_deadlines.clear()
     _voice_player = None
     _voice_disabled = False
     _voice_attempts = 0
@@ -1404,6 +1562,7 @@ def _activate(panel):
     _last_camera_view = None
     _last_vehicle_source = None
     _subscribe_hotkey()
+    _subscribe_equipment(panel)
     _log('audio battle_start mod_version=%s language=%s event=%s' % (VERSION, _language, _ready_voice_event()))
     _audio_diagnostics()
     _log('battle panel populated; renderer deferred; HUD visibility required')
@@ -1417,6 +1576,7 @@ def _deactivate(panel):
     _log('audio battle_end attempts=%d failures=%d disabled=%s' % (
         _voice_attempts, _voice_failures, _voice_disabled))
     _unsubscribe_hotkey()
+    _unsubscribe_equipment()
     _panel = None
     _ready_slot = None
     _ready_since = None

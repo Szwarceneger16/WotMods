@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.1
+
+- Separate the voice reminder interval from the visual pulse: repeat every ten seconds while the pulse continues at its original rate.
+- Announce about half a second before a tracked medkit cooldown ends, or one second after battle start when already ready. Preserve the announcement across the READY transition without a duplicate.
+- Timestamp native cooldown updates and use server battle time for initial readiness; fall back to actual readiness if no trustworthy cooldown timestamp exists.
+- Route clickable status icons through independent native GUI roots with cursor hit testing, ahead of the full-screen Flash battle interface.
+
 ## 1.8.0
 
 - Write the Wargaming-compatible Wwise bank header so WoT can read the bundled voice bank.

@@ -6,8 +6,16 @@ speech, external process, background thread or runtime download is used.
 
 ## Behavior
 
-- Once a usable medkit is detected, wait one second and play the selected
-  voice. Repeat it every four seconds while the reminder is active.
+- Start the selected voice about 0.5 seconds before a tracked medkit cooldown
+  ends. If the medkit is already ready at battle start, play it one second after
+  the battle starts. A late join announces readiness as soon as the HUD is usable.
+- Repeat the voice every 10 seconds while the medkit remains eligible. The
+  orange pulse continues independently, with its original four-second cycle.
+- Timestamp native equipment updates once; the game's remaining time is a
+  snapshot, not a live countdown. Without a trustworthy cooldown update, announce
+  at actual readiness. The state check can add up to 0.25 seconds of timing delay.
+  Anticipation keeps the same announcement latch through READY, preventing a
+  duplicate at zero, and never starts the visual pulse before actual readiness.
 - Press **Ctrl+Alt+M** in battle to turn the visual and audio reminder off or
   back on. The shortcut is ignored while
   battle chat is focused and does not consume the game's key event.

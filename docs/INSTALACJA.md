@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.0 - installation and test
+# Stay Sharp Medkit Reminder 1.8.1 - installation and test
 
 ## Install
 
@@ -33,7 +33,11 @@
 - Before battle starts and during equipment selection, expect no outline or
   extra audio.
 - With the perk permitting use and the medkit ready, expect the orange pulse
-  and the selected voice after one second, repeated every four seconds.
+  continuously. With a medkit ready at battle start, expect the selected voice
+  one second after the battle starts, then every ten seconds while eligible.
+- Use the medkit and check the next cooldown: the voice starts about half a
+  second before it ends; the outline resumes only after actual readiness.
+  There must be no second announcement when the countdown reaches zero.
   There must be no native medkit activation effect from this mod.
 - Press Ctrl+Alt+M to turn the outline and voice off, then press it again to
   restore them. Hold Ctrl to use the mouse cursor and click the power or

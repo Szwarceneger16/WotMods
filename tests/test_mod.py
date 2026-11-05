@@ -174,10 +174,19 @@ class FakeItem:
         return self.can_use,None
 
 
+class EquipmentEvent:
+    def __init__(self): self.handlers=[]
+    def __iadd__(self, fn): self.handlers.append(fn); return self
+    def __isub__(self, fn): self.handlers.remove(fn); return self
+    def emit(self, *args):
+        for fn in list(self.handlers): fn(*args)
+
+
 class FakeItems:
     def __init__(self,item):
         self.item=item
         self.compact=72
+        self.onEquipmentUpdated=EquipmentEvent()
     def iterEquipmentsByTag(self,tag):
         if tag=='medkit' and self.item is not None:
             return [(self.compact,self.item)]
@@ -1293,16 +1302,16 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.audio_plays,[])
         self.state()
         self.assertEqual(self.audio_plays,[(detected+1.0,self.mod.READY_VOICE_EVENT)])
-        self.state(15)
+        self.state(39)
         self.assertEqual(len(self.audio_plays),1)
         self.state()
-        self.assertEqual(self.audio_plays[-1],(detected+5.0,self.mod.READY_VOICE_EVENT))
-        self.state(16)
-        self.assertEqual(self.audio_plays[-1],(detected+9.0,self.mod.READY_VOICE_EVENT))
+        self.assertEqual(self.audio_plays[-1],(detected+11.0,self.mod.READY_VOICE_EVENT))
+        self.state(40)
+        self.assertEqual(self.audio_plays[-1],(detected+21.0,self.mod.READY_VOICE_EVENT))
         self.assertEqual(len(self.audio_plays),3)
 
     def test_119_sound_handles_are_reused_during_ready_interval(self):
-        self.state(65)
+        self.state(125)
         self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT])
         self.assertEqual(len(self.audio_plays),4)
 
@@ -1328,7 +1337,7 @@ class Tests(unittest.TestCase):
         self.panel.native_visible=True
         self.state(5)
         self.assertEqual(len(self.audio_plays),1)
-        self.state(16)
+        self.state(36)
         self.assertEqual([event for _,event in self.audio_plays],
                          [self.mod.READY_VOICE_EVENT]*2)
 
@@ -1351,6 +1360,7 @@ class Tests(unittest.TestCase):
             self.panel.camera_mode=camera
             self.panel.isActive=False
             self.state(4)
+        self.state(24)
         self.assertEqual(len(self.audio_plays),2)
         self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
 
@@ -1359,7 +1369,7 @@ class Tests(unittest.TestCase):
         self.world.clock+=60.0
         self.state()
         self.assertEqual(len(self.audio_plays),2)
-        self.state(15)
+        self.state(39)
         self.assertEqual(len(self.audio_plays),2)
         self.state()
         self.assertEqual(len(self.audio_plays),3)
@@ -1428,7 +1438,7 @@ class Tests(unittest.TestCase):
 
     def test_voice_diagnostics_record_attempts_without_claiming_audibility(self):
         with patch.object(self.mod, '_log') as log:
-            self.state(21)
+            self.state(45)
             self.emit_unregister()
         messages='\n'.join(call.args[0] for call in log.call_args_list)
         self.assertIn('audio create event=staysharp_medkit_ready',messages)
