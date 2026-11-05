@@ -4,6 +4,8 @@ const path = require('path');
 const assert = require('assert');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
+// Diagnostic raster bytes belong outside the source/release input tree.
+const qaDirectory = fs.mkdtempSync(path.join(require('os').tmpdir(),'grz-session-ui-'));
 const fixtures = JSON.parse(fs.readFileSync(path.join(root,'preview/demo_snapshot.json'),'utf8'));
 const errors = [];
 const checks = [];
@@ -270,7 +272,7 @@ async function nativeHost(browser, options) {
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
   check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-compact.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
   const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
   await page.locator('#ss-xp-received').click();
   const after=await page.locator('#ss-summary .ss-metric-row').first().innerText();
@@ -379,10 +381,10 @@ async function nativeHost(browser, options) {
   await page.locator('#ss-group-vehicles').click();
   await page.locator('#ss-xp-base').click();
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=0);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-final.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-final.png')});
   await page.locator('#ss-group-battles').click();
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=document.getElementById('ss-group-tabs').offsetTop-el.offsetTop);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-battles.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-battles.png')});
   await page.locator('#ss-group-vehicles').click();
 
   const malformed=await page.evaluate(()=>GRZSessionStats.update('{bad json'));
@@ -792,5 +794,6 @@ async function nativeHost(browser, options) {
   console.log(JSON.stringify(report,null,2));
   } finally {
     await browser.close();
+    fs.rmSync(qaDirectory,{recursive:true,force:true});
   }
 })().catch(error=>{console.error(error);process.exitCode=1;});

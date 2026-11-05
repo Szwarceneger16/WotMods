@@ -836,9 +836,9 @@
         if (!state.cardColumns || state.cardColumns.parentNode !== nodes.groups) { return; }
         var scale = state.nativeScale || 1;
         var width = nodes.groups.getBoundingClientRect().width / scale;
-        if (!(width > 0)) {
+        if (state.logicalSize || (state.payload && state.payload.window_size) || !(width > 0)) {
             /* A saved large window must select its columns on first opening,
-               even before the native surface exposes its first layout box.
+               even if the native surface still exposes its previous layout box.
                Reserve the border, scroll padding and scrollbar in logical px. */
             var payload = state.payload || {}, viewport = payload.viewport || {};
             var preferred = state.logicalSize && state.logicalSize.width;
@@ -1064,7 +1064,7 @@
                 var gesture = value.resize_gesture;
                 if (state.resize && gesture.token === String(state.resizeSequence)) {
                     state.resize.native = true;
-                    setLogicalSize(gesture.width, gesture.height);
+                    setLogicalSize(gesture.width, gesture.height, state.resize.corner);
                     if (!gesture.active) { endResize(false); }
                 }
                 return true;
@@ -1292,14 +1292,14 @@
         invoke('resize', { width: width, height: height });
         nativeDiagnostic('layout_ready', width, height);
     }
-    function setLogicalSize(width, height) {
+    function setLogicalSize(width, height, edge) {
         var viewport = state.payload && state.payload.viewport;
         var scale = state.nativeScale;
         var maxWidth = (viewport && viewport.width || window.innerWidth) / scale - 20 / scale;
         var maxHeight = (viewport && viewport.height || window.innerHeight) / scale - 20 / scale;
         state.logicalSize = {
-            width: Math.min(Math.max(1, maxWidth), Math.max(470, width)),
-            height: Math.min(Math.max(1, maxHeight), Math.max(360, height))
+            width: Math.min(Math.max(1, maxWidth), Math.max(!edge || /[ew]/.test(edge) ? 470 : 1, width)),
+            height: Math.min(Math.max(1, maxHeight), Math.max(!edge || /[ns]/.test(edge) ? 360 : 1, height))
         };
         queueResize();
     }
@@ -1329,7 +1329,7 @@
         var horizontal = west || drag.corner.indexOf('e') >= 0;
         var vertical = north || drag.corner.indexOf('s') >= 0;
         setLogicalSize((drag.width + (horizontal ? (event.clientX - drag.x) * (west ? -1 : 1) : 0)) / state.nativeScale,
-            (drag.height + (vertical ? (event.clientY - drag.y) * (north ? -1 : 1) : 0)) / state.nativeScale);
+            (drag.height + (vertical ? (event.clientY - drag.y) * (north ? -1 : 1) : 0)) / state.nativeScale, drag.corner);
     }
     function endResize(notify) {
         if (!state.resize) { return; }
@@ -1370,7 +1370,7 @@
             invoke('drag', {active:false});
         }
         setLogicalSize(rect.width / scale + (horizontal ? direction[0] * 24 : 0),
-            rect.height / scale + (vertical ? direction[1] * 24 : 0));
+            rect.height / scale + (vertical ? direction[1] * 24 : 0), corner);
         if (state.bound) { invoke('size_preference', state.logicalSize); }
     }
     function bindResize(on) {

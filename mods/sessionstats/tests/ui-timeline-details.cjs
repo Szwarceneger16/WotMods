@@ -137,6 +137,9 @@ module.exports = async function ({browser, nativeHost, check}) {
     window.__realCardRect = Element.prototype.getBoundingClientRect;
     Element.prototype.getBoundingClientRect = function () {
       const box=__realCardRect.call(this);
+      if(this.id==='ss-groups') return {
+        x:box.x,y:box.y,left:box.left,right:box.left+600,top:box.top,bottom:box.bottom,width:600,height:box.height,
+      };
       return this.classList.contains('ss-group') ?
         {x:box.x,y:box.y,left:box.left,right:box.right,top:box.top,bottom:box.top,width:box.width,height:0} : box;
     };
@@ -174,7 +177,7 @@ module.exports = async function ({browser, nativeHost, check}) {
           position:getComputedStyle(card).position,index:Number(card.getAttribute('data-list-index'))};
       });
       const columns=groups.querySelector('.ss-card-columns');
-      const group=groups.getBoundingClientRect();
+      const group=__realCardRect.call(groups);
       return {cards,two:groups.classList.contains('ss-two-columns'),
         group:{left:group.left,right:group.right,width:group.width},
         axis:columns && {image:getComputedStyle(columns,':before').backgroundImage,
@@ -201,7 +204,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     await wide.locator('#ss-group-'+group).click();
     await wide.waitForFunction(() => document.getElementById('ss-groups').classList.contains('ss-two-columns'));
     let layout=await readLayout();
-    check('Zero initial Gameface heights cannot overlap fixed-width '+group+' cards',
+    check('Stale narrow groups and zero card heights cannot overlap fixed-width '+group+' cards',
       layout.cards.length===6 && layout.cards.every((card,index) =>
         Math.abs(card.width-700)<=1 && card.position!=='absolute' &&
         card.left>=layout.group.left-1 && card.right<=layout.group.right+1 &&
@@ -287,6 +290,47 @@ module.exports = async function ({browser, nativeHost, check}) {
       await resize.evaluate(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
         {width:finalWidth,height:finalHeight}));
     await resize.close();
+  }
+
+  for(const edge of ['e','w','n','s']) {
+    const small=await nativeHost(browser, {
+      initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
+    });
+    const horizontal=/[ew]/.test(edge),native=edge==='w' || edge==='s';
+    const width=horizontal ? 700 : 430,height=horizontal ? 330 : 620;
+    await small.evaluate(({width,height}) => {
+      const payload=JSON.parse(model.payload);payload.window_size=[width,height];
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    },{width,height});
+    await small.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,{width,height});
+    const x=edge==='w' ? 6 : edge==='e' ? width-6 : width/2;
+    const y=edge==='n' ? 6 : edge==='s' ? height-6 : height/2;
+    await small.locator('[data-corner="'+edge+'"]').dispatchEvent('pointerdown',{
+      button:0,pointerId:88,clientX:x,clientY:y,
+    });
+    if(native) {
+      await small.evaluate(({width,height,horizontal}) => {
+        const token=__grzCommands.filter(command=>command.action==='resize_begin').pop().token;
+        GRZSessionStats.update({resize_gesture:{token,width:width+(horizontal ? 80 : 0),height:height+(horizontal ? 0 : 80),active:true}});
+        GRZSessionStats.update({resize_gesture:{token,width:width+(horizontal ? 100 : 0),height:height+(horizontal ? 0 : 100),active:false}});
+      },{width,height,horizontal});
+    } else {
+      await small.evaluate(({edge,x,y}) => {
+        document.dispatchEvent(new PointerEvent('pointermove',{
+          pointerId:88,buttons:1,clientX:x+(edge==='w' ? -80 : 80),clientY:y+(edge==='n' ? -80 : 80),bubbles:true,
+        }));
+        document.dispatchEvent(new PointerEvent('pointerup',{
+          pointerId:88,button:0,clientX:x+(edge==='w' ? -100 : 100),clientY:y+(edge==='n' ? -100 : 100),bubbles:true,
+        }));
+      },{edge,x,y});
+    }
+    const finalWidth=width+(horizontal ? 100 : 0),finalHeight=height+(horizontal ? 0 : 100);
+    await small.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
+      {width:finalWidth,height:finalHeight});
+    check('The '+edge+' '+(native ? 'native' : 'fallback')+' gesture preserves its saved subminimum inactive dimension',
+      await small.evaluate(({width,height}) => __grzCommands.some(command=>command.action==='size_preference' &&
+        command.width===String(width) && command.height===String(height)),{width:finalWidth,height:finalHeight}));
+    await small.close();
   }
 
   const captured = await nativeHost(browser, {
