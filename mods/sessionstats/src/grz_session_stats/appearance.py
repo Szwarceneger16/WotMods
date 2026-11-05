@@ -219,9 +219,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-scope:hover, .ss-scope:focus { color:{{colors.session_tab_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
 .ss-scope.is-active { color:{{colors.session_tab_active_text}}; background:linear-gradient({{colors.session_tab_active_background_start}}, {{colors.session_tab_active_background_middle}} 56%, {{colors.session_tab_active_background_end}}); text-shadow:0 0 7rem {{colors.session_tab_active_text_shadow}}; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:{{colors.session_tab_marker_background}}; border-right:1rem solid {{colors.session_tab_marker_border_right}}; border-bottom:1rem solid {{colors.session_tab_marker_border_bottom}}; transform:rotate(45deg); }
-.ss-toolbar { display:flex; align-items:center; justify-content:space-between; min-height:33rem; padding-top:4rem; }
-.ss-period { display:block; font-size:12rem; color:{{colors.period_text}}; margin-right:7rem; }
-.ss-xp-picker { display:flex; flex-shrink:0; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
+.ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; min-height:37rem; padding-top:4rem; }
+.ss-period { display:block; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
+.ss-xp-picker { display:flex; flex:0 0 212rem; width:212rem; max-width:100%; margin-bottom:4rem; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
 .ss-small-toggle { width:98rem; border:0; background:{{colors.xp_toggle_background}}; color:{{colors.xp_toggle_text}}; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 #ss-xp-received { width:112rem; }
 .ss-small-toggle.is-active { background:linear-gradient({{colors.xp_toggle_active_background_start}}, {{colors.xp_toggle_active_background_end}}); color:{{colors.xp_toggle_active_text}}; box-shadow:inset 0 1rem {{colors.xp_toggle_active_shadow}}; }
@@ -243,6 +243,23 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-performance { width:45%; padding-right:9rem; }
 .ss-economy { width:55%; padding-left:8rem; border-left:1rem solid {{colors.economy_separator_border_left}}; }
 .ss-detail-title { margin:0 0 5rem; color:{{colors.detail_title_text}}; font-size:14rem; line-height:18rem; font-weight:bold; }
+/* Summary sections keep useful line lengths and wrap by their actual parent
+   width. Their flow is independent of the game viewport and card columns. */
+.ss-summary-layout.ss-details { flex-direction:row; flex-wrap:wrap; align-items:flex-start; padding:0; border:0; }
+.ss-summary-main { flex:0 1 340rem; width:340rem; max-width:100%; min-width:0; padding:0 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-layout > .ss-performance { flex:0 1 310rem; width:310rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-layout > .ss-economy { flex:0 1 420rem; width:420rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
+.ss-summary-main .ss-headline { display:block; padding:0 0 4rem; }
+.ss-summary-main .ss-kpi { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:32rem; padding:0 5rem; border-left:0; }
+.ss-summary-main .ss-kpi + .ss-kpi { border-top:1rem solid {{colors.kpi_separator_border_left}}; }
+.ss-summary-main .ss-kpi-label { flex:1 1 0rem; min-width:0; margin-right:8rem; text-align:left; }
+.ss-summary-main .ss-kpi-value { flex:0 1 auto; min-width:0; max-width:72%; text-align:right; overflow-wrap:break-word; }
+.ss-summary-main .ss-outcomes { justify-content:flex-start; margin:0 4rem 4rem; }
+.ss-summary-main .ss-summary-meta { margin:0 4rem; }
+.ss-summary-layout .ss-money-head, .ss-summary-layout .ss-money-row { flex-wrap:wrap; }
+.ss-summary-layout .ss-money-head .ss-money-label { display:none; }
+.ss-summary-layout .ss-money-row .ss-money-label { width:100%; padding-bottom:0; line-height:17rem; }
+.ss-summary-layout .ss-money-value { width:33.333%; }
 /* WoT-style insets and quiet row rules replace the cell grid. Use explicit
    block/flex boxes, supported corner radii and colours for Gameface. */
 .ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:26rem; }
@@ -342,8 +359,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 }
 @media (max-width:380px) {
   .ss-game-mode { display:none; }
-  .ss-toolbar { flex-wrap:wrap; padding:7rem 0 4rem; }
-  .ss-period { width:100%; margin:0 0 4rem; }
   .ss-group-thumb { width:42rem; height:26rem; margin-right:6rem; }
   .ss-group-title { font-size:14rem; }
   .ss-group-kpi .ss-kpi-value { font-size:17rem; }
@@ -397,8 +412,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
 .ss-money-label .ss-cell-coverage { margin-left:3rem; }
 @media (max-width:560px) {
-  .ss-toolbar { flex-wrap:wrap; padding:4rem 0; }
-  .ss-period { width:100%; margin-bottom:3rem; }
   .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
   .ss-battle .ss-group-name { width:0; flex:1; }
   .ss-outcome-image { width:36rem; height:25rem; }
@@ -407,7 +420,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 }
 @media (max-width:380px) {
   .ss-language-caption { margin-right:4rem; }
-  .ss-xp-picker { margin-left:auto; }
 }
 
 .ss-time-point-controls { display:flex; align-items:center; flex:1 1 250rem; min-width:0; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
@@ -417,9 +429,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-has-help { cursor:help; }
 .ss-help-tooltip { display:none; position:absolute; z-index:60; width:320rem; padding:9rem 11rem; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
-.ss-timeline { position:relative; z-index:21; align-items:center; padding:8rem 0 2rem; }
-.ss-timeline-field { display:flex; flex:1 1 0rem; min-width:0; align-items:center; color:{{colors.table_header_text}}; }
-.ss-timeline-field + .ss-timeline-field { margin-left:12rem; }
+.ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
+.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; color:{{colors.table_header_text}}; }
+.ss-timeline-field:first-child { margin-right:8rem; }
 .ss-timeline-field > span { flex-shrink:0; margin-right:6rem; }
 .ss-timeline-field .ss-select { flex:1 1 0rem; width:0; }
 .ss-timeline-field .ss-select-options { width:100%; min-width:0; max-height:200rem; overflow-y:auto; }

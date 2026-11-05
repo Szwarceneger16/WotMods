@@ -345,7 +345,7 @@
     function details(parent, stats, global, battle) {
         stats = stats || {};
         var total = observedTotal(stats);
-        var holder = append(parent, element('div', 'ss-details' + (battle ? ' ss-battle-details' : '')));
+        var holder = global ? parent : append(parent, element('div', 'ss-details' + (battle ? ' ss-battle-details' : '')));
         var performance = append(holder, element('div', 'ss-performance' + (battle ? ' ss-battle-performance' : '')));
         append(performance, element('h3', 'ss-detail-title', battle ? t('performance.battle') : t('performance.period')));
         var xpLabel = state.xp === 'base' ? t('xp.base') : t('xp.received');
@@ -393,12 +393,14 @@
     function renderSummary(stats, scope) {
         clear(nodes.summary);
         clearHelp(nodes.summary);
-        var headline = append(nodes.summary, element('div', 'ss-headline'));
+        var layout = append(nodes.summary, element('div', 'ss-summary-layout ss-details'));
+        var main = append(layout, element('div', 'ss-summary-main'));
+        var headline = append(main, element('div', 'ss-headline'));
         var missing = observedTotal(stats) > (stats.battles || 0);
         headlineStat(headline, missing ? t('metric.confirmed') : t('metric.battles'), battleCount(stats), false, false);
         headlineStat(headline, missing ? t('metric.win_rate') + '*' : t('metric.win_rate'), rate(stats.win_rate), false, false);
         headlineStat(headline, t('metric.period_wn8'), integer(stats.wn8), true, false);
-        var outcomes = append(nodes.summary, element('p', 'ss-outcomes'));
+        var outcomes = append(main, element('p', 'ss-outcomes'));
         append(outcomes, element('span', '', t('metric.wins') + ' '));
         append(outcomes, element('strong', '', number(stats.wins)));
         append(outcomes, element('span', '', '  ·  ' + t('metric.losses') + ' '));
@@ -413,10 +415,10 @@
         } else if (stats.partial_results > 0) {
             help(nodes.summary, t('coverage.partial', [number(stats.partial_results)]));
         }
-        var summaryMeta = append(nodes.summary, element('div', 'ss-summary-meta'));
+        var summaryMeta = append(main, element('div', 'ss-summary-meta'));
         freeXP(summaryMeta, stats);
         wn8Coverage(summaryMeta, stats, false);
-        details(nodes.summary, stats, true);
+        details(layout, stats, true);
         if (nodes.summary.querySelector('.ss-cell-coverage, .ss-count-coverage')) { help(nodes.summary, t('coverage.legend')); }
     }
     function tierText(tier) {
@@ -606,7 +608,9 @@
     function currentScope() { return state.payload.scopes[scopeName()]; }
 
     function renderTimeline(timeline, disabled) {
-        var visible = !!timeline && state.scope === 'manual' && !disabled;
+        var timelineScope = !!timeline && state.scope === 'manual';
+        var visible = timelineScope && !disabled;
+        nodes.started.style.display = timelineScope ? 'none' : 'block';
         nodes.timeline.style.display = visible ? 'flex' : 'none';
         if (!visible) { return; }
         var points = timeline.time_points || [];

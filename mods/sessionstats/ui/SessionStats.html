@@ -28,12 +28,12 @@
         <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
         <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
       </div>
-      <div id="ss-timeline" class="ss-timeline" style="display:none">
-        <div class="ss-timeline-field"><span data-i18n="timeline.from">From</span><div id="ss-timeline-from" class="ss-select"></div></div>
-        <div class="ss-timeline-field"><span data-i18n="timeline.to">To</span><div id="ss-timeline-to" class="ss-select"></div></div>
-      </div>
       <div class="ss-toolbar">
         <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
+        <div id="ss-timeline" class="ss-timeline" role="group" aria-label="Timeline" data-i18n-aria="scope.timeline" style="display:none">
+          <div class="ss-timeline-field"><span data-i18n="timeline.from">From</span><div id="ss-timeline-from" class="ss-select"></div></div>
+          <div class="ss-timeline-field"><span data-i18n="timeline.to">To</span><div id="ss-timeline-to" class="ss-select"></div></div>
+        </div>
         <div class="ss-xp-picker" role="group" aria-label="Experience type" data-i18n-aria="xp.group">
           <button id="ss-xp-base" class="ss-control ss-small-toggle is-active" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="xp.base">Base XP</span></button>
           <button id="ss-xp-received" class="ss-control ss-small-toggle" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="xp.received">Received XP</span></button>
