@@ -788,6 +788,8 @@ async function nativeHost(browser, options) {
   await localized.close();
   await require('./ui-timeline-details.cjs')({browser,nativeHost,check});
   await require('./ui-upper-layout.cjs')({browser,nativeHost,check});
+  await require('./ui-resize-input.cjs')({browser,nativeHost,check});
+  await require('./ui-locale-screenshots.cjs')({browser,nativeHost,check});
   check('No browser JavaScript errors',errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};

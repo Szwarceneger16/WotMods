@@ -19,7 +19,9 @@ module.exports = async function ({browser, nativeHost, check}) {
         'challenge:8:2':{kind:'crucible', name:'<b>Fixture stage</b>', stage:2, status:'failed'},
         'personal:123':{kind:'personal', name:'Fixture mission', operation:'Operation Fossa', status:'honors'},
       },
-      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20, eventCrystal:43},
+      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20,eventCrystal:43,eventCredits:50000,
+        boosterCredits:26943,boosterXP:136,boosterFreeXP:28,boosterTMenXP:544,
+        wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164},
     };
     model.payload = JSON.stringify(payload);
     __grzEvents['viewEnv.onDataChanged']();
@@ -89,8 +91,25 @@ module.exports = async function ({browser, nativeHost, check}) {
     text.includes('33 points earned') && text.includes('shield used') &&
     text.includes('First victory: ×2 XP') && text.includes('<b>Fixture stage</b>') &&
     text.includes('Operation Fossa') && text.includes('Completed with honors') &&
-    text.includes('Mission or event reward: +43 bonds') &&
+    text.includes('+43') &&
     await details.locator('b').count() === 0);
+  const bonusRows=await details.locator('.ss-bonus-row').evaluateAll(rows=>rows.map(row=>({
+    label:row.querySelector('.ss-bonus-label').textContent,
+    values:[...row.querySelectorAll('.ss-bonus-number')].map(cell=>cell.textContent.replace(/\s/g,'')),
+  })));
+  check('Bonus amounts align beneath their currency and XP column headers',
+    bonusRows[0].values.join('|')==='Credits|XP|FreeXP|CrewXP|Bonds' &&
+    bonusRows.find(row=>row.label==='Event').values.join('|')==='+50000|—|—|—|+43');
+  check('Reserve and WoT Plus rewards share one row per source without losing or duplicating amounts',
+    bonusRows.filter(row=>row.label==='Personal reserve').length===1 &&
+    bonusRows.find(row=>row.label==='Personal reserve').values.join('|')==='+26943|+136|+28|+544|—' &&
+    bonusRows.filter(row=>row.label==='WoT Plus').length===1 &&
+    bonusRows.find(row=>row.label==='WoT Plus').values.join('|')==='+8083|+41|+2|+164|—');
+  check('Multipliers keep a separate two-column table from the six-column resource matrix',
+    await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>row.children.length===6)) &&
+    await details.locator('.ss-more-bonuses .ss-more-value').count()===0 &&
+    await details.locator('.ss-more-factors[role="table"] .ss-more-value').count()===1 &&
+    await details.locator('.ss-more-factors .ss-more-value').evaluateAll(rows=>rows.every(row=>row.children.length===2)));
   check('More groups rewards and paired mission outcomes into compact tables',
     await details.locator('.ss-more-table[role="table"]').count() >= 3 &&
     await details.locator('.ss-more-mission-name').count() === 2 &&
@@ -200,13 +219,15 @@ module.exports = async function ({browser, nativeHost, check}) {
     },width);
     await wide.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   }
+  const widths={vehicles:600,maps:560,tiers:520,battles:620};
   for(const group of ['vehicles','maps','tiers','battles']) {
+    const expectedWidth=widths[group];
     await wide.locator('#ss-group-'+group).click();
     await wide.waitForFunction(() => document.getElementById('ss-groups').classList.contains('ss-two-columns'));
     let layout=await readLayout();
     check('Stale narrow groups and zero card heights cannot overlap fixed-width '+group+' cards',
       layout.cards.length===6 && layout.cards.every((card,index) =>
-        Math.abs(card.width-700)<=1 && card.position!=='absolute' &&
+        Math.abs(card.width-expectedWidth)<=1 && card.position!=='absolute' &&
         card.left>=layout.group.left-1 && card.right<=layout.group.right+1 &&
         (index<2 || card.top>=layout.cards[index-2].bottom+15)) &&
       Math.abs(layout.cards[1].left-layout.cards[0].right-64)<=2);
@@ -224,14 +245,25 @@ module.exports = async function ({browser, nativeHost, check}) {
         Math.abs(expanded.cards[1].top-layout.cards[1].top)<1 &&
         Math.abs(expanded.cards[3].top-layout.cards[3].top)<1);
     }
-    await setAvailableWidth(1300);
+    await setAvailableWidth(1000);
     layout=await readLayout();
     check('The '+group+' grid collapses below two complete cards without stretching them',
-      !layout.two && layout.group.width<1464 && layout.cards.every((card,index) =>
-        Math.abs(card.width-700)<=1 && Math.abs(card.left-layout.cards[0].left)<1 &&
+      !layout.two && layout.group.width<2*expectedWidth+64 && layout.cards.every((card,index) =>
+        Math.abs(card.width-expectedWidth)<=1 && Math.abs(card.left-layout.cards[0].left)<1 &&
         (!index || card.top>=layout.cards[index-1].bottom+15)));
     await setAvailableWidth(2400);
   }
+  await setAvailableWidth(1200);
+  await wide.evaluate(()=>{
+    const payload=JSON.parse(model.payload);
+    payload.appearance={card_widths:{battles:540}};
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await wide.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const configured=await readLayout();
+  check('A card-width configuration change updates fixed widths and the two-column threshold in the open panel',
+    configured.two && configured.cards.every(card=>Math.abs(card.width-540)<=1) &&
+    configured.group.width>=2*540+64 && configured.group.width<2*620+64);
   check('All eight window corners and edges have reachable resize grips',
     await wide.locator('.ss-resize-grip').count()===8);
   await wide.close();

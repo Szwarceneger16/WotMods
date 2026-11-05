@@ -51,7 +51,10 @@ module.exports=async function ({browser,nativeHost,check}) {
         const panels=['.ss-summary-main','#ss-summary .ss-performance','#ss-summary .ss-economy'].map(selector=>bounds(document.querySelector(selector)));
         const filters=[...document.querySelectorAll('.ss-timeline-field')].map(bounds);
         const xp=bounds(document.querySelector('.ss-xp-picker'));
-        const overflow=[...document.querySelectorAll('.ss-titlebar *,.ss-controls *,#ss-summary *')].filter(node=>{
+        const scopes=bounds(document.querySelector('.ss-scopes'));
+        const lower=['.ss-list-meta','#ss-pagination','#ss-sorting'].map(selector=>bounds(document.querySelector(selector)));
+        const lowerTriggers=['#ss-page-previous','#ss-sort-statistic .ss-select-trigger','#ss-sort-metric .ss-select-trigger','#ss-sort-direction .ss-select-trigger'].map(selector=>bounds(document.querySelector(selector)));
+        const overflow=[...document.querySelectorAll('.ss-titlebar *,.ss-controls *,#ss-summary *,.ss-list-controls *')].filter(node=>{
           const box=bounds(node);
           return box.width>0 && box.height>0 && (box.left<root.left-1 || box.right>root.right+1);
         }).map(node=>node.className);
@@ -71,7 +74,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         }
         const compact=text=>text.replace(/\s/g,'');
         const credits=document.querySelector('#ss-summary .ss-money-row');
-        return {root,panels,filters,xp,overflow,badNumbers,
+        return {root,panels,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
           xpValues:[...document.querySelectorAll('#ss-summary .ss-metric-row .ss-metric-number')].slice(0,3).map(node=>compact(node.textContent)),
@@ -89,10 +92,17 @@ module.exports=async function ({browser,nativeHost,check}) {
       check('Timeline selectors remain bounded and hide the redundant period line: '+caption,
         audit.periodHidden && audit.filters.every(field=>field.width>0 && field.width<=223));
       if(mode==='wide') {
-        check('Wide upper filters share one row with the XP toggle: '+caption,
+        check('Wide upper scopes, date filters and XP toggle share a bounded row: '+caption,
+          audit.scopes.width<=261 && audit.scopes.right<=audit.filters[0].left &&
+          Math.abs(audit.scopes.top-audit.xp.top)<=3 &&
           Math.abs(audit.filters[0].top-audit.filters[1].top)<=2 &&
           Math.abs(audit.filters[0].top-audit.xp.top)<=2 &&
           audit.filters[1].right<=audit.xp.left);
+        check('Wide result count, pagination and sorting share a bounded row: '+caption,
+          audit.lower[0].width<=169 && audit.lower[1].width<=341 && audit.lower[2].width<=363 &&
+          audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
+          Math.min(...audit.lower.map(box=>box.bottom))-Math.max(...audit.lower.map(box=>box.top))>5 &&
+          Math.max(...audit.lowerTriggers.map(box=>box.bottom))-Math.min(...audit.lowerTriggers.map(box=>box.bottom))<=2);
         check('Wide summary uses one compact row for main stats, combat and finances: '+caption,
           Math.max(...audit.panels.map(panel=>panel.top))-Math.min(...audit.panels.map(panel=>panel.top))<=1 &&
           audit.panels[0].right<=audit.panels[1].left+1 && audit.panels[1].right<=audit.panels[2].left+1);

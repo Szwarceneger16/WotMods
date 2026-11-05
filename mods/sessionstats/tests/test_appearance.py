@@ -169,6 +169,19 @@ class AppearanceTests(unittest.TestCase):
                 result = style.validate_config({section: {key: value}})
                 self.assertEqual(result[section][key], style.DEFAULT_CONFIG[section][key])
 
+    def test_card_widths_are_optional_independent_and_bounded(self):
+        defaults = style.default_config()['cards']
+        self.assertEqual(defaults, {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520})
+        actual = self.write({'cards': {'battles': 480, 'maps': 900}})
+        self.assertEqual(actual['cards'], dict(defaults, battles=480, maps=900))
+        presentation = style.build_presentation(actual)
+        self.assertEqual(presentation['card_widths'], actual['cards'])
+        presentation['card_widths']['maps'] = 600
+        self.assertEqual(actual['cards']['maps'], 900)
+        for invalid in (True, None, '620', 479, 901, float('nan'), float('inf')):
+            self.assertEqual(style.validate_config({'cards': {'battles': invalid}})['cards'], defaults)
+        self.assertEqual(style.validate_config({'cards': []})['cards'], defaults)
+
     def test_supported_colors_have_safe_normalized_css_spellings(self):
         cases = [('#AbC', '#abc'), (' #123ABC ', '#123abc'),
                  ('#12345600', 'rgba(18,52,86,0)'), ('#123456ff', 'rgba(18,52,86,1)'),

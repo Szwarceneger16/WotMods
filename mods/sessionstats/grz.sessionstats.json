@@ -166,6 +166,12 @@
   "scroll": {
     "speed_multiplier": 1.0
   },
+  "cards": {
+    "battles": 620,
+    "vehicles": 600,
+    "maps": 560,
+    "tiers": 520
+  },
   "sessions": {
     "instance_tab": false
   }

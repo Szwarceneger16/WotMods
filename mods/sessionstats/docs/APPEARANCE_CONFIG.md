@@ -28,7 +28,7 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-13 corner radii, three opacity settings and a scrolling multiplier. An unavailable file,
+13 corner radii, three opacity settings, a scrolling multiplier and four card widths. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
 
@@ -69,6 +69,10 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `opacity.garage_button` | `1.0` | Entire garage button |
 | `opacity.disabled_controls` | `0.45` | Disabled controls |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
+| `cards.battles` | `620` | Battle card width in logical pixels |
+| `cards.vehicles` | `600` | Vehicle card width in logical pixels |
+| `cards.maps` | `560` | Map card width in logical pixels |
+| `cards.tiers` | `520` | Tier card width in logical pixels |
 
 Other full-JSON keys cover document backgrounds, title bars, period tabs, XP
 switches, metric headings/values, separators, cards, battle results, messages,
@@ -116,6 +120,18 @@ corners; configuration does not change panel structure.
 Each `opacity` field accepts **0 to 1**. `1` is fully visible, `0.8` is 80% visible,
 and `0` is invisible. Do not use percentages or numeric strings: `0.8` is valid,
 `"80%"` is not.
+
+### Card widths
+
+Each `cards` value accepts a finite number from **480 to 900**, without a unit
+suffix. Widths follow the game's UI scale. Missing fields keep their own default;
+for example, `{"cards":{"battles":580}}` changes only battle cards. Invalid values
+fall back independently and do not affect valid settings.
+
+All cards in a tab use the selected width. A smaller viewport can shrink a card
+to fit. Two columns appear when the content has room for twice the card width
+plus the 64-pixel central gap. Summary, filter and sorting sections have separate
+content-based widths and wrap independently.
 
 ### Wheel speed
 

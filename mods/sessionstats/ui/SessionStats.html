@@ -23,12 +23,12 @@
       <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" data-i18n="close.symbol">×</span></button>
     </header>
     <div class="ss-controls">
-      <div class="ss-scopes" role="group" aria-label="Session period" data-i18n-aria="scope.group">
-        <button id="ss-scope-launch" class="ss-control ss-scope is-active" title="Since game launch — current account" data-i18n-title="scope.launch.title" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="scope.launch">Since launch</span></button>
-        <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
-        <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
-      </div>
       <div class="ss-toolbar">
+        <div class="ss-scopes" role="group" aria-label="Session period" data-i18n-aria="scope.group">
+          <button id="ss-scope-launch" class="ss-control ss-scope is-active" title="Since game launch — current account" data-i18n-title="scope.launch.title" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="scope.launch">Since launch</span></button>
+          <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
+          <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
+        </div>
         <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
         <div id="ss-timeline" class="ss-timeline" role="group" aria-label="Timeline" data-i18n-aria="scope.timeline" style="display:none">
           <div class="ss-timeline-field"><span data-i18n="timeline.from">From</span><div id="ss-timeline-from" class="ss-select"></div></div>
@@ -50,18 +50,20 @@
         <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
         <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
       </nav>
-      <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
-      <div id="ss-pagination" class="ss-pagination" style="display:none">
-        <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
-        <div class="ss-page-center">
-          <div id="ss-sort-chronology" class="ss-select"></div>
+      <div class="ss-list-controls">
+        <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
+        <div id="ss-pagination" class="ss-pagination" style="display:none">
+          <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
+          <div class="ss-page-center">
+            <div id="ss-sort-chronology" class="ss-select"></div>
+          </div>
+          <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
         </div>
-        <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
-      </div>
-      <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
-        <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
-        <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
-        <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
+        <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
+          <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
+          <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
+          <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
+        </div>
       </div>
       <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
     </div>

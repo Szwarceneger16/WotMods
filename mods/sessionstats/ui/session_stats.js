@@ -13,7 +13,7 @@
         resizeSequence: 0, timePointAccount: null, timePointCount: null, timePointEdited: false,
         resizeQueued: false, resizeTimer: null, resizeLast: 0, resizeMeasureToken: 0 };
     // BEGIN GENERATED ENGLISH
-    var english = {"cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.next": "Next", "page.previous": "Previous", "page.status": "Page {0} of {1}", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.statistic": "Statistic", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.resize": "Resize window (drag or use arrow keys)", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
+    var english = {"cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "help.info": "Information", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.column.crew_xp": "Crew XP", "more.column.free_xp": "Free XP", "more.column.xp": "XP", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.next": "Next", "page.previous": "Previous", "page.status": "Page {0} of {1}", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.statistic": "Statistic", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.resize": "Resize window (drag or use arrow keys)", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
     // END GENERATED ENGLISH
     var translations = english;
     function t(key, args) {
@@ -64,51 +64,79 @@
     }
     function append(parent, child) { parent.appendChild(child); return child; }
     function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
-    var helpTarget = null;
+    var helpTarget = null, helpPending = null, helpTimer = null, helpPointer = null;
     var helpTooltip = append(root, element('div', 'ss-help-tooltip'));
     helpTooltip.id = 'ss-help-tooltip';
     helpTooltip.setAttribute('role', 'tooltip');
     helpTooltip.style.display = 'none';
     function hideHelp() {
-        if (helpTarget) { helpTarget.removeAttribute('aria-describedby'); }
+        if (helpTimer !== null) { window.clearTimeout(helpTimer); helpTimer = null; }
+        helpPending = null;
+        helpPointer = null;
+        if (helpTarget) {
+            helpTarget.removeAttribute('aria-describedby');
+            helpTarget.setAttribute('aria-expanded', 'false');
+        }
         helpTarget = null;
         helpTooltip.style.display = 'none';
     }
     function clearHelp(node) {
-        if (helpTarget === node) { hideHelp(); }
-        node.removeAttribute('data-ss-help');
-        node.className = node.className.replace(/\s*ss-has-help/g, '');
-        if (node.getAttribute('data-ss-help-focus') === 'true') {
-            node.removeAttribute('tabindex');
-            node.removeAttribute('data-ss-help-focus');
+        var button = node._ssHelpButton;
+        if (button) {
+            if (helpTarget === button || helpPending === button) { hideHelp(); }
+            if (button.parentNode) { button.parentNode.removeChild(button); }
+            node._ssHelpButton = null;
         }
     }
-    function help(node, text, focusable) {
-        if (!text) { return; }
-        var previous = node.getAttribute('data-ss-help') || '';
-        if (previous.split('\n').indexOf(text) < 0) {
-            node.setAttribute('data-ss-help', previous ? previous + '\n' + text : text);
+    function helpLocation(node) {
+        var current = node, section = null, inSummary = false;
+        while (current && current !== root) {
+            if (/(^|\s)ss-group(\s|$)/.test(current.className)) {
+                return {owner:current, anchor:current.querySelector('.ss-group-heading') || current};
+            }
+            if (!section && /(^|\s)ss-(performance|economy)(\s|$)/.test(current.className)) { section = current; }
+            if (current === nodes.summary) { inSummary = true; }
+            current = current.parentNode;
         }
-        if (node.className.indexOf('ss-has-help') < 0) { node.className += ' ss-has-help'; }
-        if (focusable !== false && !node.hasAttribute('tabindex')) {
-            node.setAttribute('tabindex', '0');
-            node.setAttribute('data-ss-help-focus', 'true');
+        if (section) { return {owner:section, anchor:section.querySelector('.ss-detail-title') || section}; }
+        if (inSummary || node === nodes.status) {
+            return {owner:nodes.summary, anchor:nodes.summary.querySelector('.ss-summary-main .ss-kpi-label, .ss-data-notice') || nodes.summary};
+        }
+        return {owner:node, anchor:node};
+    }
+    function help(node, text) {
+        if (!text) { return; }
+        var location = helpLocation(node), owner = location.owner, button = owner._ssHelpButton;
+        if (!button || !owner.contains(button)) {
+            var title = location.anchor.querySelector('.ss-group-title');
+            var label = owner === nodes.summary ? t('stats.period') : (title || location.anchor).textContent;
+            button = append(location.anchor, element('button', 'ss-info-button'));
+            append(button, element('span', 'ss-info-symbol', 'i')).setAttribute('aria-hidden', 'true');
+            button.type = 'button';
+            button.setAttribute('aria-label', t('help.info') + (label ? ': ' + label : ''));
+            button.setAttribute('aria-controls', helpTooltip.id);
+            button.setAttribute('aria-expanded', 'false');
+            owner._ssHelpButton = button;
+        }
+        var previous = button.getAttribute('data-ss-help') || '';
+        if (previous.split('\n').indexOf(text) < 0) {
+            button.setAttribute('data-ss-help', previous ? previous + '\n' + text : text);
         }
     }
     function helpAncestor(target) {
         while (target && target !== root) {
-            if (target.nodeType === 1 && target.hasAttribute('data-ss-help')) { return target; }
+            if (target.nodeType === 1 && /(^|\s)ss-info-button(\s|$)/.test(target.className)) { return target; }
             target = target.parentNode;
         }
         return null;
     }
-    function showHelp(event) {
-        var target = helpAncestor(event.target);
-        if (!target || state.dragging || state.resize || state.dialog) { hideHelp(); return; }
+    function showHelp(target) {
+        if (!target || !root.contains(target) || state.destroyed || state.dragging || state.resize || state.dialog) { hideHelp(); return; }
         if (target === helpTarget) { return; }
         hideHelp();
         helpTarget = target;
         target.setAttribute('aria-describedby', helpTooltip.id);
+        target.setAttribute('aria-expanded', 'true');
         helpTooltip.textContent = target.getAttribute('data-ss-help');
         helpTooltip.style.display = 'block';
         var bounds = root.getBoundingClientRect(), anchor = target.getBoundingClientRect();
@@ -116,26 +144,48 @@
         var width = Math.max(1, Math.min(320 * scale, bounds.width - inset * 2));
         // Gameface can defer a newly shown element's measurements. Constrain
         // this box using known panel bounds without measuring the tooltip.
-        var pointer = hasNumber(event.clientY) ? event.clientY - bounds.top :
-            anchor.top - bounds.top + Math.min(anchor.height, 24 * scale);
-        pointer = Math.max(inset, Math.min(pointer, bounds.height - inset));
-        var below = bounds.height - pointer - gap - inset, above = pointer - gap - inset;
+        var anchorTop = Math.max(inset, Math.min(anchor.top - bounds.top, bounds.height - inset));
+        var anchorBottom = Math.max(inset, Math.min(anchor.bottom - bounds.top, bounds.height - inset));
+        var below = bounds.height - anchorBottom - gap - inset, above = anchorTop - gap - inset;
         var left = Math.max(inset, Math.min(anchor.left - bounds.left, bounds.width - width - inset));
         helpTooltip.style.width = width + 'px';
         helpTooltip.style.maxHeight = Math.max(1, Math.max(above, below)) + 'px';
         helpTooltip.style.left = left + 'px';
-        helpTooltip.style.top = below >= above ? pointer + gap + 'px' : 'auto';
-        helpTooltip.style.bottom = below >= above ? 'auto' : bounds.height - pointer + gap + 'px';
+        helpTooltip.style.top = below >= above ? anchorBottom + gap + 'px' : 'auto';
+        helpTooltip.style.bottom = below >= above ? 'auto' : bounds.height - anchorTop + gap + 'px';
+    }
+    function waitForHelp(event) {
+        var target = helpAncestor(event.target);
+        if (!target || state.dragging || state.resize || state.dialog) { hideHelp(); return; }
+        if (target === helpTarget) { return; }
+        if (target === helpPending && helpPointer && event.clientX === helpPointer.x && event.clientY === helpPointer.y) { return; }
+        hideHelp();
+        helpPending = target;
+        helpPointer = {x:event.clientX, y:event.clientY};
+        helpTimer = window.setTimeout(function () {
+            helpTimer = null;
+            if (helpPending === target) { showHelp(target); }
+        }, 1000);
+    }
+    function focusHelp(event) { showHelp(helpAncestor(event.target)); }
+    function clickHelp(event) {
+        var target = helpAncestor(event.target);
+        if (target) { event.preventDefault(); showHelp(target); }
+        else { hideHelp(); }
     }
     function leaveHelp(event) {
-        if (helpAncestor(event.relatedTarget) !== helpTarget) { hideHelp(); }
+        var target = helpAncestor(event.relatedTarget);
+        if (!target || (target !== helpTarget && target !== helpPending)) { hideHelp(); }
     }
-    root.addEventListener('mouseover', showHelp);
+    root.addEventListener('mouseover', waitForHelp);
+    root.addEventListener('mousemove', waitForHelp);
     root.addEventListener('mouseout', leaveHelp);
-    root.addEventListener('focusin', showHelp);
+    root.addEventListener('focusin', focusHelp);
     root.addEventListener('focusout', leaveHelp);
+    root.addEventListener('click', clickHelp);
     nodes.scroll.addEventListener('scroll', hideHelp);
     window.addEventListener('blur', hideHelp);
+    window.addEventListener('resize', hideHelp);
     function hasNumber(value) { return typeof value === 'number' && isFinite(value); }
     function integer(value) { return hasNumber(value) ? String(Math.round(value)) : t('format.missing'); }
     function number(value) {
@@ -186,10 +236,18 @@
     }
     function applyAppearance(raw) {
         state.scrollSpeed = 1;
+        state.cardWidths = {battles:620, vehicles:600, maps:560, tiers:520};
         try {
             var value = unwrap(raw);
             if (value === undefined || value === null) { clearAppearance(); return; }
             if (typeof value !== 'object' || Array.isArray(value)) { throw new Error('appearance shape'); }
+            var widths = unwrap(value.card_widths);
+            if (widths && typeof widths === 'object' && !Array.isArray(widths)) {
+                Object.keys(state.cardWidths).forEach(function (key) {
+                    var width = unwrap(widths[key]);
+                    if (hasNumber(width) && width >= 480 && width <= 900) { state.cardWidths[key] = width; }
+                });
+            }
             var speed = unwrap(value.scroll_speed);
             if (speed !== undefined && speed !== null) {
                 if (hasNumber(speed) && speed >= 0.1 && speed <= 8) { state.scrollSpeed = speed; }
@@ -223,7 +281,6 @@
     }
     function explainCoverage(node, count, total) {
         var text = t('coverage.value', [number(count), number(total)]);
-        node.setAttribute('title', text);
         node.setAttribute('aria-label', text);
         var section = node.parentNode;
         while (section && section !== root && !/(^|\s)ss-(performance|economy|free-xp)(\s|$)/.test(section.className)) {
@@ -285,7 +342,6 @@
         var holder = append(parent, element('div', compact ? 'ss-group-kpi' : 'ss-kpi'));
         append(holder, element('span', 'ss-kpi-label', label));
         append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
-        if (wn8) { help(holder, t('explain.wn8')); }
     }
     function measureRow(parent, label, data, wn8, total, sharedCoverage) {
         var row = append(parent, element('div', 'ss-metric-row'));
@@ -748,16 +804,52 @@
         }
         var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
         if (keys.length || battle.xp_bonus_applied) {
-            var bonusBlock = append(rewards, element('div', 'ss-more-reward-block'));
+            var bonusBlock = append(panel, element('div', 'ss-more-reward-block ss-more-bonus-block'));
             append(bonusBlock, element('h3', 'ss-more-title', t('more.bonuses')));
-            var bonusTable = rewardTable(bonusBlock, 'ss-more-bonuses');
+            var columns = ['finance.credits', 'more.column.xp', 'more.column.free_xp', 'more.column.crew_xp', 'finance.bonds'];
+            var sources = [
+                ['eventCredits', 'eventXP', 'eventFreeXP', null, 'eventCrystal'],
+                ['boosterCredits', 'boosterXP', 'boosterFreeXP', 'boosterTMenXP'],
+                ['orderCredits', 'orderXP', 'orderFreeXP', 'orderTMenXP'],
+                ['wotPlusCredits', 'wotPlusXP', 'wotPlusFreeXP', 'wotPlusCrewXP'],
+                [null, 'premiumVehicleXP'], [null, 'squadXP']
+            ].filter(function (source) { return source.some(function (key) { return key && hasNumber(bonuses[key]); }); });
+            var visible = columns.map(function (label, index) {
+                return sources.some(function (source) { return source[index] && hasNumber(bonuses[source[index]]); });
+            });
+            var bonusTable = sources.length ? rewardTable(bonusBlock, 'ss-more-bonuses') : null;
+            var factors = null;
+            if (sources.length) {
+                var heading = append(bonusTable, element('div', 'ss-bonus-row ss-bonus-head'));
+                heading.setAttribute('role', 'row');
+                append(heading, element('div', 'ss-bonus-label', t('more.bonuses'))).setAttribute('role', 'columnheader');
+                columns.forEach(function (label, index) {
+                    if (visible[index]) { append(heading, element('div', 'ss-bonus-number', t(label))).setAttribute('role', 'columnheader'); }
+                });
+                sources.forEach(function (source) {
+                    var first = source.filter(function (key) { return key && hasNumber(bonuses[key]); })[0];
+                    var caption = t('more.bonus.' + bonusLabels[first], ['']);
+                    var separator = caption.indexOf(':');
+                    var row = append(bonusTable, element('div', 'ss-bonus-row'));
+                    row.setAttribute('role', 'row');
+                    append(row, element('div', 'ss-bonus-label', separator >= 0 ? caption.slice(0, separator) : caption)).setAttribute('role', 'rowheader');
+                    columns.forEach(function (label, index) {
+                        if (!visible[index]) { return; }
+                        var value = source[index] && bonuses[source[index]];
+                        append(row, element('div', 'ss-bonus-number', hasNumber(value) ? signed(value) : t('format.missing'))).setAttribute('role', 'cell');
+                    });
+                });
+            }
             keys.forEach(function (key) {
                 var divisor = key.slice(-9) === 'Factor100' ? 100 : key.slice(-8) === 'Factor10' ? 10 : null;
-                var amount = divisor ? String(bonuses[key] / divisor).replace('.', t('format.decimal')) : number(bonuses[key]);
-                rewardRow(bonusTable, t('more.bonus.' + bonusLabels[key], [amount]));
+                if (!divisor) { return; }
+                var amount = String(bonuses[key] / divisor).replace('.', t('format.decimal'));
+                if (!factors) { factors = rewardTable(bonusBlock, 'ss-more-factors'); }
+                rewardRow(factors, t('more.bonus.' + bonusLabels[key], [amount]));
             });
             if (battle.xp_bonus_applied && !hasNumber(bonuses.additionalXPFactor10)) {
-                rewardRow(bonusTable, t('more.bonus.applied'));
+                if (!factors) { factors = rewardTable(bonusBlock, 'ss-more-factors'); }
+                rewardRow(factors, t('more.bonus.applied'));
             }
         }
         if (data.suicide) { append(panel, element('p', 'ss-more-caption', t('more.suicide'))); }
@@ -851,9 +943,18 @@
             var available = hasNumber(viewport.width) ? viewport.width : window.innerWidth;
             width = Math.max(0, Math.min(preferred, (available - (state.bound ? 20 : 0)) / scale) - 34);
         }
-        var wide = width >= 1464;
+        var cardWidth = (state.cardWidths || {battles:620, vehicles:600, maps:560, tiers:520})[state.group];
+        var columnWidth = cardWidth * 2 + 64;
+        var wide = width >= columnWidth;
+        state.cardColumns.style.width = (wide ? columnWidth : cardWidth) + 'rem';
+        state.cardColumns.style.flexBasis = (wide ? columnWidth : cardWidth) + 'rem';
+        state.cardLanes.forEach(function (lane) {
+            lane.style.width = cardWidth + 'rem';
+            lane.style.flex = wide ? '0 0 ' + cardWidth + 'rem' : '1 1 0rem';
+        });
         nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns' : '') +
-            (wide && state.group === 'battles' ? ' ss-battle-stream' : '');
+            (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
+            (Math.min(width, cardWidth) < 600 ? ' ss-narrow-cards' : '');
         var changed = state.cardLayoutWide !== wide;
         var cards = state.groupCards || [], owned = [], focused = document.activeElement;
         for (var index = 0; index < cards.length; index += 1) {
@@ -969,7 +1070,7 @@
         var scopeNames = ['launch', 'manual', 'instance'], scopeIndex;
         for (scopeIndex = 0; scopeIndex < scopeNames.length; scopeIndex += 1) {
             var scopeButton = document.getElementById('ss-scope-' + scopeNames[scopeIndex]);
-            scopeButton.style.width = hasInstance ? (scopeNames[scopeIndex] === 'instance' ? '40%' : '30%') : '50%';
+            scopeButton.style.width = '';
             if (scopeNames[scopeIndex] === 'instance') { scopeButton.style.display = hasInstance ? 'flex' : 'none'; }
         }
         document.getElementById('ss-scope-launch').querySelector('.ss-control-label').textContent =
@@ -1035,8 +1136,7 @@
         renderSummary(scope.summary, scope);
         var visibleWarnings = warnings.filter(function (warning) {
             if (informationalNotice(warning)) {
-                help(nodes.summary, warning);
-                help(nodes.status, warning);
+                if (warning !== t('normalize.reserve') && warning !== english['normalize.reserve']) { help(nodes.summary, warning); }
                 return false;
             }
             return true;
@@ -1229,7 +1329,7 @@
             event.preventDefault();
             endNativeDrag();
             if (state.openSelect) { closeSelect(true); return; }
-            if (helpTarget) { hideHelp(); return; }
+            if (helpTarget || helpPending) { hideHelp(); return; }
             if (state.dialog) { showReset(false); } else { invoke('close'); }
         }
         if (state.dialog && (key === 'Tab' || key === 9)) {
@@ -1307,8 +1407,65 @@
         };
         queueResize();
     }
+    function consumeResizeInput(event) {
+        if (event && typeof event.preventDefault === 'function') { event.preventDefault(); }
+        if (event && typeof event.stopPropagation === 'function') { event.stopPropagation(); }
+        // DOM cancellation does not tell Wulf that the garage camera must not
+        // receive this mouse event. This is the client's native handled flag.
+        if (state.bound && window.viewEnv && typeof window.viewEnv.setEventHandled === 'function') {
+            try { window.viewEnv.setEventHandled(); } catch (error) { /* DOM cancellation still applies. */ }
+        }
+    }
+    function resizeHover(event) {
+        if (state.destroyed || state.dialog || state.resize) { return; }
+        var leaving = event.type === 'mouseleave';
+        if (!leaving) { consumeResizeInput(event); }
+        // One native cursor command per enter/leave, not per mouse sample.
+        if (state.bound && event.type !== 'mousemove') {
+            invoke('resize_cursor', {active:!leaving,
+                corner:event.currentTarget.getAttribute('data-corner') || 'se'});
+        }
+    }
+    function trackResizeOnStage(drag, on) {
+        if (!on) {
+            if (drag.stage) {
+                for (var index = 0; index < drag.stage.listeners.length; index += 1) {
+                    var listener = drag.stage.listeners[index];
+                    unsubscribe(drag.stage.attempt, listener);
+                    var owned = drag.stage.attempt.listeners.indexOf(listener);
+                    if (owned >= 0) { drag.stage.attempt.listeners.splice(owned, 1); }
+                }
+                drag.stage = null;
+                try { window.viewEnv.setTrackMouseOnStage(false); } catch (error) { /* Optional adapter may have gone away. */ }
+            }
+            return;
+        }
+        var attempt = state.binding;
+        if (!state.bound || !isCurrent(attempt) || !window.viewEnv ||
+                typeof window.viewEnv.setTrackMouseOnStage !== 'function') { return; }
+        drag.stage = {attempt:attempt, listeners:[]};
+        try {
+            window.viewEnv.setTrackMouseOnStage(true);
+            drag.stage.listeners.push(subscribe(attempt, 'mousemove', function (event) {
+                if (state.resize !== drag) { return; }
+                consumeResizeInput(event);
+            }));
+            drag.stage.listeners.push(subscribe(attempt, 'mouseup', function (event) {
+                if (state.resize !== drag) { return; }
+                consumeResizeInput(event);
+                // Outside-stage button encoding is not the DOM contract.
+                // The native LEFTMOUSE poll owns release, including right-up
+                // events while the left button is still held.
+                if (!drag.native) { endResize(); }
+            }));
+        } catch (error) {
+            trackResizeOnStage(drag, false);
+        }
+    }
     function beginResize(event) {
-        if (event.button !== 0 || state.resize || state.dragging || state.dialog) { return; }
+        if (event.button !== 0) { return; }
+        consumeResizeInput(event);
+        if (state.resize || state.dragging || state.dialog) { return; }
         var rect = root.getBoundingClientRect();
         var grip = event.currentTarget, corner = grip.getAttribute('data-corner') || 'se';
         focusControl(grip);
@@ -1316,6 +1473,7 @@
             pointer:event.pointerId, grip:grip, corner:corner, native:false};
         state.resizeSequence += 1;
         state.resizeLast = Date.now() - 100;
+        trackResizeOnStage(state.resize, true);
         if (event.pointerId !== undefined && typeof grip.setPointerCapture === 'function') {
             try { grip.setPointerCapture(event.pointerId); } catch (error) { /* The game-level gesture also tracks outside the document. */ }
         }
@@ -1328,6 +1486,7 @@
     function moveResize(event) {
         var drag = state.resize;
         if (!drag || (event.pointerId !== undefined && drag.pointer !== event.pointerId)) { return; }
+        consumeResizeInput(event);
         if (drag.native) { return; }
         var west = drag.corner.indexOf('w') >= 0, north = drag.corner.indexOf('n') >= 0;
         var horizontal = west || drag.corner.indexOf('e') >= 0;
@@ -1338,6 +1497,7 @@
     function endResize(notify) {
         if (!state.resize) { return; }
         var drag = state.resize;
+        if (notify) { consumeResizeInput(notify); }
         if (drag.native && notify && (notify.type === 'blur' || notify.type === 'pointercancel')) { return; }
         if (drag.native && notify !== false && !state.destroyed) {
             // The game samples the release position once more. Keep this token
@@ -1350,6 +1510,8 @@
             moveResize(notify);
         }
         state.resize = null;
+        trackResizeOnStage(drag, false);
+        if (state.bound) { invoke('resize_cursor', {active:false, corner:drag.corner}); }
         queueResize(true);
         if (drag.pointer !== undefined && typeof drag.grip.releasePointerCapture === 'function') {
             try { drag.grip.releasePointerCapture(drag.pointer); } catch (error) { /* Capture may already be released by the engine. */ }
@@ -1364,7 +1526,7 @@
         var keys = {ArrowLeft:[-1, 0], ArrowRight:[1, 0], ArrowUp:[0, -1], ArrowDown:[0, 1]};
         var direction = keys[event.key || ({37:'ArrowLeft', 38:'ArrowUp', 39:'ArrowRight', 40:'ArrowDown'})[event.keyCode]];
         if (!direction) { return; }
-        event.preventDefault();
+        consumeResizeInput(event);
         var rect = root.getBoundingClientRect(), scale = state.nativeScale;
         var corner = event.currentTarget.getAttribute('data-corner') || 'se';
         var horizontal = corner.indexOf('w') >= 0 || corner.indexOf('e') >= 0;
@@ -1384,6 +1546,9 @@
             grips[index][method]('mousedown', beginResize);
             grips[index][method]('pointerdown', beginResize);
             grips[index][method]('keydown', keyboardResize);
+            grips[index][method]('mouseenter', resizeHover);
+            grips[index][method]('mousemove', resizeHover);
+            grips[index][method]('mouseleave', resizeHover);
         }
         document[method]('mousemove', moveResize);
         document[method]('pointermove', moveResize);
@@ -1487,7 +1652,7 @@
             // An API can deliver synchronously and then throw. Do not commit
             // readiness/binding until the registration itself has succeeded.
             if (!listener.registered) { listener.signalled = true; return; }
-            callback();
+            callback.apply(null, arguments);
         };
         attempt.listeners.push(listener);
         attempt.engine.on(name, listener.callback);
@@ -1585,12 +1750,15 @@
         if (state.destroyed) { return; }
         state.destroyed = true;
         hideHelp();
-        root.removeEventListener('mouseover', showHelp);
+        root.removeEventListener('mouseover', waitForHelp);
+        root.removeEventListener('mousemove', waitForHelp);
         root.removeEventListener('mouseout', leaveHelp);
-        root.removeEventListener('focusin', showHelp);
+        root.removeEventListener('focusin', focusHelp);
         root.removeEventListener('focusout', leaveHelp);
+        root.removeEventListener('click', clickHelp);
         nodes.scroll.removeEventListener('scroll', hideHelp);
         window.removeEventListener('blur', hideHelp);
+        window.removeEventListener('resize', hideHelp);
         closeSelect(false);
         document.removeEventListener('mousedown',outsideSelect);
         clearAppearance();

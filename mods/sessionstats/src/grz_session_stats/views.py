@@ -202,6 +202,7 @@ class StatsWindow(object):
         self._resize_gesture = None
         self._resize_anchor = None
         self._resize_callback_id = None
+        self._resize_cursor_manager = None
         self._diagnostic_once = set()
         self._renderer_stages = set()
         self._size_logs = 0
@@ -338,6 +339,7 @@ class StatsWindow(object):
     def _invalidate(self):
         # Invalidate before native cancellation/unsubscription can reenter us.
         self._generation += 1
+        self._set_resize_cursor(False)
         self._cancel_callback(self._resize_callback_id)
         self._resize_callback_id = None
         self._resize_gesture = self._resize_anchor = None
@@ -494,6 +496,31 @@ class StatsWindow(object):
     def _resize_clock():
         return time.time()
 
+    def _set_resize_cursor(self, active):
+        # WoT's embedder maps CSS cursor names itself. Use the same native
+        # generic resize glyph as its Scaleform resizing manager on all grips.
+        manager = self._resize_cursor_manager
+        if not active and manager is None:
+            return
+        if active and manager is not None:
+            return
+        if not active:
+            self._resize_cursor_manager = None
+        try:
+            from gui.Scaleform.managers.cursor_mgr import CursorManager
+            if active and manager is None:
+                from helpers import dependency
+                from skeletons.gui.app_loader import IAppLoader
+                app = dependency.instance(IAppLoader).getDefLobbyApp()
+                manager = app.cursorMgr if app is not None else None
+                self._resize_cursor_manager = manager
+            if manager is not None:
+                manager.setCursorForced(CursorManager.RESIZE if active else CursorManager.ARROW)
+        except (ImportError, AttributeError, RuntimeError, TypeError, ValueError):
+            self._resize_cursor_manager = None
+            self._log_once('resize_cursor_unavailable', logging.WARNING,
+                           'GRZ UI: native resize cursor unavailable; CSS cursor remains active.')
+
     def _begin_resize(self, corner, token):
         if corner not in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w') or self._resize_gesture:
             return
@@ -512,6 +539,7 @@ class StatsWindow(object):
             }
             self._resize_anchor = self._resize_gesture
             self._on_drag(True)
+            self._set_resize_cursor(True)
             self._poll_resize(self._generation, self._resize_gesture)
         except (ImportError, AttributeError, RuntimeError, TypeError, ValueError):
             self._end_resize(discard_anchor=True, notify=True)
@@ -585,6 +613,7 @@ class StatsWindow(object):
         callback_id = self._resize_callback_id
         self._resize_callback_id = None
         self._cancel_callback(callback_id)
+        self._set_resize_cursor(False)
         if gesture is not None:
             # A same-size release does not produce another renderer resize.
             # Keep the anchor only while the final surface update is pending.
@@ -700,7 +729,7 @@ class StatsWindow(object):
                 self._finish_watchdog_if_ready()
             return
         if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag',
-                          'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end'):
+                          'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end', 'resize_cursor'):
             return
         self._log_once('command_' + action, logging.INFO, 'GRZ UI: command %s received.', action)
         if action == 'close':
@@ -714,6 +743,12 @@ class StatsWindow(object):
             self._on_drag(_read(arg, 'active'))
         elif action == 'resize_begin':
             self._begin_resize(_read(arg, 'corner'), _read(arg, 'token'))
+        elif action == 'resize_cursor':
+            active = _read(arg, 'active') in (True, 'true', 'True', '1')
+            if active and _read(arg, 'corner') in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w'):
+                self._set_resize_cursor(True)
+            elif not active and self._resize_gesture is None:
+                self._set_resize_cursor(False)
         elif action == 'resize_end':
             if self._resize_gesture and _read(arg, 'token') == self._resize_gesture['token']:
                 self._cancel_callback(self._resize_callback_id)

@@ -17,8 +17,8 @@ reported result. Personal missions show the operation name and completion with
 honors when the additional objective is confirmed. The card also shows Battle
 Pass points and the available bonus breakdown. The finance tables include
 vehicle and account-level bonds reported for each recorded Random Battle.
-Older saved battles may have no mission or bonus details. The bottom-right grip
-resizes the window and keeps the size across garage openings during the same
+Older saved battles may have no mission or bonus details. All four corners and all four edges
+resize the window and keep its size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.
 
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
@@ -121,6 +121,19 @@ omitted fields and nested settings use defaults. For example:
 ```json
 {"language": "pl", "scroll": {"speed_multiplier": 1.5}}
 ```
+
+Card widths can be set independently in logical pixels (before the game's UI
+scale), from 480 to 900. Omitted values use Battles 620, Vehicles 600, Maps 560,
+and Tiers 520. Cards within a tab keep the same width; the layout switches to two
+columns only when both cards and the central gap fit. For example:
+
+```json
+{"cards": {"battles": 580, "vehicles": 560}}
+```
+
+Information icons show explanations after one second over the icon. Moving
+across a statistics section does not open a tooltip. Battle bonuses share one
+row per source with separate resource columns.
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

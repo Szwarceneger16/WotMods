@@ -9,9 +9,9 @@ module.exports=async({browser,nativeHost,check})=>{
   payload.warnings=['Deferred credits do not increase this balance.','Deferred credits do not increase this balance.',
     'Synthetic additional notice','Synthetic additional notice'];
   await render(payload);
-  check('Repeated errors render once while routine reserve information moves to section help',
+  check('Repeated errors render once while reserve information uses the finance info icon',
     await page.locator('.ss-data-notices .ss-data-notice').count()===1 &&
-    await page.locator('#ss-summary').getAttribute('data-ss-help').then(t=>
+    await page.locator('#ss-summary .ss-economy .ss-info-button').getAttribute('data-ss-help').then(t=>
       t.split('\n').filter(line=>line==='Deferred credits do not increase this balance.').length===1));
   check('Notice count matches visible unique errors',await page.locator('#ss-status').textContent().then(t=>t.includes('Data notices: 1')));
   check('Notice presentation does not rewrite the incoming model',await page.evaluate(()=>JSON.parse(model.payload).warnings.length===4));
@@ -33,51 +33,103 @@ module.exports=async({browser,nativeHost,check})=>{
   stats.observed_battles=stats.battles+1;stats.missing_results=1;
   stats.xp_base.count=0;stats.xp_base.min=stats.xp_base.avg=stats.xp_base.max=null;
   await render(payload);
-  check('Incomplete totals keep their explanation in section help without a permanent prose row',
+  check('Incomplete totals keep their explanation on an explicit overview icon',
     await page.locator('#ss-summary .ss-coverage-legend,.ss-explainer').count()===0 &&
-    await page.locator('#ss-summary').getAttribute('data-ss-help').then(t=>
+    await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help').then(t=>
       t.includes('x/y: battles with this value / recorded battles.')));
   check('Zero available metric values keep their honest count and explanation',
-    await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-cell-coverage').getAttribute('title')===
+    await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-cell-coverage').getAttribute('aria-label')===
       'Data available for 0 of '+stats.observed_battles+' recorded battles.');
+  check('Coverage numbers do not create immediate browser hover tooltips',
+    await page.locator('#ss-summary .ss-cell-coverage[title],#ss-summary [data-ss-help]:not(.ss-info-button)').count()===0);
   check('Unavailable XP stays unknown instead of becoming zero',
     (await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-metric-number').allTextContents()).every(v=>v==='—'));
   check('Finance coverage explains its own independent available count',
     await page.locator('#ss-summary .ss-money-row').first().locator('.ss-cell-coverage').first().getAttribute('aria-label')===
       'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.');
   const performance=page.locator('#ss-summary .ss-performance');
+  const info=performance.locator('.ss-info-button');
   await page.locator('#ss-help-tooltip').evaluate(tooltip => {
     // A new Gameface tooltip can have no measured size until its next frame.
     tooltip.getBoundingClientRect=()=>({left:0,right:0,top:0,bottom:0,width:0,height:0});
   });
   await performance.hover({position:{x:5,y:5}});
-  check('Hovering the whole performance section opens help and uses the help cursor',
-    await performance.evaluate(section=>getComputedStyle(section).cursor==='help' &&
-      section.getAttribute('aria-describedby')==='ss-help-tooltip') &&
+  await page.waitForTimeout(3100);
+  check('Ordinary section hover has no help target or tooltip',
+    await performance.evaluate(section=>!section.hasAttribute('data-ss-help') && !section.hasAttribute('tabindex') &&
+      !section.hasAttribute('aria-describedby') && getComputedStyle(section).cursor!=='help') &&
+    await page.locator('#ss-help-tooltip').isHidden());
+  await info.hover({position:{x:3,y:5}});
+  await page.waitForTimeout(600);
+  check('Info icon hover waits instead of opening immediately',await page.locator('#ss-help-tooltip').isHidden());
+  const infoBox=await info.boundingBox();
+  await page.mouse.move(infoBox.x+7,infoBox.y+5);
+  await page.waitForTimeout(600);
+  check('Pointer movement restarts the full hover delay',await page.locator('#ss-help-tooltip').isHidden());
+  await page.waitForTimeout(500);
+  check('A stationary info icon opens its own explanation after one second',
+    await info.getAttribute('aria-describedby')==='ss-help-tooltip' && await info.getAttribute('aria-expanded')==='true' &&
     await page.locator('#ss-help-tooltip').isVisible() &&
     await page.locator('#ss-help-tooltip').textContent().then(t=>
       t.includes('Data available for 0 of '+stats.observed_battles+' recorded battles.') &&
       t.includes('Average battle WN8 may differ from period WN8.')));
+  const tooltipPosition=await page.locator('#ss-help-tooltip').getAttribute('style');
+  await page.mouse.move(infoBox.x+9,infoBox.y+6);
+  check('An open tooltip stays anchored when the cursor moves inside its icon',
+    await page.locator('#ss-help-tooltip').getAttribute('style')===tooltipPosition);
   const closeCommands=await page.evaluate(()=>__grzCommands.filter(command=>command.action==='close').length);
   await page.keyboard.press('Escape');
-  check('Escape dismisses section help without closing the statistics window',
+  check('Escape dismisses info help without closing the statistics window',
     await page.locator('#ss-help-tooltip').isHidden() &&
     await page.evaluate(()=>__grzCommands.filter(command=>command.action==='close').length)===closeCommands);
   await page.locator('#ss-close').hover();
-  check('Leaving the explained section hides its tooltip',await page.locator('#ss-help-tooltip').isHidden());
-  await performance.focus();
-  check('The same explanation is available when its entire section receives keyboard focus',
+  check('Leaving the info icon hides its tooltip',await page.locator('#ss-help-tooltip').isHidden());
+  await info.focus();
+  check('Intentional keyboard focus provides the accessible explanation directly',
     await page.locator('#ss-help-tooltip').isVisible() &&
-    await page.locator('#ss-help-tooltip').getAttribute('role')==='tooltip');
+    await page.locator('#ss-help-tooltip').getAttribute('role')==='tooltip' &&
+    await info.getAttribute('aria-label').then(t=>t.startsWith('Information:')));
+  await page.locator('#ss-scroll').evaluate(node=>node.scrollTop+=30);
+  await page.waitForTimeout(50);
+  check('Scrolling dismisses an open info tooltip',await page.locator('#ss-help-tooltip').isHidden());
+  await info.click();
+  check('An intentional click opens help without an immediate native title tooltip',
+    await page.locator('#ss-help-tooltip').isVisible() && await info.getAttribute('title')===null &&
+    await info.locator('.ss-info-symbol').getAttribute('aria-hidden')==='true');
+  await page.locator('#ss-close').focus();
+  await info.hover({position:{x:3,y:5}});
+  await page.waitForTimeout(200);
+  await page.locator('#ss-close').hover();
+  await page.waitForTimeout(900);
+  check('Leaving before one second cancels the pending help',await page.locator('#ss-help-tooltip').isHidden());
+  await info.hover({position:{x:3,y:5}});
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(900);
+  check('Escape also cancels pending help without closing the panel',
+    await page.locator('#ss-help-tooltip').isHidden() &&
+    await page.evaluate(()=>__grzCommands.filter(command=>command.action==='close').length)===closeCommands);
+  await info.evaluate(button=>button.setAttribute('data-ss-help','<img src=x onerror=alert(1)>'));
+  await info.focus();
+  check('Tooltip content stays literal text even when it contains markup',
+    await page.locator('#ss-help-tooltip').textContent()==='<img src=x onerror=alert(1)>' &&
+    await page.locator('#ss-help-tooltip img').count()===0);
+  await page.locator('#ss-close').focus();
+  await info.hover({position:{x:3,y:5}});
+  await page.waitForTimeout(100);
+  await render(payload);
+  await page.waitForTimeout(1100);
+  check('Updating data cancels the previous icon hover timer',await page.locator('#ss-help-tooltip').isHidden());
   const catalog=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   for(const [language,messages] of Object.entries(catalog)) {
     payload.localization={language,messages};await render(payload);
     check('Coverage help follows the selected language '+language,
-      await page.locator('#ss-summary').getAttribute('data-ss-help').then(t=>t.includes(messages['coverage.legend'])));
+      await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help').then(t=>t.includes(messages['coverage.legend'])) &&
+      await page.locator('#ss-summary .ss-performance .ss-info-button').getAttribute('aria-label').then(t=>t.startsWith(messages['help.info']+':')));
   }
   await render(copy());
   check('Complete data removes the temporary coverage explanation',
-    await page.locator('#ss-summary').getAttribute('data-ss-help').then(t=>!t || !t.includes('x/y:')));
+    await page.locator('#ss-summary .ss-summary-main .ss-info-button').count()===0);
   check('Cleared notices remove the notice count from the footer',await page.locator('#ss-status').textContent().then(t=>!t.includes('Data notices:')));
   payload=copy();
   const vehicle=payload.scopes.launch.vehicles[0], partial=vehicle.stats;
@@ -90,7 +142,8 @@ module.exports=async({browser,nativeHost,check})=>{
     const heading=group.querySelector('.ss-group-heading'), note=heading.querySelector('.ss-wn8-coverage');
     const title=heading.querySelector('.ss-group-title').getBoundingClientRect();
     const free=group.querySelector('.ss-free-xp').getBoundingClientRect();
-    return note && note.textContent==='WN8 3/4' && group.getAttribute('data-ss-help').includes('Period WN8: data for 3/4 battles.') &&
+    return note && note.textContent==='WN8 3/4' && group.querySelectorAll('.ss-info-button').length===1 &&
+      heading.querySelector('.ss-info-button').getAttribute('data-ss-help').includes('Period WN8: data for 3/4 battles.') &&
       group.querySelectorAll('.ss-coverage-note').length===0 &&
       note.getBoundingClientRect().left>=title.right && note.getBoundingClientRect().top<title.bottom &&
       free.bottom<=group.querySelector('.ss-details').getBoundingClientRect().top+1;
@@ -110,5 +163,14 @@ module.exports=async({browser,nativeHost,check})=>{
   check('Different XP and WN8 coverage remains independently visible',await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row .ss-cell-coverage').allTextContents().then(values=>values.join('|')===' (3/4)| (2/4)'));
   partial.currencies.credits.net_count=2;await render(payload);
   check('Different financial coverage retains the independent count for each value',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().locator('.ss-money-value .ss-cell-coverage').allTextContents().then(values=>values.join('|')==='3/4|3/4|2/4'));
+  await page.locator('#ss-close').focus();
+  const cleanupIcon=page.locator('#ss-summary .ss-performance .ss-info-button');
+  await cleanupIcon.hover({position:{x:3,y:5}});
+  await page.waitForTimeout(100);
+  await page.evaluate(()=>GRZSessionStats.destroy());
+  await page.waitForTimeout(1100);
+  await cleanupIcon.focus();
+  check('Destroy cancels pending help and removes focus listeners',
+    await page.locator('#ss-help-tooltip').isHidden() && await cleanupIcon.getAttribute('aria-expanded')==='false');
   await page.close();
 };

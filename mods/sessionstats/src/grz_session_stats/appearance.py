@@ -186,6 +186,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'garage_spinner': 5},
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45},
  'scroll': {'speed_multiplier': 1.0},
+ 'cards': {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520},
  'sessions': {'instance_tab': False}}
 
 PANEL_TEMPLATE = '''/* Native Gameface view. Deliberately limited to block/flex layout. */
@@ -213,14 +214,14 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-close { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
 .ss-close:hover, .ss-close:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
-.ss-scopes { display:flex; width:100%; border:1rem solid {{colors.session_tabs_border}}; border-radius:{{radii.control}}rem; margin-top:4rem; }
-.ss-scope { position:relative; width:50%; height:30rem; border:0; background:linear-gradient({{colors.session_tab_background_start}}, {{colors.session_tab_background_middle}} 58%, {{colors.session_tab_background_end}}); color:{{colors.session_tab_text}}; padding:4rem 6rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.session_tab_shadow}}; }
+.ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid {{colors.session_tabs_border}}; border-radius:{{radii.control}}rem; }
+.ss-scope { position:relative; flex:1 1 0rem; min-width:0; width:0; height:30rem; border:0; background:linear-gradient({{colors.session_tab_background_start}}, {{colors.session_tab_background_middle}} 58%, {{colors.session_tab_background_end}}); color:{{colors.session_tab_text}}; padding:4rem 6rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.session_tab_shadow}}; }
 .ss-scope + .ss-scope { border-left:1rem solid {{colors.session_tab_separator_border_left}}; }
 .ss-scope:hover, .ss-scope:focus { color:{{colors.session_tab_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
 .ss-scope.is-active { color:{{colors.session_tab_active_text}}; background:linear-gradient({{colors.session_tab_active_background_start}}, {{colors.session_tab_active_background_middle}} 56%, {{colors.session_tab_active_background_end}}); text-shadow:0 0 7rem {{colors.session_tab_active_text_shadow}}; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:{{colors.session_tab_marker_background}}; border-right:1rem solid {{colors.session_tab_marker_border_right}}; border-bottom:1rem solid {{colors.session_tab_marker_border_bottom}}; transform:rotate(45deg); }
 .ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; min-height:37rem; padding-top:4rem; }
-.ss-period { display:block; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
+.ss-period { display:block; flex:0 1 184rem; min-width:0; width:184rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
 .ss-xp-picker { display:flex; flex:0 0 212rem; width:212rem; max-width:100%; margin-bottom:4rem; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
 .ss-small-toggle { width:98rem; border:0; background:{{colors.xp_toggle_background}}; color:{{colors.xp_toggle_text}}; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 #ss-xp-received { width:112rem; }
@@ -298,7 +299,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab { width:25%; padding:4rem 3rem 6rem; min-height:30rem; border:0; border-radius:{{radii.control}}rem {{radii.control}}rem 0 0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
-.ss-list-meta { display:flex; align-items:center; justify-content:space-between; min-height:20rem; padding:3rem 1rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
+.ss-list-controls { display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding-top:5rem; }
+.ss-list-meta { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 168rem; min-width:0; width:168rem; max-width:100%; min-height:29rem; margin:0 8rem 5rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
+.ss-list-meta > span + span { margin-left:8rem; }
 .ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); border:1rem solid {{colors.group_card_shadow}}; box-shadow:inset 0 1rem {{colors.group_card_shadow}}; }
 .ss-group-header { display:flex; align-items:center; min-height:35rem; padding-bottom:2rem; }
 .ss-group-thumb { display:block; flex-shrink:0; width:54rem; height:32rem; margin-right:8rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
@@ -366,20 +369,20 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-footer .ss-button { padding-left:7rem; padding-right:7rem; }
 }
 
-.ss-pagination { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; margin:4rem 1rem 6rem; }
-.ss-pagination > .ss-button { min-width:64rem; width:auto; max-width:28%; height:27rem; min-height:27rem; padding:3rem 7rem; }
+.ss-pagination { display:flex; align-items:center; flex:0 1 340rem; min-width:0; width:340rem; max-width:100%; margin:0 8rem 5rem 0; }
+.ss-pagination > .ss-button { flex:0 0 auto; min-width:64rem; width:auto; height:27rem; min-height:27rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
 #ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
 .ss-language-row { display:flex; align-items:center; flex:0 1 158rem; min-width:0; min-height:29rem; }
 .ss-language-caption { display:block; flex-shrink:1; min-width:0; margin-right:6rem; color:{{colors.list_meta_text}}; font-size:12rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ss-select.ss-language-select { flex:1 1 0rem; width:0; }
 .ss-language-select .ss-select-options { left:auto; right:0; }
-.ss-page-center { flex:1; min-width:0; padding:0 6rem; }
-.ss-sorting { display:flex; align-items:flex-end; margin:0 1rem 8rem; }
+.ss-page-center { flex:1 1 160rem; min-width:0; padding:0 6rem; }
+.ss-sorting { display:flex; flex-wrap:wrap; align-items:flex-end; flex:0 1 362rem; min-width:0; width:362rem; max-width:100%; margin:0 0 5rem; }
 .ss-sort-field { min-width:0; }
-.ss-sort-statistic { width:23%; padding-right:5rem; }
-.ss-sort-metric { width:42%; padding-right:5rem; }
-.ss-sort-direction { width:35%; }
+.ss-sort-statistic { flex:0 1 84rem; width:84rem; max-width:100%; padding-right:5rem; }
+.ss-sort-metric { flex:0 1 144rem; width:144rem; max-width:100%; padding-right:5rem; }
+.ss-sort-direction { flex:0 1 134rem; width:134rem; max-width:100%; }
 .ss-sort-caption { display:block; margin-bottom:2rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ss-select { position:relative; width:100%; min-width:0; }
 .ss-select-trigger { width:100%; min-width:0; height:29rem; min-height:29rem; padding:4rem 6rem; justify-content:space-between; }
@@ -428,6 +431,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-time-point { flex:0 0 122rem; min-width:0; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem 0 0 {{radii.control}}rem; }
 .ss-has-help { cursor:help; }
 .ss-help-tooltip { display:none; position:absolute; z-index:60; width:320rem; padding:9rem 11rem; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
+.ss-info-button { display:flex; align-items:center; justify-content:center; flex:0 0 14rem; min-width:14rem; width:14rem; height:14rem; padding:0; margin:0 0 0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.window}}rem; color:{{colors.period_text}}; background:{{colors.window_background}}; font-family:Arial, sans-serif; font-size:11rem; font-style:italic; font-weight:bold; line-height:12rem; cursor:help; }
+.ss-info-button:hover, .ss-info-button:focus, .ss-info-button[aria-expanded="true"] { outline:none; color:{{colors.button_hover_text}}; border-color:{{colors.button_shadow_1}}; background:{{colors.table_row_hover_background}}; box-shadow:0 0 4rem {{colors.button_shadow_2}}; }
+.ss-info-symbol { display:block; width:100%; font:inherit; text-align:center; }
+.ss-summary .ss-kpi-label { display:flex; align-items:center; justify-content:center; }
+.ss-summary .ss-detail-title { display:flex; align-items:center; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
 .ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
 .ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; color:{{colors.table_header_text}}; }
@@ -469,15 +477,41 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-table .ss-more-mission-name { flex:1 1 0rem; min-width:0; padding-right:12rem; }
 .ss-more-table .ss-more-mission-status { flex:0 0 36%; min-width:0; padding-left:8rem; color:{{colors.metric_value_text}}; }
 .ss-more-mission-description { width:100%; margin-top:3rem; }
+.ss-more-reward-block.ss-more-bonus-block { flex-basis:100%; }
+.ss-bonus-matrix { width:100%; }
+.ss-bonus-row { display:flex; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-bonus-row:first-child { border-top:0; }
+.ss-bonus-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
+.ss-bonus-label { display:block; flex:0 0 30%; min-width:0; padding-right:8rem; color:{{colors.metric_label_text}}; }
+.ss-bonus-number { display:block; flex:1 1 0rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
+.ss-bonus-head { min-height:23rem; background:{{colors.table_header_background_start}}; }
+.ss-bonus-head .ss-bonus-label, .ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; }
+.ss-bonus-head .ss-bonus-number { white-space:normal; }
+.ss-narrow-cards .ss-bonus-row { flex-wrap:wrap; }
+.ss-narrow-cards .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
+.ss-narrow-cards .ss-bonus-head .ss-bonus-label { display:none; }
+/* Cards respond to their own configured/available width, independently of the
+   full game viewport. Keep complete numbers at the regular reading size. */
+.ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
+.ss-group .ss-performance { flex:1 1 260rem; min-width:0; width:auto; }
+.ss-group .ss-economy { flex:1 1 310rem; min-width:0; width:auto; }
+.ss-narrow-cards .ss-group .ss-performance, .ss-narrow-cards .ss-group .ss-economy { flex-basis:100%; }
+.ss-narrow-cards .ss-group .ss-performance { padding-right:0; }
+.ss-narrow-cards .ss-group .ss-economy { padding:5rem 0 0; margin-top:3rem; border-left:0; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-narrow-cards .ss-group .ss-metric-head, .ss-narrow-cards .ss-group .ss-metric-row, .ss-narrow-cards .ss-group .ss-money-head, .ss-narrow-cards .ss-group .ss-money-row { flex-wrap:wrap; }
+.ss-narrow-cards .ss-group .ss-metric-head .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-head .ss-money-label { display:none; }
+.ss-narrow-cards .ss-group .ss-metric-head .ss-metric-count { display:block; width:100%; padding:0 4rem; }
+.ss-narrow-cards .ss-group .ss-metric-row .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-row .ss-money-label { width:100%; padding-bottom:0; }
+.ss-narrow-cards .ss-group .ss-metric-number, .ss-narrow-cards .ss-group .ss-money-value { width:33.333%; }
 /* Fixed-width cards use two independent flow columns. Layout never depends on
    reading a just-created card's height from Gameface. */
 .ss-card-layout { display:flex; align-items:flex-start; justify-content:center; width:100%; }
-.ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 700rem; min-width:0; width:700rem; max-width:100%; }
-.ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:700rem; }
+.ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
+.ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }
 .ss-card-column-right { display:none; }
 .ss-card-layout .ss-group { position:relative; flex:0 0 auto; width:100%; margin-bottom:16rem; }
-.ss-two-columns .ss-card-columns { flex-basis:1464rem; width:1464rem; }
-.ss-two-columns .ss-card-column { flex:0 0 700rem; }
+.ss-two-columns .ss-card-columns { flex-basis:1304rem; width:1304rem; }
+.ss-two-columns .ss-card-column { flex:0 0 620rem; }
 .ss-two-columns .ss-card-column-right { display:flex; margin-left:64rem; }
 .ss-battle-stream .ss-card-column-left { padding-top:16rem; }
 .ss-battle-stream .ss-card-column-right { padding-top:68rem; }
@@ -702,7 +736,7 @@ def validate_config(raw):
             result['language'] = value
         else:
             reporter.issue('language', 'expected_language_code')
-    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions'):
+    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards'):
         if section not in raw:
             continue
         supplied = raw[section]
@@ -719,6 +753,9 @@ def validate_config(raw):
             if section == 'sessions':
                 checked = value if isinstance(value, bool) else None
                 reason = 'expected_boolean'
+            elif section == 'cards':
+                checked = _number(value, 480, 900)
+                reason = 'expected_number_480_to_900'
             elif section == 'colors':
                 checked = _color(value)
                 reason = 'expected_supported_color'
@@ -823,5 +860,6 @@ def build_presentation(config):
         'panel_css': _expand(PANEL_TEMPLATE + PANEL_OPACITY_RULE, normalized),
         'footer_css': _expand(FOOTER_TEMPLATE + FOOTER_OPACITY_RULE, normalized),
         'scroll_speed': normalized['scroll']['speed_multiplier'],
+        'card_widths': copy.deepcopy(normalized['cards']),
     }
 

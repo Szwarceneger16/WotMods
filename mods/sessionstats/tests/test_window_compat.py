@@ -28,6 +28,56 @@ class WindowCompatibilityTests(unittest.TestCase):
     tearDown = runtime_fixtures.NativeBindingTests.__dict__['tearDown']
     inject_module = runtime_fixtures.NativeBindingTests.__dict__['inject_module']
 
+    def _native_cursor(self):
+        calls = []
+        self.inject_module('gui.Scaleform.managers.cursor_mgr',
+                           CursorManager=runtime_fixtures.Obj(RESIZE='resize', ARROW='arrow'))
+        self.inject_module('skeletons.gui.app_loader', IAppLoader=object)
+        self.loader.getDefLobbyApp = lambda: runtime_fixtures.Obj(
+            cursorMgr=runtime_fixtures.Obj(setCursorForced=calls.append))
+        return calls
+
+    def test_all_resize_handles_use_and_release_the_supported_native_cursor(self):
+        calls = self._native_cursor()
+        self.assertTrue(self.window.open())
+        for corner in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w'):
+            self.window._handle_action(self.window._generation, {
+                'action': 'resize_cursor', 'active': 'true', 'corner': corner})
+            # Hovering does not continuously reapply the native glyph.
+            self.window._handle_action(self.window._generation, {
+                'action': 'resize_cursor', 'active': 'true', 'corner': corner})
+            self.assertEqual(calls[-1], 'resize')
+            self.window._handle_action(self.window._generation, {
+                'action': 'resize_cursor', 'active': 'false', 'corner': corner})
+            self.assertEqual(calls[-1], 'arrow')
+        self.assertEqual(calls, ['resize', 'arrow'] * 8)
+        self.window._handle_action(self.window._generation, {
+            'action': 'resize_cursor', 'active': 'true', 'corner': 'outside'})
+        self.assertEqual(len(calls), 16)
+
+    def test_resize_cursor_stays_captured_until_release_and_restores_on_close(self):
+        calls = self._native_cursor()
+        self.assertTrue(self.window.open())
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        held = [True]
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._begin_resize('n', '1')
+        self.window._handle_action(self.window._generation, {
+            'action': 'resize_cursor', 'active': 'false', 'corner': 'n'})
+        for tick in range(4):
+            self.timer.fire(self.window._resize_callback_id)
+        self.assertEqual(calls, ['resize'])
+        held[0] = False
+        self.timer.fire(self.window._resize_callback_id)
+        self.assertEqual(calls, ['resize', 'arrow'])
+        self.window._handle_action(self.window._generation, {
+            'action': 'resize_cursor', 'active': 'true', 'corner': 'w'})
+        self.window.close()
+        self.assertEqual(calls, ['resize', 'arrow', 'resize', 'arrow'])
+        self.assertIsNone(self.window._resize_cursor_manager)
+
     def test_resize_tracks_global_cursor_until_release_and_anchors_corners_and_edges(self):
         self.assertTrue(self.window.open())
         native = self.window._window
