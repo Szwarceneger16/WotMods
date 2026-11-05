@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.2
+
+- Let the game cursor click both status icons with or without Ctrl. Check the actual visible, active cursor instead of requiring a modifier-key state, while retaining HUD, camera and modal-window guards.
+
 ## 1.8.1
 
 - Separate the voice reminder interval from the visual pulse: repeat every ten seconds while the pulse continues at its original rate.

@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.1 - installation and test
+# Stay Sharp Medkit Reminder 1.8.2 - installation and test
 
 ## Install
 
@@ -40,8 +40,10 @@
   There must be no second announcement when the countdown reaches zero.
   There must be no native medkit activation effect from this mod.
 - Press Ctrl+Alt+M to turn the outline and voice off, then press it again to
-  restore them. Hold Ctrl to use the mouse cursor and click the power or
-  speaker icon above the medkit to toggle the reminder or voice separately.
+  restore them. Show the game cursor (normally with Ctrl) and left-click the
+  power or speaker icon above the medkit to toggle the reminder or voice
+  separately. Clicking works both with and without Ctrl when the cursor is
+  visible and active; no modifier state needs to reach the mod.
   The next battle restores the configured defaults. Verify the
   shortcut does not react while battle chat is focused.
 - Verify both icons appear in arcade and artillery views. The normal tank

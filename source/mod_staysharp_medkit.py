@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.1 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.2 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.1'
+VERSION = '1.8.2'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -1016,7 +1016,6 @@ def _controls_cursor_active():
     if _panel is None or not any(entry[0].visible for entry in _controls):
         return False
     try:
-        import Keys
         cursor = GUI.mcursor()
         if not cursor.active or not cursor.visible:
             return False
@@ -1024,8 +1023,9 @@ def _controls_cursor_active():
         modal = getattr(app, 'isModalViewShown', None)
         if callable(modal) and modal():
             return False
-        return bool((BigWorld.isKeyDown(Keys.KEY_LCONTROL) or BigWorld.isKeyDown(Keys.KEY_RCONTROL)) and
-                    _control_slot(_panel) is not None)
+        # Ctrl is only one of the game's ways to expose its cursor.
+        # Clickability follows the actual cursor, never a modifier-key query.
+        return _control_slot(_panel) is not None
     except Exception:
         return False
 
@@ -1132,7 +1132,7 @@ def _sync_controls(panel):
                 # Wulf/Flash battle surface (z=0.5), without changing its hooks.
                 component.position = (0.0, 0.0, GUI_DEPTH)
                 GUI.addRoot(component)
-            _log('HUD controls created; independent input roots; Ctrl+click power or voice above medkit')
+            _log('HUD controls created; independent input roots; left-click power or voice with the game cursor')
         width, height = GUI.screenResolution()[:2]
         size = geometry[2] * (24.0 / BORDER_SIZE)
         y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height

@@ -19,7 +19,9 @@ speech, external process, background thread or runtime download is used.
 - Press **Ctrl+Alt+M** in battle to turn the visual and audio reminder off or
   back on. The shortcut is ignored while
   battle chat is focused and does not consume the game's key event.
-- Hold Ctrl for the game's mouse cursor and click either icon above the medkit.
+- Use the game's visible, active cursor to left-click either icon above the
+  medkit. Ctrl can show the cursor, but clicking works with or without Ctrl;
+  the mod does not depend on receiving the modifier's state.
   The power icon toggles the whole reminder. The speaker icon toggles voice
   independently, allowing the orange pulse to continue with voice switched off.
   Controls appear in arcade and artillery views and hide in the ordinary

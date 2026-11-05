@@ -52,11 +52,12 @@ class HudControlTests(unittest.TestCase):
         self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
         self.assertTrue(self.mod._controls[0][0].textureName.endswith('power_off.dds'))
 
-    def test_ctrl_click_toggles_each_setting_once_and_consumes_mouse(self):
+    def test_plain_click_toggles_each_setting_once_and_consumes_mouse(self):
         self.sync()
+        self.cursor.active = False
         self.assertFalse(self.click(0, True))
         self.assertTrue(self.mod._reminder_enabled)
-        self.ctrl = True
+        self.cursor.active = True
         self.assertTrue(self.click(0, True))
         self.assertTrue(self.click(0, False))
         self.assertFalse(self.mod._reminder_enabled)
@@ -188,22 +189,68 @@ class HudControlTests(unittest.TestCase):
     def test_root_key_route_handles_click_when_native_hit_callback_is_missing(self):
         route, flash = self.install_native_router(native_hit=False)
         self.game.state()
-        self.ctrl = True
-        for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
-            self.assertTrue(route(self.routed_event(index, True)))
-            self.assertTrue(route(self.routed_event(index, False)))
-            self.assertFalse(getattr(self.mod, setting))
+        for ctrl in (False, True):
+            self.ctrl = ctrl
+            for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
+                with self.subTest(ctrl=ctrl, setting=setting):
+                    before = getattr(self.mod, setting)
+                    self.assertTrue(route(self.routed_event(index, True)))
+                    self.assertTrue(route(self.routed_event(index, False)))
+                    self.assertEqual(getattr(self.mod, setting), not before)
         self.assertEqual(self.flash_events, [])
         self.assertEqual(self.game.gui.roots[0], flash)
 
     def test_native_mouse_route_and_duplicate_click_toggle_once(self):
         route, unused_flash = self.install_native_router()
         self.sync()
-        self.ctrl = True
-        self.assertTrue(route(self.routed_event(0, True)))
-        self.assertTrue(route(self.routed_event(0, False)))
-        self.assertFalse(self.mod._reminder_enabled)
+        for ctrl in (False, True):
+            self.ctrl = ctrl
+            for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
+                with self.subTest(ctrl=ctrl, setting=setting):
+                    before = getattr(self.mod, setting)
+                    self.assertTrue(route(self.routed_event(index, True)))
+                    self.assertTrue(route(self.routed_event(index, False)))
+                    self.assertEqual(getattr(self.mod, setting), not before)
         self.assertEqual(self.flash_events, [])
+
+    def test_mouse_and_root_click_paths_do_not_require_key_state_api(self):
+        self.sync()
+        def unavailable_key_state(key):
+            raise AssertionError('click handling must not query modifier keys')
+        for state_api in ('absent', 'raises'):
+            if state_api == 'absent':
+                del self.game.world.isKeyDown
+            else:
+                self.game.world.isKeyDown = unavailable_key_state
+            for path in ('mouse', 'root'):
+                with self.subTest(state_api=state_api, path=path):
+                    component, unused_owner, unused_mount, handler = self.mod._controls[0]
+                    before = self.mod._reminder_enabled
+                    def send(down):
+                        event = self.routed_event(0, down)
+                        return (handler.handleMouseButtonEvent(component, event)
+                            if path == 'mouse' else handler.handleKeyEvent(event))
+                    self.assertTrue(send(True))
+                    self.assertTrue(send(False))
+                    self.assertEqual(self.mod._reminder_enabled, not before)
+
+    def test_releasing_ctrl_before_mouse_up_keeps_click_when_cursor_stays_visible(self):
+        self.sync()
+        for path in ('mouse', 'root'):
+            with self.subTest(path=path):
+                component, unused_owner, unused_mount, handler = self.mod._controls[0]
+                before = self.mod._reminder_enabled
+                def send(down):
+                    event = self.routed_event(0, down)
+                    return (handler.handleMouseButtonEvent(component, event)
+                        if path == 'mouse' else handler.handleKeyEvent(event))
+                self.ctrl = True
+                self.assertTrue(send(True))
+                self.ctrl = False
+                self.assertTrue(send(False))
+                self.assertFalse(send(False))
+                self.assertFalse(handler.handleMouseClickEvent(component))
+                self.assertEqual(self.mod._reminder_enabled, not before)
 
     def test_same_mouse_event_delivered_to_both_paths_never_toggles_twice(self):
         self.sync()
@@ -224,7 +271,7 @@ class HudControlTests(unittest.TestCase):
         self.ctrl = True
         route(self.routed_event(0, True, key=50))
         route(self.routed_event(0, True, position=(-0.9, 0.9)))
-        self.ctrl = False
+        self.cursor.active = False
         route(self.routed_event(0, True))
         route(self.routed_event(0, False))
         self.assertEqual(len(self.flash_events), 4)
@@ -243,9 +290,8 @@ class HudControlTests(unittest.TestCase):
         self.assertTrue(self.mod._reminder_enabled)
         self.assertEqual(len(self.flash_events), 1)
 
-    def test_ctrl_without_visible_cursor_or_with_modal_hud_cannot_toggle(self):
+    def test_inactive_or_hidden_cursor_and_modal_hud_cannot_toggle(self):
         self.sync()
-        self.ctrl = True
         self.cursor.active = False
         self.assertFalse(self.click(0, True))
         self.cursor.active = True
