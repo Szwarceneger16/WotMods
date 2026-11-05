@@ -174,6 +174,28 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertEqual(missions['wq::fixture']['status'], 'completed')
         self.assertEqual(missions['seasonal:fixture']['name'], 'Fixture seasonal')
 
+    def test_named_time_points_survive_journal_replay_and_keep_old_points(self):
+        self.assertTrue(self.service.create_time_point())
+        self.clock.value = 120
+        self.assertTrue(self.service.create_time_point('  Zażółć · evening <fixture>  '))
+        scope = self.service.timeline_snapshot()
+        identifier = scope['time_points'][-1][0]
+        self.assertEqual(scope['time_point_names'], {identifier: 'Zażółć · evening <fixture>'})
+        self.assertTrue(self.service.set_timeline_range(identifier, ''))
+        reopened = self.open_service('named-reopen')
+        self.assertTrue(reopened.ready)
+        self.assertEqual(reopened.timeline_snapshot()['time_points'], scope['time_points'])
+        self.assertEqual(reopened.timeline_snapshot()['time_point_names'], scope['time_point_names'])
+        self.assertEqual(self.open_service('separate', 'EU:8').timeline_snapshot()['time_point_names'], {})
+
+    def test_invalid_point_names_do_not_add_a_point_or_change_saved_names(self):
+        self.assertTrue(self.service.create_time_point('Valid'))
+        before = self.service.timeline_snapshot()
+        for name in ('x' * 81, 'embedded\nnewline', 'embedded\x00zero', 123, {}):
+            self.assertFalse(self.service.create_time_point(name))
+            self.assertEqual(self.service.timeline_snapshot()['time_points'], before['time_points'])
+            self.assertEqual(self.service.timeline_snapshot()['time_point_names'], before['time_point_names'])
+
     def test_battle_and_account_bond_earnings_reach_every_statistics_group_once(self):
         raw = raw_result()
         raw['personal']['avatar'].update(crystal=13, eventCrystal=13)

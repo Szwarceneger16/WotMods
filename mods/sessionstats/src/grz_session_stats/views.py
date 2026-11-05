@@ -198,6 +198,9 @@ class StatsWindow(object):
         self._expected_position = None
         self._user_position = False
         self._drag_active = False
+        self._resize_gesture = None
+        self._resize_anchor = None
+        self._resize_callback_id = None
         self._diagnostic_once = set()
         self._renderer_stages = set()
         self._size_logs = 0
@@ -334,6 +337,9 @@ class StatsWindow(object):
     def _invalidate(self):
         # Invalidate before native cancellation/unsubscription can reenter us.
         self._generation += 1
+        self._cancel_callback(self._resize_callback_id)
+        self._resize_callback_id = None
+        self._resize_gesture = self._resize_anchor = None
         self._cancel_watchdog()
         self._detach()
         self._view = self._model = self._parent = None
@@ -470,6 +476,128 @@ class StatsWindow(object):
                                'GRZ UI: native window adjustment finished at %s.', self._window_position())
                 self._keep_visible()
 
+    @staticmethod
+    def _resize_mouse():
+        import BigWorld
+        import GUI
+        import Keys
+        cursor = GUI.mcursor()
+        position = cursor.position
+        held = BigWorld.isKeyDown(Keys.KEY_LEFTMOUSE) and getattr(cursor, 'inFocus', True)
+        x, y = float(position[0]), float(position[1])
+        if math.isnan(x) or math.isinf(x) or math.isnan(y) or math.isinf(y):
+            raise ValueError('Invalid game cursor coordinates')
+        return x, y, bool(held)
+
+    def _begin_resize(self, corner, token):
+        if corner not in ('nw', 'ne', 'sw', 'se') or self._resize_gesture:
+            return
+        if not isinstance(token, (str, type(u''))) or not token.isdigit() or len(token) > 12:
+            return
+        try:
+            x, y, held = self._resize_mouse()
+            viewport = self._viewport()
+            size = self._reported_size or self._window_size()
+            position = self._window_position()
+            if not held or size is None or position is None or min(viewport['width'], viewport['height']) <= 0:
+                return
+            self._resize_gesture = {
+                'corner': corner, 'token': token, 'mouse': (x, y), 'size': size,
+                'position': position, 'viewport': viewport, 'last': None,
+            }
+            self._resize_anchor = self._resize_gesture
+            self._on_drag(True)
+            self._poll_resize(self._generation, self._resize_gesture)
+        except (ImportError, AttributeError, RuntimeError, TypeError, ValueError):
+            self._end_resize(discard_anchor=True, notify=True)
+            self._log_once('resize_capture_unavailable', logging.WARNING,
+                           'GRZ UI: game-level resize tracking unavailable.')
+
+    def _poll_resize(self, generation, gesture, finishing=False):
+        if (generation != self._generation or not self.is_open() or
+                gesture is not self._resize_gesture):
+            return
+        self._resize_callback_id = None
+        try:
+            import BigWorld
+            x, y, held = self._resize_mouse()
+            held = held and not finishing
+            viewport = gesture['viewport']
+            scale = viewport['scale']
+            west, north = 'w' in gesture['corner'], 'n' in gesture['corner']
+            dx = (x - gesture['mouse'][0]) * viewport['width'] / 2.0
+            dy = (gesture['mouse'][1] - y) * viewport['height'] / 2.0
+            width = gesture['size'][0] + (-dx if west else dx)
+            height = gesture['size'][1] + (-dy if north else dy)
+            available_width = (gesture['position'][0] + gesture['size'][0] if west
+                               else viewport['width'] - gesture['position'][0]) - 10
+            available_height = (gesture['position'][1] + gesture['size'][1] if north
+                                else viewport['height'] - gesture['position'][1]) - 10
+            width = max(1, min(available_width, max(470 * scale, width))) / scale
+            height = max(1, min(available_height, max(360 * scale, height))) / scale
+            dimensions = (width, height)
+            gesture['target'] = _dimensions((width * scale, height * scale))
+            if dimensions != gesture['last'] or not held:
+                gesture['last'] = dimensions
+                self._preferred_size = dimensions
+                payload = {'resize_gesture': {
+                    'token': gesture['token'], 'width': width, 'height': height, 'active': held,
+                }}
+                with self._model.transaction() as live:
+                    live.setPayload(json.dumps(payload))
+            # Model listeners can close/reopen the window or complete a gesture.
+            if generation != self._generation or gesture is not self._resize_gesture:
+                return
+            if not held:
+                self._end_resize()
+                return
+            callback_id = BigWorld.callback(1.0 / 60, lambda: self._poll_resize(generation, gesture))
+            if generation != self._generation or gesture is not self._resize_gesture:
+                self._cancel_callback(callback_id)
+            else:
+                self._resize_callback_id = callback_id
+        except (ImportError, AttributeError, RuntimeError, TypeError, ValueError):
+            self._end_resize(discard_anchor=True, notify=True)
+            self._log_once('resize_tracking_failed', logging.WARNING,
+                           'GRZ UI: game-level resize tracking stopped after an input error.')
+
+    def _end_resize(self, token=None, discard_anchor=False, notify=False):
+        gesture = self._resize_gesture
+        if gesture is not None and token is not None and token != gesture['token']:
+            return
+        self._resize_gesture = None
+        callback_id = self._resize_callback_id
+        self._resize_callback_id = None
+        self._cancel_callback(callback_id)
+        if gesture is not None:
+            # A same-size release does not produce another renderer resize.
+            # Keep the anchor only while the final surface update is pending.
+            if (discard_anchor or gesture.get('target') == self._window_size()):
+                self._resize_anchor = None
+            self._on_drag(False)
+            if notify and self._model is not None and gesture.get('last'):
+                try:
+                    width, height = gesture['last']
+                    with self._model.transaction() as live:
+                        live.setPayload(json.dumps({'resize_gesture': {
+                            'token': gesture['token'], 'width': width, 'height': height, 'active': False,
+                        }}))
+                except (AttributeError, RuntimeError, TypeError, ValueError):
+                    pass
+
+    def _anchor_resize(self, size):
+        anchor = self._resize_anchor
+        if anchor is None:
+            return
+        left, top = anchor['position']
+        if 'w' in anchor['corner']:
+            left += anchor['size'][0] - size[0]
+        if 'n' in anchor['corner']:
+            top += anchor['size'][1] - size[1]
+        self._move((int(left), int(top)))
+        if self._resize_gesture is None and size == anchor.get('target'):
+            self._resize_anchor = None
+
     def _on_ready(self, native):
         if native is not self._window or self._closing or not self.is_open():
             return False
@@ -519,6 +647,7 @@ class StatsWindow(object):
             LOG.info('GRZ UI: native surface resized to %sx%s.', size[0], size[1])
             self._size_logs += 1
         self._native_size = size
+        self._anchor_resize(size)
         self._place('native_resize')
         self._finish_watchdog_if_ready()
 
@@ -555,7 +684,7 @@ class StatsWindow(object):
                 self._finish_watchdog_if_ready()
             return
         if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag',
-                          'size_preference', 'time_point', 'timeline_range'):
+                          'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end'):
             return
         self._log_once('command_' + action, logging.INFO, 'GRZ UI: command %s received.', action)
         if action == 'close':
@@ -567,6 +696,12 @@ class StatsWindow(object):
             self._place('viewport', force=True)
         elif action == 'drag':
             self._on_drag(_read(arg, 'active'))
+        elif action == 'resize_begin':
+            self._begin_resize(_read(arg, 'corner'), _read(arg, 'token'))
+        elif action == 'resize_end':
+            if self._resize_gesture and _read(arg, 'token') == self._resize_gesture['token']:
+                self._cancel_callback(self._resize_callback_id)
+                self._poll_resize(self._generation, self._resize_gesture, finishing=True)
         elif action == 'size_preference':
             size = _dimensions((_read(arg, 'width'), _read(arg, 'height')))
             if size is not None:
@@ -641,6 +776,7 @@ class StatsWindow(object):
             self._log_once('invalid_resize', logging.WARNING, 'GRZ UI: invalid renderer dimensions ignored.')
             return
         self._reported_size = size
+        self._anchor_resize(size)
         # The event from Wulf remains the authoritative actual surface size;
         # this report is useful for fallback placement and bridge diagnostics.
         self._place('renderer_resize')

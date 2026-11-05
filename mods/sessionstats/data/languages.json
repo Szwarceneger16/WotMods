@@ -283,7 +283,8 @@
       "more.mission.reset": "Streak reset",
       "more.mission.honors": "Completed with honors",
       "more.progress.vehicles": "Unique vehicles: {0} → {1}",
-      "more.bonus.event.bonds": "Mission or event reward: +{0} bonds"
+      "more.bonus.event.bonds": "Mission or event reward: +{0} bonds",
+      "timeline.name": "Time point name"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -567,7 +568,8 @@
       "more.mission.reset": "Seria przerwana",
       "more.mission.honors": "Ukończona z wyróżnieniem",
       "more.progress.vehicles": "Unikalne pojazdy: {0} → {1}",
-      "more.bonus.event.bonds": "Nagroda za misję lub wydarzenie: +{0} obligacji"
+      "more.bonus.event.bonds": "Nagroda za misję lub wydarzenie: +{0} obligacji",
+      "timeline.name": "Nazwa punktu czasu"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -851,7 +853,8 @@
       "more.mission.reset": "Серия прервана",
       "more.mission.honors": "Выполнена с отличием",
       "more.progress.vehicles": "Уникальные машины: {0} → {1}",
-      "more.bonus.event.bonds": "Награда за задачу или событие: +{0} бон"
+      "more.bonus.event.bonds": "Награда за задачу или событие: +{0} бон",
+      "timeline.name": "Название точки времени"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1135,7 +1138,8 @@
       "more.mission.reset": "Série interrompue",
       "more.mission.honors": "Terminée avec les honneurs",
       "more.progress.vehicles": "Véhicules uniques : {0} → {1}",
-      "more.bonus.event.bonds": "Récompense de mission ou d’événement : +{0} obligations"
+      "more.bonus.event.bonds": "Récompense de mission ou d’événement : +{0} obligations",
+      "timeline.name": "Nom du repère temporel"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1419,7 +1423,8 @@
       "more.mission.reset": "Serie unterbrochen",
       "more.mission.honors": "Mit Auszeichnung abgeschlossen",
       "more.progress.vehicles": "Unterschiedliche Fahrzeuge: {0} → {1}",
-      "more.bonus.event.bonds": "Auftrags- oder Ereignisbelohnung: +{0} Anleihen"
+      "more.bonus.event.bonds": "Auftrags- oder Ereignisbelohnung: +{0} Anleihen",
+      "timeline.name": "Name des Zeitpunkts"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1703,7 +1708,8 @@
       "more.mission.reset": "Racha interrumpida",
       "more.mission.honors": "Completada con honores",
       "more.progress.vehicles": "Vehículos distintos: {0} → {1}",
-      "more.bonus.event.bonds": "Recompensa de misión o evento: +{0} bonos"
+      "more.bonus.event.bonds": "Recompensa de misión o evento: +{0} bonos",
+      "timeline.name": "Nombre del punto temporal"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1987,7 +1993,8 @@
       "more.mission.reset": "Серію перервано",
       "more.mission.honors": "Виконано з відзнакою",
       "more.progress.vehicles": "Унікальні машини: {0} → {1}",
-      "more.bonus.event.bonds": "Нагорода за завдання чи подію: +{0} бонів"
+      "more.bonus.event.bonds": "Нагорода за завдання чи подію: +{0} бонів",
+      "timeline.name": "Назва часової точки"
     }
   }
 }

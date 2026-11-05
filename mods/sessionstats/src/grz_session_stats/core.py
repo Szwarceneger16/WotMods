@@ -623,6 +623,14 @@ class StatsService(object):
                     identifier in period_ids['manual_sessions'] or _number(at, True) is None):
                 raise StorageError(message('core.boundaries'))
             yield None
+        names = state.get('time_point_names', {})
+        if not isinstance(names, dict) or len(names) > len(points):
+            raise StorageError(message('core.boundaries'))
+        for identifier, name in items(names):
+            if (identifier not in points or not isinstance(name, text_type) or
+                    not name.strip() or len(name) > 80 or any(ord(char) < 32 for char in name)):
+                raise StorageError(message('core.boundaries'))
+            yield None
         receipts = state.get('_startup_receipts', {})
         if not isinstance(receipts, dict):
             raise StorageError(message('core.ledger'))
@@ -876,9 +884,16 @@ class StatsService(object):
         points.update(self._state.get('time_points', {}))
         return points
 
-    def create_time_point(self):
+    def create_time_point(self, name=None):
         if not self._timeline_enabled or not self.ready or self._closed:
             return False
+        if name is not None:
+            if not isinstance(name, (text_type, bytes)):
+                return False
+            name = _text(name).strip()
+            if len(name) > 80 or any(ord(char) < 32 for char in name):
+                self.last_error = message('timeline.create_error')
+                return False
         points = self._state.get('time_points', {})
         timestamp = self._time()
         if len(points) >= MAX_TIME_POINTS:
@@ -886,7 +901,11 @@ class StatsService(object):
             return False
         candidate = self._candidate()
         candidate['time_points'] = dict(points)
-        candidate['time_points'][_text(uuid.uuid4().hex)] = timestamp
+        identifier = _text(uuid.uuid4().hex)
+        candidate['time_points'][identifier] = timestamp
+        if name:
+            candidate['time_point_names'] = dict(self._state.get('time_point_names', {}))
+            candidate['time_point_names'][identifier] = name
         return self._commit(candidate, {})
 
     def set_timeline_range(self, start, end):
@@ -936,6 +955,7 @@ class StatsService(object):
         scope = index.snapshot(message('scope.timeline'), points.get(start),
                                self._pages.get('timeline'), self._orders.get('timeline'))
         scope['time_points'] = sorted(points.items(), key=lambda point: (point[1], point[0]))
+        scope['time_point_names'] = dict(self._state.get('time_point_names', {})) if ready else {}
         scope['from_point'], scope['to_point'] = start, end
         return scope
 

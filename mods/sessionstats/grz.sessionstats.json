@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "language": "auto",
   "colors": {
     "body_text": "#e5e2cb",
     "body_background": "transparent",
@@ -18,7 +19,7 @@
     "session_tabs_border": "#050601",
     "session_tab_background_start": "#383a2c",
     "session_tab_background_middle": "#16190e",
-    "session_tab_background_end": "#0c0e07",
+    "session_tab_background_end": "#1c2014",
     "session_tab_text": "#ada98b",
     "session_tab_shadow": "#646149",
     "session_tab_separator_border_left": "#050601",
@@ -106,16 +107,16 @@
     "panel_footer_background_start": "#171b0d",
     "panel_footer_background_end": "#1f2213",
     "status_text": "#a5a286",
-    "button_border": "#111105",
+    "button_border": "#555944",
     "button_text": "#dfd4ae",
-    "button_background_start": "#484934",
-    "button_background_middle": "#242b17",
-    "button_background_end": "#30341d",
-    "button_shadow_1": "#7f7650",
-    "button_shadow_2": "#484a2f",
+    "button_background_start": "#45483a",
+    "button_background_middle": "#34392a",
+    "button_background_end": "#2d3325",
+    "button_shadow_1": "rgba(236,220,174,0.3)",
+    "button_shadow_2": "rgba(213,191,132,0.12)",
     "button_hover_text": "#f1e3b8",
-    "button_hover_background_start": "#5a563b",
-    "button_hover_background_end": "#33381d",
+    "button_hover_background_start": "#5b5b45",
+    "button_hover_background_end": "#3a412e",
     "button_quiet_border_color": "#3b4026",
     "button_quiet_background": "#1c2412",
     "button_confirm_background_start": "#68542f",
@@ -167,6 +168,5 @@
   },
   "sessions": {
     "instance_tab": false
-  },
-  "language": "auto"
+  }
 }

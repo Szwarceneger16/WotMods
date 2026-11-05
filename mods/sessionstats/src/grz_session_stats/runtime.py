@@ -1418,7 +1418,7 @@ class Runtime(object):
             if getter('account_key') != self.active_key:
                 return
             if action == 'time_point':
-                self.active_service.create_time_point()
+                self.active_service.create_time_point(getter('name'))
             else:
                 self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
             self._window_call('refresh')
