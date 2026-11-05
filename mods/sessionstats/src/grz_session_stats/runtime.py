@@ -1532,6 +1532,12 @@ class Runtime(object):
 _runtime = None
 
 
+def read_hangar_stats(vehicle_ids):
+    """Public API 1: copy summaries from the running account, without starting it."""
+    from .hangar import read_snapshot
+    return read_snapshot(_runtime, vehicle_ids)
+
+
 def init():
     global _runtime
     if _runtime is not None and _runtime.running:
