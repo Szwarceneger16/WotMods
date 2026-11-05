@@ -163,6 +163,8 @@ async function footer(browser) {
     const browser=await chromium.launch({executablePath:process.env.GRZ_CHROME||localChrome,headless:true,args:['--no-sandbox','--disable-lcd-text']});
     try {
         const page=await panel(browser);
+        await page.mouse.move(1400,940);
+        await frames(page);
         const baseline=await paint(page,'#grz-session-stats');
         const baselineImage=await page.locator('#grz-session-stats').screenshot({animations:'disabled'});
         await pushPanel(page,presentation.defaults);
@@ -219,7 +221,9 @@ async function footer(browser) {
 
         await page.locator('#ss-group-vehicles').click();
         // Clicking the tab scrolls it into view after the wheel cases. Compare
-        // appearance roundtrips at the same scroll anchor as the initial paint.
+        // at the initial hover state and scroll anchor: a stationary pointer
+        // could otherwise open help when summary content moves underneath it.
+        await page.mouse.move(1400,940);
         await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=0;});
         await frames(page);
         await pushPanel(page,{...presentation.custom,panel_css:42});
@@ -231,9 +235,19 @@ async function footer(browser) {
         await pushPanel(page,null);
         check('Appearance fallback preserves the reset scroll anchor',
             await page.locator('#ss-scroll').evaluate(node=>node.scrollTop===0));
+        const restoredPaint=await paint(page,'#grz-session-stats');
+        if(JSON.stringify(baseline)!==JSON.stringify(restoredPaint)) {
+            const differences=[];
+            for(let i=0;i<Math.max(baseline.length,restoredPaint.length);i++) {
+                if(JSON.stringify(baseline[i])!==JSON.stringify(restoredPaint[i])) {
+                    differences.push({index:i,before:baseline[i],after:restoredPaint[i]});
+                }
+            }
+            console.error('Restored panel paint differences:',JSON.stringify(differences.slice(0,8)));
+        }
         check('A missing appearance payload clears previous overrides and restores the exact default panel',
             await page.locator('#grz-session-stats-appearance').count()===0 &&
-            JSON.stringify(baseline)===JSON.stringify(await paint(page,'#grz-session-stats')));
+            JSON.stringify(baseline)===JSON.stringify(restoredPaint));
         await page.evaluate(()=>{
             window.realCreateElement=document.createElement;
             document.createElement=function(name){if(name==='style')throw new Error('injected cosmetic failure');return realCreateElement.apply(this,arguments);};
