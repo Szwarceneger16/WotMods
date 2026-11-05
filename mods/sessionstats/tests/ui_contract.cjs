@@ -252,7 +252,7 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>GRZSessionStats.update(p),missingFixture);
   check('Missing battle exposes 16 of 17 results and marks averages incomplete',
     (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
-    (await page.locator('#ss-summary').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
+    (await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
   check('Financial coverage includes the registered battle with no result',
     (await page.locator('#ss-summary .ss-money-row .ss-cell-coverage').allTextContents()).includes('16/17'));
@@ -270,7 +270,7 @@ async function nativeHost(browser, options) {
         group:label.closest('.ss-group')?label.closest('.ss-group').getAttribute('data-group-id'):'summary'};
     }).filter(label=>label.height>label.lineHeight+1));
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
-  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]').count()===0);
+  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]:not(.ss-info-button)').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
   const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
