@@ -83,9 +83,12 @@ module.exports = async function ({browser, nativeHost, check}) {
     text.includes('Mission or event reward: +43 bonds') &&
     await details.locator('b').count() === 0);
   check('More groups rewards and paired mission outcomes into compact tables',
-    await details.locator('.ss-more-table').count() >= 3 &&
+    await details.locator('.ss-more-table[role="table"]').count() >= 3 &&
     await details.locator('.ss-more-mission-name').count() === 2 &&
     await details.locator('.ss-more-mission-status').count() === 2);
+  check('More uses supported Gameface elements for every table row and cell',
+    await details.locator('table,tbody,tr,th,td,section').count() === 0 &&
+    await details.locator('[role="row"] [role="cell"]').count() >= 5);
   await page.locator('.ss-more-button').first().click();
   check('More closes in its own battle card', await details.isHidden());
 

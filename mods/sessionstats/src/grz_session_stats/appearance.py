@@ -435,13 +435,13 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 240rem; min-width:0; }
 .ss-more-mission-block { flex:1 1 310rem; min-width:0; padding:0 4rem 4rem; }
 .ss-more-reward-block { flex:1 1 220rem; min-width:0; padding:0 4rem 4rem; }
-.ss-more-table { display:block; width:100%; margin:0; border:1rem solid {{colors.details_separator_border_top}}; border-collapse:separate; border-spacing:0; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
-.ss-more-table tbody { display:block; width:100%; }
-.ss-more-table th, .ss-more-table td { display:block; min-width:0; padding:0; vertical-align:top; }
+.ss-more-table { display:block; width:100%; margin:0; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-more-table .ss-more-body { display:block; width:100%; }
+.ss-more-table .ss-more-label, .ss-more-table .ss-more-amount { display:block; min-width:0; padding:0; vertical-align:top; }
 .ss-more-value { display:flex; align-items:center; width:100%; min-height:24rem; padding:3rem 7rem; border-bottom:1rem solid {{colors.details_separator_border_top}}; }
-.ss-more-value th { flex:1 1 0rem; padding-right:10rem; text-align:left; font-weight:normal; color:{{colors.metric_label_text}}; }
-.ss-more-value td { flex:0 1 46%; text-align:right; color:{{colors.metric_value_text}}; }
-.ss-more-value td.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
+.ss-more-value .ss-more-label { flex:1 1 0rem; padding-right:10rem; text-align:left; font-weight:normal; color:{{colors.metric_label_text}}; }
+.ss-more-value .ss-more-amount { flex:0 1 46%; text-align:right; color:{{colors.metric_value_text}}; }
+.ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
 .ss-more-value:nth-child(even) { background:{{colors.table_row_following_background}}; }
 .ss-more-mission:first-child { border-top:0; }

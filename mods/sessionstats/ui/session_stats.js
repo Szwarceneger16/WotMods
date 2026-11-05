@@ -579,22 +579,29 @@
         appliedPremiumCreditsFactor100:'premium.credits', appliedPremiumXPFactor100:'premium.xp'
     };
     function rewardRow(table, text) {
-        var row = append(table, element('tr', 'ss-more-value'));
+        var row = append(table, element('div', 'ss-more-value'));
+        row.setAttribute('role', 'row');
         // Catalog reward messages use a label followed by a colon and amount.
         // Keep that localized wording while aligning the two cells for scanning.
         var separator = text.indexOf(':');
         if (separator >= 0) {
-            var label = append(row, element('th', '', text.slice(0, separator + 1)));
-            label.setAttribute('scope', 'row');
-            append(row, element('td', '', text.slice(separator + 1)));
+            var label = append(row, element('div', 'ss-more-label', text.slice(0, separator + 1)));
+            label.setAttribute('role', 'rowheader');
+            append(row, element('div', 'ss-more-amount', text.slice(separator + 1))).setAttribute('role', 'cell');
         } else {
-            var value = append(row, element('td', 'ss-more-total', text));
-            value.setAttribute('colspan', '2');
+            var value = append(row, element('div', 'ss-more-amount ss-more-total', text));
+            value.setAttribute('role', 'cell');
+            value.setAttribute('aria-colspan', '2');
         }
     }
     function rewardTable(parent, className) {
-        var table = append(parent, element('table', 'ss-more-table' + (className ? ' ' + className : '')));
-        return append(table, element('tbody', ''));
+        // Gameface does not render HTML table tags. Use supported block/flex
+        // elements and expose the same row and cell structure to accessibility.
+        var table = append(parent, element('div', 'ss-more-table' + (className ? ' ' + className : '')));
+        table.setAttribute('role', 'table');
+        var body = append(table, element('div', 'ss-more-body'));
+        body.setAttribute('role', 'rowgroup');
+        return body;
     }
     function renderBattleMore(panel, battle) {
         var data = battle.details || {}, points = data.pass_points || {};
@@ -620,17 +627,19 @@
             var missionTable = rewardTable(missionBlock, 'ss-more-missions');
             ids.forEach(function (id) {
                 var mission = missions[id], kind = mission.kind || 'other';
-                var row = append(missionTable, element('tr', 'ss-more-mission'));
+                var row = append(missionTable, element('div', 'ss-more-mission'));
+                row.setAttribute('role', 'row');
                 var label = t('more.kind.' + kind);
                 if (mission.operation) { label += ' · ' + mission.operation; }
                 if (hasNumber(mission.stage)) { label += ' · ' + t('more.stage', [number(mission.stage)]); }
                 if (id === data.active_crucible) { label += ' · ' + t('more.active'); }
-                var identity = append(row, element('th', 'ss-more-mission-name'));
-                identity.setAttribute('scope', 'row');
+                var identity = append(row, element('div', 'ss-more-mission-name'));
+                identity.setAttribute('role', 'rowheader');
                 append(identity, element('strong', '', mission.name || (kind === 'crucible' ? t('more.kind.crucible') : id)));
                 append(identity, element('div', 'ss-more-caption', label));
-                var status = append(row, element('td', 'ss-more-mission-status',
+                var status = append(row, element('div', 'ss-more-mission-status',
                     t('more.mission.' + (mission.status || 'observed'))));
+                status.setAttribute('role', 'cell');
                 if (hasNumber(mission.before) && hasNumber(mission.after)) {
                     var counter = mission.progress_kind === 'vehicles' ? 'more.progress.vehicles' : 'more.progress';
                     append(status, element('div', 'ss-more-caption', t(counter, [number(mission.before), number(mission.after)])));
