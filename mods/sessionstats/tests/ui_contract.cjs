@@ -250,7 +250,7 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>GRZSessionStats.update(p),missingFixture);
   check('Missing battle exposes 16 of 17 results and marks averages incomplete',
     (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
-    (await page.locator('#ss-summary').innerText()).includes('Incomplete statistics') &&
+    (await page.locator('#ss-summary').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
   check('Financial coverage includes the registered battle with no result',
     (await page.locator('#ss-summary .ss-money-row .ss-cell-coverage').allTextContents()).includes('16/17'));

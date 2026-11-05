@@ -28,7 +28,7 @@ class WindowCompatibilityTests(unittest.TestCase):
     tearDown = runtime_fixtures.NativeBindingTests.__dict__['tearDown']
     inject_module = runtime_fixtures.NativeBindingTests.__dict__['inject_module']
 
-    def test_resize_tracks_global_cursor_until_release_and_anchors_each_corner(self):
+    def test_resize_tracks_global_cursor_until_release_and_anchors_corners_and_edges(self):
         self.assertTrue(self.window.open())
         native = self.window._window
         cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
@@ -36,7 +36,9 @@ class WindowCompatibilityTests(unittest.TestCase):
         self.inject_module('GUI', mcursor=lambda: cursor)
         self.inject_module('Keys', KEY_LEFTMOUSE=1)
         sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
-        for corner in ('se', 'ne', 'sw', 'nw'):
+        clock = [0.0]
+        self.window._resize_clock = lambda: clock[0]
+        for corner in ('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'):
             cursor.position = (0, 0)
             held[0] = True
             self.window.resize(700, 620)
@@ -47,10 +49,11 @@ class WindowCompatibilityTests(unittest.TestCase):
             self.assertIsNotNone(self.window._resize_gesture)
             # No document mousemove is dispatched, including at release.
             cursor.position = (-0.2 if 'w' in corner else 0.2, 0.1 if 'n' in corner else -0.1)
+            clock[0] += 0.11
             self.timer.fire(self.window._resize_callback_id)
             payload = json.loads(self.window._model._payload)['resize_gesture']
-            self.assertAlmostEqual(payload['width'], 892)
-            self.assertAlmostEqual(payload['height'], 674)
+            self.assertAlmostEqual(payload['width'], 892 if ('w' in corner or 'e' in corner) else 700)
+            self.assertAlmostEqual(payload['height'], 674 if ('n' in corner or 's' in corner) else 620)
             self.window.resize(payload['width'], payload['height'])
             native.resize_surface(payload['width'], payload['height'])
             self.assertEqual(native.position, (178 if 'w' in corner else 370,
@@ -72,7 +75,7 @@ class WindowCompatibilityTests(unittest.TestCase):
         self.inject_module('GUI', mcursor=lambda: cursor)
         self.inject_module('Keys', KEY_LEFTMOUSE=1)
         sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
-        for corner in ('se', 'ne', 'sw', 'nw'):
+        for corner in ('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'):
             cursor.position = (0, 0)
             held[0] = True
             native.resize_surface(1400, 1240)
@@ -84,14 +87,49 @@ class WindowCompatibilityTests(unittest.TestCase):
             held[0] = False
             self.timer.fire(self.window._resize_callback_id)
             payload = json.loads(self.window._model._payload)['resize_gesture']
-            self.assertEqual((payload['width'], payload['height']), (892, 674))
+            width = 892 if ('w' in corner or 'e' in corner) else 700
+            height = 674 if ('n' in corner or 's' in corner) else 620
+            self.assertEqual((payload['width'], payload['height']), (width, height))
             self.assertFalse(payload['active'])
             self.assertIsNone(self.window._resize_gesture)
             self.assertIsNotNone(self.window._resize_anchor)
-            native.resize_surface(1784, 1348)
+            native.resize_surface(width * 2, height * 2)
             self.assertEqual(native.position, (616 if 'w' in corner else 1000,
                                                352 if 'n' in corner else 460))
             self.assertIsNone(self.window._resize_anchor)
+
+    def test_resize_samples_at_60_hz_but_limits_published_sizes_and_flushes_release(self):
+        self.assertTrue(self.window.open())
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        held = [True]
+        clock = [0.0]
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._resize_clock = lambda: clock[0]
+        self.window._begin_resize('se', '1')
+        first_payload = self.window._model._payload
+        for tick in range(1, 6):
+            callback_id = self.window._resize_callback_id
+            self.assertAlmostEqual(self.timer.callbacks[callback_id][0], 1.0 / 60)
+            clock[0] = tick / 60.0
+            cursor.position = (tick * 0.04, -tick * 0.02)
+            self.timer.fire(callback_id)
+            self.assertEqual(self.window._model._payload, first_payload)
+        clock[0] = 0.101
+        cursor.position = (0.25, -0.15)
+        self.timer.fire(self.window._resize_callback_id)
+        payload = json.loads(self.window._model._payload)['resize_gesture']
+        self.assertEqual((payload['width'], payload['height']), (940, 701))
+        # Release inside the next throttle window must still use this position.
+        clock[0] = 0.12
+        cursor.position = (0.3, -0.2)
+        held[0] = False
+        self.timer.fire(self.window._resize_callback_id)
+        payload = json.loads(self.window._model._payload)['resize_gesture']
+        self.assertEqual((payload['width'], payload['height']), (988, 728))
+        self.assertFalse(payload['active'])
+        self.assertIsNone(self.window._resize_callback_id)
 
     def test_same_size_release_does_not_leave_an_anchor_for_a_later_resize(self):
         self.assertTrue(self.window.open())

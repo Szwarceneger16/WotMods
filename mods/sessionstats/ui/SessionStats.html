@@ -15,8 +15,8 @@
       </div>
       <div id="ss-title-actions" class="ss-title-actions">
         <div id="ss-time-point-controls" class="ss-time-point-controls" style="display:none">
-          <input id="ss-time-point-name" class="ss-time-point-name" type="text" maxlength="80" autocomplete="off" data-i18n-aria="timeline.name" aria-label="Time point name">
           <button id="ss-time-point" class="ss-control ss-button ss-time-point" type="button"><span class="ss-control-label" data-i18n="timeline.create">Create time point</span></button>
+          <input id="ss-time-point-name" class="ss-time-point-name" type="text" maxlength="80" autocomplete="off" data-i18n-aria="timeline.name" aria-label="Time point name">
         </div>
         <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
       </div>
@@ -70,10 +70,14 @@
       <button id="ss-refresh" class="ss-control ss-button ss-quiet" type="button" tabindex="0"><span class="ss-control-label" data-i18n="refresh">Refresh</span></button>
       <button id="ss-reset" class="ss-control ss-button ss-reset" type="button" tabindex="0" disabled><span class="ss-control-label" data-i18n="reset">Reset period</span></button>
     </footer>
-    <button id="ss-resize-grip" class="ss-resize-grip" type="button" data-i18n-aria="window.resize" data-i18n-title="window.resize" aria-label="Resize window (drag or use arrow keys)"></button>
+    <button id="ss-resize-grip" class="ss-resize-grip" data-corner="se" type="button" data-i18n-aria="window.resize" data-i18n-title="window.resize" aria-label="Resize window (drag or use arrow keys)"></button>
     <button class="ss-resize-grip ss-resize-nw" data-corner="nw" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
     <button class="ss-resize-grip ss-resize-ne" data-corner="ne" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
     <button class="ss-resize-grip ss-resize-sw" data-corner="sw" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-n" data-corner="n" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-e" data-corner="e" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-s" data-corner="s" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-w" data-corner="w" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
     <div id="ss-reset-overlay" class="ss-modal-overlay" style="display:none">
       <div class="ss-confirm" role="dialog" aria-modal="true" aria-labelledby="ss-confirm-title">
         <h2 id="ss-confirm-title" data-i18n="reset.manual.title">Reset “Since reset”?</h2>

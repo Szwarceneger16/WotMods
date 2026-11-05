@@ -17,6 +17,7 @@ from __future__ import absolute_import, unicode_literals
 import json
 import logging
 import math
+import time
 
 LOG = logging.getLogger('grz.sessionstats')
 LAYOUT_PATH = ('mods', 'grz', 'sessionstats', 'views', 'SessionStats')
@@ -489,8 +490,12 @@ class StatsWindow(object):
             raise ValueError('Invalid game cursor coordinates')
         return x, y, bool(held)
 
+    @staticmethod
+    def _resize_clock():
+        return time.time()
+
     def _begin_resize(self, corner, token):
-        if corner not in ('nw', 'ne', 'sw', 'se') or self._resize_gesture:
+        if corner not in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w') or self._resize_gesture:
             return
         if not isinstance(token, (str, type(u''))) or not token.isdigit() or len(token) > 12:
             return
@@ -503,7 +508,7 @@ class StatsWindow(object):
                 return
             self._resize_gesture = {
                 'corner': corner, 'token': token, 'mouse': (x, y), 'size': size,
-                'position': position, 'viewport': viewport, 'last': None,
+                'position': position, 'viewport': viewport, 'last': None, 'published_at': None,
             }
             self._resize_anchor = self._resize_gesture
             self._on_drag(True)
@@ -525,20 +530,31 @@ class StatsWindow(object):
             viewport = gesture['viewport']
             scale = viewport['scale']
             west, north = 'w' in gesture['corner'], 'n' in gesture['corner']
+            horizontal = west or 'e' in gesture['corner']
+            vertical = north or 's' in gesture['corner']
             dx = (x - gesture['mouse'][0]) * viewport['width'] / 2.0
             dy = (gesture['mouse'][1] - y) * viewport['height'] / 2.0
-            width = gesture['size'][0] + (-dx if west else dx)
-            height = gesture['size'][1] + (-dy if north else dy)
+            width = gesture['size'][0] + ((-dx if west else dx) if horizontal else 0)
+            height = gesture['size'][1] + ((-dy if north else dy) if vertical else 0)
             available_width = (gesture['position'][0] + gesture['size'][0] if west
                                else viewport['width'] - gesture['position'][0]) - 10
             available_height = (gesture['position'][1] + gesture['size'][1] if north
                                 else viewport['height'] - gesture['position'][1]) - 10
-            width = max(1, min(available_width, max(470 * scale, width))) / scale
-            height = max(1, min(available_height, max(360 * scale, height))) / scale
+            if horizontal:
+                width = max(1, min(available_width, max(470 * scale, width)))
+            if vertical:
+                height = max(1, min(available_height, max(360 * scale, height)))
+            width, height = width / scale, height / scale
             dimensions = (width, height)
-            gesture['target'] = _dimensions((width * scale, height * scale))
-            if dimensions != gesture['last'] or not held:
+            now = self._resize_clock()
+            published_at = gesture['published_at']
+            due = published_at is None or now < published_at or now - published_at >= 0.1
+            # Input stays at 60 Hz; costly HTML/native surface changes are at
+            # most 10 Hz. Releasing always publishes the latest sample now.
+            if (dimensions != gesture['last'] and due) or not held:
+                gesture['target'] = _dimensions((width * scale, height * scale))
                 gesture['last'] = dimensions
+                gesture['published_at'] = now
                 self._preferred_size = dimensions
                 payload = {'resize_gesture': {
                     'token': gesture['token'], 'width': width, 'height': height, 'active': held,

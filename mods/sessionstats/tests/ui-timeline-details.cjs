@@ -1,7 +1,10 @@
+const fs=require('fs'),path=require('path');
 module.exports = async function ({browser, nativeHost, check}) {
+  check('Timeline line styling uses supported tiled gradients instead of unsupported dashed borders',
+    !/border[^;{}]*\bdashed\b/.test(fs.readFileSync(path.join(__dirname,'../ui/session_stats.css'),'utf8')));
   const page = await nativeHost(browser, {
     initialViewport: {width:3840, height:2160},
-    viewport: {width:3840, height:2160, scale:2}, changedScale:1,
+    viewport: {width:3840, height:2160, scale:2}, changedScale:1, realTimers:true,
   });
   await page.evaluate(() => {
     const payload = JSON.parse(model.payload);
@@ -33,11 +36,13 @@ module.exports = async function ({browser, nativeHost, check}) {
       const actions = box('#ss-title-actions');
       const input = box('#ss-time-point-name');
       const timePoint = box('#ss-time-point');
+      const frame = box('#ss-time-point-controls');
       const language = box('#ss-language .ss-select-trigger');
       const close = box('#ss-close');
-      return input.width > 50 && input.right < timePoint.left &&
+      return input.width > 50 && timePoint.right <= input.left &&
+        timePoint.left >= frame.left && input.right <= frame.right &&
         Math.abs(input.top - timePoint.top) < 1 && language.right <= close.left &&
-        (Math.abs(timePoint.top - language.top) < 1 ? timePoint.right < language.left : language.top >= timePoint.bottom) &&
+        (Math.abs(timePoint.top - language.top) < 1 ? input.right < language.left : language.top >= timePoint.bottom) &&
         (wrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
         [...document.querySelectorAll('.ss-timeline-field')].every(field => {
           const label = field.firstElementChild.getBoundingClientRect();
@@ -48,6 +53,10 @@ module.exports = async function ({browser, nativeHost, check}) {
     }, wrapped);
   }
   check('Title actions and both timeline selectors fit at 200 percent', await controlsFit(false));
+  check('The time-point button and name share a visible frame',await page.locator('#ss-time-point-controls').evaluate(frame =>
+    frame.firstElementChild.id === 'ss-time-point' &&
+    parseFloat(getComputedStyle(frame).borderTopWidth) > 0 &&
+    frame.contains(document.getElementById('ss-time-point-name'))));
   const name = page.locator('#ss-time-point-name');
   check('The time-point name starts with the current date and time',
     /^\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}$/.test(await name.inputValue()));
@@ -119,94 +128,164 @@ module.exports = async function ({browser, nativeHost, check}) {
   await page.close();
 
   const wide = await nativeHost(browser, {
-    initialViewport:{width:1600,height:1100}, viewport:{width:1600,height:1100,scale:1},
+    initialViewport:{width:2400,height:1300},viewport:{width:2400,height:1300,scale:1},realTimers:true,
   });
   await wide.evaluate(() => {
-    const payload = JSON.parse(model.payload);
-    payload.window_size = [1460, 980];
-    payload.scopes.timeline = JSON.parse(JSON.stringify(payload.scopes.manual));
-    payload.scopes.timeline.from_point = payload.scopes.timeline.to_point = '';
-    payload.scopes.timeline.time_points = [];
-    payload.scopes.timeline.battles.forEach((battle, index) => {
-      battle.details = {pass_points:{credited:33,battle:8,missions:10,vehicle:15}, missions:{}, bonuses:{eventCrystal:43}};
-      if (index === 0) {
-        for (let i=0; i<8; i++) battle.details.missions['fixture:'+i] = {
-          kind:'daily',name:'Fixture mission '+i,status:'completed',description:'A compact objective description.'
-        };
+    // Gameface can return zero/stale card heights until a later layout pass.
+    // Keep that failure active across each initial render and read the real
+    // rectangles only from this test, after the browser performs native flow.
+    window.__realCardRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      const box=__realCardRect.call(this);
+      return this.classList.contains('ss-group') ?
+        {x:box.x,y:box.y,left:box.left,right:box.right,top:box.top,bottom:box.top,width:box.width,height:0} : box;
+    };
+    const payload=JSON.parse(model.payload);
+    payload.window_size=[2200,1160];
+    const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
+    timeline.from_point=timeline.to_point='';timeline.time_points=[];
+    for (const group of ['vehicles','maps','tiers','battles']) {
+      const source=timeline[group];
+      timeline[group]=Array.from({length:6},(_,index) => {
+        const item=JSON.parse(JSON.stringify(source[index % source.length]));
+        item.id='layout-'+group+'-'+index;
+        item.name='Layout fixture '+index;
+        if (group==='battles') {
+          item.details={pass_points:{credited:33,battle:8,missions:10,vehicle:15},missions:{},bonuses:{eventCrystal:43}};
+          if (index===0) for(let i=0;i<8;i++) item.details.missions['fixture:'+i]={
+            kind:'daily',name:'Fixture mission '+i,status:'completed',description:'A compact objective description.',
+          };
+        }
+        return item;
+      });
+      if(timeline.pagination && timeline.pagination[group]) {
+        timeline.pagination[group]={page:0,page_size:40,total:6,pages:1};
       }
-    });
-    model.payload = JSON.stringify(payload);
-    __grzEvents['viewEnv.onDataChanged']();
+    }
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
   await wide.locator('#ss-scope-manual').click();
-  await wide.locator('#ss-group-battles').click();
-  await wide.waitForFunction(() => document.getElementById('ss-groups').classList.contains('ss-battle-stream'));
-  const layout = await wide.locator('#ss-groups').evaluate(groups => {
-    const cards = [...groups.querySelectorAll('.ss-battle')].map(card => {
-      const box = card.getBoundingClientRect();
-      return {left:box.left,right:box.right,top:box.top,bottom:box.bottom};
+  async function readLayout() {
+    return wide.locator('#ss-groups').evaluate(groups => {
+      const cards=[...groups.querySelectorAll('.ss-group')].sort((a,b) =>
+        Number(a.getAttribute('data-list-index'))-Number(b.getAttribute('data-list-index'))).map(card => {
+        const box=__realCardRect.call(card);
+        return {left:box.left,right:box.right,top:box.top,bottom:box.bottom,width:box.width,
+          position:getComputedStyle(card).position,index:Number(card.getAttribute('data-list-index'))};
+      });
+      const columns=groups.querySelector('.ss-card-columns');
+      const group=groups.getBoundingClientRect();
+      return {cards,two:groups.classList.contains('ss-two-columns'),
+        group:{left:group.left,right:group.right,width:group.width},
+        axis:columns && {image:getComputedStyle(columns,':before').backgroundImage,
+          repeat:getComputedStyle(columns,':before').backgroundRepeat,
+          size:getComputedStyle(columns,':before').backgroundSize,
+          width:getComputedStyle(columns,':before').width},
+        arrow:columns && getComputedStyle(columns,':after').content,
+        branches:[...groups.querySelectorAll('.ss-battle')].every(card => {
+          const style=getComputedStyle(card,':before');
+          return style.backgroundImage.includes('linear-gradient') && style.backgroundRepeat==='repeat-x' &&
+            parseFloat(style.height)>0 && parseFloat(style.width)>0;
+        })};
     });
-    const group = groups.getBoundingClientRect();
-    return {cards,group:{left:group.left,right:group.right},
-      line:getComputedStyle(groups,':before').borderLeftStyle,
-      arrow:getComputedStyle(groups,':after').content,
-      branches:[...groups.querySelectorAll('.ss-battle')].every(card =>
-        getComputedStyle(card,':before').borderTopStyle === 'dashed')};
-  });
-  check('Wide battle history alternates between two columns with a fixed central gutter',
-    layout.cards.length >= 4 && layout.cards.every((card,index) =>
-      card.left >= layout.group.left - 1 && card.right <= layout.group.right + 1 &&
-      (index % 2 ? card.left > layout.cards[0].right : Math.abs(card.left-layout.cards[0].left) < 1)) &&
-    Math.abs(layout.cards[1].left-layout.cards[0].right-64) <= 2);
-  check('Wide history has a dashed central axis, arrow and dashed card connections',
-    layout.line === 'dashed' && layout.arrow !== 'none' && layout.branches);
-  await wide.locator('.ss-more-button').first().click();
-  await wide.waitForFunction(() => {
-    const cards = document.querySelectorAll('#ss-groups .ss-battle');
-    return cards[2].getBoundingClientRect().top >= cards[0].getBoundingClientRect().bottom;
-  });
-  const expanded = await wide.locator('#ss-groups .ss-battle').evaluateAll(cards =>
-    cards.slice(0,4).map(card => {const box=card.getBoundingClientRect();return {top:box.top,bottom:box.bottom};}));
-  check('Expanding More moves only later cards in its own column without overlaps',
-    expanded[2].top >= expanded[0].bottom + 12 &&
-    Math.abs(expanded[1].top-layout.cards[1].top) < 1 &&
-    Math.abs(expanded[3].top-layout.cards[3].top) < 1);
-  check('All four window corners have reachable resize grips',
-    await wide.locator('.ss-resize-grip').count() === 4);
+  }
+  async function setAvailableWidth(width) {
+    await wide.setViewportSize({width,height:1300});
+    await wide.evaluate(width => {
+      const payload=JSON.parse(model.payload);payload.viewport.width=width;
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    },width);
+    await wide.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  for(const group of ['vehicles','maps','tiers','battles']) {
+    await wide.locator('#ss-group-'+group).click();
+    await wide.waitForFunction(() => document.getElementById('ss-groups').classList.contains('ss-two-columns'));
+    let layout=await readLayout();
+    check('Zero initial Gameface heights cannot overlap fixed-width '+group+' cards',
+      layout.cards.length===6 && layout.cards.every((card,index) =>
+        Math.abs(card.width-700)<=1 && card.position!=='absolute' &&
+        card.left>=layout.group.left-1 && card.right<=layout.group.right+1 &&
+        (index<2 || card.top>=layout.cards[index-2].bottom+15)) &&
+      Math.abs(layout.cards[1].left-layout.cards[0].right-64)<=2);
+    check('The '+group+' grid keeps canonical alternating card order',
+      layout.cards.every((card,index) => card.index===index &&
+        Math.abs(card.left-layout.cards[index%2].left)<1));
+    if(group==='battles') {
+      check('Wide history has visible tiled axis dashes, arrow and card connections supported by Gameface',
+        layout.axis.image.includes('linear-gradient') && layout.axis.repeat==='repeat-y' &&
+        parseFloat(layout.axis.width)>0 && layout.arrow!=='none' && layout.branches);
+      await wide.locator('[data-list-index="0"] .ss-more-button').click();
+      const expanded=await readLayout();
+      check('More uses native column flow while card height readings remain stale',
+        expanded.cards[2].top>=expanded.cards[0].bottom+15 &&
+        Math.abs(expanded.cards[1].top-layout.cards[1].top)<1 &&
+        Math.abs(expanded.cards[3].top-layout.cards[3].top)<1);
+    }
+    await setAvailableWidth(1300);
+    layout=await readLayout();
+    check('The '+group+' grid collapses below two complete cards without stretching them',
+      !layout.two && layout.group.width<1464 && layout.cards.every((card,index) =>
+        Math.abs(card.width-700)<=1 && Math.abs(card.left-layout.cards[0].left)<1 &&
+        (!index || card.top>=layout.cards[index-1].bottom+15)));
+    await setAvailableWidth(2400);
+  }
+  check('All eight window corners and edges have reachable resize grips',
+    await wide.locator('.ss-resize-grip').count()===8);
   await wide.close();
 
-  for (const corner of ['nw','ne','sw','se']) {
-    const resize = await nativeHost(browser, {
+  for(const edge of ['nw','ne','sw','se','n','e','s','w']) {
+    const resize=await nativeHost(browser, {
       initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
     });
-    const selector = corner === 'se' ? '#ss-resize-grip' : '[data-corner="'+corner+'"]';
-    await resize.locator(selector).dispatchEvent('pointerdown',{
-      button:0,pointerId:77,clientX:corner.includes('w') ? 6 : 694,
-      clientY:corner.includes('n') ? 6 : 614,
-    });
-    await resize.evaluate(corner => {
-      window.__resizeStart = {x:corner.includes('w') ? 6 : 694,y:corner.includes('n') ? 6 : 614};
+    const horizontal=/[ew]/.test(edge),vertical=/[ns]/.test(edge);
+    const x=edge.includes('w') ? 6 : edge.includes('e') ? 694 : 350;
+    const y=edge.includes('n') ? 6 : edge.includes('s') ? 614 : 310;
+    const selector=edge==='se' ? '#ss-resize-grip' : '[data-corner="'+edge+'"]';
+    await resize.evaluate(() => {window.__resizeClock=100000;Date.now=()=>__resizeClock;});
+    await resize.locator(selector).dispatchEvent('pointerdown',{button:0,pointerId:77,clientX:x,clientY:y});
+    await resize.evaluate(({edge,x,y}) => {
+      window.__resizeStart={x,y};
       document.dispatchEvent(new PointerEvent('pointermove',{
-        pointerId:77,buttons:1,clientX:__resizeStart.x+(corner.includes('w') ? -240 : 240),
-        clientY:__resizeStart.y+(corner.includes('n') ? -160 : 160),bubbles:true,
+        pointerId:77,buttons:1,clientX:x+(edge.includes('w') ? -240 : 240),
+        clientY:y+(edge.includes('n') ? -160 : 160),bubbles:true,
       }));
-    },corner);
-    await resize.waitForFunction(() => __nativeSize[0] === 940 && __nativeSize[1] === 780);
-    await resize.evaluate(corner => document.dispatchEvent(new PointerEvent('pointermove',{
-      pointerId:77,buttons:1,clientX:__resizeStart.x+(corner.includes('w') ? -310 : 310),
-      clientY:__resizeStart.y+(corner.includes('n') ? -230 : 230),bubbles:true,
-    })),corner);
-    await resize.waitForFunction(() => __nativeSize[0] === 1010 && __nativeSize[1] === 850);
-    check('Fast pointer movement outside the panel keeps resizing from '+corner, await resize.evaluate(corner =>
-      __grzCommands.some(command => command.action === 'resize_begin' && command.corner === corner),corner));
-    await resize.evaluate(() => document.dispatchEvent(new PointerEvent('pointerup',{pointerId:77,button:0,bubbles:true})));
-    await resize.evaluate(() => {
-      document.dispatchEvent(new PointerEvent('pointermove',{pointerId:77,buttons:0,clientX:1200,clientY:1000,bubbles:true}));
-    });
-    check('Releasing the pointer ends the '+corner+' gesture and saves its final dimensions',
-      await resize.evaluate(() => __nativeSize[0] === 1010 && __nativeSize[1] === 850 &&
-        __grzCommands.some(command => command.action === 'resize_end') &&
-        __grzCommands.some(command => command.action === 'size_preference' && command.width === '1010' && command.height === '850')));
+    },{edge,x,y});
+    const firstWidth=horizontal ? 940 : 700,firstHeight=vertical ? 780 : 620;
+    await resize.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
+      {width:firstWidth,height:firstHeight});
+    const beforeBurst=await resize.evaluate(edge => {
+      const before=__grzHelperCalls.resize;
+      for(const offset of [20,80]) {
+        __resizeClock=100000+offset;
+        document.dispatchEvent(new PointerEvent('pointermove',{
+          pointerId:77,buttons:1,clientX:__resizeStart.x+(edge.includes('w') ? -(240+offset) : 240+offset),
+          clientY:__resizeStart.y+(edge.includes('n') ? -(160+offset) : 160+offset),bubbles:true,
+        }));
+      }
+      return before;
+    },edge);
+    await resize.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    check('Rapid '+edge+' movement coalesces expensive sizing within its 100ms interval',
+      await resize.evaluate(() => __grzHelperCalls.resize)===beforeBurst);
+    await resize.evaluate(edge => document.dispatchEvent(new PointerEvent('pointerup',{
+      pointerId:77,button:0,clientX:__resizeStart.x+(edge.includes('w') ? -320 : 320),
+      clientY:__resizeStart.y+(edge.includes('n') ? -240 : 240),bubbles:true,
+    })),edge);
+    const finalWidth=horizontal ? 1020 : 700,finalHeight=vertical ? 860 : 620;
+    await resize.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
+      {width:finalWidth,height:finalHeight});
+    check('Releasing '+edge+' flushes the latest movement and preserves the unused edge dimension',
+      await resize.evaluate(({edge,width,height}) =>
+        __grzCommands.some(command => command.action==='resize_begin' && command.corner===edge) &&
+        __grzCommands.some(command => command.action==='resize_end') &&
+        __grzCommands.some(command => command.action==='size_preference' && command.width===String(width) && command.height===String(height)),
+      {edge,width:finalWidth,height:finalHeight}));
+    await resize.evaluate(() => document.dispatchEvent(new PointerEvent('pointermove',{
+      pointerId:77,buttons:0,clientX:1200,clientY:1000,bubbles:true,
+    })));
+    check('Movement after releasing '+edge+' cannot continue the gesture',
+      await resize.evaluate(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
+        {width:finalWidth,height:finalHeight}));
     await resize.close();
   }
 
