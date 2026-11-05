@@ -25,6 +25,12 @@ clicking does not require Ctrl or any other modifier. Icons are visible in arcad
 views and hide in the ordinary sniper view. Configuration defaults are
 restored in the next battle.
 
+The mod reads the own vehicle's learned, active-role crew skills before creating
+any battle graphics, mouse monitoring or sound. Without Stay Sharp, or while crew
+data is unavailable, it remains dormant: no icons, pulse, voice or hotkey/equipment
+subscriptions. A cached crew check once per second detects vehicle/crew changes.
+The icons use cursor/button polling and never register native GUI input callbacks.
+
 ## Downloads
 
 **[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip` or `Session-Stats-v<version>.zip`. Each release offers both installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the two installers.

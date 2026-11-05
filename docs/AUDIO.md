@@ -35,6 +35,29 @@ speech, external process, background thread or runtime download is used.
   Falsey `play()` returns are not interpreted as failure: their meaning is
   not established. Wwise may report errors only in the game's log.
 
+## Crew eligibility and input isolation
+
+The own vehicle must have a learned `commander_staySharp` skill in an active crew
+role. The mod reads `Vehicle.crewCompactDescrs` through the client's
+`TankmanDescr(..., battleOnly=True).skillLevels(active_roles)` so bonus role skills
+are included and temporary `perkEffects` inactivity is not mistaken for a missing
+skill. Changed crew snapshots are decoded once; identifiers and snapshots are
+never logged. Missing or unsupported crew data leaves the mod dormant.
+
+While dormant, there are no mod GUI components, mouse polls, audio handles or
+hotkey/equipment subscriptions. One cached state check per second permits recovery
+when the own vehicle or crew changes. Learned-but-inactive perks retain their
+status controls, but the pulse and voice still require the server's usable-medkit
+perk effect.
+
+The icons have native GUI focus and mouse focus disabled and no GUI script.
+A single timer samples the actual cursor and left mouse button every 20 ms while
+the cursor is usable, otherwise every 100 ms. A completed press/release on the same
+icon queues its action outside input dispatch. Root detachment is deferred too.
+This avoids the native GUI `BW::KeyEvent` conversion path observed immediately
+before reported client access violations. It does not prove the absence of all
+possible game crashes; artillery camera/minimap retesting is still required.
+
 ## Language configuration
 
 The same seven language codes as Session Stats are supported, with actual

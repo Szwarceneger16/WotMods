@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.2 - installation and test
+# Stay Sharp Medkit Reminder 1.8.3 - installation and test
 
 ## Install
 
@@ -29,6 +29,13 @@
    its existing installer is carried forward without being rebuilt.
 
 ## In-game verification
+
+- On a vehicle without a learned Stay Sharp perk, expect no mod icons, outline,
+  voice or active mouse monitoring. Repeat with missing crew data: it stays dormant.
+- On artillery with the perk, repeatedly switch views using the minimap right
+  mouse button and the normal view controls, including while the medkit is cooling
+  down. Verify both regular and trajectory artillery views and leaving/rejoining
+  battle. The icons must accept left clicks without native GUI input callbacks.
 
 - Before battle starts and during equipment selection, expect no outline or
   extra audio.

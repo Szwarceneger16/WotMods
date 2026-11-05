@@ -256,7 +256,9 @@ class Tests(unittest.TestCase):
         self.resmgr.isFile=lambda path:path not in self.missing
         self.item=FakeItem()
         self.world.avatar=types.SimpleNamespace(
-            vehicle=types.SimpleNamespace(health=1000,perkEffects={'equipment':['medkitPremium']}),
+            vehicle=types.SimpleNamespace(health=1000,perkEffects={'equipment':['medkitPremium']},
+                crewCompactDescrs=(b'fake_commander',), typeDescriptor=types.SimpleNamespace(
+                    type=types.SimpleNamespace(crewRoles=(('commander',),), tags=set()))),
             isObserver=lambda:False,arena=types.SimpleNamespace(period=3))
         names=['gui.Scaleform','gui.Scaleform.daapi','gui.Scaleform.daapi.view',
                'gui.Scaleform.daapi.view.battle','gui.Scaleform.daapi.view.battle.shared',
@@ -268,6 +270,12 @@ class Tests(unittest.TestCase):
                'gui.battle_control.controllers.consumables',
                'gui.battle_control.controllers.consumables.equipment_ctrl']
         packages={name:types.ModuleType(name) for name in names}
+        packages['items']=types.ModuleType('items')
+        packages['items.tankmen']=types.ModuleType('items.tankmen')
+        class FakeTankmanDescr:
+            def __init__(self, compact, battleOnly=False): pass
+            def skillLevels(self, active_roles): return [('commander_staySharp',100)]
+        packages['items.tankmen'].TankmanDescr=FakeTankmanDescr
         self.client_language='en'
         packages['helpers']=types.ModuleType('helpers')
         packages['helpers'].getClientLanguage=lambda:self.client_language
@@ -877,7 +885,9 @@ class Tests(unittest.TestCase):
             getControllingVehicleID=lambda:8)
         self.state(10)
         self.assertFalse(self.mod._overlay_active)
-        self.assertEqual(self.mod._last_reason,'controlling_vehicle_not_player')
+        self.assertEqual(self.mod._perk_state,'unknown')
+        self.assertEqual(self.key_event.handlers,[])
+        self.assertIsNone(self.mod._overlay)
 
     def test_71_destroyed_avatar_while_entity_has_health_hides(self):
         overlay=self.visible_start()

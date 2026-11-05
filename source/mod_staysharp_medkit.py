@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.2 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.3 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,13 +28,14 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.2'
+VERSION = '1.8.3'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
 HALF_PULSE = 2.0               # 0%->100% in 2 s, then 100%->0% in 2 s
 PULSE_TICK = 0.10              # 10 texture switches/s, never allocate new GUI roots
 STATE_TICK = 0.25
+DORMANT_TICK = 1.0
 STABLE_READY_DELAY = 0.90
 READY_VOICE_DELAY = 1.0
 READY_VOICE_LEAD = 0.5
@@ -100,6 +101,7 @@ _voice_attempts = 0
 _voice_failures = 0
 _controls = []
 _controls_disabled = False
+_perk_state = 'unknown'
 
 
 def _language_code(value):
@@ -334,6 +336,8 @@ def _track_battle_start(panel):
 
 def _on_equipment_updated(compact, item):
     """Native remaining time is a snapshot, timestamp it once per server update."""
+    if _perk_state != 'present':
+        return
     previous = _cooldown_deadlines.pop(compact, None)
     try:
         if item is None or not item.isInCooldown() or item.getQuantity() <= 0:
@@ -413,7 +417,8 @@ def _track_audio_ready(panel, slot, reason='ready'):
 
 def _play_ready_voice():
     global _voice_player, _voice_disabled, _voice_attempts, _voice_failures
-    if _voice_disabled or not _voice_enabled or not _reminder_enabled:
+    if (_voice_disabled or not _voice_enabled or not _reminder_enabled
+            or _panel is None or _crew_perk_status(_panel) != 'present'):
         return
     _voice_attempts += 1
     report = _voice_attempts <= 3 or _voice_attempts % 10 == 0
@@ -554,7 +559,8 @@ def _cancel_pulse():
 def _schedule_state():
     global _state_callback
     if _panel is not None and _state_callback is None and not _graphics_disabled:
-        _state_callback = BigWorld.callback(STATE_TICK, _check_state)
+        interval = STATE_TICK if _perk_state == 'present' else DORMANT_TICK
+        _state_callback = BigWorld.callback(interval, _check_state)
 
 
 def _schedule_pulse():
@@ -701,6 +707,70 @@ def _resolve_player_vehicle(panel, avatar):
     if vehicle is not None and (not vehicle_id or getattr(vehicle, 'id', vehicle_id) == vehicle_id):
         return (vehicle, 'avatar_vehicle_fallback')
     return (None, 'vehicle_entity_unavailable')
+
+
+# The skill configuration maps commander_staySharp to VSE perk 108.
+# Vehicle.crewCompactDescrs is the server's own-vehicle crew snapshot.
+STAY_SHARP_SKILL = 'commander_staySharp'
+_crew_perk_cache_key = None
+_crew_perk_cache_status = 'unknown'
+
+
+def _clear_crew_perk_cache():
+    global _crew_perk_cache_key, _crew_perk_cache_status
+    _crew_perk_cache_key = None
+    _crew_perk_cache_status = 'unknown'
+
+
+def _crew_perk_status(panel):
+    """Read learned active-role skills, independently of temporary perkEffects.
+
+    Unknown or incomplete crew data must never enable native GUI/input/audio.
+    Decode a changed snapshot once; never log the compact descriptions or IDs.
+    """
+    global _crew_perk_cache_key, _crew_perk_cache_status
+    try:
+        player = BigWorld.player()
+        if player is None:
+            return 'unknown'
+        vehicle, unused_origin = _resolve_player_vehicle(panel, player)
+        if vehicle is None:
+            return 'unknown'
+        crew_data = getattr(vehicle, 'crewCompactDescrs', None)
+        descriptor = getattr(vehicle, 'typeDescriptor', None)
+        roles_data = getattr(getattr(descriptor, 'type', None), 'crewRoles', None)
+        if crew_data is None or roles_data is None:
+            return 'unknown'
+        crew = tuple(crew_data)
+        roles = tuple(tuple(slot_roles) for slot_roles in roles_data)
+        if not crew or len(crew) > 16 or len(roles) != len(crew):
+            return 'unknown'
+        key = (id(vehicle), getattr(vehicle, 'id', None), crew, roles)
+        if key == _crew_perk_cache_key:
+            return _crew_perk_cache_status
+        from items.tankmen import TankmanDescr
+        try:
+            string_types = (basestring,)
+        except NameError:
+            string_types = (str, bytes)
+        status = 'absent'
+        for compact, active_roles in zip(crew, roles):
+            if (not compact or not isinstance(compact, string_types)
+                    or len(compact) > 65536 or not active_roles):
+                status = 'unknown'
+                continue
+            tankman = TankmanDescr(compact, battleOnly=True)
+            for skill_name, skill_level in tankman.skillLevels(active_roles):
+                if skill_name == STAY_SHARP_SKILL and skill_level > 0:
+                    _crew_perk_cache_key, _crew_perk_cache_status = key, 'present'
+                    return 'present'
+        # Do not cache incomplete snapshots; the server can populate them later.
+        if status != 'unknown':
+            _crew_perk_cache_key, _crew_perk_cache_status = key, status
+        return status
+    except Exception:
+        # Client versions without this read-only contract stay dormant.
+        return 'unknown'
 
 
 def _probe_medkit(panel, for_audio=False):
@@ -942,74 +1012,29 @@ def _geometry(panel, slot):
              1.0 - 2.0 * center_y / height,
              BORDER_SIZE * scale), 'centered_layout_' + native_origin)
 
-class _ControlClick(object):
-    """Route both native mouse and root key events through one click latch."""
+# GUI.Simple native key/mouse callbacks are unsafe in the current client:
+# its callback bridge raises "Unregistered type : BW::KeyEvent" in native code.
+# These components stay visual-only; one timer reads primitive cursor/button
+# state for both icons and applies completed clicks on a separate callback.
+_controls_poll_callback = None
+_controls_mouse_down = None
+_controls_cursor_was_active = False
+_controls_pending_actions = []
+_controls_pending_detaches = []
+
+
+class _ControlState(object):
     def __init__(self, action, component):
         self.action = action
         self.component = component
         self.pressed = False
 
-    def focus(self, enabled):
-        if not enabled:
-            self.pressed = False
-
-    def mouseButtonFocus(self, enabled):
-        if not enabled:
-            self.pressed = False
-
-    def handleKeyEvent(self, event):
-        # BigWorld first offers mouse buttons to ONE native hit candidate.
-        # If that candidate declines, focused roots get the same key event.
-        # Do our own bounds check here rather than depending on the Flash
-        # parent's native hit transform/clip rectangle.
-        return self._handle(event)
-
-    def handleMouseButtonEvent(self, *args):
-        return self._handle(args[-1])
-
-    def _handle(self, event):
-        try:
-            import Keys
-            if event.key != Keys.KEY_LEFTMOUSE:
-                return False
-            if not self.component.visible or not _controls_cursor_active():
-                self.pressed = False
-                return False
-            width, height = GUI.screenResolution()[:2]
-            x, y = event.cursorPosition
-            center = self.component.position
-            size = self.component.size
-            inside = (abs(x - center[0]) < float(size[0]) / width and
-                      abs(y - center[1]) < float(size[1]) / height)
-            if event.isKeyDown():
-                self.pressed = inside
-                return inside
-            if self.pressed:
-                self.pressed = False
-                if inside:
-                    _log('HUD control click: ' + self.action)
-                    if self.action == 'power':
-                        _toggle_reminder()
-                    else:
-                        _toggle_voice()
-                    if _panel is not None:
-                        _sync_controls(_panel)
-                # Also swallow release outside after a captured press; never
-                # leak half of a UI click into firing/other battle controls.
-                return True
-            return False
-        except Exception:
-            self.pressed = False
-            _exception('HUD control click failed')
-            return False
-
-    def handleMouseClickEvent(self, *args):
-        # Native GUI also posts this after down/up. The shared latch above
-        # already handled the click; do not toggle again or consume plain clicks.
-        return False
-
-    def handleAxisEvent(self, event):
-        return False
+    def contains(self, point):
+        width, height = GUI.screenResolution()[:2]
+        x, y = point
+        center, size = self.component.position, self.component.size
+        return (abs(x - center[0]) < float(size[0]) / width and
+                abs(y - center[1]) < float(size[1]) / height)
 
 
 def _controls_cursor_active():
@@ -1023,14 +1048,15 @@ def _controls_cursor_active():
         modal = getattr(app, 'isModalViewShown', None)
         if callable(modal) and modal():
             return False
-        # Ctrl is only one of the game's ways to expose its cursor.
-        # Clickability follows the actual cursor, never a modifier-key query.
+        # Ctrl only exposes the game's cursor. Modifiers are not click inputs.
         return _control_slot(_panel) is not None
     except Exception:
         return False
 
 
 def _control_slot(panel):
+    if _crew_perk_status(panel) != 'present':
+        return None
     shown, unused_reason = _hud_visibility(panel)
     if not shown:
         return None
@@ -1065,34 +1091,144 @@ def _control_slot(panel):
     return None
 
 
-def _hide_controls():
-    for component, unused_owner, unused_mount, handler in _controls:
-        component.visible = False
-        component.focus = False
-        component.mouseButtonFocus = False
-        handler.pressed = False
-
-
-def _delete_controls():
-    entries = list(_controls)
-    _controls[:] = []
-    for component, owner, mount, handler in entries:
-        handler.pressed = False
+def _cancel_control_actions():
+    actions = list(_controls_pending_actions)
+    _controls_pending_actions[:] = []
+    for action in actions:
         try:
-            component.visible = False
-            component.focus = False
-            component.mouseButtonFocus = False
-            component.script = None
+            BigWorld.cancelCallback(action['callback'])
+        except Exception:
+            _exception('HUD control action cancellation failed')
+
+
+def _queue_control_action(state):
+    action = {'callback': None, 'panel': _panel, 'state': state}
+    def apply_control_action():
+        if action not in _controls_pending_actions:
+            return
+        _controls_pending_actions.remove(action)
+        panel = action['panel']
+        current = any(entry[3] is state and entry[0].visible for entry in _controls)
+        if panel is not _panel or not current or not _controls_cursor_active():
+            return
+        _log('HUD control click: ' + state.action)
+        if state.action == 'power':
+            _toggle_reminder()
+        else:
+            _toggle_voice()
+        # The regular state tick refreshes textures. Never mutate GUI roots
+        # or call Flash layout functions synchronously from input dispatch.
+    _controls_pending_actions.append(action)
+    try:
+        action['callback'] = BigWorld.callback(0.0, apply_control_action)
+    except Exception:
+        _controls_pending_actions.remove(action)
+        raise
+
+
+def _schedule_control_poll(delay):
+    global _controls_poll_callback
+    if _controls_poll_callback is None and _controls and _panel is not None:
+        _controls_poll_callback = BigWorld.callback(delay, _poll_controls)
+
+
+def _poll_controls():
+    global _controls_poll_callback, _controls_mouse_down, _controls_disabled, _controls_cursor_was_active
+    _controls_poll_callback = None
+    if not _controls or _panel is None:
+        return
+    try:
+        import Keys
+        cursor = GUI.mcursor()
+        down = bool(BigWorld.isKeyDown(Keys.KEY_LEFTMOUSE))
+        active = bool(cursor.active and cursor.visible and any(entry[0].visible for entry in _controls))
+        previous = _controls_mouse_down
+        was_active = _controls_cursor_was_active
+        _controls_mouse_down = down
+        _controls_cursor_was_active = active
+        if not active:
+            for entry in _controls:
+                entry[3].pressed = False
+        elif was_active and previous is not None and down != previous:
+            eligible = _controls_cursor_active()
+            for component, unused_owner, unused_mount, state in _controls:
+                inside = eligible and component.visible and state.contains(cursor.position)
+                if down:
+                    state.pressed = inside
+                else:
+                    clicked = state.pressed and inside
+                    state.pressed = False
+                    if clicked:
+                        _queue_control_action(state)
+        # The first sample is only a baseline: a button held before these
+        # icons appeared must not turn its eventual release into a click.
+        _schedule_control_poll(0.02 if active else 0.10)
+    except Exception:
+        _controls_disabled = True
+        _exception('HUD controls disabled after input polling failure')
+        _delete_controls()
+
+
+def _hide_controls():
+    global _controls_mouse_down, _controls_cursor_was_active
+    _controls_mouse_down = None
+    _controls_cursor_was_active = False
+    _cancel_control_actions()
+    for component, unused_owner, unused_mount, state in _controls:
+        component.visible = False
+        state.pressed = False
+
+
+def _dispose_control_roots(entries):
+    for component, owner, mount, unused_state in entries:
+        try:
             if mount == 'hud_child':
                 owner.delChild(component)
-            else:
+            elif mount == 'gui_root':
                 GUI.delRoot(component)
         except Exception:
             _exception('HUD control cleanup failed')
 
 
+def _delete_controls():
+    global _controls_poll_callback, _controls_mouse_down, _controls_cursor_was_active
+    callback = _controls_poll_callback
+    _controls_poll_callback = None
+    _controls_mouse_down = None
+    _controls_cursor_was_active = False
+    if callback is not None:
+        try:
+            BigWorld.cancelCallback(callback)
+        except Exception:
+            _exception('HUD control polling cancellation failed')
+    _cancel_control_actions()
+    entries = list(_controls)
+    _controls[:] = []
+    for component, unused_owner, unused_mount, state in entries:
+        component.visible = False
+        state.pressed = False
+    if not entries:
+        return
+    # Component disposal can run inside another native GUI handler. Removing
+    # roots there invalidates SimpleGUI's vector while it is still iterating.
+    # Keep the components alive and detach on the next engine callback instead.
+    pending = {'callback': None, 'entries': entries}
+    def detach_control_roots():
+        if pending not in _controls_pending_detaches:
+            return
+        _controls_pending_detaches.remove(pending)
+        _dispose_control_roots(entries)
+    _controls_pending_detaches.append(pending)
+    try:
+        pending['callback'] = BigWorld.callback(0.0, detach_control_roots)
+    except Exception:
+        # Hidden visual-only roots are safer than modifying an active native
+        # input traversal synchronously. Retain them if scheduling is unavailable.
+        _exception('HUD control deferred cleanup unavailable; hidden roots retained')
+
+
 def _sync_controls(panel):
-    """Keep switches usable when the outline/voice or the medkit are inactive."""
+    """Keep visual-only switches and their one polling timer in sync with HUD."""
     global _controls_disabled
     if _controls_disabled:
         return
@@ -1110,9 +1246,14 @@ def _sync_controls(panel):
             for action in ('power', 'voice'):
                 path = 'gui/maps/staysharp/control_%s_on.dds' % action
                 component = GUI.Simple(path)
-                handler = _ControlClick(action, component)
-                # Record ownership before native attachment for partial-failure cleanup.
-                _controls.append((component, None, 'gui_root', handler))
+                state = _ControlState(action, component)
+                # An unattached allocation needs no native detach if setup fails.
+                entry = [component, None, 'unattached', state]
+                _controls.append(entry)
+                component.script = None
+                component.focus = False
+                component.moveFocus = False
+                component.mouseButtonFocus = False
                 component.widthMode = GUI.Simple.eSizeMode.PIXEL
                 component.heightMode = GUI.Simple.eSizeMode.PIXEL
                 component.horizontalPositionMode = GUI.Simple.ePositionMode.CLIP
@@ -1121,18 +1262,13 @@ def _sync_controls(panel):
                 component.verticalAnchor = GUI.Simple.eVAnchor.CENTER
                 component.materialFX = GUI.Simple.eMaterialFX.BLEND
                 component.filterType = GUI.Simple.eFilterType.LINEAR
-                component.focus = False
-                component.moveFocus = False
-                component.mouseButtonFocus = False
                 component.visible = False
                 component.colour = (255, 255, 255, 255)
-                component.script = handler
-                # GUI.addRoot sorts by z at attachment. Assign the final depth
-                # FIRST so root key dispatch reaches these before the full-screen
-                # Wulf/Flash battle surface (z=0.5), without changing its hooks.
                 component.position = (0.0, 0.0, GUI_DEPTH)
+                # Record ownership before attachment for partial-failure cleanup.
+                entry[2] = 'gui_root'
                 GUI.addRoot(component)
-            _log('HUD controls created; independent input roots; left-click power or voice with the game cursor')
+            _log('HUD controls created; visual-only roots; cursor polling; left-click power or voice')
         width, height = GUI.screenResolution()[:2]
         size = geometry[2] * (24.0 / BORDER_SIZE)
         y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height
@@ -1147,8 +1283,7 @@ def _sync_controls(panel):
             component.position = (geometry[0] + (index * 2 - 1) * (size + 3.0 * _interface_scale(panel)) / width,
                                   y, GUI_DEPTH)
             component.visible = True
-            component.focus = True
-            component.mouseButtonFocus = True
+        _schedule_control_poll(0.02)
     except Exception:
         _controls_disabled = True
         _exception('HUD controls disabled after GUI failure')
@@ -1382,6 +1517,25 @@ def _animate():
 def _refresh(panel):
     global _ready_slot, _ready_since, _last_reason, _last_panel_active
     global _last_hud_status, _last_geometry_source, _last_geometry_camera, _last_camera_view
+    global _perk_state, _voice_player
+    status = _crew_perk_status(panel)
+    if status != _perk_state:
+        _log('crew stay_sharp=%s; reminder %s' % (
+            status, 'awake' if status == 'present' else 'dormant'))
+    _perk_state = status
+    if status != 'present':
+        _ready_slot, _ready_since = None, None
+        _reset_audio()
+        _voice_player = None
+        _unsubscribe_hotkey()
+        _unsubscribe_equipment()
+        _delete_controls()
+        _delete_overlay()
+        return
+    if _key_handler is None:
+        _subscribe_hotkey()
+    if _equipment_controller is None:
+        _subscribe_equipment(panel)
     _sync_controls(panel)
     _track_battle_start(panel)
     if not _reminder_enabled:
@@ -1470,7 +1624,7 @@ def _check_state():
 
 
 def _on_key_down(event):
-    if _panel is None:
+    if _panel is None or _crew_perk_status(_panel) != 'present':
         return
     try:
         import Keys
@@ -1534,7 +1688,7 @@ def _activate(panel):
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
     global _voice_player, _voice_disabled, _reminder_enabled, _voice_enabled, _voice_attempts, _voice_failures
-    global _controls_disabled, _battle_voice_due
+    global _controls_disabled, _battle_voice_due, _perk_state
     if panel is _panel:
         return
     if _panel is not None:
@@ -1542,6 +1696,7 @@ def _activate(panel):
     _reset_audio()
     _battle_voice_due = None
     _cooldown_deadlines.clear()
+    _clear_crew_perk_cache()
     _voice_player = None
     _voice_disabled = False
     _voice_attempts = 0
@@ -1561,10 +1716,15 @@ def _activate(panel):
     _last_geometry_camera = None
     _last_camera_view = None
     _last_vehicle_source = None
-    _subscribe_hotkey()
-    _subscribe_equipment(panel)
+    _perk_state = _crew_perk_status(panel)
+    _log('crew stay_sharp=%s; reminder %s' % (
+        _perk_state, 'awake' if _perk_state == 'present' else 'dormant'))
+    if _perk_state == 'present':
+        _subscribe_hotkey()
+        _subscribe_equipment(panel)
     _log('audio battle_start mod_version=%s language=%s event=%s' % (VERSION, _language, _ready_voice_event()))
-    _audio_diagnostics()
+    if _perk_state == 'present':
+        _audio_diagnostics()
     _log('battle panel populated; renderer deferred; HUD visibility required')
     _schedule_state()
 
@@ -1582,6 +1742,7 @@ def _deactivate(panel):
     _ready_since = None
     _cancel_state()
     _reset_audio()
+    _clear_crew_perk_cache()
     _delete_controls()
     _delete_overlay()
     _log('battle panel disposed')

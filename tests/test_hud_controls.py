@@ -1,6 +1,7 @@
-"""Native battle-switch regressions using the normal component lifecycle."""
+"""Cursor polling regressions: never bind native GUI KeyEvent callbacks."""
 import types
 import unittest
+from unittest.mock import patch
 
 import test_mod as runtime
 
@@ -12,311 +13,333 @@ class HudControlTests(unittest.TestCase):
         self.game.setUp()
         self.mod = self.game.mod
         self.panel = self.game.panel
+        self.button_down = False
         self.ctrl = False
-        self.game.world.isKeyDown = lambda key: self.ctrl
-        self.cursor = types.SimpleNamespace(active=True, visible=True)
-        self.game.gui.mcursor = lambda: self.cursor
+        self.right_down = False
+        self.queried_keys = []
         import Keys
         Keys.KEY_LEFTMOUSE = 1
+        Keys.KEY_RIGHTMOUSE = 2
         Keys.KEY_LCONTROL = 29
         Keys.KEY_RCONTROL = 157
+        def key_state(key):
+            self.queried_keys.append(key)
+            if key != Keys.KEY_LEFTMOUSE:
+                raise AssertionError('only primitive LMB state may be queried')
+            return self.button_down
+        self.game.world.isKeyDown = key_state
+        self.cursor = types.SimpleNamespace(active=True, visible=True, position=(0.0, 0.0))
+        self.game.gui.mcursor = lambda: self.cursor
+        original_setattr = runtime.Component.__setattr__
+        def reject_native_input(component, name, value):
+            if name in ('focus', 'moveFocus', 'mouseButtonFocus') and value:
+                raise AssertionError('native GUI input would bind BW::KeyEvent')
+            if name == 'script' and value is not None:
+                raise AssertionError('native GUI scripts are unsafe in this client')
+            original_setattr(component, name, value)
+        self.input_guard = patch.object(runtime.Component, '__setattr__', reject_native_input)
+        self.input_guard.start()
 
     def tearDown(self):
+        if self.mod._panel is not None:
+            self.game.emit_unregister()
+        self.flush('detach_control_roots')
+        self.input_guard.stop()
         self.game.tearDown()
 
-    def sync(self):
+    def flush(self, name):
+        for job, (unused_delay, callback) in list(self.game.world.jobs.items()):
+            if callback.__name__ == name:
+                self.game.world.jobs.pop(job, None)
+                callback()
+
+    def sync(self, baseline=True):
         self.mod._sync_controls(self.panel)
+        if baseline and self.mod._controls_poll_callback is not None:
+            self.poll()
 
-    def click(self, index, down):
-        component, unused_owner, unused_mount, handler = self.mod._controls[index]
-        event = types.SimpleNamespace(key=1, isKeyDown=lambda: down,
-            cursorPosition=component.position[:2])
-        return handler.handleMouseButtonEvent(component, event)
+    def poll(self):
+        job = self.mod._controls_poll_callback
+        self.assertIsNotNone(job)
+        delay, callback = self.game.world.jobs.pop(job)
+        self.game.world.clock += delay
+        callback()
 
-    def test_normal_state_tick_shows_both_icons_above_medkit(self):
+    def sample(self, down, index=None, position=None):
+        self.button_down = down
+        if index is not None:
+            self.cursor.position = self.mod._controls[index][0].position[:2]
+        elif position is not None:
+            self.cursor.position = position
+        self.poll()
+
+    def click(self, index):
+        self.sample(True, index)
+        self.sample(False, index)
+        self.flush('apply_control_action')
+
+    def test_state_tick_creates_visual_only_icons_above_medkit_and_one_timer(self):
         self.game.state()
         self.assertEqual(len(self.mod._controls), 2)
         geometry, unused_origin = self.mod._geometry(self.panel, 3)
-        for component, unused_owner, unused_mount, unused_handler in self.mod._controls:
+        for component, unused_owner, unused_mount, unused_state in self.mod._controls:
             self.assertTrue(component.visible)
-            self.assertTrue(component.focus)
-            self.assertTrue(component.mouseButtonFocus)
+            self.assertFalse(component.focus)
+            self.assertFalse(component.moveFocus)
+            self.assertFalse(component.mouseButtonFocus)
+            self.assertIsNone(component.script)
             self.assertGreater(component.position[1], geometry[1])
             self.assertEqual(component.size, (24.0, 24.0))
+        for unused in range(5):
+            self.mod._sync_controls(self.panel)
+        polls = [callback for delay, callback in self.game.world.jobs.values()
+                 if callback.__name__ == '_poll_controls']
+        self.assertEqual(len(polls), 1)
 
-    def test_switches_remain_available_without_readiness_or_with_mod_disabled(self):
+    def test_controls_remain_available_during_cooldown_and_with_reminder_disabled(self):
         self.game.item.isAvailableToUse = False
-        self.game.world.avatar.vehicle.perkEffects = {'equipment': []}
         self.mod._reminder_enabled = False
-        self.game.state()
+        self.sync()
         self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
         self.assertTrue(self.mod._controls[0][0].textureName.endswith('power_off.dds'))
+        self.click(0)
+        self.assertTrue(self.mod._reminder_enabled)
 
-    def test_plain_click_toggles_each_setting_once_and_consumes_mouse(self):
+    def test_plain_and_ctrl_click_toggle_both_icons_using_only_lmb_query(self):
         self.sync()
+        for ctrl in (False, True):
+            self.ctrl = ctrl
+            for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
+                with self.subTest(ctrl=ctrl, setting=setting):
+                    before = getattr(self.mod, setting)
+                    self.click(index)
+                    self.assertEqual(getattr(self.mod, setting), not before)
+                    self.mod._sync_controls(self.panel)
+                    suffix = 'on.dds' if not before else 'off.dds'
+                    self.assertTrue(self.mod._controls[index][0].textureName.endswith(suffix))
+        self.assertEqual(set(self.queried_keys), {1})
+
+    def test_hold_and_release_queue_one_action_then_apply_outside_poll(self):
+        self.sync()
+        self.sample(True, 0)
+        for unused in range(8):
+            self.poll()
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertEqual(self.mod._controls_pending_actions, [])
+        self.sample(False, 0)
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertEqual(len(self.mod._controls_pending_actions), 1)
+        self.poll()
+        self.assertEqual(len(self.mod._controls_pending_actions), 1)
+        self.flush('apply_control_action')
+        self.assertFalse(self.mod._reminder_enabled)
+        self.flush('apply_control_action')
+        self.assertFalse(self.mod._reminder_enabled)
+
+    def test_releasing_ctrl_between_press_and_release_does_not_cancel_click(self):
+        self.sync()
+        self.ctrl = True
+        self.sample(True, 0)
+        self.ctrl = False
+        self.sample(False, 0)
+        self.flush('apply_control_action')
+        self.assertFalse(self.mod._reminder_enabled)
+
+    def test_mouse_held_before_allocation_is_not_a_click(self):
+        self.button_down = True
+        self.sync()
+        self.sample(False, 0)
+        self.flush('apply_control_action')
+        self.assertTrue(self.mod._reminder_enabled)
+        self.click(0)
+        self.assertFalse(self.mod._reminder_enabled)
+
+    def test_mouse_held_before_cursor_activation_is_not_a_click(self):
         self.cursor.active = False
-        self.assertFalse(self.click(0, True))
-        self.assertTrue(self.mod._reminder_enabled)
+        self.sync()
+        self.button_down = True
         self.cursor.active = True
-        self.assertTrue(self.click(0, True))
-        self.assertTrue(self.click(0, False))
-        self.assertFalse(self.mod._reminder_enabled)
-        self.assertFalse(self.mod._controls[0][3].handleMouseClickEvent(self.mod._controls[0][0]))
-        self.assertFalse(self.mod._reminder_enabled)
-        self.assertTrue(self.click(1, True))
-        self.assertTrue(self.click(1, False))
-        self.assertFalse(self.mod._voice_enabled)
-        self.assertTrue(self.mod._controls[1][0].textureName.endswith('voice_off.dds'))
-
-    def test_regular_sniper_hides_controls_and_artillery_keeps_them(self):
-        self.sync()
-        self.panel.camera_mode = 'sniper'
-        self.sync()
-        self.assertFalse(any(entry[0].visible for entry in self.mod._controls))
-        self.assertFalse(any(entry[0].mouseButtonFocus for entry in self.mod._controls))
-        self.panel.camera_mode = 'strategic'
-        self.sync()
-        self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
-        self.panel.camera_mode = 'sniper'
-        self.game.world.avatar.vehicle.typeDescriptor = types.SimpleNamespace(
-            type=types.SimpleNamespace(tags={'SPG'}))
-        self.sync()
-        self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
-
-    def test_hidden_hud_and_destroyed_vehicle_cannot_accept_clicks(self):
-        self.sync()
-        self.ctrl = True
-        self.assertTrue(self.click(0, True))
-        self.panel.native_visible = False
-        self.sync()
-        self.assertFalse(self.click(0, False))
+        self.sample(True, 0)
+        self.sample(False, 0)
+        self.flush('apply_control_action')
         self.assertTrue(self.mod._reminder_enabled)
-        self.panel.native_visible = True
-        self.game.world.avatar.vehicle.health = 0
-        self.sync()
-        self.assertFalse(any(entry[0].visible for entry in self.mod._controls))
+        self.click(0)
+        self.assertFalse(self.mod._reminder_enabled)
 
-    def test_disposal_deletes_native_components_and_rejects_stale_callbacks(self):
+    def test_poll_uses_20ms_active_and_100ms_inactive_intervals(self):
         self.sync()
-        component, unused_owner, unused_mount, handler = self.mod._controls[0]
-        self.ctrl = True
-        handler.pressed = True
+        self.assertEqual(self.game.world.jobs[self.mod._controls_poll_callback][0], 0.02)
+        self.cursor.visible = False
+        self.poll()
+        self.assertEqual(self.game.world.jobs[self.mod._controls_poll_callback][0], 0.10)
+        self.cursor.visible = True
+        self.poll()
+        self.assertEqual(self.game.world.jobs[self.mod._controls_poll_callback][0], 0.02)
+
+    def test_release_outside_or_over_other_icon_cancels_press(self):
+        self.sync()
+        for position in ((-0.9, 0.9), self.mod._controls[1][0].position[:2]):
+            with self.subTest(position=position):
+                self.sample(True, 0)
+                self.sample(False, position=position)
+                self.flush('apply_control_action')
+                self.assertTrue(self.mod._reminder_enabled)
+                self.assertTrue(self.mod._voice_enabled)
+        self.click(0)
+        self.assertFalse(self.mod._reminder_enabled)
+
+    def test_hidden_cursor_modal_camera_and_hidden_hud_cancel_pending_press(self):
+        self.sync()
+        changes = (
+            (self.cursor, 'active', False, True),
+            (self.cursor, 'visible', False, True),
+            (self.panel.app, 'isModalViewShown', lambda: True, lambda: False),
+            (self.panel, 'camera_mode', 'sniper', 'arcade'),
+            (self.panel, 'native_visible', False, True))
+        for target, attribute, disabled, enabled in changes:
+            with self.subTest(attribute=attribute):
+                self.poll()  # activation baseline after a previously hidden cursor
+                self.sample(True, 0)
+                setattr(target, attribute, disabled)
+                self.sample(False, 0)
+                self.flush('apply_control_action')
+                self.assertTrue(self.mod._reminder_enabled)
+                setattr(target, attribute, enabled)
+        self.poll()
+        self.click(0)
+        self.assertFalse(self.mod._reminder_enabled)
+
+    def test_regular_sniper_hides_icons_and_artillery_views_keep_them(self):
+        self.sync()
+        self.panel.camera_mode = 'sniper'
+        self.mod._sync_controls(self.panel)
+        self.assertFalse(any(entry[0].visible for entry in self.mod._controls))
+        for mode in ('strategic', 'trajectory'):
+            self.panel.camera_mode = mode
+            self.mod._sync_controls(self.panel)
+            self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
+        self.panel.camera_mode = 'sniper'
+        self.game.world.avatar.vehicle.typeDescriptor.type.tags = {'SPG'}
+        self.mod._sync_controls(self.panel)
+        self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
+
+    def test_rmb_artillery_transitions_never_create_native_input_callbacks(self):
+        self.sync()
+        self.right_down = True
+        for mode in ('strategic', 'trajectory', 'arcade', 'strategic'):
+            self.panel.camera_mode = mode
+            self.mod._sync_controls(self.panel)
+            self.poll()
+            self.assertTrue(all(entry[0].visible for entry in self.mod._controls))
+            for component, unused_owner, unused_mount, unused_state in self.mod._controls:
+                self.assertIsNone(component.script)
+                self.assertFalse(component.focus or component.mouseButtonFocus or component.moveFocus)
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertEqual(self.mod._controls_pending_actions, [])
+        self.assertEqual(set(self.queried_keys), {1})
+
+    def test_disposal_cancels_poll_and_action_and_defers_native_root_removal(self):
+        self.sync()
+        self.sample(True, 0)
+        self.sample(False, 0)
+        stale_action = next(callback for delay, callback in self.game.world.jobs.values()
+                            if callback.__name__ == 'apply_control_action')
+        roots = list(self.game.gui.roots)
+        native_dispatch_active = [True]
+        original_del = self.game.gui.delRoot
+        def guarded_del(component):
+            if native_dispatch_active[0]:
+                raise AssertionError('root vector must not change inside native dispatch')
+            original_del(component)
+        self.game.gui.delRoot = guarded_del
         self.game.emit_unregister()
         self.assertEqual(self.mod._controls, [])
+        self.assertIsNone(self.mod._controls_poll_callback)
+        self.assertEqual(self.mod._controls_pending_actions, [])
+        self.assertEqual(self.game.gui.roots, roots)
+        self.assertTrue(all(not component.visible for component in roots))
+        stale_action()
+        self.assertTrue(self.mod._reminder_enabled)
+        native_dispatch_active[0] = False
+        self.flush('detach_control_roots')
         self.assertEqual(self.game.gui.roots, [])
-        self.assertIsNone(component.script)
-        self.assertFalse(handler.handleMouseButtonEvent(component,
-            types.SimpleNamespace(key=1, isKeyDown=lambda: False,
-                cursorPosition=component.position[:2])))
+        self.assertEqual(self.mod._controls_pending_detaches, [])
 
-    def test_partial_attachment_failure_cleans_up_controls(self):
-        self.game.gui.fail_add = True
+    def test_deferred_old_battle_cleanup_preserves_new_icons_and_poll(self):
         self.sync()
+        old_roots = list(self.game.gui.roots)
+        self.game.emit_unregister()
+        self.game.emit_register()
+        self.sync()
+        new_roots = [entry[0] for entry in self.mod._controls]
+        self.assertEqual(len(self.game.gui.roots), 4)
+        self.assertTrue(all(not component.visible for component in old_roots))
+        self.flush('detach_control_roots')
+        self.assertEqual(self.game.gui.roots, new_roots)
+        self.assertTrue(all(component.visible for component in new_roots))
+        self.assertIn(self.mod._controls_poll_callback, self.game.world.jobs)
+
+    def test_deferred_click_is_cancelled_if_modal_opens_before_apply(self):
+        self.sync()
+        self.sample(True, 0)
+        self.sample(False, 0)
+        self.panel.app.isModalViewShown = lambda: True
+        self.flush('apply_control_action')
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertEqual(self.mod._controls_pending_actions, [])
+
+    def test_destroyed_vehicle_and_perk_loss_cancel_controls(self):
+        self.sync()
+        self.sample(True, 0)
+        self.game.world.avatar.vehicle.health = 0
+        self.sample(False, 0)
+        self.flush('apply_control_action')
+        self.assertTrue(self.mod._reminder_enabled)
+        self.game.world.avatar.vehicle.health = 1000
+        self.game.world.avatar.vehicle.crewCompactDescrs = ()
+        self.mod._refresh(self.panel)
+        self.assertEqual(self.mod._controls, [])
+        self.assertIsNone(self.mod._controls_poll_callback)
+        self.flush('detach_control_roots')
+        self.assertEqual(self.game.gui.roots, [])
+
+    def test_partial_attachment_failure_hides_then_detaches_created_roots(self):
+        original_add = self.game.gui.addRoot
+        count = [0]
+        def partial_add(component):
+            count[0] += 1
+            original_add(component)
+            if count[0] == 2:
+                raise RuntimeError('native attachment raised after registration')
+        self.game.gui.addRoot = partial_add
+        self.mod._sync_controls(self.panel)
         self.assertTrue(self.mod._controls_disabled)
         self.assertEqual(self.mod._controls, [])
+        self.assertIsNone(self.mod._controls_poll_callback)
+        self.assertEqual(len(self.game.gui.roots), 2)
+        self.assertTrue(all(not component.visible for component in self.game.gui.roots))
+        self.flush('detach_control_roots')
         self.assertEqual(self.game.gui.roots, [])
 
-    def test_input_roots_are_independent_of_native_battle_parent(self):
-        class HUD:
-            def __init__(self): self.children = {}
-            def addChild(self, child, name): self.children[name] = child
-            def delChild(self, child):
-                for name, component in list(self.children.items()):
-                    if component is child:
-                        del self.children[name]
-                        return
-                raise AssertionError('not attached')
-        hud = HUD()
-        self.panel.app = types.SimpleNamespace(component=hud)
-        self.game.state()
-        self.assertEqual(hud.children, {})
-        self.assertEqual(self.game.gui.roots,
-            [entry[0] for entry in self.mod._controls])
-        self.game.emit_unregister()
-        self.assertEqual(hud.children, {})
+    def assert_poll_api_failure_is_safe(self):
+        self.poll()
+        self.assertTrue(self.mod._controls_disabled)
+        self.assertEqual(self.mod._controls, [])
+        self.assertIsNone(self.mod._controls_poll_callback)
+        self.flush('detach_control_roots')
         self.assertEqual(self.game.gui.roots, [])
 
-    def install_native_router(self, native_hit=True):
-        """Mirror BigWorld: native hit first, then sorted focused GUI roots.
-
-        The real full-screen Flash component consumes remaining mouse buttons.
-        Its wrapper enables focus, not mouseButtonFocus. A disabled native_hit
-        models the client regression where the rendered quad never receives its
-        mouseButtonFocus callback; the root key path must still work.
-        """
-        self.flash_events = []
-        flash = types.SimpleNamespace(position=(0, 0, 0.5), visible=True,
-            focus=True, mouseButtonFocus=False,
-            script=types.SimpleNamespace(handleKeyEvent=lambda event:
-                self.flash_events.append(event) or True))
-        self.game.gui.roots.append(flash)
-        add_root = self.game.gui.addRoot
-        def sorted_add(component):
-            add_root(component)
-            # addRoot sorts immediately; later position writes do not re-sort.
-            self.game.gui.roots.sort(key=lambda node: node.position[2], reverse=True)
-        self.game.gui.addRoot = sorted_add
-        self.native_clicked = None
-        def route(event):
-            handled = False
-            if event.key == 1 and self.cursor.active and native_hit:
-                for component in reversed(self.game.gui.roots):
-                    if component.visible and component.mouseButtonFocus:
-                        width, height = self.game.gui.screenResolution()[:2]
-                        x, y = event.cursorPosition
-                        if (abs(x-component.position[0]) < component.size[0]/width and
-                                abs(y-component.position[1]) < component.size[1]/height):
-                            handled = component.script.handleMouseButtonEvent(component, event)
-                            if event.isKeyDown():
-                                self.native_clicked = component
-                            break
-                if not event.isKeyDown() and self.native_clicked is not None:
-                    handled = self.native_clicked.script.handleMouseClickEvent(self.native_clicked) or handled
-                    self.native_clicked = None
-            if not handled:
-                for component in reversed(self.game.gui.roots):
-                    if component.visible and component.focus:
-                        if component.script.handleKeyEvent(event):
-                            return True
-            return handled
-        return route, flash
-
-    def routed_event(self, index, down, key=1, position=None):
-        component = self.mod._controls[index][0]
-        return types.SimpleNamespace(key=key, isKeyDown=lambda: down,
-            cursorPosition=component.position[:2] if position is None else position)
-
-    def test_root_key_route_handles_click_when_native_hit_callback_is_missing(self):
-        route, flash = self.install_native_router(native_hit=False)
-        self.game.state()
-        for ctrl in (False, True):
-            self.ctrl = ctrl
-            for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
-                with self.subTest(ctrl=ctrl, setting=setting):
-                    before = getattr(self.mod, setting)
-                    self.assertTrue(route(self.routed_event(index, True)))
-                    self.assertTrue(route(self.routed_event(index, False)))
-                    self.assertEqual(getattr(self.mod, setting), not before)
-        self.assertEqual(self.flash_events, [])
-        self.assertEqual(self.game.gui.roots[0], flash)
-
-    def test_native_mouse_route_and_duplicate_click_toggle_once(self):
-        route, unused_flash = self.install_native_router()
+    def test_missing_button_query_api_hides_controls_without_event_fallback(self):
         self.sync()
-        for ctrl in (False, True):
-            self.ctrl = ctrl
-            for index, setting in ((0, '_reminder_enabled'), (1, '_voice_enabled')):
-                with self.subTest(ctrl=ctrl, setting=setting):
-                    before = getattr(self.mod, setting)
-                    self.assertTrue(route(self.routed_event(index, True)))
-                    self.assertTrue(route(self.routed_event(index, False)))
-                    self.assertEqual(getattr(self.mod, setting), not before)
-        self.assertEqual(self.flash_events, [])
+        del self.game.world.isKeyDown
+        self.assert_poll_api_failure_is_safe()
 
-    def test_mouse_and_root_click_paths_do_not_require_key_state_api(self):
+    def test_raising_button_query_api_hides_controls_without_event_fallback(self):
         self.sync()
-        def unavailable_key_state(key):
-            raise AssertionError('click handling must not query modifier keys')
-        for state_api in ('absent', 'raises'):
-            if state_api == 'absent':
-                del self.game.world.isKeyDown
-            else:
-                self.game.world.isKeyDown = unavailable_key_state
-            for path in ('mouse', 'root'):
-                with self.subTest(state_api=state_api, path=path):
-                    component, unused_owner, unused_mount, handler = self.mod._controls[0]
-                    before = self.mod._reminder_enabled
-                    def send(down):
-                        event = self.routed_event(0, down)
-                        return (handler.handleMouseButtonEvent(component, event)
-                            if path == 'mouse' else handler.handleKeyEvent(event))
-                    self.assertTrue(send(True))
-                    self.assertTrue(send(False))
-                    self.assertEqual(self.mod._reminder_enabled, not before)
-
-    def test_releasing_ctrl_before_mouse_up_keeps_click_when_cursor_stays_visible(self):
-        self.sync()
-        for path in ('mouse', 'root'):
-            with self.subTest(path=path):
-                component, unused_owner, unused_mount, handler = self.mod._controls[0]
-                before = self.mod._reminder_enabled
-                def send(down):
-                    event = self.routed_event(0, down)
-                    return (handler.handleMouseButtonEvent(component, event)
-                        if path == 'mouse' else handler.handleKeyEvent(event))
-                self.ctrl = True
-                self.assertTrue(send(True))
-                self.ctrl = False
-                self.assertTrue(send(False))
-                self.assertFalse(send(False))
-                self.assertFalse(handler.handleMouseClickEvent(component))
-                self.assertEqual(self.mod._reminder_enabled, not before)
-
-    def test_same_mouse_event_delivered_to_both_paths_never_toggles_twice(self):
-        self.sync()
-        self.ctrl = True
-        component, unused_owner, unused_mount, handler = self.mod._controls[0]
-        down = self.routed_event(0, True)
-        up = self.routed_event(0, False)
-        self.assertTrue(handler.handleMouseButtonEvent(component, down))
-        self.assertTrue(handler.handleKeyEvent(down))
-        self.assertTrue(handler.handleMouseButtonEvent(component, up))
-        self.assertFalse(handler.handleKeyEvent(up))
-        self.assertFalse(handler.handleMouseClickEvent(component))
-        self.assertFalse(self.mod._reminder_enabled)
-
-    def test_root_route_passes_unrelated_keys_and_clicks_to_battle(self):
-        route, unused_flash = self.install_native_router(native_hit=False)
-        self.sync()
-        self.ctrl = True
-        route(self.routed_event(0, True, key=50))
-        route(self.routed_event(0, True, position=(-0.9, 0.9)))
-        self.cursor.active = False
-        route(self.routed_event(0, True))
-        route(self.routed_event(0, False))
-        self.assertEqual(len(self.flash_events), 4)
-        self.assertTrue(self.mod._reminder_enabled)
-
-    def test_root_route_cancels_release_outside_and_consumes_captured_click(self):
-        route, unused_flash = self.install_native_router(native_hit=False)
-        self.sync()
-        self.ctrl = True
-        self.assertTrue(route(self.routed_event(0, True)))
-        self.assertTrue(route(self.routed_event(0, False, position=(-0.9, 0.9))))
-        self.assertTrue(self.mod._reminder_enabled)
-        self.assertEqual(self.flash_events, [])
-        # Returning to the button cannot complete the cancelled press.
-        route(self.routed_event(0, False))
-        self.assertTrue(self.mod._reminder_enabled)
-        self.assertEqual(len(self.flash_events), 1)
-
-    def test_inactive_or_hidden_cursor_and_modal_hud_cannot_toggle(self):
-        self.sync()
-        self.cursor.active = False
-        self.assertFalse(self.click(0, True))
-        self.cursor.active = True
-        self.cursor.visible = False
-        self.assertFalse(self.click(0, True))
-        self.cursor.visible = True
-        self.panel.app.isModalViewShown = lambda: True
-        self.assertFalse(self.click(0, True))
-        self.panel.app.isModalViewShown = lambda: False
-        self.assertTrue(self.click(0, True))
-        self.assertTrue(self.click(0, False))
-        self.assertFalse(self.mod._reminder_enabled)
-
-    def test_camera_and_hud_changes_are_rechecked_before_next_state_tick(self):
-        self.sync()
-        self.ctrl = True
-        self.panel.camera_mode = 'sniper'
-        self.assertFalse(self.click(0, True))
-        self.panel.camera_mode = 'arcade'
-        self.panel.native_visible = False
-        self.assertFalse(self.click(0, True))
-        self.panel.native_visible = True
-        self.assertTrue(self.click(0, True))
-        self.assertTrue(self.click(0, False))
-        self.assertFalse(self.mod._reminder_enabled)
+        def unavailable(key):
+            raise RuntimeError('primitive button query unavailable')
+        self.game.world.isKeyDown = unavailable
+        self.assert_poll_api_failure_is_safe()
 
 
 if __name__ == '__main__':

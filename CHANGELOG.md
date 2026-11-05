@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.3
+
+- Remove native GUI input scripts and focus from both status icons after client logs showed `Unregistered type : BW::KeyEvent` immediately before access violations. Read cursor/button state on a bounded timer and defer actions and root detachment outside input dispatch.
+- Activate battle graphics, sound and input only for an own vehicle with a learned Stay Sharp skill in an active crew role. Without the skill or a readable crew snapshot, stay dormant with one cached state check per second and release existing mod resources.
+
 ## 1.8.2
 
 - Let the game cursor click both status icons with or without Ctrl. Check the actual visible, active cursor instead of requiring a modifier-key state, while retaining HUD, camera and modal-window guards.
