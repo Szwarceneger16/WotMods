@@ -188,10 +188,18 @@ async function nativeHost(browser, options) {
   return native;
 }
 
+// Keep independent feature regressions visible in one run; each assertion
+// still fails the job after the remaining suites have produced diagnostics.
+const featureFailures=[];
+async function runFeatureSuite(file,browser) {
+  try { await require(file)({browser,nativeHost,check}); }
+  catch(error) { featureFailures.push(file+': '+error.message); console.error(file,error); }
+}
+
 (async function () {
   const browser = await chromium.launch({executablePath:process.env.GRZ_CHROME,headless:true,args:['--no-sandbox']});
   try {
-  await require('./ui-locale-screenshots.cjs')({browser,nativeHost,check});
+  await runFeatureSuite('./ui-locale-screenshots.cjs',browser);
   const page = await browser.newPage({viewport:{width:744,height:730},colorScheme:'dark',timezoneId:'UTC'});
   page.on('pageerror',e=>errors.push(String(e)));
   await serveUI(page);
@@ -563,13 +571,13 @@ async function nativeHost(browser, options) {
       __grzRemovedCallbacks.join(',')===(mode==='throw-once'?'71':''),callback));
     await degraded.close();
   }
-  await require('./ui-connection.cjs')({browser,nativeHost,check});
-  await require('./ui-language.cjs')({browser,nativeHost,check});
-  await require('./ui-sorting.cjs')({browser,nativeHost,check});
-  await require('./ui-pagination.cjs')({browser,nativeHost,check});
-  await require('./ui-outcomes.cjs')({browser,nativeHost,check});
-  await require('./ui-loading.cjs')({browser,nativeHost,check});
-  await require('./ui-notices.cjs')({browser,nativeHost,check});
+  await runFeatureSuite('./ui-connection.cjs',browser);
+  await runFeatureSuite('./ui-language.cjs',browser);
+  await runFeatureSuite('./ui-sorting.cjs',browser);
+  await runFeatureSuite('./ui-pagination.cjs',browser);
+  await runFeatureSuite('./ui-outcomes.cjs',browser);
+  await runFeatureSuite('./ui-loading.cjs',browser);
+  await runFeatureSuite('./ui-notices.cjs',browser);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));
@@ -787,9 +795,10 @@ async function nativeHost(browser, options) {
   check('Legacy payload without localization restores English',
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
-  await require('./ui-timeline-details.cjs')({browser,nativeHost,check});
-  await require('./ui-upper-layout.cjs')({browser,nativeHost,check});
-  await require('./ui-resize-input.cjs')({browser,nativeHost,check});
+  await runFeatureSuite('./ui-timeline-details.cjs',browser);
+  await runFeatureSuite('./ui-upper-layout.cjs',browser);
+  await runFeatureSuite('./ui-resize-input.cjs',browser);
+  check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
   check('No browser JavaScript errors',errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};

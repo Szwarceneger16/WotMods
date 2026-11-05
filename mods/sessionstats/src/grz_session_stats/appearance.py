@@ -472,8 +472,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
 .ss-more-pass .ss-more-body { display:flex; flex-wrap:wrap; align-items:stretch; }
-.ss-more-pass .ss-more-value { flex:1 1 130rem; min-width:0; width:auto; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
+.ss-more-pass .ss-more-value { flex-direction:column; align-items:stretch; justify-content:center; flex:1 1 130rem; min-width:0; width:auto; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
 .ss-more-pass .ss-more-value:last-child { border-right:0; }
+.ss-more-pass .ss-more-value .ss-more-label { flex:0 0 auto; width:100%; padding-right:0; }
+.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:100%; margin-top:2rem; text-align:right; }
+.ss-more-pass .ss-more-value .ss-more-total { text-align:left; }
 .ss-more-value:nth-child(even) { background:{{colors.table_row_following_background}}; }
 .ss-more-mission:first-child { border-top:0; }
 .ss-more-mission:nth-child(even) { background:{{colors.table_row_following_background}}; }

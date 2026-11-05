@@ -1,6 +1,11 @@
 /* Notice counts and coverage explanations must reflect the visible data. */
 const fs=require('fs'), path=require('path');
-module.exports=async({browser,nativeHost,check})=>{
+module.exports=async({browser,nativeHost,check:reportCheck})=>{
+  const failures=[];
+  const check=(name,pass)=>{
+    if(pass) reportCheck(name,true);
+    else failures.push(name);
+  };
   // This suite checks elapsed hover time. The default native host freezes
   // window.setTimeout for connection-retry tests, so use its real clock here.
   const page=await nativeHost(browser,{realTimers:true});
@@ -131,11 +136,44 @@ module.exports=async({browser,nativeHost,check})=>{
     await page.locator('#ss-help-tooltip').textContent()==='<img src=x onerror=alert(1)>' &&
     await page.locator('#ss-help-tooltip img').count()===0);
   await page.locator('#ss-close').focus();
+  await page.evaluate(()=>{
+    const audit=window.__grzHoverTimerAudit={scheduled:[],cleared:[],fired:[],
+      originalSet:window.setTimeout,originalClear:window.clearTimeout};
+    window.setTimeout=function(callback,delay,...args) {
+      let id;
+      id=audit.originalSet.call(window,function () {
+        if(delay===1000) audit.fired.push(id);
+        callback.apply(window,args);
+      },delay);
+      if(delay===1000) audit.scheduled.push(id);
+      return id;
+    };
+    window.clearTimeout=function(id) {
+      audit.cleared.push(id);
+      return audit.originalClear.call(window,id);
+    };
+  });
   await info.hover({position:{x:3,y:5}});
   await page.waitForTimeout(100);
+  const pendingTimer=await page.evaluate(()=>{
+    const audit=window.__grzHoverTimerAudit;
+    return [...audit.scheduled].reverse().find(id=>!audit.cleared.includes(id) && !audit.fired.includes(id));
+  });
+  check('The update scenario starts with a pending one-second info hover',typeof pendingTimer==='number');
   await render(payload);
+  // Replacing an icon beneath a stationary pointer can legitimately generate
+  // a new mouseover. Leave the replacement while checking the previous timer.
+  await page.locator('#ss-close').hover();
   await page.waitForTimeout(1100);
-  check('Updating data cancels the previous icon hover timer',await page.locator('#ss-help-tooltip').isHidden());
+  const timerAudit=await page.evaluate(()=>{
+    const audit=window.__grzHoverTimerAudit;
+    window.setTimeout=audit.originalSet;window.clearTimeout=audit.originalClear;
+    delete window.__grzHoverTimerAudit;
+    return {scheduled:audit.scheduled,cleared:audit.cleared,fired:audit.fired};
+  });
+  check('Updating data clears the previous hover timer without a ghost popup '+JSON.stringify({pendingTimer,...timerAudit}),
+    timerAudit.cleared.includes(pendingTimer) && !timerAudit.fired.includes(pendingTimer) &&
+    await page.locator('#ss-help-tooltip').isHidden());
   const catalog=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   for(const [language,messages] of Object.entries(catalog)) {
     payload.localization={language,messages};await render(payload);
@@ -189,4 +227,5 @@ module.exports=async({browser,nativeHost,check})=>{
   check('Destroy cancels pending help and removes focus listeners',
     await page.locator('#ss-help-tooltip').isHidden() && await cleanupIcon.getAttribute('aria-expanded')==='false');
   await page.close();
+  reportCheck('Notice and information-icon contracts'+(failures.length ? ': '+failures.join(' | ') : ''),failures.length===0);
 };

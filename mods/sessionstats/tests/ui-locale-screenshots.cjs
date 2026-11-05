@@ -41,9 +41,18 @@ async function audit(page,scale) {
     }
     const selectors=[
       '.ss-control-label','.ss-group-title','.ss-group-subtitle','.ss-more-mission-name strong',
-      '.ss-more-mission-status','.ss-bonus-number','.ss-bonus-label','.ss-more-amount',
+      '.ss-more-mission-status','.ss-more-label','.ss-bonus-number','.ss-bonus-label','.ss-more-amount',
       '.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-battle-value',
     ];
+    for(const label of panel.querySelectorAll('.ss-more-pass .ss-more-label')) {
+      const walker=document.createTreeWalker(label,NodeFilter.SHOW_TEXT);
+      let node;
+      while((node=walker.nextNode())) for(const word of node.textContent.matchAll(/\S+/g)) {
+        const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);
+        const fragments=[...range.getClientRects()];
+        if(fragments.some(rect=>Math.abs(rect.top-fragments[0].top)>limit)) issues.push({kind:'split-point-word',text:word[0]});
+      }
+    }
     for(const row of panel.querySelectorAll('.ss-bonus-row')) {
       const cells=[...row.children].filter(visible);
       for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++) {
