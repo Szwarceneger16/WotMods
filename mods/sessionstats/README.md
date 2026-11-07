@@ -21,6 +21,13 @@ Older saved battles may have no mission or bonus details. All four corners and a
 resize the window and keep its size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.
 
+The native Random Battle overview also shows **WN8** in its bottom personal
+statistics strip. The label stays visible while a spinner occupies the value
+slot during processing. It then shows the displayed battle's rating, including
+zero, or a dash when the required data is unavailable. The garage button sits
+immediately to the right of the built-in session statistics in the existing
+control row, preserving the native notification spacing.
+
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
 Its shared history and independent manual reset persist across game restarts;
 the tab is hidden by default. See [ACCOUNT_SESSIONS.md](docs/ACCOUNT_SESSIONS.md).
@@ -40,8 +47,8 @@ Preserve your custom JSON when updating. OpenWG
 Gameface 1.2.2 is included under MIT; install only one copy even if another mod
 uses it. Remove the old Session Stats package without deleting AppData history.
 The Session Stats `.wotmod` itself works without OpenWG: collection and the native
-panel opened with **Ctrl+F10** remain available; only the garage footer button needs
-OpenWG. Its shared Gameface resource still needs compatibility testing with the
+panel opened with **Ctrl+F10** remain available; the garage footer button and the
+post-battle WN8 display need OpenWG. Its shared Gameface resource still needs compatibility testing with the
 other UI frameworks in a mod pack.
 
 Session Stats uses its own `mod_grz_session_stats` entrypoint, `grz_session_stats`

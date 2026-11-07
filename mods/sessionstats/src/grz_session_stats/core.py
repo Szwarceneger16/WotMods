@@ -791,6 +791,44 @@ class StatsService(object):
             context['active_crucible'] = details['active_crucible']
         return context
 
+    def battle_rating(self, arena_id):
+        """Read one account-local battle rating without projecting its history.
+
+        A result can have a usable WN8 while XP or financial recovery continues.
+        Only rating inputs and the bundled expected table determine readiness.
+        """
+        answer = {'account_key': self.account_key, 'arena_id': '',
+                  'status': 'unavailable', 'wn8': None}
+        if isinstance(arena_id, bool) or not isinstance(arena_id, (text_type, bytes) + number_types[:-1]):
+            return answer
+        try:
+            identifier = _text(arena_id)
+        except (ValueError, TypeError, OverflowError):
+            return answer
+        if not identifier or len(identifier) > 128:
+            return answer
+        answer['arena_id'] = identifier
+        if self._closed:
+            return answer
+        if self.loading:
+            answer['status'] = 'pending'
+            return answer
+        if not self.ready:
+            return answer
+        record = self._state['battles'].get(identifier)
+        if not record or record.get('mode') not in (None, 'random') or not self.expected_table.values:
+            return answer
+        vehicle_id = record.get('vehicle_id')
+        if vehicle_id is not None and _text(vehicle_id) not in self.expected_table.values:
+            return answer
+        from .projection import contribution
+        rating = contribution(record, self.expected_table)[1]
+        if _number(rating, True) is not None:
+            answer['status'], answer['wn8'] = 'ready', rating
+        elif not record.get('_result_seen') or not record.get('complete'):
+            answer['status'] = 'pending'
+        return answer
+
     def _apply(self, record, timestamp, is_result):
         try:
             incoming = _clean_record(record)

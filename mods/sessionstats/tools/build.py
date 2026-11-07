@@ -114,12 +114,12 @@ def main():
     dist.mkdir(exist_ok=True)
     package = dist / ('grz.sessionstats_'+version_tag+'.wotmod')
     required = ['SessionStats.html', 'session_stats.css', 'session_stats.js',
-                'session_stats_camo.png', 'footer.js', 'footer.css']
+                'session_stats_camo.png', 'footer.js', 'footer.css', 'postbattle.js', 'postbattle.css']
     for name in required:
         if not (ROOT/'ui'/name).is_file():
             raise RuntimeError('UI file missing: '+name)
     source_paths = sorted((ROOT/'src').rglob('*.py'))
-    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'visuals',
+    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'postbattle', 'visuals',
                         'health', 'monitor', 'diagnostics', 'appearance', 'config_path', 'config_files',
                         'localization', 'language_defaults']
     for name in expected_modules:

@@ -579,7 +579,7 @@ FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow t
     max-width:44rem;
     height:36rem;
     padding:0;
-    margin:0 3rem;
+    margin:0;
     border:0;
     background:{{colors.garage_button_background}};
     box-shadow:none;

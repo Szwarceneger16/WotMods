@@ -572,6 +572,7 @@ async function runFeatureSuite(file,browser) {
     await degraded.close();
   }
   await runFeatureSuite('./ui-connection.cjs',browser);
+  await runFeatureSuite('./ui-postbattle.cjs',browser);
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
