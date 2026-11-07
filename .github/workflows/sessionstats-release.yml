@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/wot-updates.yml'
+      - 'scripts/wot_updates.py'
+      - 'scripts/wot_dispatch.py'
+      - 'tests/test_wot_updates.py'
       - 'mods/sessionstats/**'
       - 'scripts/sessionstats/**'
       - 'scripts/release_snapshot.sh'
@@ -19,10 +23,15 @@ permissions:
 
 # Builds run independently; all mod publications share one queue.
 jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
   build:
+    needs: updates
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
     outputs:
       enabled: ${{ steps.source.outputs.enabled }}
       version: ${{ steps.version.outputs.version }}
@@ -62,7 +71,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release (write after successful build)
-    needs: build
+    needs: [build, updates]
     if: needs.build.outputs.enabled == 'true' && github.ref == 'refs/heads/main'
     # ALL mod publishers must share this lock from latest snapshot through upload.
     # queue:max preserves rapid merge events instead of canceling pending runs.
@@ -79,6 +88,8 @@ jobs:
     # revision, used only when GitHub hides the bypass actor list from this token.
     environment: sessionstats-release
     env:
+      WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+      WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}
       RELEASE_VERSION: ${{ needs.build.outputs.version }}
       RELEASE_TAG: ${{ needs.build.outputs.tag }}
     steps:
@@ -108,7 +119,7 @@ jobs:
           set -euo pipefail
           # Acquire the shared publish lock BEFORE reading Latest. A reverse-
           # ordered older build exits 75 rather than rolling back a newer mod.
-          python3 scripts/release_installers.py package release --source mods/sessionstats/dist --mod sessionstats
+          python3 scripts/release_installers.py package release --source mods/sessionstats/dist --mod sessionstats --client-version "$WOT_CLIENT_VERSION"
           if bash scripts/release_snapshot.sh release \
               "Session-Stats-v${RELEASE_VERSION}.zip" \
               'Session-Stats-v*.zip'; then
@@ -218,6 +229,8 @@ jobs:
           # GitHub CLI stages Releases as drafts. Create the Git tag FIRST
           # and verify the exact commit before allowing release creation.
           refs="$(git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}")"
+          # The publish lock and environment approval can outlive preflight evidence.
+          python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
           if [[ -z "$refs" ]]; then
             git tag "$tag" "$GITHUB_SHA"
             git push origin "refs/tags/$tag"
@@ -229,6 +242,7 @@ jobs:
           check_remote_tag
 
           if [[ "$state" == absent ]]; then
+            python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
             gh release create "$tag" release/*.zip \
               --repo "$GITHUB_REPOSITORY" --verify-tag --latest \
               --title "WotMods — Session Stats ${RELEASE_VERSION}" --notes-file release-notes.md --generate-notes

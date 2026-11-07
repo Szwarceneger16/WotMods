@@ -5,6 +5,10 @@ on:
     branches: [main]
     # CI for other mods is defined in their own workflows.
     paths:
+      - '.github/workflows/wot-updates.yml'
+      - 'scripts/wot_updates.py'
+      - 'scripts/wot_dispatch.py'
+      - 'tests/test_wot_updates.py'
       - 'source/**'
       - 'assets/**'
       - 'VERSION'
@@ -33,7 +37,12 @@ permissions:
   contents: read
 
 jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
+    with:
+      strict: false
   validate:
+    needs: updates
     name: Privacy, tests, deterministic build
     runs-on: ubuntu-24.04
     timeout-minutes: 15

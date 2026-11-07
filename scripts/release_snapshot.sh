@@ -53,7 +53,9 @@ else
   # generating the temporary outer manifest required by the shared snapshot.
   # Legacy loose assets are checksum-verified and converted exactly once.
   if [[ "$primary" == *.zip ]]; then
-    python3 "$(dirname -- "$0")/release_installers.py" normalize "$staging"
+    client_args=()
+    if [[ -n "${WOT_CLIENT_VERSION:-}" ]]; then client_args+=(--client-version "$WOT_CLIENT_VERSION"); fi
+    python3 "$(dirname -- "$0")/release_installers.py" normalize "$staging" "${client_args[@]}"
   fi
   [[ -f "$staging/SHA256SUMS.txt" ]] || fail 'Previous Release lacks checksum manifest'
   expected="$(sed -nE 's/^[0-9a-f]{64}  ([A-Za-z0-9][A-Za-z0-9._-]*)$/\1/p' "$staging/SHA256SUMS.txt" | LC_ALL=C sort)"
