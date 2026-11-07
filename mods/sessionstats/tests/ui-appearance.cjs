@@ -57,8 +57,8 @@ async function panel(browser) {
     },snapshot());
     await page.route('http://grz-appearance.test/**',async route=>{
         const name=new URL(route.request().url()).pathname.slice(1);
-        if(!['SessionStats.html','session_stats.css','session_stats.js'].includes(name)){await route.abort();return;}
-        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html',
+        if(!['SessionStats.html','session_stats.css','session_stats.js','session_stats_camo.png'].includes(name)){await route.abort();return;}
+        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html',
             body:fs.readFileSync(path.join(root,'ui',name))});
     });
     await page.goto('http://grz-appearance.test/SessionStats.html');
@@ -125,19 +125,24 @@ async function pushPanel(page,value){await page.evaluate(value=>pushAppearance(v
 async function wheel(page, deltaY, speed, mode=0, extra={}) {
     await page.evaluate(({speed,defaults})=>pushAppearance({...defaults,scroll_speed:speed}),{speed,defaults:presentation.defaults});
     await page.locator('#ss-group-battles').click();
+    // Finish the render's deferred scroll restoration before establishing a
+    // new programmatic wheel baseline. A real native wheel intentionally uses
+    // any still-pending navigation offset instead of the DOM's previous frame.
+    await frames(page);
     return page.locator('#ss-scroll').evaluate((node,{deltaY,mode,extra})=>{
         node.scrollTop=800;
         const before=node.scrollTop;
         const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY,deltaMode:mode,...extra});
         node.dispatchEvent(event);
-        return {before,after:node.scrollTop,page:node.clientHeight,prevented:event.defaultPrevented};
+        return {before,after:node.scrollTop,page:node.clientHeight,maximum:node.scrollHeight-node.clientHeight,
+            deltaY,mode,prevented:event.defaultPrevented};
     },{deltaY,mode,extra});
 }
 
 async function footer(browser) {
     const page=await browser.newPage({viewport:{width:640,height:120}});
     page.on('pageerror',error=>errors.push(error.message));
-    await page.setContent('<html style="font-size:1px"><head><style>body{margin:0;background:#121413}.App_footer_test{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px}.SessionStats_base_test{width:54px;color:#abcdef}#native-button{color:#123456}</style></head><body><div class="App_footer_test"><div class="SessionStats_base_test">19</div><button id="native-button">EU III</button></div></body></html>');
+    await page.setContent('<html style="font-size:1px"><head><style>body{margin:0;background:#121413}.App_footer_test{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px}.Footer_section_test{display:flex;align-items:center}.SessionStatistic_test{width:54px;color:#abcdef}#native-button{color:#123456}</style></head><body><div class="App_footer_test"><div class="Footer_section_test"><div class="SessionStatistic_test">19</div><button id="native-button">EU III</button></div></div></body></html>');
     await page.evaluate(()=>{
         window.testWarnings=[];
         window.console.warn=message=>testWarnings.push(message);
@@ -163,6 +168,8 @@ async function footer(browser) {
     const browser=await chromium.launch({executablePath:process.env.GRZ_CHROME||localChrome,headless:true,args:['--no-sandbox','--disable-lcd-text']});
     try {
         const page=await panel(browser);
+        await page.mouse.move(1400,940);
+        await frames(page);
         const baseline=await paint(page,'#grz-session-stats');
         const baselineImage=await page.locator('#grz-session-stats').screenshot({animations:'disabled'});
         await pushPanel(page,presentation.defaults);
@@ -202,9 +209,10 @@ async function footer(browser) {
 
         for(const speed of [0.5,1,2]){
             const down=await wheel(page,-120,speed),up=await wheel(page,120,speed);
-            check('Native scroll multiplier '+speed+' scales both directions without changing their sign',
-                Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
-                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented);
+            const matches=Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
+                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented;
+            check('Native scroll multiplier '+speed+' scales both directions without changing their sign'+
+                (matches ? '' : ' '+JSON.stringify({speed,down,up})),matches);
         }
         const pageMode=await wheel(page,-1,2,2);
         check('The configured speed also scales native page-mode scrolling',pageMode.after-pageMode.before===pageMode.page*2 && pageMode.prevented);
@@ -218,6 +226,12 @@ async function footer(browser) {
         check('Invalid optional bridge speed values fall back to the original wheel step',true);
 
         await page.locator('#ss-group-vehicles').click();
+        // Clicking the tab scrolls it into view after the wheel cases. Compare
+        // at the initial hover state and scroll anchor: a stationary pointer
+        // could otherwise open help when summary content moves underneath it.
+        await page.mouse.move(1400,940);
+        await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=0;});
+        await frames(page);
         await pushPanel(page,{...presentation.custom,panel_css:42});
         check('Malformed panel CSS restores static paint while statistics keep rendering',
             await page.locator('#grz-session-stats-appearance').count()===0 &&
@@ -225,9 +239,21 @@ async function footer(browser) {
             await page.locator('.ss-group').count()>0);
         await pushPanel(page,presentation.custom);
         await pushPanel(page,null);
+        check('Appearance fallback preserves the reset scroll anchor',
+            await page.locator('#ss-scroll').evaluate(node=>node.scrollTop===0));
+        const restoredPaint=await paint(page,'#grz-session-stats');
+        if(JSON.stringify(baseline)!==JSON.stringify(restoredPaint)) {
+            const differences=[];
+            for(let i=0;i<Math.max(baseline.length,restoredPaint.length);i++) {
+                if(JSON.stringify(baseline[i])!==JSON.stringify(restoredPaint[i])) {
+                    differences.push({index:i,before:baseline[i],after:restoredPaint[i]});
+                }
+            }
+            console.error('Restored panel paint differences:',JSON.stringify(differences.slice(0,8)));
+        }
         check('A missing appearance payload clears previous overrides and restores the exact default panel',
             await page.locator('#grz-session-stats-appearance').count()===0 &&
-            JSON.stringify(baseline)===JSON.stringify(await paint(page,'#grz-session-stats')));
+            JSON.stringify(baseline)===JSON.stringify(restoredPaint));
         await page.evaluate(()=>{
             window.realCreateElement=document.createElement;
             document.createElement=function(name){if(name==='style')throw new Error('injected cosmetic failure');return realCreateElement.apply(this,arguments);};
@@ -267,7 +293,7 @@ async function footer(browser) {
             return {bar:read('.grz-session-footer-bar').backgroundColor,rating:read('.grz-session-footer-rating').color,
                 spinner:spinner.borderTopColor,track:spinner.borderRightColor,radius:spinner.borderTopLeftRadius,
                 animation:spinner.animationName,opacity:button.opacity,width:button.width,height:button.height,
-                native:read('#native-button').color,counter:document.querySelector('.SessionStats_base_test').textContent};
+                native:read('#native-button').color,counter:document.querySelector('.SessionStatistic_test').textContent};
         });
         check('Wrapped footer appearance customizes the bar glyph and WN8 text',footerValues.bar==='rgb(69, 103, 137)' && footerValues.rating==='rgb(254, 220, 186)');
         check('Configured spinner colour, track alpha and radius retain its pending animation',

@@ -3,6 +3,7 @@
 
 No fixture or demo data is included in the game .wotmod. This tool is optional.
 """
+import base64
 import copy
 from datetime import datetime, timezone
 from html import escape
@@ -89,7 +90,8 @@ def main():
     # The standalone page has an outer demo toolbar/background. Compile the
     # configured panel first, then retain that page's own host styles last.
     # Runtime appearance is separately covered by the native-model UI tests.
-    css = presentation['panel_css']
+    camo = base64.b64encode((ROOT/'ui'/'session_stats_camo.png').read_bytes()).decode('ascii')
+    css = presentation['panel_css'].replace('url("session_stats_camo.png")', 'url("data:image/png;base64,'+camo+'")')
     js = (ROOT/'ui'/'session_stats.js').read_text(encoding='utf-8')
     html = html.replace('<link rel="stylesheet" href="session_stats.css">', '<style>\n'+css+'\n</style>')
     html = re.sub(r'<script(?: type="module")? src="session_stats.js"></script>',

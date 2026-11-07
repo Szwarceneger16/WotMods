@@ -308,6 +308,11 @@ class ScopeIndex(object):
             self._change(old[0], old[1], -1)
         self._change(record, item, 1)
 
+    def discard(self, identifier):
+        old = self.records.get(identifier)
+        if old is not None:
+            self._change(old[0], old[1], -1)
+
     def _change(self, record, item, direction):
         self._sort_cache = {}
         identifier = record['arena_id']
@@ -392,11 +397,16 @@ class ScopeIndex(object):
                 rows = []
                 for key in keys:
                     record, item = self.records[key[1]]
-                    rows.append({'id': record['arena_id'],
+                    row = {'id': record['arena_id'],
                                  'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],
                                  'map': (record.get('map_name') or message('unknown.map'))[:256],
                                  'started_at': record.get('started_at'), 'outcome': record.get('outcome'),
-                                 'tier': record.get('vehicle_tier'), 'stats': aggregate_stats([record], self.table)})
+                                 'tier': record.get('vehicle_tier'), 'stats': aggregate_stats([record], self.table)}
+                    if record.get('details'):
+                        row['details'] = record['details']
+                    if record.get('xp_bonus_applied'):
+                        row['xp_bonus_applied'] = True
+                    rows.append(row)
             else:
                 rows = [group.snapshot() for group in ordered[start:start + PAGE_SIZE]]
             result[kind] = rows

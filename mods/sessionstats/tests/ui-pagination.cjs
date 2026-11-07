@@ -41,8 +41,9 @@ module.exports = async ({browser,nativeHost,check}) => {
     }));
     check('Previous, chronology and Next share one aligned row at width '+width,await page.evaluate(()=>{
       const boxes=['ss-page-previous','ss-sort-chronology','ss-page-next'].map(id=>document.getElementById(id).getBoundingClientRect());
+      const counter=document.getElementById('ss-page-label').getBoundingClientRect();
       return boxes.every(b=>Math.abs(b.top-boxes[0].top)<=1 && Math.abs(b.height-boxes[0].height)<=1) &&
-        document.getElementById('ss-page-label').getBoundingClientRect().bottom<=boxes[0].top;
+        (counter.bottom<=boxes[0].top+1 || counter.right<=boxes[0].left+1);
     }));
   }
   await page.locator('#ss-page-next').click();

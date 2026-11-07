@@ -30,13 +30,14 @@ async function makePage(browser, native) {
     }
     await page.route('http://grz-wheel.test/**', async route => {
         const name = new URL(route.request().url()).pathname.slice(1);
-        if (!['SessionStats.html','session_stats.css','session_stats.js'].includes(name)) { await route.abort(); return; }
-        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
+        if (!['SessionStats.html','session_stats.css','session_stats.js','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
     });
     await page.goto('http://grz-wheel.test/SessionStats.html');
     await page.waitForFunction(native => window.GRZSessionStats && window.GRZSessionStats.getState().nativeBound === native, native);
     if (!native) { await page.evaluate(snapshot => window.GRZSessionStats.update(snapshot), snapshot); }
     await page.locator('#ss-group-battles').click();
+    await twoFrames(page);
     await page.evaluate(() => {
         window.__wheelAudit = [];
         document.getElementById('grz-session-stats').addEventListener('wheel', function(event) {
@@ -51,19 +52,24 @@ async function twoFrames(page) {
 }
 
 async function wheel(page, deltaY, start, deltaX=0, selector='#ss-scroll') {
+    // Finish navigation's deferred logical scroll restoration before choosing
+    // the programmatic baseline used by this isolated trusted-input probe.
+    await twoFrames(page);
     if (start !== undefined) { await page.locator('#ss-scroll').evaluate((el,start) => { el.scrollTop=start; }, start); }
-    const before = await page.locator('#ss-scroll').evaluate(el=>el.scrollTop);
+    const baseline = await page.locator('#ss-scroll').evaluate(el=>({
+        scrollTop:el.scrollTop,rows:document.querySelectorAll('#ss-groups .ss-group').length}));
     const count = await page.evaluate(()=>window.__wheelAudit.length);
     const rect = await page.locator(selector).boundingBox();
     await page.mouse.move(rect.x+rect.width/2, rect.y+Math.min(40,rect.height/2));
     await page.mouse.wheel(deltaX,deltaY);
     await page.waitForFunction(count=>window.__wheelAudit.length>count, count);
     await twoFrames(page);
-    return page.evaluate(before=>{
+    return page.evaluate(baseline=>{
         const node=document.getElementById('ss-scroll');
-        return {before,after:node.scrollTop,max:node.scrollHeight-node.clientHeight,page:node.clientHeight,
+        return {before:baseline.scrollTop,after:node.scrollTop,max:node.scrollHeight-node.clientHeight,page:node.clientHeight,
+            rowsBefore:baseline.rows,rowsAfter:document.querySelectorAll('#ss-groups .ss-group').length,
             audit:window.__wheelAudit[window.__wheelAudit.length-1]};
-    }, before);
+    }, baseline);
 }
 
 async function synthetic(page, values) {
@@ -122,10 +128,13 @@ async function synthetic(page, values) {
         check('The reset dialog consumes wheel input without moving its background',result.after===400 && result.audit.prevented);
         await native.locator('#ss-reset-cancel').click();
         await native.locator('#ss-scope-launch').click();
+        await twoFrames(native);
         check('Long history starts with a bounded batch',await native.locator('#ss-groups .ss-group').count()===40);
         let nearEnd=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight-201);
-        await wheel(native,-1,nearEnd);
-        check('Native wheel toward the end exposes the next history batch',await native.locator('#ss-groups .ss-group').count()>=80);
+        result=await wheel(native,-1,nearEnd);
+        const batchCount=await native.locator('#ss-groups .ss-group').count();
+        check('Native wheel toward the end exposes the next history batch'+
+            (batchCount>=80 ? '' : ' '+JSON.stringify({nearEnd,batchCount,...result})),batchCount>=80);
         nearEnd=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight-201);
         await wheel(native,-1,nearEnd);
         const end=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight);

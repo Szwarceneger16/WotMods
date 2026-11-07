@@ -85,6 +85,7 @@ def check_package(path):
         assert registry[0]['id'] == 'R.mods.grz.sessionstats.views.SessionStats'
         layout = registry[0]['path'].replace('coui://', 'res/')
         assert layout in names, 'Registered layout missing'
+        assert layout.rsplit('/', 1)[0]+'/session_stats_camo.png' in names, 'Panel texture missing'
         expected = json.loads(package.read('res/grz_session_stats/wn8exp.json'))
         assert len(expected['data']) >= 300
         languages = json.loads(package.read('res/grz_session_stats/languages.json'))
@@ -112,12 +113,13 @@ def main():
     dist = ROOT / 'dist'
     dist.mkdir(exist_ok=True)
     package = dist / ('grz.sessionstats_'+version_tag+'.wotmod')
-    required = ['SessionStats.html', 'session_stats.css', 'session_stats.js', 'footer.js', 'footer.css']
+    required = ['SessionStats.html', 'session_stats.css', 'session_stats.js',
+                'session_stats_camo.png', 'footer.js', 'footer.css', 'postbattle.js', 'postbattle.css']
     for name in required:
         if not (ROOT/'ui'/name).is_file():
             raise RuntimeError('UI file missing: '+name)
     source_paths = sorted((ROOT/'src').rglob('*.py'))
-    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'visuals',
+    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'postbattle', 'visuals',
                         'health', 'monitor', 'diagnostics', 'appearance', 'config_path', 'config_files',
                         'localization', 'language_defaults']
     for name in expected_modules:
@@ -196,7 +198,9 @@ def main():
         put(z, 'SHA256SUMS.txt', inner_checksums)
         for directory in ['src','ui','tools','tests','data','resources','third_party','preview','docs']:
             for path in sorted((ROOT/directory).rglob('*')):
-                if not path.is_file() or '__pycache__' in path.parts or path.suffix in ('.pyc','.pyo','.wotmod','.png') or path.name.endswith('-report.json') or 'node_modules' in path.parts:
+                if (not path.is_file() or '__pycache__' in path.parts or 'node_modules' in path.parts
+                        or path.suffix in ('.pyc', '.pyo', '.wotmod') or path.name.endswith('-report.json')
+                        or (path.suffix == '.png' and (path.parent != ROOT/'ui' or path.name not in required))):
                     continue
                 content = path.read_bytes()
                 if path == ROOT/'src'/'grz_session_stats'/'__init__.py':

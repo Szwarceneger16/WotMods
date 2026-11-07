@@ -1,11 +1,33 @@
 # Session Stats for World of Tanks
 
-Version 0.3.4 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.4.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
 their contents are English.
-Both default scopes and manual resets are isolated per account and region.
+The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
+history. Use **Create time point** in the title bar, then pick **From** and **To**
+to filter by battle start time. The start is inclusive and the end is exclusive.
+Earlier manual resets appear as time points and saved battles remain available.
+The account and region determine which history and time points are shown.
+
+In **Battles → More**, the card lists recorded daily, bonus, weekly, personal
+campaign and event missions, along with the active Crucible stage and its
+reported result. Personal missions show the operation name and completion with
+honors when the additional objective is confirmed. The card also shows Battle
+Pass points and the available bonus breakdown. The finance tables include
+vehicle and account-level bonds reported for each recorded Random Battle.
+Older saved battles may have no mission or bonus details. All four corners and all four edges
+resize the window and keep its size across garage openings during the same
+game process. The panel follows the resolved WoT interface scale.
+
+The native Random Battle overview also shows **WN8** in its bottom personal
+statistics strip. The label stays visible while a spinner occupies the value
+slot during processing. It then shows the displayed battle's rating, including
+zero, or a dash when the required data is unavailable. The garage button sits
+immediately to the right of the built-in session statistics in the existing
+control row, preserving the native notification spacing.
+
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
 Its shared history and independent manual reset persist across game restarts;
 the tab is hidden by default. See [ACCOUNT_SESSIONS.md](docs/ACCOUNT_SESSIONS.md).
@@ -25,8 +47,8 @@ Preserve your custom JSON when updating. OpenWG
 Gameface 1.2.2 is included under MIT; install only one copy even if another mod
 uses it. Remove the old Session Stats package without deleting AppData history.
 The Session Stats `.wotmod` itself works without OpenWG: collection and the native
-panel opened with **Ctrl+F10** remain available; only the garage footer button needs
-OpenWG. Its shared Gameface resource still needs compatibility testing with the
+panel opened with **Ctrl+F10** remain available; the garage footer button and the
+post-battle WN8 display need OpenWG. Its shared Gameface resource still needs compatibility testing with the
 other UI frameworks in a mod pack.
 
 Session Stats uses its own `mod_grz_session_stats` entrypoint, `grz_session_stats`
@@ -106,6 +128,37 @@ omitted fields and nested settings use defaults. For example:
 ```json
 {"language": "pl", "scroll": {"speed_multiplier": 1.5}}
 ```
+
+Card widths can be set independently in logical pixels (before the game's UI
+scale), from 480 to 900. Omitted values use Battles 500, Vehicles 560, Maps 560,
+and Tiers 520. Cards within a tab keep the same width; the layout switches to two
+columns only when both cards and the central gap fit. The complete previous
+untouched width preset follows these compact defaults on load; customized or
+partial card settings remain unchanged. For example:
+
+```json
+{"cards": {"battles": 580, "vehicles": 560}}
+```
+
+Every two-column tab uses staggered cards connected to a dashed central axis.
+Several battle cards can keep More open together. Expanded battles use the
+next available column in sorted order, so consecutive battles fill the space
+beside a tall card and their axis markers retain chronology. With all details
+closed, cards use their usual alternating layout. Refreshing or resizing preserves open cards;
+switching accounts clears their open state.
+The three main statistics stay horizontal; the compact performance and finance
+tables wrap together as one centered group. Summary rows remain centered when
+the window cannot fit them together. Changing the period returns to the top;
+incoming result updates preserve the current scroll position. Matching finance coverage is shown once in
+the table header; differing coverage remains beside its own row or value.
+
+Information icons show explanations after one second over the icon. Moving
+across a statistics section does not open a tooltip. Battle bonuses share one
+row per source with separate resource columns; premium credit/XP multipliers
+share a row too. Battle Pass is a compact strip above the details. A wider bonus
+table sits beside the mission cards; each mission has its name, progress and
+description inside one outline. These sections wrap when the card cannot fit
+them without crowding, including unusually large numerical rewards.
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

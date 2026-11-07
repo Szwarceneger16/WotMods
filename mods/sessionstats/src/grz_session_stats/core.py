@@ -2,8 +2,10 @@
 """Statistics and sessions; no dependency on the World of Tanks runtime."""
 from __future__ import unicode_literals
 
+from .battle_details import clean_details, merge_details
 from .localization import message
 
+import bisect
 import copy
 import hashlib
 import itertools
@@ -29,6 +31,7 @@ _CURRENCIES = ('credits', 'bonds', 'gold')
 _BREAKDOWN = ('repair', 'ammo', 'consumables', 'directives')
 _NUMBERS = ('damage', 'frags', 'spots', 'defense', 'xp_base', 'xp_received', 'free_xp')
 _UNKNOWN_MEMBERSHIP = message('core.membership')
+MAX_TIME_POINTS = 1000
 
 
 def _text(value):
@@ -222,6 +225,9 @@ def _clean_record(record):
                 values['breakdown'] = dict((key, _number(incoming['breakdown'][key], True))
                                            for key in _BREAKDOWN if key in incoming['breakdown'])
             clean['currencies'][currency] = values
+    details = clean_details(record.get('details'))
+    if details:
+        clean['details'] = details
     return clean
 
 
@@ -233,6 +239,8 @@ def _merge_known(existing, incoming, revise=False):
             merged[key] = bool(merged.get(key)) or bool(value)
         elif key == 'warnings':
             merged[key] = list(value) if revise else sorted(set(merged.get(key, []) + value))
+        elif key == 'details':
+            merged[key] = merge_details(merged.get(key, {}), value, revise)
         elif isinstance(value, dict):
             merged[key] = _merge_known(merged.get(key, {}) or {}, value, revise)
         elif value is not None and (revise or merged.get(key) is None):
@@ -244,7 +252,7 @@ def _merge_known(existing, incoming, revise=False):
 
 class StatsService(object):
     def __init__(self, data_dir, account_key, launch_id, expected_table, now=None,
-                 deferred=False, started_at=None):
+                 deferred=False, started_at=None, timeline_enabled=False):
         self.account_key = _text(account_key)
         self.launch_id = self._requested_launch = _text(launch_id)
         self._now = now or time.time
@@ -254,6 +262,12 @@ class StatsService(object):
         self.last_error = None
         self._warnings = []
         self._indexes = None
+        self._timeline_enabled = timeline_enabled
+        self._timeline_range = ('', '')
+        self._timeline_bounds = (0, None)
+        self._filtered_timeline = None
+        self._timeline_job = None
+        self._timeline_error = None
         self._pages = {}
         self._orders = {}
         self._receipt = None
@@ -311,6 +325,7 @@ class StatsService(object):
 
     def cancel_loading(self):
         self._closed = True
+        self.cancel_timeline()
         if self._loader is not None:
             self._loader.close()
             self._loader = None
@@ -473,9 +488,11 @@ class StatsService(object):
         self._indexes = {
             'launch': ScopeIndex(self.launch_id, self.expected_table),
             'manual': ScopeIndex(self._state['current_manual_id'], self.expected_table)}
+        if self._timeline_enabled:
+            self._indexes['timeline'] = ScopeIndex('timeline', self.expected_table)
         self._pending_ids = set()
         self._unassigned = 0
-        members = {'launch': [], 'manual': []}
+        members = dict((name, []) for name in self._indexes)
         for record in values(self._state['battles']):
             if record.get('mode') not in (None, 'random'):
                 continue
@@ -489,6 +506,8 @@ class StatsService(object):
                     if item is None:
                         item = contribution(record, self.expected_table)
                     members[name].append(item)
+            if self._timeline_enabled:
+                members['timeline'].append(item or contribution(record, self.expected_table))
             yield None
         for name, index in self._indexes.items():
             for step in index.build_steps(members[name]):
@@ -505,15 +524,30 @@ class StatsService(object):
             index = self._indexes[name]
             if record.get(field) == index.identifier:
                 index.replace(record, item)
+        if self._timeline_enabled:
+            self._indexes['timeline'].replace(record, item)
+            filtered = self._filtered_timeline or (self._timeline_job or {}).get('index')
+            if filtered is not None:
+                self._update_timeline_record(filtered, record, item)
         if record.get('_manual_id') is None or record.get('_launch_id') is None:
             self._unassigned += 1
+
+    def _view_index(self, scope):
+        if scope == 'timeline' and self._timeline_enabled:
+            return self._timeline_index()
+        if scope in ('launch', 'manual'):
+            return self._indexes[scope]
+        return None
 
     def set_page(self, scope, group, page, period_id=None):
         if not self.ready or self._closed:
             return False
-        if scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers'):
+        if group not in ('battles', 'vehicles', 'maps', 'tiers'):
             return False
-        if period_id is not None and period_id != self._indexes[scope].identifier:
+        index = self._view_index(scope)
+        if index is None:
+            return False
+        if period_id is not None and period_id != index.identifier:
             return False
         self._pages.setdefault(scope, {})[group] = page
         return True
@@ -521,8 +555,10 @@ class StatsService(object):
     def set_order(self, scope, group, options, period_id):
         from .projection import valid_order
         if (not valid_order(options) or not self.ready or self._closed or
-                scope not in ('launch', 'manual') or group not in ('battles', 'vehicles', 'maps', 'tiers') or
-                period_id != self._indexes[scope].identifier):
+                group not in ('battles', 'vehicles', 'maps', 'tiers')):
+            return False
+        index = self._view_index(scope)
+        if index is None or period_id != index.identifier:
             return False
         self._orders.setdefault(scope, {})[group] = dict(options)
         self._pages.setdefault(scope, {})[group] = 0
@@ -584,6 +620,23 @@ class StatsService(object):
                 or manual_periods[-1].get('ended_at') is not None
                 or any(epoch.get('ended_at') is None for epoch in manual_periods[:-1])):
             raise StorageError(message('core.current'))
+        points = state.get('time_points', {})
+        if not isinstance(points, dict) or len(points) > MAX_TIME_POINTS:
+            raise StorageError(message('core.boundaries'))
+        for identifier, at in items(points):
+            if (not isinstance(identifier, text_type) or len(identifier) != 32 or
+                    any(char not in '0123456789abcdef' for char in identifier) or
+                    identifier in period_ids['manual_sessions'] or _number(at, True) is None):
+                raise StorageError(message('core.boundaries'))
+            yield None
+        names = state.get('time_point_names', {})
+        if not isinstance(names, dict) or len(names) > len(points):
+            raise StorageError(message('core.boundaries'))
+        for identifier, name in items(names):
+            if (identifier not in points or not isinstance(name, text_type) or
+                    not name.strip() or len(name) > 80 or any(ord(char) < 32 for char in name)):
+                raise StorageError(message('core.boundaries'))
+            yield None
         receipts = state.get('_startup_receipts', {})
         if not isinstance(receipts, dict):
             raise StorageError(message('core.ledger'))
@@ -601,7 +654,7 @@ class StatsService(object):
             clean = _clean_record(battle)
             for key in ('started_at', 'ended_at') + _NUMBERS + ('vehicle_id', 'vehicle_tier',
                     'vehicle_name', 'vehicle_type', 'map_id', 'map_name', 'mode', 'outcome',
-                    'warnings', 'currencies'):
+                    'warnings', 'currencies', 'details'):
                 if key in battle and (key not in clean or battle[key] != clean[key]):
                     raise StorageError(message('core.battle'))
             for key in ('complete', 'xp_bonus_applied', '_result_seen'):
@@ -692,7 +745,7 @@ class StatsService(object):
         return launch_id, manual_id
 
     def begin_battle(self, arena_id, started_at=None, vehicle_id=None, map_id=None, mode=None,
-                     vehicle_name=None, vehicle_tier=None, vehicle_type=None, map_name=None):
+                     vehicle_name=None, vehicle_tier=None, vehicle_type=None, map_name=None, details=None):
         if self._closed or (not self.ready and not self.loading):
             self.last_error = self.last_error or message('storage.readonly')
             return False
@@ -702,7 +755,7 @@ class StatsService(object):
         record = {'arena_id': arena_id, 'started_at': timestamp if started_at is None else started_at,
                   'vehicle_id': vehicle_id, 'map_id': map_id, 'mode': mode, 'complete': False,
                   'vehicle_name': vehicle_name, 'vehicle_tier': vehicle_tier,
-                  'vehicle_type': vehicle_type, 'map_name': map_name}
+                  'vehicle_type': vehicle_type, 'map_name': map_name, 'details': details}
         if self.loading:
             return self._queue_record(record, timestamp, False)
         return self._apply(record, timestamp, is_result=False)
@@ -732,7 +785,49 @@ class StatsService(object):
             record.update(self._received_context.get(_text(arena_id), {}))
         fields = ('started_at', 'vehicle_id', 'vehicle_name', 'vehicle_tier',
                   'vehicle_type', 'map_id', 'map_name')
-        return dict((key, record[key]) for key in fields if record.get(key) is not None)
+        context = dict((key, record[key]) for key in fields if record.get(key) is not None)
+        details = record.get('details', {})
+        if details.get('active_crucible'):
+            context['active_crucible'] = details['active_crucible']
+        return context
+
+    def battle_rating(self, arena_id):
+        """Read one account-local battle rating without projecting its history.
+
+        A result can have a usable WN8 while XP or financial recovery continues.
+        Only rating inputs and the bundled expected table determine readiness.
+        """
+        answer = {'account_key': self.account_key, 'arena_id': '',
+                  'status': 'unavailable', 'wn8': None}
+        if isinstance(arena_id, bool) or not isinstance(arena_id, (text_type, bytes) + number_types[:-1]):
+            return answer
+        try:
+            identifier = _text(arena_id)
+        except (ValueError, TypeError, OverflowError):
+            return answer
+        if not identifier or len(identifier) > 128:
+            return answer
+        answer['arena_id'] = identifier
+        if self._closed:
+            return answer
+        if self.loading:
+            answer['status'] = 'pending'
+            return answer
+        if not self.ready:
+            return answer
+        record = self._state['battles'].get(identifier)
+        if not record or record.get('mode') not in (None, 'random') or not self.expected_table.values:
+            return answer
+        vehicle_id = record.get('vehicle_id')
+        if vehicle_id is not None and _text(vehicle_id) not in self.expected_table.values:
+            return answer
+        from .projection import contribution
+        rating = contribution(record, self.expected_table)[1]
+        if _number(rating, True) is not None:
+            answer['status'], answer['wn8'] = 'ready', rating
+        elif not record.get('_result_seen') or not record.get('complete'):
+            answer['status'] = 'pending'
+        return answer
 
     def _apply(self, record, timestamp, is_result):
         try:
@@ -827,6 +922,141 @@ class StatsService(object):
         self._indexes['manual'] = ScopeIndex(new_id, self.expected_table)
         self._pages.pop('manual', None)
         return new_id
+
+    def _time_points(self):
+        points = dict((epoch['id'], epoch['started_at']) for epoch in self._state['manual_sessions'][1:])
+        points.update(self._state.get('time_points', {}))
+        return points
+
+    def create_time_point(self, name=None):
+        if not self._timeline_enabled or not self.ready or self._closed:
+            return False
+        if name is not None:
+            if not isinstance(name, (text_type, bytes)):
+                return False
+            name = _text(name).strip()
+            if len(name) > 80 or any(ord(char) < 32 for char in name):
+                self.last_error = message('timeline.create_error')
+                return False
+        points = self._state.get('time_points', {})
+        timestamp = self._time()
+        if len(points) >= MAX_TIME_POINTS:
+            self.last_error = message('timeline.create_error')
+            return False
+        candidate = self._candidate()
+        candidate['time_points'] = dict(points)
+        identifier = _text(uuid.uuid4().hex)
+        candidate['time_points'][identifier] = timestamp
+        if name:
+            candidate['time_point_names'] = dict(self._state.get('time_point_names', {}))
+            candidate['time_point_names'][identifier] = name
+        return self._commit(candidate, {})
+
+    def set_timeline_range(self, start, end):
+        if not self._timeline_enabled or not self.ready or self._closed:
+            return False
+        if not all(isinstance(value, (text_type, bytes)) for value in (start, end)):
+            return False
+        start, end = _text(start), _text(end)
+        points = self._time_points()
+        if (start and start not in points) or (end and end not in points):
+            return False
+        if start and end and points[start] >= points[end]:
+            return False
+        selected = (start, end)
+        if selected != self._timeline_range or self._timeline_error:
+            self.cancel_timeline()
+            self._timeline_range = selected
+            self._timeline_bounds = (points.get(start, 0), points[end] if end else None)
+            self._filtered_timeline = None
+            self._timeline_error = None
+            self._pages.pop('timeline', None)
+            if start or end:
+                from .projection import ScopeIndex
+                self._timeline_job = {
+                    'index': ScopeIndex('timeline:{0}:{1}'.format(start, end), self.expected_table),
+                    'lower': self._timeline_bounds[0], 'upper': self._timeline_bounds[1],
+                    'cursor': None}
+        return True
+
+    @property
+    def timeline_loading(self):
+        return self._timeline_job is not None
+
+    def cancel_timeline(self):
+        self._timeline_job = None
+
+    def _update_timeline_record(self, index, record, item):
+        started_at = record.get('started_at')
+        lower, upper = self._timeline_bounds
+        member = (started_at is not None and started_at >= lower and
+                  (upper is None or started_at < upper))
+        if member:
+            previous = index.records.get(record['arena_id'])
+            # A live update can add a record before the cooperative cursor
+            # reaches it. Never remove/re-add the same immutable contribution.
+            if previous is None or previous[1] is not item:
+                index.replace(record, item)
+        else:
+            index.discard(record['arena_id'])
+
+    def advance_timeline(self, budget=0.002, max_steps=512):
+        """Build the selected projection cooperatively; never publish a prefix."""
+        if self._timeline_job is None or self._closed or not self.ready:
+            return False
+        timer = getattr(time, 'perf_counter', time.time)
+        deadline = timer() + max(0, budget)
+        job = self._timeline_job
+        full = self._indexes['timeline']
+        try:
+            for unused in range(max(1, max_steps)):
+                # Re-seek after each record rather than holding list offsets:
+                # durable corrections can move/insert records between slices.
+                position = (bisect.bisect_right(full.order, job['cursor']) if job['cursor'] is not None else
+                            bisect.bisect_left(full.order, (job['lower'], '')))
+                if position >= len(full.order) or (job['upper'] is not None and full.order[position][0] >= job['upper']):
+                    self._filtered_timeline = job['index']
+                    self._timeline_job = None
+                    break
+                key = full.order[position]
+                job['cursor'] = key
+                record, item = full.records[key[1]]
+                self._update_timeline_record(job['index'], record, item)
+                if timer() >= deadline:
+                    break
+        except Exception:
+            # A projection failure must not make the durable account read-only
+            # or expose partial totals as a completed selected range.
+            self._timeline_job = None
+            self._timeline_error = message('error.snapshot')
+        return self.timeline_loading
+
+    def _timeline_index(self):
+        start, end = self._timeline_range
+        if not start and not end:
+            return self._indexes['timeline']
+        return self._filtered_timeline
+
+    def timeline_snapshot(self):
+        if not self._timeline_enabled:
+            return None
+        from .projection import ScopeIndex
+        ready = self.ready and not self.loading
+        points = self._time_points() if ready else {}
+        start, end = self._timeline_range
+        index = self._timeline_index() if ready else None
+        if index is None:
+            identifier = 'timeline:{0}:{1}'.format(start, end) if start or end else 'timeline'
+            index = ScopeIndex(identifier, self.expected_table)
+        scope = index.snapshot(message('scope.timeline'), points.get(start),
+                               self._pages.get('timeline'), self._orders.get('timeline'))
+        scope['loading'] = self.timeline_loading
+        if ready and self._timeline_error:
+            scope['load_error'] = self._timeline_error
+        scope['time_points'] = sorted(points.items(), key=lambda point: (point[1], point[0]))
+        scope['time_point_names'] = dict(self._state.get('time_point_names', {})) if ready else {}
+        scope['from_point'], scope['to_point'] = start, end
+        return scope
 
     def pending_arena_ids(self):
         return [] if self.loading else sorted(self._pending_ids)

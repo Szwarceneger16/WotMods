@@ -4,6 +4,8 @@ const path = require('path');
 const assert = require('assert');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
+// Diagnostic raster bytes belong outside the source/release input tree.
+const qaDirectory = fs.mkdtempSync(path.join(require('os').tmpdir(),'grz-session-ui-'));
 const fixtures = JSON.parse(fs.readFileSync(path.join(root,'preview/demo_snapshot.json'),'utf8'));
 const errors = [];
 const checks = [];
@@ -20,8 +22,8 @@ const captions = {
 async function serveUI(page) {
   await page.route('http://grz-session.test/**',async route=>{
     const name=new URL(route.request().url()).pathname.slice(1);
-    if(!['SessionStats.html','session_stats.js','session_stats.css'].includes(name)) { await route.abort(); return; }
-    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':'text/html');
+    if(!['SessionStats.html','session_stats.js','session_stats.css','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html');
     await route.fulfill({status:200,contentType,body:fs.readFileSync(path.join(root,'ui',name))});
   });
 }
@@ -186,9 +188,18 @@ async function nativeHost(browser, options) {
   return native;
 }
 
+// Keep independent feature regressions visible in one run; each assertion
+// still fails the job after the remaining suites have produced diagnostics.
+const featureFailures=[];
+async function runFeatureSuite(file,browser) {
+  try { await require(file)({browser,nativeHost,check}); }
+  catch(error) { featureFailures.push(file+': '+error.message); console.error(file,error); }
+}
+
 (async function () {
   const browser = await chromium.launch({executablePath:process.env.GRZ_CHROME,headless:true,args:['--no-sandbox']});
   try {
+  await runFeatureSuite('./ui-locale-screenshots.cjs',browser);
   const page = await browser.newPage({viewport:{width:744,height:730},colorScheme:'dark',timezoneId:'UTC'});
   page.on('pageerror',e=>errors.push(String(e)));
   await serveUI(page);
@@ -250,10 +261,10 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>GRZSessionStats.update(p),missingFixture);
   check('Missing battle exposes 16 of 17 results and marks averages incomplete',
     (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
-    (await page.locator('#ss-summary').innerText()).includes('Incomplete statistics') &&
+    (await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
   check('Financial coverage includes the registered battle with no result',
-    (await page.locator('#ss-summary .ss-money-row .ss-cell-coverage').allTextContents()).includes('16/17'));
+    (await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').allTextContents()).includes('16/17'));
   await page.locator('#ss-group-battles').click();
   const missingCard=(await battleCards(page)).find(row=>row.id==='missing-result-fixture');
   check('Unrecovered battle stays listed with unknown outcome and dashes rather than fabricated zeros',
@@ -268,9 +279,9 @@ async function nativeHost(browser, options) {
         group:label.closest('.ss-group')?label.closest('.ss-group').getAttribute('data-group-id'):'summary'};
     }).filter(label=>label.height>label.lineHeight+1));
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
-  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]').count()===0);
+  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]:not(.ss-info-button)').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-compact.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
   const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
   await page.locator('#ss-xp-received').click();
   const after=await page.locator('#ss-summary .ss-metric-row').first().innerText();
@@ -379,10 +390,10 @@ async function nativeHost(browser, options) {
   await page.locator('#ss-group-vehicles').click();
   await page.locator('#ss-xp-base').click();
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=0);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-final.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-final.png')});
   await page.locator('#ss-group-battles').click();
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=document.getElementById('ss-group-tabs').offsetTop-el.offsetTop);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-battles.png')});
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-battles.png')});
   await page.locator('#ss-group-vehicles').click();
 
   const malformed=await page.evaluate(()=>GRZSessionStats.update('{bad json'));
@@ -560,13 +571,15 @@ async function nativeHost(browser, options) {
       __grzRemovedCallbacks.join(',')===(mode==='throw-once'?'71':''),callback));
     await degraded.close();
   }
-  await require('./ui-connection.cjs')({browser,nativeHost,check});
-  await require('./ui-language.cjs')({browser,nativeHost,check});
-  await require('./ui-sorting.cjs')({browser,nativeHost,check});
-  await require('./ui-pagination.cjs')({browser,nativeHost,check});
-  await require('./ui-outcomes.cjs')({browser,nativeHost,check});
-  await require('./ui-loading.cjs')({browser,nativeHost,check});
-  await require('./ui-notices.cjs')({browser,nativeHost,check});
+  await runFeatureSuite('./ui-connection.cjs',browser);
+  await runFeatureSuite('./ui-postbattle.cjs',browser);
+  await runFeatureSuite('./ui-language.cjs',browser);
+  await runFeatureSuite('./ui-sorting.cjs',browser);
+  await runFeatureSuite('./ui-scroll-state.cjs',browser);
+  await runFeatureSuite('./ui-pagination.cjs',browser);
+  await runFeatureSuite('./ui-outcomes.cjs',browser);
+  await runFeatureSuite('./ui-loading.cjs',browser);
+  await runFeatureSuite('./ui-notices.cjs',browser);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));
@@ -784,6 +797,10 @@ async function nativeHost(browser, options) {
   check('Legacy payload without localization restores English',
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
+  await runFeatureSuite('./ui-timeline-details.cjs',browser);
+  await runFeatureSuite('./ui-upper-layout.cjs',browser);
+  await runFeatureSuite('./ui-resize-input.cjs',browser);
+  check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
   check('No browser JavaScript errors',errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};
@@ -791,5 +808,6 @@ async function nativeHost(browser, options) {
   console.log(JSON.stringify(report,null,2));
   } finally {
     await browser.close();
+    fs.rmSync(qaDirectory,{recursive:true,force:true});
   }
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,7 +1,7 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.4 (persistent data schema unchanged)
-Release date: 2026-10-26.
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.4.0 (persistent data schema unchanged)
+Release date: 2026-11-04.
 
-Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
+Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
 All game-independent code must also run under Python 3 for development.
 Project files belong below this directory. Never include credentials or game account names in logs.
 
@@ -54,6 +54,11 @@ NORMALIZED RECORD
  complete: boolean, reconcile: boolean, xp_bonus_applied: boolean,
  warnings: [short diagnostic strings]
 }
+Optional battle details contain only bounded mission identifiers, localized labels,
+statuses, numeric Battle Pass/bonus values and the suicide violation flag.
+Timeline markers are optional account-local ledger metadata. Legacy reset boundaries
+are exposed as points. The selected half-open range is view state.
+
 Missing field is unknown, never implicitly a numerical zero. A duplicate partial update
 must not overwrite previously known fields with None. An authoritative update marked
 reconcile=True can revise previously known values even if some other fields remain missing.
@@ -76,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.3.4', account_key: string, generated_at: unix seconds,
+ version: '0.4.0', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -150,7 +155,7 @@ is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
-The installed package is mods/2.4.1.0/grz_sessions_stats.wotmod. Bundle complete defaults
+The installed package is mods/2.4.1.1/grz_sessions_stats.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
 existing central file during initialization. Never copy or load legacy external language catalogs.

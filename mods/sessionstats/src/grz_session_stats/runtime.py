@@ -33,6 +33,7 @@ LOG = logging.getLogger('grz.sessionstats')
 LAUNCH_ID = uuid.uuid4().hex
 LAUNCH_STARTED_AT = time.time()
 TICK_SECONDS = 5.0
+RESULT_RATING_WAIT_SECONDS = 30.0
 MAX_EXPECTED_BYTES = 8 * 1024 * 1024
 DEFAULT_LOCAL_CONFIG = {'hotkey': 'CTRL+F10', 'footer_button': True}
 
@@ -216,6 +217,14 @@ class GameAPI(object):
         }
         return context
 
+    def active_crucible(self):
+        from .battle_details import game_active_crucible
+        return game_active_crucible()
+
+    def mission_metadata(self, missions):
+        from .battle_details import game_mission_metadata
+        game_mission_metadata(missions)
+
     def vehicle_info(self, compact):
         from items.vehicles import getVehicleType
         vehicle = getVehicleType(compact)
@@ -307,7 +316,8 @@ class GameAPI(object):
 class Runtime(object):
     def __init__(self, api=None, service_factory=None, data_dir=None,
                  expected_table=None, now=None, window=None, footer_installer=None,
-                 appearance_path=None, installation_dir=None, deferred_loading=True):
+                 appearance_path=None, installation_dir=None, deferred_loading=True,
+                 postbattle_installer=None):
         self.api = api
         self.service_factory = service_factory
         self._deferred_loading = deferred_loading
@@ -319,6 +329,10 @@ class Runtime(object):
         self.window = window
         self.footer_installer = footer_installer
         self.footer_handle = None
+        self.postbattle_installer = postbattle_installer
+        self.postbattle_handle = None
+        self._postbattle_refreshing = False
+        self._postbattle_queries = {}
         self._appearance_override_path = appearance_path
         self.appearance_path = None
         self._presentation = {'panel_css': '', 'footer_css': '', 'scroll_speed': 1.0}
@@ -326,6 +340,7 @@ class Runtime(object):
         self.active_service = None
         self.active_key = None
         self.contexts = {}
+        self._queued_crucible = None
         self.recent = {}
         self.retries = {}
         self.inflight = {}
@@ -432,6 +447,7 @@ class Runtime(object):
 
     def _publish_activity(self):
         self._publish_appearance()
+        self._publish_postbattle()
         try:
             state = self.activity_status()
             handle = self.footer_handle
@@ -448,6 +464,107 @@ class Runtime(object):
         except Exception:
             self._warn_once('footer:activity', 'Pending-result indicator is unavailable.',
                             exception=True, visible=False)
+
+    def _publish_postbattle(self):
+        if self.postbattle_handle is None or self._postbattle_refreshing:
+            return
+        self._postbattle_refreshing = True
+        try:
+            language_setter = getattr(self.postbattle_handle, 'set_language', None)
+            if callable(language_setter):
+                keys = ('metric.wn8', 'format.thousands', 'format.missing',
+                        'footer.processing', 'coverage.wn8.battle')
+                language_setter(dict((key, self._localizer.messages[key]) for key in keys))
+            self.postbattle_handle.refresh()
+        except Exception:
+            self._warn_once('postbattle:refresh', 'Battle-result WN8 display is unavailable.', visible=False)
+        finally:
+            self._postbattle_refreshing = False
+
+    def result_rating(self, arena_id, account_key=None):
+        """Resolve the displayed result, never the newest or aggregate rating.
+
+        Account identifiers stay inside the Python adapter. The child model
+        publishes only the display state and rating. A missing result gets a
+        bounded grace period; later successful deliveries can still replace it.
+        """
+        answer = {'account_key': account_key, 'state': 'unavailable', 'value': None}
+        if isinstance(arena_id, (text_type, bytes)) and len(arena_id) > 24:
+            return answer
+        number = _integer(arena_id)
+        if number is None or number > 18446744073709551615 or not self.running:
+            return answer
+        identifier = str(number)
+        try:
+            if self.api.is_replay():
+                return answer
+            context = self._capture_cache_request()
+        except Exception:
+            self._warn_once('postbattle:account', 'Battle-result account context is unavailable.', visible=False)
+            return answer
+        if context is None:
+            if account_key is not None:
+                return answer
+            key = (None, identifier)
+            service = None
+        else:
+            unused_lifecycle, active_key, service = context
+            if account_key is not None and account_key != active_key:
+                return answer
+            answer['account_key'] = active_key
+            key = (active_key, identifier)
+        lookup = getattr(service, 'battle_rating', None)
+        if service is not None and not callable(lookup):
+            return answer
+        try:
+            rating = lookup(identifier) if callable(lookup) else {'status': 'pending'}
+            value = _number(rating.get('wn8'))
+            if rating.get('status') == 'ready' and value is not None:
+                self._postbattle_queries.pop(key, None)
+                answer.update(state='ready', value=value)
+                return answer
+            if service is not None and not getattr(service, 'loading', False):
+                if not getattr(service, 'ready', True) or not getattr(service.expected_table, 'values', None):
+                    return answer
+                known = service.result_context(identifier)
+                if rating.get('status') == 'unavailable' and known:
+                    return answer
+            now = self.now()
+            if key not in self._postbattle_queries:
+                if len(self._postbattle_queries) >= 128:
+                    oldest = min(self._postbattle_queries, key=lambda item: self._postbattle_queries[item]['started'])
+                    self._postbattle_queries.pop(oldest, None)
+                self._postbattle_queries[key] = {'started': now, 'attempted': False}
+            query = self._postbattle_queries[key]
+            if now < query['started']:
+                query['started'] = now
+            # Opening an already-posted historical result may not trigger a
+            # cache event again. Reuse its native controller once; this issues
+            # no network request and cannot interfere with the stock reader.
+            if (service is not None and not query['attempted'] and
+                    not getattr(service, 'loading', False) and not self._processing.get(key[0], 0)):
+                bundle = self.api.posted_bundle(identifier)
+                raw = getattr(bundle, 'results', None)
+                if isinstance(raw, dict) and str(raw.get('arenaUniqueID')) == identifier:
+                    query['attempted'] = True
+                    if self._capture_cache_request() != context:
+                        return answer
+                    self._process(raw, key[0], service, getattr(bundle, 'reusable', None), source='postbattle')
+                    if self._capture_cache_request() != context:
+                        return answer
+                    rating = lookup(identifier)
+                    value = _number(rating.get('wn8'))
+                    if rating.get('status') == 'ready' and value is not None:
+                        self._postbattle_queries.pop(key, None)
+                        answer.update(state='ready', value=value)
+                        return answer
+                    if rating.get('status') == 'unavailable':
+                        return answer
+            if now - query['started'] < RESULT_RATING_WAIT_SECONDS:
+                answer['state'] = 'pending'
+        except Exception:
+            self._warn_once('postbattle:lookup', 'Battle-result WN8 lookup is unavailable.', visible=False)
+        return answer
 
     def _client_language(self):
         try:
@@ -581,6 +698,18 @@ class Runtime(object):
         self.footer_handle = None
         return True
 
+    def _retire_postbattle(self):
+        if self.postbattle_handle is None:
+            return True
+        try:
+            if self.postbattle_handle.uninstall() is False:
+                return False
+        except Exception:
+            self._warn_once('postbattle:stop', 'Could not remove the optional result WN8 display.', visible=False)
+            return False
+        self.postbattle_handle = None
+        return True
+
     def _schedule_tick(self):
         if self.running and self._tick_id is None:
             callback = self._guard(self._tick, 'tick')
@@ -611,7 +740,7 @@ class Runtime(object):
         if self.service_factory is None:
             from .core import StatsService
             self.service_factory = lambda *args, **kwargs: StatsService(
-                *args, deferred=self._deferred_loading, **kwargs)
+                *args, deferred=self._deferred_loading, timeline_enabled=True, **kwargs)
         if self.data_dir is None:
             self.data_dir = resolve_data_dir(self.api.bw)
             self._start_log()
@@ -648,6 +777,7 @@ class Runtime(object):
         self._lifecycle = object()
         self._started_at = self.now()
         self._observed_arenas.clear()
+        self._queued_crucible = None
         self._recovery_states.clear()
         self.retries.clear()
         self.compatibility_warnings.clear()
@@ -655,6 +785,7 @@ class Runtime(object):
         self._hotkey_held = False
         self._processing.clear()
         self._footer_activity = None
+        self._postbattle_queries.clear()
         self._bonus_account_key = None
         self._log_notice_sent = False
         self._log_notice_after = 0
@@ -665,6 +796,7 @@ class Runtime(object):
             ('onAccountBecomePlayer', self._on_account),
             ('onAccountShowGUI', self._on_account),
             ('onClientSynchronize', self._on_account),
+            ('onArenaCreated', self._on_arena_created),
             ('onAvatarReady', self._on_avatar),
             ('onAvatarBecomePlayer', self._close_for_battle),
             ('onAccountBecomeNonPlayer', self._close_for_battle),
@@ -725,6 +857,21 @@ class Runtime(object):
                     LOG.warning('Footer button unavailable; configured keyboard shortcut remains active.')
             except Exception:
                 LOG.exception('Footer button unavailable; configured keyboard shortcut remains active.')
+        if self._retire_postbattle():
+            try:
+                if self.postbattle_installer is None:
+                    from .postbattle import install
+                    self.postbattle_installer = install
+                lifecycle = self._lifecycle
+
+                def result_provider(arena_id, account_key=None):
+                    if not self.running or self._lifecycle is not lifecycle:
+                        return {'account_key': account_key, 'state': 'unavailable', 'value': None}
+                    return self.result_rating(arena_id, account_key)
+
+                self.postbattle_handle = self.postbattle_installer(result_provider)
+            except Exception:
+                self._warn_once('postbattle:install', 'Optional battle-result WN8 display is unavailable.', visible=False)
         self._on_account()
         self._guard(self._on_avatar, 'initial_arena')()
         self._publish_activity()
@@ -760,6 +907,9 @@ class Runtime(object):
         self._bonus_account_key = None
         self._publish_activity()
         for service in list(self.services.values()) + ([self._instance_session.service] if self._instance_session else []):
+            cancel_timeline = getattr(service, 'cancel_timeline', None)
+            if callable(cancel_timeline):
+                cancel_timeline()
             if getattr(service, "loading", False):
                 service.cancel_loading()
         for callback_id in (self._tick_id, self._bonus_callback_id, self._load_id):
@@ -784,6 +934,8 @@ class Runtime(object):
                 LOG.warning('Could not remove XP event subscription.')
         self._window_call('close')
         self._retire_footer()
+        self._retire_postbattle()
+        self._postbattle_queries.clear()
         self.inflight.clear()
         if self._log_handle is not None:
             handle = self._log_handle
@@ -795,7 +947,7 @@ class Runtime(object):
                 LOG.warning('Could not close the dedicated mod log.')
 
     def cleanup_complete(self):
-        if self.footer_handle is not None:
+        if self.footer_handle is not None or self.postbattle_handle is not None:
             return False
         try:
             return self.window is None or not self.window.is_open()
@@ -830,7 +982,8 @@ class Runtime(object):
         services = list(self.services.values())
         if self._instance_session is not None:
             services.append(self._instance_session.service)
-        return [service for service in services if getattr(service, 'loading', False)]
+        return [service for service in services if getattr(service, 'loading', False) or
+                getattr(service, 'timeline_loading', False)]
 
     def _schedule_loading(self):
         if not self.running or self._load_id is not None or not self._loading_services():
@@ -853,9 +1006,13 @@ class Runtime(object):
             if services and not self.api.in_battle():
                 service = services[self._load_cursor % len(services)]
                 self._load_cursor += 1
-                service.advance_loading()
-                if not service.loading:
-                    if service.ready and self._instance_session is not None:
+                history = service.loading
+                if history:
+                    service.advance_loading()
+                else:
+                    service.advance_timeline()
+                if not service.loading and not getattr(service, 'timeline_loading', False):
+                    if history and service.ready and self._instance_session is not None:
                         for account_key, account_service in self.services.items():
                             if account_service is service:
                                 self._backfill_installation(account_key, service)
@@ -967,6 +1124,7 @@ class Runtime(object):
             self._process(raw, account_key, service, source='native_cache')
 
     def _on_account(self, *args, **kwargs):
+        self._queued_crucible = None
         try:
             self._ensure_service()
         except Exception:
@@ -979,6 +1137,19 @@ class Runtime(object):
     def _close_for_battle(self, *args, **kwargs):
         self._window_call('close')
 
+    def _read_active_crucible(self):
+        getter = getattr(self.api, 'active_crucible', None)
+        try:
+            return getter() if callable(getter) else {}
+        except Exception:
+            self._warn_once('crucible', 'Active Crucible details are unavailable.', visible=False)
+            return {}
+
+    def _on_arena_created(self, *args, **kwargs):
+        self._queued_crucible = None
+        if self.running and self.active_key and not self.api.is_replay():
+            self._queued_crucible = (self.active_key, self._read_active_crucible())
+
     def _on_avatar(self, *args, **kwargs):
         if not self.running:
             return
@@ -987,16 +1158,26 @@ class Runtime(object):
                 return
             service = self._ensure_service()
             context = self.api.battle_context()
+            queued, self._queued_crucible = self._queued_crucible, None
             if service is None or context is None:
                 return
             arena_id = str(context['arena_id'])
             context = dict(context)
             context['account_key'] = self.active_key
-            self.contexts[(self.active_key, arena_id)] = context
+            key = (self.active_key, arena_id)
+            previous = self.contexts.get(key, {})
+            details = previous.get('details')
+            if details is None:
+                details = queued[1] if queued and queued[0] == self.active_key else self._read_active_crucible()
+            context['details'] = details
+            if details.get('active_crucible'):
+                context['active_crucible'] = details['active_crucible']
+            self.contexts[key] = context
+            metadata = {'details': details} if details else {}
             service.begin_battle(arena_id, started_at=context.get('started_at'),
                                  vehicle_id=context.get('vehicle_id'), map_id=context.get('map_id'), mode='random',
                                  vehicle_name=context.get('vehicle_name'), vehicle_tier=context.get('vehicle_tier'),
-                                 vehicle_type=context.get('vehicle_type'), map_name=context.get('map_name'))
+                                 vehicle_type=context.get('vehicle_type'), map_name=context.get('map_name'), **metadata)
             self._observed_arenas.add((self.active_key, arena_id))
             self._record_installation(self.active_key, context)
             self._window_call('close')
@@ -1047,9 +1228,18 @@ class Runtime(object):
         context['_loading'] = (getattr(service, 'loading', False) or
                                (self._instance_session is not None and self._instance_session.service.loading))
         self.monitor.check(results, context, self.api.random_bonus_type, source)
+        resolver = getattr(self.api, 'mission_metadata', None) if account_key == self.active_key else None
+
+        def resolve_missions(missions):
+            try:
+                resolver(missions)
+            except Exception:
+                self._warn_once('missions', 'Mission names are unavailable.', visible=False)
+
         record = normalize_result(results, context=context,
                                   random_bonus_type=self.api.random_bonus_type,
-                                  vehicle_resolver=self.api.vehicle_info, map_resolver=self.api.map_info)
+                                  vehicle_resolver=self.api.vehicle_info, map_resolver=self.api.map_info,
+                                  mission_resolver=resolve_missions if callable(resolver) else None)
         if record is None:
             return False
         if source == 'late_cache':
@@ -1295,6 +1485,10 @@ class Runtime(object):
                     'scopes': {}, 'appearance': dict(self._presentation)})
         result = self.active_service.snapshot()
         result['appearance'] = dict(self._presentation)
+        timeline_snapshot = getattr(self.active_service, 'timeline_snapshot', None)
+        timeline = timeline_snapshot() if callable(timeline_snapshot) else None
+        if timeline is not None:
+            result['scopes']['timeline'] = timeline
         instance_records = {}
         if self._instance_tab_enabled:
             session = self._ensure_installation_session()
@@ -1342,7 +1536,13 @@ class Runtime(object):
                 self._notify(message('runtime.garage'))
                 return False
             self._load_appearance()
-            opened = self._ensure_window() and self._window_call('open')
+            opened = False
+            if self._ensure_window():
+                clear_range = getattr(self.active_service, 'set_timeline_range', None)
+                is_open = getattr(self.window, 'is_open', None)
+                if callable(clear_range) and (not callable(is_open) or not is_open()):
+                    clear_range('', '')
+                opened = self._window_call('open')
             if not opened:
                 self._notify(message('runtime.open_files'))
             return opened
@@ -1360,6 +1560,15 @@ class Runtime(object):
         action = getter('action')
         if action == 'close':
             self._window_call('close')
+        elif action in ('time_point', 'timeline_range') and self.active_service is not None:
+            if getter('account_key') != self.active_key:
+                return
+            if action == 'time_point':
+                self.active_service.create_time_point(getter('name'))
+            else:
+                self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
+                self._schedule_loading()
+            self._window_call('refresh')
         elif action == 'reset' and self.active_service is not None:
             # Confirmation is performed by the local UI before emitting reset.
             account_key = getter('account_key')
