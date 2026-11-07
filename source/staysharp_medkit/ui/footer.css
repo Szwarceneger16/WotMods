@@ -1,0 +1,34 @@
+/* Owned LobbyFooter controls; native footer layout and handlers stay intact. */
+.grz-medkit-footer-host {
+    position:relative;
+    display:block;
+    flex:0 0 40rem;
+    width:40rem;
+    height:36rem;
+    margin:0 3rem 0 0;
+    font-family:Warhelios, Arial, sans-serif;
+}
+.grz-medkit-footer-button {
+    position:relative;
+    display:block;
+    box-sizing:border-box;
+    width:40rem;
+    height:36rem;
+    margin:0;
+    padding:0;
+    border:0;
+    background:transparent;
+    color:#b2afa0;
+    cursor:pointer;
+}
+.grz-medkit-footer-button:hover { background:rgba(255,245,211,0.045); }
+.grz-medkit-footer-button:focus { outline:1rem solid #c5b78a; outline-offset:-2rem; }
+.grz-medkit-footer-icon { position:absolute; display:block; left:8rem; top:7rem; width:24rem; height:23rem; pointer-events:none; }
+.grz-medkit-footer-handle { position:absolute; display:block; left:8rem; top:0; width:8rem; height:5rem; box-sizing:border-box; border:2rem solid #a7a598; border-bottom:0; }
+.grz-medkit-footer-case { position:absolute; display:block; left:0; top:4rem; width:24rem; height:17rem; box-sizing:border-box; border:2rem solid #a7a598; border-radius:2rem; background:rgba(156,151,131,0.13); }
+.grz-medkit-footer-cross-h { position:absolute; display:block; left:7rem; top:11rem; width:10rem; height:3rem; background-color:#b6b2a2; }
+.grz-medkit-footer-cross-v { position:absolute; display:block; left:10.5rem; top:7.5rem; width:3rem; height:10rem; background-color:#b6b2a2; }
+.grz-medkit-footer-button:hover .grz-medkit-footer-handle,
+.grz-medkit-footer-button:hover .grz-medkit-footer-case { border-color:#dfd8bd; }
+.grz-medkit-footer-button:hover .grz-medkit-footer-cross-h,
+.grz-medkit-footer-button:hover .grz-medkit-footer-cross-v { background-color:#e2dac0; }

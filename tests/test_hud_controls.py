@@ -89,7 +89,7 @@ class HudControlTests(unittest.TestCase):
             self.assertFalse(component.mouseButtonFocus)
             self.assertIsNone(component.script)
             self.assertGreater(component.position[1], geometry[1])
-            self.assertEqual(component.size, (24.0, 24.0))
+            self.assertEqual(component.size, (16.0, 16.0))
         for unused in range(5):
             self.mod._sync_controls(self.panel)
         polls = [callback for delay, callback in self.game.world.jobs.values()

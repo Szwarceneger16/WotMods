@@ -2,5 +2,17 @@
   "language": "auto",
   "enabled": true,
   "voice_enabled": true,
-  "voice_volume": 70
+  "voice_volume": 70,
+  "hotkeys": {
+    "toggle_mod": [
+      "CTRL",
+      "ALT",
+      "M"
+    ],
+    "toggle_voice": [
+      "CTRL",
+      "ALT",
+      "V"
+    ]
+  }
 }

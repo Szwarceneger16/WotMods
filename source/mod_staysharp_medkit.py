@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.3 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.4 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
-no lifecycle monkeypatches; subscribes to native ComponentEvent lifecycle.
+native ComponentEvent battle lifecycle; optional owned garage footer adapter.
 It preserves the working v1.5.0 rendering and detects incompatible HUD
 shapes before attempting to paint. Bundled ready voice;
 no SWF replacement or downloads.
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.3'
+VERSION = '1.8.4'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -43,7 +43,7 @@ READY_VOICE_REPEAT = 10.0
 READY_VOICE_EVENT = 'staysharp_medkit_ready'
 VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
 CONFIG_FILENAME = 'staysharp.medkit.json'
-CONFIG_MAX_BYTES = 4096
+CONFIG_MAX_BYTES = 16384
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
 OFFSET_Y = 0.0
@@ -102,6 +102,13 @@ _voice_failures = 0
 _controls = []
 _controls_disabled = False
 _perk_state = 'unknown'
+_settings_store = None
+_shortcut_tracker = None
+_capture_target = None
+_garage_open = False
+_garage_handle = None
+_settings_status = ''
+_settings_error = ''
 
 
 def _language_code(value):
@@ -173,67 +180,20 @@ def _config_path():
 
 
 def _load_language():
-    """Read a bounded local JSON once at startup; never overwrite user data."""
+    """Read bounded local settings; preserve legacy values and unknown fields."""
     global _language, _default_reminder_enabled, _default_voice_enabled, _voice_volume
-    global _reminder_enabled, _voice_enabled
-    selected = 'auto'
-    config = {}
-    path = _config_path()
-    if path is not None:
-        folder = os.path.dirname(path)
-        try:
-            try:
-                with open(path, 'rb') as handle:
-                    raw = handle.read(CONFIG_MAX_BYTES + 1)
-            except IOError as error:
-                if error.errno != errno.ENOENT:
-                    raise
-                if not os.path.isdir(folder):
-                    try:
-                        os.makedirs(folder)
-                    except OSError:
-                        if not os.path.isdir(folder):
-                            raise
-                # Exclusive creation protects an existing config in a race.
-                try:
-                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                except OSError as error:
-                    if error.errno != errno.EEXIST:
-                        raise
-                else:
-                    with os.fdopen(fd, 'wb') as handle:
-                        handle.write(b'{\n  "language": "auto",\n  "enabled": true,\n  "voice_enabled": true,\n  "voice_volume": 70\n}\n')
-                with open(path, 'rb') as handle:
-                    raw = handle.read(CONFIG_MAX_BYTES + 1)
-            if len(raw) > CONFIG_MAX_BYTES:
-                raise ValueError('configuration exceeds size limit')
-            config = json.loads(raw.decode('utf-8-sig'))
-            if not isinstance(config, dict):
-                raise ValueError('configuration must be a JSON object')
-            value = _language_code(config.get('language', 'auto'))
-            if value not in VOICE_LANGUAGES + ('auto',):
-                raise ValueError('unsupported voice language')
-            selected = value
-        except Exception:
-            # Do not echo file contents or a private filesystem path.
-            _log('invalid or unreadable configuration; using automatic language')
-    if not isinstance(config, dict):
-        config = {}
-    _default_reminder_enabled = config.get('enabled', True)
-    if not isinstance(_default_reminder_enabled, bool):
-        _default_reminder_enabled = True
-        _log('invalid enabled setting; using true')
-    _default_voice_enabled = config.get('voice_enabled', True)
-    if not isinstance(_default_voice_enabled, bool):
-        _default_voice_enabled = True
-        _log('invalid voice_enabled setting; using true')
-    _voice_volume = config.get('voice_volume', 70)
-    if (isinstance(_voice_volume, bool) or not isinstance(_voice_volume, (int, long, float))
-            or not 0 <= _voice_volume <= 100):
-        _voice_volume = 70
-        _log('invalid voice_volume setting; using 70')
+    global _reminder_enabled, _voice_enabled, _settings_store, _shortcut_tracker
+    from staysharp_medkit.settings import SettingsStore
+    from staysharp_medkit.hotkeys import ChordTracker
+    _settings_store = SettingsStore(_config_path(), log=_log, on_change=_settings_changed)
+    config = _settings_store.load()
+    selected = config.get('language', 'auto')
+    _default_reminder_enabled = config['enabled']
+    _default_voice_enabled = config['voice_enabled']
+    _voice_volume = config['voice_volume']
     _reminder_enabled = _default_reminder_enabled
     _voice_enabled = _default_voice_enabled
+    _shortcut_tracker = ChordTracker(_configured_chords(config))
     if selected == 'auto':
         try:
             from helpers import getClientLanguage
@@ -244,6 +204,23 @@ def _load_language():
     _log('ready voice language=' + _language)
     _log('settings enabled=%s voice_enabled=%s voice_volume=%s' % (
         _reminder_enabled, _voice_enabled, _voice_volume))
+
+
+def _configured_chords(config):
+    # Unknown future configuration fields stay on disk, outside input/UI state.
+    source = config.get('hotkeys', {})
+    return dict((key, source.get(key, [])) for key in ('toggle_mod', 'toggle_voice'))
+
+
+def _settings_changed(config):
+    global _default_reminder_enabled, _default_voice_enabled, _voice_volume
+    _default_reminder_enabled = config['enabled']
+    _default_voice_enabled = config['voice_enabled']
+    _voice_volume = config['voice_volume']
+    # Persisted shortcuts become active only after the complete atomic write.
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.set_chords(_configured_chords(config))
+    _publish_garage_settings()
 
 
 def _ready_voice_event():
@@ -1270,7 +1247,7 @@ def _sync_controls(panel):
                 GUI.addRoot(component)
             _log('HUD controls created; visual-only roots; cursor polling; left-click power or voice')
         width, height = GUI.screenResolution()[:2]
-        size = geometry[2] * (24.0 / BORDER_SIZE)
+        size = geometry[2] * (16.0 / BORDER_SIZE)
         y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height
         for index, entry in enumerate(_controls):
             component = entry[0]
@@ -1623,21 +1600,169 @@ def _check_state():
         _exception('state scheduler failed')
 
 
-def _on_key_down(event):
-    if _panel is None or _crew_perk_status(_panel) != 'present':
+# Written into the game entrypoint; only primitive keys cross this boundary.
+_GARAGE_LABELS = json.loads(r'''{"en":{"title":"Medkit hotkeys","toggle_mod":"Toggle mod","toggle_voice":"Toggle voice","cancel":"Cancel","clear":"Clear","close":"Close","capture":"Press keys...","not_assigned":"Not assigned","hint":"Select a shortcut, hold the keys together, then release all keys. Esc cancels.","saved":"Shortcut saved","cancelled":"Recording cancelled","conflict":"These shortcuts overlap. Choose another combination.","failed":"Could not save. Previous shortcuts remain active."},"pl":{"title":"Skr\u00f3ty apteczki","toggle_mod":"W\u0142\u0105cz / wy\u0142\u0105cz mod","toggle_voice":"W\u0142\u0105cz / wy\u0142\u0105cz g\u0142os","cancel":"Anuluj","clear":"Wyczy\u015b\u0107","close":"Zamknij","capture":"Naci\u015bnij klawisze...","not_assigned":"Nieprzypisany","hint":"Wybierz skr\u00f3t, przytrzymaj klawisze razem, potem zwolnij wszystkie. Esc anuluje.","saved":"Skr\u00f3t zapisany","cancelled":"Nagrywanie anulowane","conflict":"Skr\u00f3ty nak\u0142adaj\u0105 si\u0119. Wybierz inn\u0105 kombinacj\u0119.","failed":"Nie uda\u0142o si\u0119 zapisa\u0107. Poprzednie skr\u00f3ty pozostaj\u0105 aktywne."},"de":{"title":"Tastenk\u00fcrzel f\u00fcr Erste Hilfe","toggle_mod":"Mod ein / aus","toggle_voice":"Stimme ein / aus","cancel":"Abbrechen","clear":"L\u00f6schen","close":"Schlie\u00dfen","capture":"Tasten dr\u00fccken...","not_assigned":"Nicht belegt","hint":"Tasten gemeinsam halten, dann alle loslassen. Esc bricht ab.","saved":"Tastenk\u00fcrzel gespeichert","cancelled":"Aufnahme abgebrochen","conflict":"Tastenk\u00fcrzel \u00fcberschneiden sich.","failed":"Speichern fehlgeschlagen. Bisherige Tastenk\u00fcrzel bleiben aktiv."},"fr":{"title":"Raccourcis de la trousse","toggle_mod":"Activer le mod","toggle_voice":"Activer la voix","cancel":"Annuler","clear":"Effacer","close":"Fermer","capture":"Appuyez sur les touches...","not_assigned":"Non attribu\u00e9","hint":"Maintenez les touches ensemble puis rel\u00e2chez-les toutes. \u00c9chap annule.","saved":"Raccourci enregistr\u00e9","cancelled":"Enregistrement annul\u00e9","conflict":"Ces raccourcis se chevauchent.","failed":"\u00c9chec de l\u2019enregistrement. Les anciens raccourcis restent actifs."},"es":{"title":"Atajos del botiqu\u00edn","toggle_mod":"Activar mod","toggle_voice":"Activar voz","cancel":"Cancelar","clear":"Borrar","close":"Cerrar","capture":"Pulsa las teclas...","not_assigned":"Sin asignar","hint":"Mant\u00e9n las teclas juntas y su\u00e9ltalas todas. Esc cancela.","saved":"Atajo guardado","cancelled":"Grabaci\u00f3n cancelada","conflict":"Los atajos se superponen.","failed":"No se pudo guardar. Se conservan los atajos anteriores."},"ru":{"title":"\u041a\u043b\u0430\u0432\u0438\u0448\u0438 \u0430\u043f\u0442\u0435\u0447\u043a\u0438","toggle_mod":"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043c\u043e\u0434","toggle_voice":"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0433\u043e\u043b\u043e\u0441","cancel":"\u041e\u0442\u043c\u0435\u043d\u0430","clear":"\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c","close":"\u0417\u0430\u043a\u0440\u044b\u0442\u044c","capture":"\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043a\u043b\u0430\u0432\u0438\u0448\u0438...","not_assigned":"\u041d\u0435 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e","hint":"\u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043a\u043b\u0430\u0432\u0438\u0448\u0438 \u0432\u043c\u0435\u0441\u0442\u0435, \u0437\u0430\u0442\u0435\u043c \u043e\u0442\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u0441\u0435. Esc \u043e\u0442\u043c\u0435\u043d\u044f\u0435\u0442.","saved":"\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e","cancelled":"\u0417\u0430\u043f\u0438\u0441\u044c \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430","conflict":"\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u043f\u0435\u0440\u0435\u0441\u0435\u043a\u0430\u044e\u0442\u0441\u044f.","failed":"\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c. \u041f\u0440\u0435\u0436\u043d\u0438\u0435 \u0441\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u043c\u0438."},"uk":{"title":"\u041a\u043b\u0430\u0432\u0456\u0448\u0456 \u0430\u043f\u0442\u0435\u0447\u043a\u0438","toggle_mod":"\u0423\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u043c\u043e\u0434","toggle_voice":"\u0423\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u0433\u043e\u043b\u043e\u0441","cancel":"\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438","clear":"\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0438","close":"\u0417\u0430\u043a\u0440\u0438\u0442\u0438","capture":"\u041d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c \u043a\u043b\u0430\u0432\u0456\u0448\u0456...","not_assigned":"\u041d\u0435 \u043f\u0440\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e","hint":"\u0423\u0442\u0440\u0438\u043c\u0443\u0439\u0442\u0435 \u043a\u043b\u0430\u0432\u0456\u0448\u0456 \u0440\u0430\u0437\u043e\u043c, \u043f\u043e\u0442\u0456\u043c \u0432\u0456\u0434\u043f\u0443\u0441\u0442\u0456\u0442\u044c \u0443\u0441\u0456. Esc \u0441\u043a\u0430\u0441\u043e\u0432\u0443\u0454.","saved":"\u0421\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043d\u043e","cancelled":"\u0417\u0430\u043f\u0438\u0441 \u0441\u043a\u0430\u0441\u043e\u0432\u0430\u043d\u043e","conflict":"\u0421\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u043f\u0435\u0440\u0435\u0442\u0438\u043d\u0430\u044e\u0442\u044c\u0441\u044f.","failed":"\u041d\u0435 \u0432\u0434\u0430\u043b\u043e\u0441\u044f \u0437\u0431\u0435\u0440\u0435\u0433\u0442\u0438. \u041f\u043e\u043f\u0435\u0440\u0435\u0434\u043d\u0456 \u0441\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0437\u0430\u043b\u0438\u0448\u0430\u044e\u0442\u044c\u0441\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u0438\u043c\u0438."}}''')
+
+
+def _garage_payload():
+    from staysharp_medkit.hotkeys import format_chord
+    config = _settings_store.get_payload() if _settings_store is not None else {}
+    hotkeys = _configured_chords(config)
+    return {'hotkeys': hotkeys,
+            'display': dict((key, format_chord(value).replace('+', ' + ')) for key, value in hotkeys.items()
+                            if key in ('toggle_mod', 'toggle_voice')),
+            'capturing': _capture_target,
+            'preview': list(_shortcut_tracker.held_keys) if _capture_target and _shortcut_tracker else [],
+            'status': _settings_status, 'error': _settings_error,
+            'labels': _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en']),
+            'enabled': _default_reminder_enabled, 'voice_enabled': _default_voice_enabled}
+
+
+def _publish_garage_settings():
+    if _garage_handle is not None:
+        from staysharp_medkit import garage
+        garage.update(_garage_payload())
+
+
+def _cancel_capture(publish=True):
+    global _capture_target
+    _capture_target = None
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.reset()
+    if _panel is None:
+        _unsubscribe_hotkey()
+    if publish:
+        _publish_garage_settings()
+
+
+def _garage_action(command):
+    global _garage_open, _capture_target, _settings_error, _settings_status
+    action = command.get('action')
+    if action in ('close', 'cancel_capture'):
+        if action == 'close':
+            _garage_open = False
+        _settings_status = ''
+        _settings_error = ''
+        _cancel_capture()
         return
+    # A late garage command must never activate recording during battle.
+    player = BigWorld.player()
+    if _panel is not None or getattr(player, 'arena', None) is not None:
+        return False
+    if action == 'open':
+        _cancel_capture(publish=False)
+        _garage_open = True
+        _settings_status = _settings_error = ''
+        if _settings_store is not None:
+            _settings_changed(_settings_store.load())
+        _publish_garage_settings()
+        return
+    binding = command.get('binding')
+    if not _garage_open or binding not in ('toggle_mod', 'toggle_voice'):
+        return
+    _settings_status = _settings_error = ''
+    if action == 'begin_capture':
+        _cancel_capture(publish=False)
+        _capture_target = binding
+        _shortcut_tracker.begin_capture(side_specific=True)
+        _subscribe_hotkey()
+        if _key_handler is None:
+            _capture_target = None
+            _shortcut_tracker.reset()
+            _settings_error = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['failed']
+    elif action == 'clear_binding':
+        _cancel_capture(publish=False)
+        _save_binding(binding, [])
+    _publish_garage_settings()
+
+
+def _save_binding(binding, chord):
+    global _settings_status, _settings_error
+    labels = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])
+    if _settings_store is not None and _settings_store.update_hotkeys({binding: chord}):
+        _settings_status, _settings_error = labels['saved'], ''
+        _log('shortcut configuration saved')
+    else:
+        code = _settings_store.last_error if _settings_store is not None else None
+        _settings_status = ''
+        _settings_error = labels['conflict' if code == 'conflicting_hotkeys' else 'failed']
+    _publish_garage_settings()
+
+
+def _garage_capture_allowed():
+    from staysharp_medkit import garage
+    return garage.is_capture_allowed()
+
+
+def _input_blocked():
     try:
-        import Keys
-        if (event.key != Keys.KEY_M or not event.isKeyDown()
-                or event.isRepeatedEvent() or not event.isCtrlDown()
-                or not event.isAltDown() or event.isShiftDown()):
-            return
         from messenger import MessengerEntry
         if MessengerEntry.g_instance.gui.isFocused():
-            return
-        _toggle_reminder()
+            return True
+        app = getattr(_panel, 'app', None)
+        modal = getattr(app, 'isModalViewShown', None)
+        return bool(callable(modal) and modal())
     except Exception:
-        _exception('reminder hotkey unavailable')
+        return True
+
+
+def _on_key_down(event):
+    _handle_shortcut_key(event, True)
+
+
+def _on_key_up(event):
+    _handle_shortcut_key(event, False)
+
+
+def _handle_shortcut_key(event, down):
+    global _capture_target, _settings_status
+    from staysharp_medkit.hotkeys import key_name
+    if _shortcut_tracker is None:
+        return
+    try:
+        # Ignore all mouse/unsupported input before querying vehicle or crew.
+        key = key_name(event.key)
+        if key is None:
+            return
+        repeated = bool(event.isRepeatedEvent()) if down else False
+        if repeated:
+            return
+        blocked = _input_blocked()
+        capturing = _capture_target is not None
+        if capturing:
+            blocked = (blocked or not _garage_open or _panel is not None
+                       or getattr(BigWorld.player(), 'arena', None) is not None
+                       or not _garage_capture_allowed())
+        elif _panel is None or _crew_perk_status(_panel) != 'present':
+            _shortcut_tracker.reset()
+            return
+        reconciled = _shortcut_tracker.reconcile(getattr(BigWorld, 'isKeyDown', None), current_key=event.key)
+        if reconciled and capturing:
+            _settings_status = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['cancelled']
+            _cancel_capture()
+            return
+        outcome = _shortcut_tracker.feed(key, down, repeated=repeated, blocked=blocked)
+        if capturing:
+            if outcome['cancelled']:
+                _settings_status = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['cancelled']
+                _cancel_capture()
+            elif outcome['captured'] is not None:
+                binding = _capture_target
+                _capture_target = None
+                _save_binding(binding, outcome['captured'])
+                if _panel is None:
+                    _unsubscribe_hotkey()
+            else:
+                _publish_garage_settings()
+            return
+        for action in outcome['actions']:
+            if action == 'toggle_mod':
+                _toggle_reminder()
+            elif action == 'toggle_voice':
+                _toggle_voice()
+    except Exception:
+        _cancel_capture(publish=False)
+        _exception('shortcut input unavailable')
 
 
 def _toggle_reminder():
@@ -1662,24 +1787,39 @@ def _toggle_voice():
 
 def _subscribe_hotkey():
     global _key_handler
+    if _key_handler is not None:
+        return
+    handler = None
     try:
         from gui import InputHandler
         handler = InputHandler.g_instance
         handler.onKeyDown += _on_key_down
+        handler.onKeyUp += _on_key_up
         _key_handler = handler
-        _log('hotkey subscribed=Ctrl+Alt+M')
+        _log('configured keyboard shortcuts subscribed')
     except Exception:
-        _exception('reminder hotkey subscription failed')
+        if handler is not None:
+            for name, callback in (('onKeyDown', _on_key_down), ('onKeyUp', _on_key_up)):
+                try:
+                    event = getattr(handler, name)
+                    event -= callback
+                except Exception:
+                    pass
+        _exception('shortcut subscription failed')
 
 
 def _unsubscribe_hotkey():
     global _key_handler
-    if _key_handler is not None:
-        try:
-            _key_handler.onKeyDown -= _on_key_down
-        except Exception:
-            _exception('reminder hotkey unsubscription failed')
-        _key_handler = None
+    handler, _key_handler = _key_handler, None
+    if handler is not None:
+        for name, callback in (('onKeyDown', _on_key_down), ('onKeyUp', _on_key_up)):
+            try:
+                event = getattr(handler, name)
+                event -= callback
+            except Exception:
+                _exception('shortcut unsubscription failed')
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.reset()
 
 
 def _activate(panel):
@@ -1693,6 +1833,9 @@ def _activate(panel):
         return
     if _panel is not None:
         _deactivate(_panel)
+    _cancel_capture(publish=False)
+    from staysharp_medkit import garage
+    garage.close_window()
     _reset_audio()
     _battle_voice_due = None
     _cooldown_deadlines.clear()
@@ -1778,12 +1921,23 @@ def _on_component_unregistered(event):
             _exception('HUD unregistration handler failed')
 
 
+def _install_garage():
+    global _garage_handle
+    try:
+        from staysharp_medkit import garage
+        _garage_handle = garage.install(_garage_action, _garage_payload)
+        _log('garage settings available=%s' % (_garage_handle is not None))
+    except Exception:
+        _exception('garage settings unavailable; battle reminder remains active')
+
+
 def init():
     """Subscribe once; never modify WoT methods or installed mod hooks."""
     global _event_bus, _event_scope, _consumables_alias
     if _event_listeners:
         return
     _load_language()
+    _install_garage()
     try:
         from gui.shared import g_eventBus, EVENT_BUS_SCOPE
         from gui.shared.events import ComponentEvent
@@ -1818,7 +1972,15 @@ def init():
 
 def fini():
     """Unregister handlers and cleanup without touching native WoT methods."""
-    global _event_bus, _event_scope, _consumables_alias
+    global _event_bus, _event_scope, _consumables_alias, _garage_handle, _garage_open
+    _garage_open = False
+    _cancel_capture(publish=False)
+    from staysharp_medkit import garage
+    try:
+        garage.uninstall()
+    except Exception:
+        _exception('garage settings cleanup failed')
+    _garage_handle = None
     if _panel is not None:
         try:
             _deactivate(_panel)

@@ -10,6 +10,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -31,9 +32,9 @@ class Tests(unittest.TestCase):
     def test_02_single_file_is_zip(self):
         self.assertTrue(zipfile.is_zipfile(self.target))
 
-    def test_03_exactly_31_files(self):
+    def test_03_exactly_42_files(self):
         with zipfile.ZipFile(self.target) as z:
-            self.assertEqual(len(z.namelist()),31)
+            self.assertEqual(len(z.namelist()),42)
 
     def test_04_all_zipstored(self):
         with zipfile.ZipFile(self.target) as z:
@@ -340,6 +341,142 @@ class Tests(unittest.TestCase):
                                  build.audio.build_bank())
                 self.assertIn('staysharp_medkit.bnk',
                               packaged.read('res/audioww/audio_mods.xml').decode('utf-8'))
+
+    def test_29_all_four_control_icons_have_60_percent_baked_opacity(self):
+        icons = build.load_control_icons()
+        self.assertEqual(len(icons), 4)
+        for name, raw in icons:
+            with self.subTest(icon=name):
+                self.assertEqual(struct.unpack_from('<II', raw, 12), (64, 64))
+                self.assertEqual(set(raw[131::4]), {0, 141, 147, 153})
+                self.assertEqual(raw[128:132], bytes((0, 0, 0, 0)))
+                # The opaque glyph's RGB is unchanged; only alpha is baked down.
+                x, y = (32, 10) if 'power' in name else (25, 32)
+                pixel = raw[128 + (y * 64 + x) * 4:132 + (y * 64 + x) * 4]
+                expected = (119, 200, 223, 153) if name.endswith('_on.dds') else (132, 132, 130, 153)
+                self.assertEqual(tuple(pixel), expected)
+
+    def test_30_exact_python_module_and_gameface_resource_paths(self):
+        expected_python = {
+            'res/scripts/client/staysharp_medkit/%s.pyc' % name
+            for name in ('__init__', 'hotkeys', 'settings', 'garage', 'views')}
+        expected_ui = {
+            'res/gui/gameface/mods/staysharp_medkit/footer.js',
+            'res/gui/gameface/mods/staysharp_medkit/footer.css',
+            'res/gui/gameface/mods/staysharp_medkit/settings.html',
+            'res/gui/gameface/mods/staysharp_medkit/settings.js',
+            'res/gui/gameface/mods/staysharp_medkit/settings.css'}
+        with zipfile.ZipFile(self.target) as archive:
+            names = set(archive.namelist())
+            self.assertEqual({name for name in names if name.endswith('.pyc')},
+                             expected_python | {build.PYC_PATH})
+            self.assertEqual({name for name in names if '/gameface/' in name}, expected_ui)
+            self.assertEqual({name for name in names if '/gen_resources/' in name},
+                             {'res/gui/gen_resources/grz.staysharp_medkit.json'})
+
+    def test_31_each_python_bootstrap_embeds_its_exact_reviewed_source(self):
+        with zipfile.ZipFile(self.target) as archive:
+            for name in ('__init__', 'hotkeys', 'settings', 'garage', 'views'):
+                with self.subTest(module=name):
+                    source = (ROOT / 'source/staysharp_medkit' / (name + '.py')).read_bytes()
+                    filename = 'staysharp_medkit/%s.py' % name
+                    data = archive.read('res/scripts/client/staysharp_medkit/%s.pyc' % name)
+                    self.assertTrue(data.startswith(build.MAGIC_PY27))
+                    self.assertEqual(data, build.make_py27_entrypoint(source, filename))
+                    self.assertIn(source, data)
+                    self.assertIn(build.pstring(filename), data)
+                    self.assertIn(bytes((85, 100, 1, 0, 83)), data)
+
+    def test_32_ui_files_are_packaged_without_source_transformation(self):
+        with zipfile.ZipFile(self.target) as archive:
+            for name in ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css'):
+                self.assertEqual(archive.read('res/gui/gameface/mods/staysharp_medkit/' + name),
+                                 (ROOT / 'source/staysharp_medkit/ui' / name).read_bytes())
+            self.assertEqual(archive.read('res/gui/gen_resources/grz.staysharp_medkit.json'),
+                             (ROOT / 'source/staysharp_medkit/ui/grz.staysharp_medkit.json').read_bytes())
+
+    def test_33_runtime_allowlist_excludes_unreviewed_files(self):
+        with tempfile.TemporaryDirectory(prefix='staysharp-reviewed-package-') as directory:
+            here = Path(directory)
+            package = here / 'staysharp_medkit'
+            ui = package / 'ui'
+            ui.mkdir(parents=True)
+            for name in ('__init__', 'hotkeys', 'settings', 'garage', 'views'):
+                (package / (name + '.py')).write_bytes(b'# reviewed ' + name.encode('ascii'))
+            for name in ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css'):
+                (ui / name).write_bytes(b'/* reviewed */')
+            (ui / 'grz.staysharp_medkit.json').write_bytes(
+                (ROOT / 'source/staysharp_medkit/ui/grz.staysharp_medkit.json').read_bytes())
+            (package / 'unreviewed.py').write_bytes(b'raise RuntimeError()')
+            (ui / 'unreviewed.js').write_bytes(b'throw new Error();')
+            (ui / 'credentials.json').write_bytes(b'{}')
+            with patch.object(build, 'HERE', here):
+                resources = build.load_runtime_resources()
+            self.assertEqual(len(resources), 11)
+            self.assertFalse(any('unreviewed' in path or 'credentials' in path
+                                 for path, unused_payload in resources))
+
+    def test_34_invalid_package_paths_and_module_names_are_rejected(self):
+        invalid = (
+            ('PACKAGE_NAME', '../staysharp_medkit'),
+            ('PACKAGE_MODULES', ('__init__', '../unreviewed')),
+            ('PACKAGE_MODULES', ('settings', 'settings')),
+            ('GAMEFACE_FILES', ('../footer.js',)),
+            ('RESOURCE_REGISTRY', '../grz.staysharp_medkit.json'))
+        for setting, value in invalid:
+            with self.subTest(setting=setting, value=value), patch.object(build, setting, value):
+                with self.assertRaises(ValueError):
+                    build.load_runtime_resources()
+        for filename in ('../settings.py', '/settings.py', 'staysharp_medkit/settings.pyc'):
+            with self.subTest(filename=filename), self.assertRaises(ValueError):
+                build.make_py27_entrypoint(b'pass', filename)
+
+    def test_35_bootstrap_rejects_non_ascii_source(self):
+        with self.assertRaises(ValueError):
+            build.make_py27_entrypoint(b'# caf\xc3\xa9', 'staysharp_medkit/settings.py')
+
+    def test_36_reviewed_package_does_not_follow_symlink_sources(self):
+        with tempfile.TemporaryDirectory(prefix='staysharp-source-links-') as directory:
+            parent = Path(directory)
+            real = parent / 'reviewed.py'
+            real.write_bytes(b'pass')
+            linked = parent / 'linked.py'
+            linked.symlink_to(real)
+            with self.assertRaises(ValueError):
+                build._read_reviewed_file(linked, parent)
+            real_folder = parent / 'real'
+            real_folder.mkdir()
+            (real_folder / 'settings.py').write_bytes(b'pass')
+            linked_folder = parent / 'linked'
+            linked_folder.symlink_to(real_folder, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                build._read_reviewed_file(linked_folder / 'settings.py', linked_folder)
+
+    def test_37_settings_layout_registry_has_exact_native_resource_mapping(self):
+        with zipfile.ZipFile(self.target) as archive:
+            registry = json.loads(archive.read('res/gui/gen_resources/grz.staysharp_medkit.json'))
+        self.assertEqual(registry, [{
+            'type': 'Layout',
+            'id': 'R.mods.grz.staysharp_medkit.views.Settings',
+            'path': 'coui://gui/gameface/mods/staysharp_medkit/settings.html',
+            'parameters': {'entrance': 'Settings', 'impl': 'gameface'},
+        }])
+
+    def test_38_unexpected_or_duplicate_registry_entries_are_rejected(self):
+        source = (ROOT / 'source/staysharp_medkit/ui/grz.staysharp_medkit.json').read_bytes()
+        registry = json.loads(source)
+        invalid = [b'not JSON', json.dumps(registry * 2).encode('ascii')]
+        for field, value in (('id', 'R.mods.other.views.Settings'),
+                             ('path', 'https://example.invalid/settings.html'),
+                             ('type', 'Image')):
+            changed = json.loads(source)
+            changed[0][field] = value
+            invalid.append(json.dumps(changed).encode('ascii'))
+        invalid.append(json.dumps(registry).encode('ascii').replace(
+            b'"type":', b'"type":"Image","type":', 1))
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(ValueError):
+                build._validate_resource_registry(payload)
 
 
 

@@ -1,5 +1,14 @@
 # Changelog
 
+
+## 1.8.4
+
+- Reduce battle power/voice controls from 24 to 16 logical pixels and bake 40 percent transparency into all four icon textures.
+- Add a matching medkit button at the far left of the native garage footer, before WG session statistics. Open a small native settings window above that button.
+- Record separate mod and voice shortcuts, including three/four-key and larger simultaneous combinations, side-specific modifiers and ordinary keyboard keys. Save on release; Escape cancels recording.
+- Persist validated shortcuts atomically in the existing configuration, preserve unrelated settings, reject overlapping bindings and retain active shortcuts if saving fails.
+- Keep the working 1.8.3 battle rendering/input path. The new garage interface uses the same pinned OpenWG Gameface dependency already used by Session Stats, without a runtime download.
+
 ## 1.8.3
 
 - Remove native GUI input scripts and focus from both status icons after client logs showed `Unregistered type : BW::KeyEvent` immediately before access violations. Read cursor/button state on a bounded timer and defer actions and root detachment outside input dispatch.

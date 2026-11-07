@@ -246,6 +246,8 @@ class Tests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'LOCALAPPDATA':self.temp.name})
         self.env.start()
         self.world=FakeBW()
+        self.physical_keys=set()
+        self.world.isKeyDown=lambda code:code in self.physical_keys
         self.gui=FakeGUI()
         self.resmgr=types.ModuleType('ResMgr')
         self.game=Path(self.temp.name)/'game'
@@ -314,10 +316,13 @@ class Tests(unittest.TestCase):
             def emit(self, event):
                 for fn in list(self.handlers): fn(event)
         self.key_event=KeyEvent()
+        self.key_up_event=KeyEvent()
         packages['gui.InputHandler']=types.ModuleType('gui.InputHandler')
-        packages['gui.InputHandler'].g_instance=types.SimpleNamespace(onKeyDown=self.key_event)
+        packages['gui.InputHandler'].g_instance=types.SimpleNamespace(onKeyDown=self.key_event,onKeyUp=self.key_up_event)
         packages['Keys']=types.ModuleType('Keys')
         packages['Keys'].KEY_M=50
+        for name, code in (('LCONTROL',29),('RCONTROL',157),('LALT',56),('RALT',184),('LSHIFT',42),('RSHIFT',54),('V',47),('X',45),('A',30),('B',48),('C',46),('ESCAPE',1)):
+            setattr(packages['Keys'],'KEY_'+name,code)
         packages['messenger']=types.ModuleType('messenger')
         self.chat_focused=False
         packages['messenger'].MessengerEntry=types.SimpleNamespace(
@@ -325,6 +330,8 @@ class Tests(unittest.TestCase):
         self.patch=patch.dict(sys.modules,{'BigWorld':self.world,'GUI':self.gui,'constants':arena_module,
                  'ResMgr':self.resmgr,'SoundGroups':sound_groups,'gui':types.ModuleType('gui'),**packages})
         self.patch.start()
+        self.source_path=patch.object(sys,'path',[str(ROOT/'source')]+sys.path)
+        self.source_path.start()
         spec=importlib.util.spec_from_file_location('mod_staysharp_v160',SOURCE)
         self.mod=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.mod)
@@ -351,6 +358,7 @@ class Tests(unittest.TestCase):
         self.mod.fini()
         if self.controls_patch is not None:
             self.controls_patch.stop()
+        self.source_path.stop()
         self.patch.stop()
         self.env.stop()
         self.temp.cleanup()
@@ -1392,17 +1400,28 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.audio_plays,[])
         self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT])
 
+    def key(self, code, down=True, repeated=False):
+        if down: self.physical_keys.add(code)
+        else: self.physical_keys.discard(code)
+        event=types.SimpleNamespace(key=code,isKeyDown=lambda:down,
+            isRepeatedEvent=lambda:repeated)
+        (self.key_event if down else self.key_up_event).emit(event)
+
+    def press_shortcut(self, codes=(29,56,50)):
+        for code in codes: self.key(code)
+        for code in reversed(codes): self.key(code,False)
+
     def test_hotkey_disables_and_restores_reminder_for_battle(self):
         event=types.SimpleNamespace(key=50,isKeyDown=lambda:True,
             isRepeatedEvent=lambda:False,isCtrlDown=lambda:True,
             isAltDown=lambda:True,isShiftDown=lambda:False)
         self.visible_start()
-        self.key_event.emit(event)
+        self.press_shortcut()
         self.assertFalse(self.mod._overlay_active)
         before=list(self.audio_plays)
         self.state(40)
         self.assertEqual(self.audio_plays,before)
-        self.key_event.emit(event)
+        self.press_shortcut()
         self.state(6)
         self.assertTrue(self.mod._overlay_active)
         self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
@@ -1557,7 +1576,8 @@ class Tests(unittest.TestCase):
     def test_137_missing_config_is_created_with_auto_language(self):
         path=self.game/'mods'/'configs'/'staysharp.medkit.json'
         self.assertEqual(json.loads(path.read_text()),{
-            'language':'auto', 'enabled':True, 'voice_enabled':True, 'voice_volume':70})
+            'language':'auto', 'enabled':True, 'voice_enabled':True, 'voice_volume':70,
+            'hotkeys':{'toggle_mod':['CTRL','ALT','M'],'toggle_voice':['CTRL','ALT','V']}})
 
     def test_audio_defaults_apply_to_legacy_language_only_configuration(self):
         path=self.write_language_config({'language':'pl'})
@@ -1657,7 +1677,7 @@ class Tests(unittest.TestCase):
     def test_143_malformed_oversized_and_bom_configs(self):
         self.client_language='uk'
         path=self.write_language_config({})
-        for raw in (b'{oops',b'\xff',b' '*4097+b'{}'):
+        for raw in (b'{oops',b'\xff',b' '*(self.mod.CONFIG_MAX_BYTES+1)+b'{}'):
             path.write_bytes(raw)
             self.mod._load_language()
             self.assertEqual(self.mod._language,'uk')
