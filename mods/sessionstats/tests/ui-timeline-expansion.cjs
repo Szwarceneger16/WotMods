@@ -26,10 +26,13 @@ module.exports=async function ({browser,nativeHost,check}) {
           visible:panel && getComputedStyle(panel).display!=='none' && rect(panel).height>0,
           pos:Number(node.getAttribute('aria-posinset')),size:Number(node.getAttribute('aria-setsize'))};
       });
+      const payload=JSON.parse(model.payload),panel=rect(document.getElementById('grz-session-stats'));
       return {two:groups.classList.contains('ss-two-columns'),cards,
+        geometry:{panel:{width:panel.width,height:panel.height},browserViewport:{width:window.innerWidth,height:window.innerHeight},
+          modelViewport:payload.viewport,logicalPreference:payload.window_size,nativeSize:window.__nativeSize},
         owns:(groups.getAttribute('aria-owns') || '').split(/\s+/).filter(Boolean),
         lanes:[...groups.querySelectorAll('.ss-card-column')].map(lane=>[...lane.children].map(card=>Number(card.dataset.listIndex))),
-        expected:JSON.parse(model.payload).scopes.timeline.battles.map(card=>String(card.id))};
+        expected:payload.scopes.timeline.battles.map(card=>String(card.id))};
     });
   }
   async function verify(context,options={}) {
@@ -46,7 +49,8 @@ module.exports=async function ({browser,nativeHost,check}) {
     const valid=chronological && noOverlap && states && order && aria && lanes && connections && cards.every(card=>card.position!=='absolute');
     check('Expanded timeline preserves state, chronology, connectors and native flow: '+context+
       (valid ? '' : ' '+JSON.stringify({chronological,noOverlap,states,order,aria,lanes,connections,cards})),valid);
-    if(options.two!==undefined) check('Timeline has the expected column count: '+context,value.two===options.two);
+    if(options.two!==undefined) check('Timeline has the expected column count: '+context+
+      (value.two===options.two ? '' : ' '+JSON.stringify({expected:options.two,actual:value.two,...value.geometry})),value.two===options.two);
     return value;
   }
   async function open(id) {
@@ -122,8 +126,9 @@ module.exports=async function ({browser,nativeHost,check}) {
     await publish(()=>{__grzEvents['viewEnv.onDataChanged']();});await settle();await verify('same-data refresh');
 
     for(const width of [800,1500,800,1500]) {
+      await page.setViewportSize({width,height:1400});
       await page.evaluate(width=>{
-        const payload=JSON.parse(model.payload);payload.window_size=[width,1120];
+        const payload=JSON.parse(model.payload);payload.viewport.width=width;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },width);await settle();await verify('window width '+width,{two:width===1500});
     }
