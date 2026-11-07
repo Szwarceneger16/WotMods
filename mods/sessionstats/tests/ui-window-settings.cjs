@@ -104,9 +104,28 @@ module.exports=async ({browser,nativeHost,check})=>{
 
   for(const scale of [1,2]) {
     const viewport={width:1800*scale,height:1200*scale,scale};
-    const resized=await nativeHost(browser,{initialViewport:{width:viewport.width,height:viewport.height},viewport,realTimers:true});
+    const initiallyClamped={width:620,height:500,scale};
+    const resized=await nativeHost(browser,{initialViewport:{width:620,height:500},viewport:initiallyClamped,realTimers:true});
     try {
       await publish(resized,defaults,null,'synthetic-maximize-account');
+      check('An initially constrained regular window retains its saved preference at'+(scale*100)+'%',
+        await resized.evaluate(()=>__nativeSize[0]===600 && __nativeSize[1]===480));
+      await resized.locator('#ss-maximize').click();await frames(resized);
+      let initialValues=await commands(resized),initialMaximize=initialValues[initialValues.length-1];
+      check('Maximizing an initially constrained window saves the desired700x620 size at'+(scale*100)+'%',
+        initialMaximize.maximized==='true' && initialMaximize.restored_width==='700' && initialMaximize.restored_height==='620');
+      await publish(resized,{...defaults,maximized:true},{request_id:initialMaximize.request_id,saved:true});
+      await resized.locator('#ss-maximize').click();await frames(resized);
+      initialValues=await commands(resized);const initialRestore=initialValues[initialValues.length-1];
+      check('Restoring an initially constrained window preserves the desired dimensions at'+(scale*100)+'%',
+        initialRestore.maximized==='false' && initialRestore.restored_width==='700' && initialRestore.restored_height==='620' &&
+        await resized.evaluate(()=>__nativeSize[0]===600 && __nativeSize[1]===480));
+      await publish(resized,defaults,{request_id:initialRestore.request_id,saved:true});
+      await resized.setViewportSize({width:viewport.width,height:viewport.height});
+      await resized.evaluate(viewport=>{const payload=JSON.parse(model.payload);payload.viewport=viewport;
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},viewport);await frames(resized);
+      check('Growing the viewport after an initially constrained maximize cycle restores700x620 at'+(scale*100)+'%',
+        await resized.evaluate(scale=>__nativeSize[0]===700*scale && __nativeSize[1]===620*scale,scale));
       await resized.locator('#ss-group-battles').click();
       const ids=await resized.locator('.ss-group').evaluateAll(cards=>cards.slice(0,2).map(card=>card.dataset.groupId));
       for(const id of ids) await resized.locator('[data-group-id="'+id+'"] .ss-more-button').click();

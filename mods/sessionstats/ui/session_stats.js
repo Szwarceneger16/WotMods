@@ -371,7 +371,9 @@
         if (state.destroyed || state.resize || state.dragging || state.dialog) { return; }
         var prefs = state.windowPrefs || windowDefaults(), changes = {maximized:!prefs.maximized};
         if (!prefs.maximized) {
-            var size = resizePanelDimensions(root.getBoundingClientRect());
+            // The surface may be temporarily clamped by the viewport. Keep
+            // its requested regular size so maximize cannot replace that preference.
+            var size = state.logicalSize || resizePanelDimensions(root.getBoundingClientRect());
             changes.restored_width = Math.round(size.width);
             changes.restored_height = Math.round(size.height);
         }
