@@ -244,23 +244,28 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-performance { width:45%; padding-right:9rem; }
 .ss-economy { width:55%; padding-left:8rem; border-left:1rem solid {{colors.economy_separator_border_left}}; }
 .ss-detail-title { margin:0 0 5rem; color:{{colors.detail_title_text}}; font-size:14rem; line-height:18rem; font-weight:bold; }
-/* Summary sections keep useful line lengths and wrap by their actual parent
-   width. Their flow is independent of the game viewport and card columns. */
+/* Keep the three headline values horizontal. The two detail tables move as
+   one unit and only split when their own parent cannot fit both tables. */
 .ss-summary-layout.ss-details { flex-direction:row; flex-wrap:wrap; align-items:flex-start; padding:0; border:0; }
-.ss-summary-main { flex:0 1 340rem; width:340rem; max-width:100%; min-width:0; padding:0 12rem 0 0; margin:0 0 8rem; }
-.ss-summary-layout > .ss-performance { flex:0 1 310rem; width:310rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
-.ss-summary-layout > .ss-economy { flex:0 1 420rem; width:420rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
-.ss-summary-main .ss-headline { display:block; padding:0 0 4rem; }
-.ss-summary-main .ss-kpi { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:32rem; padding:0 5rem; border-left:0; }
-.ss-summary-main .ss-kpi + .ss-kpi { border-top:1rem solid {{colors.kpi_separator_border_left}}; }
-.ss-summary-main .ss-kpi-label { flex:1 1 0rem; min-width:0; margin-right:8rem; text-align:left; }
-.ss-summary-main .ss-kpi-value { flex:0 1 auto; min-width:0; max-width:72%; text-align:right; overflow-wrap:break-word; }
-.ss-summary-main .ss-outcomes { justify-content:flex-start; margin:0 4rem 4rem; }
+.ss-summary-main { flex:0 1 460rem; width:460rem; max-width:100%; min-width:0; padding:0 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-details { display:flex; flex-wrap:wrap; align-items:flex-start; flex:0 1 650rem; width:650rem; max-width:100%; min-width:0; }
+.ss-summary-details > .ss-performance { flex:0 1 300rem; width:300rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-details > .ss-economy { flex:0 1 350rem; width:350rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
+.ss-summary-main .ss-headline { display:flex; align-items:flex-start; padding:0 0 4rem; }
+.ss-summary-main .ss-kpi { flex:1 1 0rem; min-width:0; }
+.ss-summary-main .ss-kpi-label { min-height:34rem; text-align:center; }
+.ss-summary-main .ss-kpi-value { min-width:0; max-width:100%; text-align:center; }
+.ss-summary-main .ss-outcomes { justify-content:center; margin:0 4rem 4rem; }
 .ss-summary-main .ss-summary-meta { margin:0 4rem; }
-.ss-summary-layout .ss-money-head, .ss-summary-layout .ss-money-row { flex-wrap:wrap; }
-.ss-summary-layout .ss-money-head .ss-money-label { display:none; }
-.ss-summary-layout .ss-money-row .ss-money-label { width:100%; padding-bottom:0; line-height:17rem; }
-.ss-summary-layout .ss-money-value { width:33.333%; }
+.ss-summary-details .ss-money-head, .ss-summary-details .ss-money-row { flex-wrap:nowrap; }
+.ss-summary-details .ss-money-label { display:block; width:23%; }
+.ss-summary-details .ss-money-value { width:25.666%; font-size:14rem; }
+.ss-summary-details .ss-money-head .ss-money-value { font-size:12rem; }
+.ss-narrow-summary .ss-money-head, .ss-narrow-summary .ss-money-row { flex-wrap:wrap; }
+.ss-narrow-summary .ss-money-head .ss-money-label { display:none; }
+.ss-narrow-summary .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
+.ss-narrow-summary .ss-money-row .ss-money-label { width:100%; padding-bottom:0; }
+.ss-narrow-summary .ss-money-value { width:33.333%; }
 /* WoT-style insets and quiet row rules replace the cell grid. Use explicit
    block/flex boxes, supported corner radii and colours for Gameface. */
 .ss-metric-head, .ss-metric-row, .ss-money-head, .ss-money-row { display:flex; align-items:stretch; min-height:26rem; }
@@ -300,7 +305,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
 .ss-list-controls { display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding-top:5rem; }
-.ss-list-meta { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 168rem; min-width:0; width:168rem; max-width:100%; min-height:29rem; margin:0 8rem 5rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
+.ss-list-meta { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 auto; min-width:0; width:auto; max-width:100%; min-height:29rem; margin:0 8rem 5rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
 .ss-list-meta > span + span { margin-left:8rem; }
 .ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); border:1rem solid {{colors.group_card_shadow}}; box-shadow:inset 0 1rem {{colors.group_card_shadow}}; }
 .ss-group-header { display:flex; align-items:center; min-height:35rem; padding-bottom:2rem; }
@@ -431,9 +436,12 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-time-point { flex:0 0 auto; min-width:122rem; width:auto; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem 0 0 {{radii.control}}rem; }
 .ss-has-help { cursor:help; }
 .ss-help-tooltip { display:none; position:absolute; z-index:60; width:320rem; padding:9rem 11rem; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
-.ss-info-button { display:flex; align-items:center; justify-content:center; flex:0 0 14rem; min-width:14rem; width:14rem; height:14rem; padding:0; margin:0 0 0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.window}}rem; color:{{colors.period_text}}; background:{{colors.window_background}}; font-family:Arial, sans-serif; font-size:11rem; font-style:italic; font-weight:bold; line-height:12rem; cursor:help; }
+.ss-info-button { display:flex; align-items:center; justify-content:center; flex:0 0 16rem; min-width:16rem; width:16rem; height:16rem; padding:0; margin:0 0 0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.window}}rem; color:{{colors.button_text}}; background:{{colors.window_background}}; box-shadow:none; text-shadow:none; font-family:Warhelios, Arial, sans-serif; font-size:12rem; font-style:normal; font-weight:normal; line-height:14rem; cursor:help; }
 .ss-info-button:hover, .ss-info-button:focus, .ss-info-button[aria-expanded="true"] { outline:none; color:{{colors.button_hover_text}}; border-color:{{colors.button_shadow_1}}; background:{{colors.table_row_hover_background}}; box-shadow:0 0 4rem {{colors.button_shadow_2}}; }
-.ss-info-symbol { display:block; width:100%; font:inherit; text-align:center; }
+/* Gameface captions need an explicit text box and individual font properties;
+   the font shorthand/inherited italic Arial can leave the native icon blank. */
+.ss-info-symbol { display:block; width:14rem; height:14rem; margin:0; padding:0; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; font-style:normal; font-weight:normal; line-height:14rem; text-align:center; pointer-events:none; }
+.ss-info-button:hover .ss-info-symbol, .ss-info-button:focus .ss-info-symbol, .ss-info-button[aria-expanded="true"] .ss-info-symbol { color:{{colors.button_hover_text}}; }
 .ss-summary .ss-kpi-label { display:flex; align-items:center; justify-content:center; }
 .ss-summary .ss-detail-title { display:flex; align-items:center; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
@@ -499,14 +507,17 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
-.ss-group .ss-performance { flex:1 1 260rem; min-width:0; width:auto; }
-.ss-group .ss-economy { flex:1 1 310rem; min-width:0; width:auto; }
+.ss-group .ss-performance { flex:1 1 280rem; min-width:0; width:auto; }
+.ss-group .ss-economy { flex:1 1 300rem; min-width:0; width:auto; }
+.ss-group .ss-money-label { width:23%; font-size:12rem; }
+.ss-group .ss-money-value { width:25.666%; }
+.ss-group .ss-money-row .ss-money-value { font-size:13rem; }
 .ss-narrow-cards .ss-group .ss-performance, .ss-narrow-cards .ss-group .ss-economy { flex-basis:100%; }
 .ss-narrow-cards .ss-group .ss-performance { padding-right:0; }
 .ss-narrow-cards .ss-group .ss-economy { padding:5rem 0 0; margin-top:3rem; border-left:0; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-narrow-cards .ss-group .ss-metric-head, .ss-narrow-cards .ss-group .ss-metric-row, .ss-narrow-cards .ss-group .ss-money-head, .ss-narrow-cards .ss-group .ss-money-row { flex-wrap:wrap; }
 .ss-narrow-cards .ss-group .ss-metric-head .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-head .ss-money-label { display:none; }
-.ss-narrow-cards .ss-group .ss-metric-head .ss-metric-count { display:block; width:100%; padding:0 4rem; }
+.ss-narrow-cards .ss-group .ss-metric-head .ss-metric-count, .ss-narrow-cards .ss-group .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
 .ss-narrow-cards .ss-group .ss-metric-row .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-row .ss-money-label { width:100%; padding-bottom:0; }
 .ss-narrow-cards .ss-group .ss-metric-number, .ss-narrow-cards .ss-group .ss-money-value { width:33.333%; }
 /* Fixed-width cards use two independent flow columns. Layout never depends on
@@ -519,14 +530,14 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-two-columns .ss-card-columns { flex-basis:1304rem; width:1304rem; }
 .ss-two-columns .ss-card-column { flex:0 0 620rem; }
 .ss-two-columns .ss-card-column-right { display:flex; margin-left:64rem; }
-.ss-battle-stream .ss-card-column-left { padding-top:16rem; }
-.ss-battle-stream .ss-card-column-right { padding-top:68rem; }
-.ss-battle-stream .ss-card-columns:before { content:""; position:absolute; top:9rem; bottom:12rem; left:50%; width:1rem; background-image:linear-gradient({{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:1rem 10rem; background-repeat:repeat-y; pointer-events:none; }
-.ss-battle-stream .ss-card-columns:after { content:""; position:absolute; left:50%; top:2rem; width:8rem; height:8rem; margin-left:-4rem; border-left:1rem solid {{colors.button_shadow_1}}; border-top:1rem solid {{colors.button_shadow_1}}; transform:rotate(45deg); pointer-events:none; }
-.ss-battle-stream .ss-battle:before { content:""; position:absolute; right:-32rem; top:24rem; width:32rem; height:1rem; background-image:linear-gradient(to right, {{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:10rem 1rem; background-repeat:repeat-x; pointer-events:none; }
-.ss-battle-stream .ss-battle:after { content:""; position:absolute; right:-36rem; top:20rem; width:7rem; height:7rem; border:1rem solid {{colors.button_shadow_1}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; pointer-events:none; }
-.ss-battle-stream .ss-card-column-right .ss-battle:before { left:-32rem; right:auto; }
-.ss-battle-stream .ss-card-column-right .ss-battle:after { left:-36rem; right:auto; }
+.ss-card-stream .ss-card-column-left { padding-top:16rem; }
+.ss-card-stream .ss-card-column-right { padding-top:68rem; }
+.ss-card-stream .ss-card-columns:before { content:""; position:absolute; top:9rem; bottom:12rem; left:50%; width:1rem; background-image:linear-gradient({{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:1rem 10rem; background-repeat:repeat-y; pointer-events:none; }
+.ss-card-stream .ss-card-columns:after { content:""; position:absolute; left:50%; top:2rem; width:8rem; height:8rem; margin-left:-4rem; border-left:1rem solid {{colors.button_shadow_1}}; border-top:1rem solid {{colors.button_shadow_1}}; transform:rotate(45deg); pointer-events:none; }
+.ss-card-stream .ss-group:before { content:""; position:absolute; right:-32rem; top:24rem; width:32rem; height:1rem; background-image:linear-gradient(to right, {{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:10rem 1rem; background-repeat:repeat-x; pointer-events:none; }
+.ss-card-stream .ss-group:after { content:""; position:absolute; right:-36rem; top:20rem; width:7rem; height:7rem; border:1rem solid {{colors.button_shadow_1}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; pointer-events:none; }
+.ss-card-stream .ss-card-column-right .ss-group:before { left:-32rem; right:auto; }
+.ss-card-stream .ss-card-column-right .ss-group:after { left:-36rem; right:auto; }
 @media (max-width:480px) {
   .ss-title-actions { flex:1 1 100%; width:100%; }
   .ss-language-row { margin-left:auto; margin-top:0; }

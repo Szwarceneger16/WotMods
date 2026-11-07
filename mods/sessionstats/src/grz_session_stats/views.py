@@ -497,12 +497,11 @@ class StatsWindow(object):
         return time.time()
 
     def _set_resize_cursor(self, active):
-        # WoT's embedder maps CSS cursor names itself. Use the same native
-        # generic resize glyph as its Scaleform resizing manager on all grips.
+        # setCursorForced goes through AS3 setCursor, which respects the
+        # external Wulf component's cursor lock. The public forceSetCursor
+        # method reaches WG.setCursor directly without changing that lock.
         manager = self._resize_cursor_manager
         if not active and manager is None:
-            return
-        if active and manager is not None:
             return
         if not active:
             self._resize_cursor_manager = None
@@ -515,7 +514,16 @@ class StatsWindow(object):
                 manager = app.cursorMgr if app is not None else None
                 self._resize_cursor_manager = manager
             if manager is not None:
-                manager.setCursorForced(CursorManager.RESIZE if active else CursorManager.ARROW)
+                cursor = CursorManager.RESIZE if active else CursorManager.ARROW
+                flash = getattr(manager, 'flashObject', None)
+                force = getattr(flash, 'forceSetCursor', None)
+                if callable(force):
+                    try:
+                        force(cursor)
+                    except (AttributeError, RuntimeError, TypeError, ValueError):
+                        manager.setCursorForced(cursor)
+                else:
+                    manager.setCursorForced(cursor)
         except (ImportError, AttributeError, RuntimeError, TypeError, ValueError):
             self._resize_cursor_manager = None
             self._log_once('resize_cursor_unavailable', logging.WARNING,

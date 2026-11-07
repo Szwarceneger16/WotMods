@@ -370,16 +370,16 @@
         if (partial && !sharedCoverage) { explainCoverage(append(cell, element('span', 'ss-cell-coverage', partial)),
             data[field + '_count'], total); }
     }
-    function moneyRow(parent, name, data, total) {
+    function moneyRow(parent, name, data, total, sharedCoverage) {
         data = data || {};
         var row = append(parent, element('div', 'ss-money-row'));
         var label = append(row, element('div', 'ss-money-label', name));
         var shared = data.income_count === data.costs_count && data.costs_count === data.net_count;
         var partial = coverage(data.income_count, total);
-        if (shared && partial) { explainCoverage(append(label, element('span', 'ss-cell-coverage', partial)), data.income_count, total); }
-        moneyCell(row, data, 'income', total, shared);
-        moneyCell(row, data, 'costs', total, shared);
-        moneyCell(row, data, 'net', total, shared);
+        if (shared && partial && !sharedCoverage) { explainCoverage(append(label, element('span', 'ss-cell-coverage', partial)), data.income_count, total); }
+        moneyCell(row, data, 'income', total, shared || sharedCoverage);
+        moneyCell(row, data, 'costs', total, shared || sharedCoverage);
+        moneyCell(row, data, 'net', total, shared || sharedCoverage);
     }
     function freeXP(parent, stats) {
         var free = append(parent, element('div', 'ss-free-xp'));
@@ -401,7 +401,8 @@
     function details(parent, stats, global, battle) {
         stats = stats || {};
         var total = observedTotal(stats);
-        var holder = global ? parent : append(parent, element('div', 'ss-details' + (battle ? ' ss-battle-details' : '')));
+        var holder = append(parent, element('div', global ? 'ss-summary-details' :
+            'ss-details' + (battle ? ' ss-battle-details' : '')));
         var performance = append(holder, element('div', 'ss-performance' + (battle ? ' ss-battle-performance' : '')));
         append(performance, element('h3', 'ss-detail-title', battle ? t('performance.battle') : t('performance.period')));
         var xpLabel = state.xp === 'base' ? t('xp.base') : t('xp.received');
@@ -427,24 +428,44 @@
         if (!battle) { help(performance, t('explain.wn8')); }
         var economy = append(holder, element('div', 'ss-economy'));
         append(economy, element('h3', 'ss-detail-title', battle ? t('finance.battle') : t('finance.period')));
-        var moneyHeader = append(economy, element('div', 'ss-money-head'));
-        append(moneyHeader, element('div', 'ss-money-label', t('finance.currency')));
-        append(moneyHeader, element('div', 'ss-money-value', t('finance.income')));
-        append(moneyHeader, element('div', 'ss-money-value', t('finance.costs')));
-        append(moneyHeader, element('div', 'ss-money-value', t('finance.net')));
         var currencies = stats.currencies || {};
-        moneyRow(economy, t('finance.credits'), currencies.credits, total);
-        moneyRow(economy, t('finance.bonds'), currencies.bonds, total);
+        var currencyRows = [{name:t('finance.credits'), data:currencies.credits || {}},
+            {name:t('finance.bonds'), data:currencies.bonds || {}}];
         var gold = currencies.gold || {};
         if ((hasNumber(gold.income) && gold.income !== 0) ||
                 (hasNumber(gold.costs) && gold.costs !== 0) ||
                 (hasNumber(gold.net) && gold.net !== 0)) {
-            moneyRow(economy, t('finance.gold'), gold, total);
+            currencyRows.push({name:t('finance.gold'), data:gold});
         }
+        var moneyCount = currencyRows[0].data.income_count;
+        var sharedMoneyCoverage = !!coverage(moneyCount, total) && currencyRows.every(function (currency) {
+            return currency.data.income_count === moneyCount && currency.data.costs_count === moneyCount &&
+                currency.data.net_count === moneyCount;
+        });
+        var moneyHeader = append(economy, element('div', 'ss-money-head'));
+        var currencyHeader = append(moneyHeader, element('div', 'ss-money-label' +
+            (sharedMoneyCoverage ? ' ss-money-count' : ''), sharedMoneyCoverage ? '' : t('finance.currency')));
+        if (sharedMoneyCoverage) { explainCoverage(append(currencyHeader, element('span', 'ss-cell-coverage',
+            coverage(moneyCount, total))), moneyCount, total); }
+        append(moneyHeader, element('div', 'ss-money-value', t('finance.income')));
+        append(moneyHeader, element('div', 'ss-money-value', t('finance.costs')));
+        append(moneyHeader, element('div', 'ss-money-value', t('finance.net')));
+        currencyRows.forEach(function (currency) {
+            moneyRow(economy, currency.name, currency.data, total, sharedMoneyCoverage);
+        });
         help(economy, t('explain.costs'));
         uniqueNotices((state.payload || {}).warnings).forEach(function (warning) {
             if (warning === t('normalize.reserve') || warning === english['normalize.reserve']) { help(economy, warning); }
         });
+    }
+    function layoutSummary() {
+        var scale = state.nativeScale || 1, payload = state.payload || {}, viewport = payload.viewport || {};
+        var preferred = state.logicalSize && state.logicalSize.width;
+        if (!hasNumber(preferred) && payload.window_size) { preferred = payload.window_size[0]; }
+        if (!hasNumber(preferred)) { preferred = 700; }
+        var available = hasNumber(viewport.width) ? viewport.width : window.innerWidth;
+        var width = Math.max(0, Math.min(preferred, (available - (state.bound ? 20 : 0)) / scale) - 34);
+        nodes.summary.className = 'ss-summary' + (width < 350 ? ' ss-narrow-summary' : '');
     }
     function renderSummary(stats, scope) {
         clear(nodes.summary);
@@ -475,6 +496,7 @@
         freeXP(summaryMeta, stats);
         wn8Coverage(summaryMeta, stats, false);
         details(layout, stats, true);
+        layoutSummary();
         if (nodes.summary.querySelector('.ss-cell-coverage, .ss-count-coverage')) { help(nodes.summary, t('coverage.legend')); }
     }
     function tierText(tier) {
@@ -953,7 +975,7 @@
             lane.style.width = cardWidth + 'rem';
             lane.style.flex = wide ? '0 0 ' + cardWidth + 'rem' : '1 1 0rem';
         });
-        nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns' : '') +
+        nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns ss-card-stream' : '') +
             (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
             (Math.min(width, cardWidth) < 600 ? ' ss-narrow-cards' : '');
         var changed = state.cardLayoutWide !== wide;
@@ -1419,15 +1441,53 @@
             try { window.viewEnv.setEventHandled(); } catch (error) { /* DOM cancellation still applies. */ }
         }
     }
+    var resizeCursorGrip = null, resizeCursorAt = null, resizeCursorTimer = null, resizeCursorToken = 0;
+    function cancelResizeCursorRetry() {
+        resizeCursorToken += 1;
+        var timer = resizeCursorTimer;
+        resizeCursorTimer = null;
+        if (timer !== null) {
+            try { window.clearTimeout(timer); } catch (error) { /* Ownership also makes a retained callback inert. */ }
+        }
+    }
+    function requestResizeCursor(grip, active) {
+        if (!active) {
+            cancelResizeCursorRetry();
+            resizeCursorGrip = null;
+            resizeCursorAt = null;
+            if (state.bound) { invoke('resize_cursor', {active:false, corner:grip.getAttribute('data-corner') || 'se'}); }
+            return;
+        }
+        if (!state.bound || state.destroyed) { return; }
+        var now = Date.now();
+        if (resizeCursorGrip === grip && resizeCursorAt !== null && now >= resizeCursorAt && now - resizeCursorAt < 100) { return; }
+        resizeCursorGrip = grip;
+        resizeCursorAt = now;
+        var corner = grip.getAttribute('data-corner') || 'se';
+        invoke('resize_cursor', {active:true, corner:corner});
+        // The host can update its cursor after dispatching the hover event.
+        // Reapply once after that event, with movement requests capped at 10 Hz.
+        cancelResizeCursorRetry();
+        var token = resizeCursorToken;
+        if (state.destroyed || !state.bound || resizeCursorGrip !== grip) { return; }
+        try {
+            resizeCursorTimer = window.setTimeout(function () {
+                if (token !== resizeCursorToken) { return; }
+                resizeCursorTimer = null;
+                if (!state.destroyed && state.bound && resizeCursorGrip === grip) {
+                    invoke('resize_cursor', {active:true, corner:corner});
+                }
+            }, 0);
+        } catch (error) { resizeCursorTimer = null; }
+    }
     function resizeHover(event) {
         if (state.destroyed || state.dialog || state.resize) { return; }
-        var leaving = event.type === 'mouseleave';
+        var grip = event.currentTarget;
+        var leaving = event.type === 'mouseleave' || event.type === 'mouseout';
+        var related = event.relatedTarget;
+        if (related && typeof grip.contains === 'function' && grip.contains(related)) { return; }
         if (!leaving) { consumeResizeInput(event); }
-        // One native cursor command per enter/leave, not per mouse sample.
-        if (state.bound && event.type !== 'mousemove') {
-            invoke('resize_cursor', {active:!leaving,
-                corner:event.currentTarget.getAttribute('data-corner') || 'se'});
-        }
+        if (!leaving || resizeCursorGrip === grip) { requestResizeCursor(grip, !leaving); }
     }
     function trackResizeOnStage(drag, on) {
         if (!on) {
@@ -1452,6 +1512,7 @@
             drag.stage.listeners.push(subscribe(attempt, 'mousemove', function (event) {
                 if (state.resize !== drag) { return; }
                 consumeResizeInput(event);
+                requestResizeCursor(drag.grip, true);
             }));
             drag.stage.listeners.push(subscribe(attempt, 'mouseup', function (event) {
                 if (state.resize !== drag) { return; }
@@ -1476,6 +1537,7 @@
             pointer:event.pointerId, grip:grip, corner:corner, native:false};
         state.resizeSequence += 1;
         state.resizeLast = Date.now() - 100;
+        requestResizeCursor(grip, true);
         trackResizeOnStage(state.resize, true);
         if (event.pointerId !== undefined && typeof grip.setPointerCapture === 'function') {
             try { grip.setPointerCapture(event.pointerId); } catch (error) { /* The game-level gesture also tracks outside the document. */ }
@@ -1490,6 +1552,7 @@
         var drag = state.resize;
         if (!drag || (event.pointerId !== undefined && drag.pointer !== event.pointerId)) { return; }
         consumeResizeInput(event);
+        requestResizeCursor(drag.grip, true);
         if (drag.native) { return; }
         var west = drag.corner.indexOf('w') >= 0, north = drag.corner.indexOf('n') >= 0;
         var horizontal = west || drag.corner.indexOf('e') >= 0;
@@ -1514,7 +1577,7 @@
         }
         state.resize = null;
         trackResizeOnStage(drag, false);
-        if (state.bound) { invoke('resize_cursor', {active:false, corner:drag.corner}); }
+        requestResizeCursor(drag.grip, false);
         queueResize(true);
         if (drag.pointer !== undefined && typeof drag.grip.releasePointerCapture === 'function') {
             try { drag.grip.releasePointerCapture(drag.pointer); } catch (error) { /* Capture may already be released by the engine. */ }
@@ -1550,9 +1613,12 @@
             grips[index][method]('pointerdown', beginResize);
             grips[index][method]('keydown', keyboardResize);
             grips[index][method]('mouseenter', resizeHover);
+            grips[index][method]('mouseover', resizeHover);
             grips[index][method]('mousemove', resizeHover);
             grips[index][method]('mouseleave', resizeHover);
+            grips[index][method]('mouseout', resizeHover);
         }
+        if (!on && resizeCursorGrip) { requestResizeCursor(resizeCursorGrip, false); }
         document[method]('mousemove', moveResize);
         document[method]('pointermove', moveResize);
         document[method]('mouseup', endResize);
@@ -1624,6 +1690,7 @@
         function measure() {
             if (state.destroyed || ticket !== state.resizeMeasureToken) { return; }
             state.resizeQueued = false;
+            layoutSummary();
             layoutBattleCards();
             resizeNative();
         }

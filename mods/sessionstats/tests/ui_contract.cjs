@@ -264,7 +264,7 @@ async function runFeatureSuite(file,browser) {
     (await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
   check('Financial coverage includes the registered battle with no result',
-    (await page.locator('#ss-summary .ss-money-row .ss-cell-coverage').allTextContents()).includes('16/17'));
+    (await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').allTextContents()).includes('16/17'));
   await page.locator('#ss-group-battles').click();
   const missingCard=(await battleCards(page)).find(row=>row.id==='missing-result-fixture');
   check('Unrecovered battle stays listed with unknown outcome and dashes rather than fabricated zeros',

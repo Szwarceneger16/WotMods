@@ -2,6 +2,7 @@
    log chunks let the existing CI job expose them without changing its workflow. */
 const fs=require('fs'),path=require('path'),os=require('os'),zlib=require('zlib'),crypto=require('crypto');
 const languages=['en','pl','de','fr','es','ru','uk'];
+const groups=['vehicles','maps','tiers','battles'];
 const objectives={
   en:'Cause damage to enemy vehicles and finish among the top players in both teams.',
   pl:'Zadaj uszkodzenia pojazdom przeciwnika i znajdź się wśród najlepszych graczy obu drużyn.',
@@ -14,8 +15,8 @@ const objectives={
 const sha=data=>crypto.createHash('sha256').update(data).digest('hex');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 
-async function audit(page,scale) {
-  return page.evaluate(scale=>{
+async function audit(page,scale,group) {
+  return page.evaluate(({scale,group})=>{
     const panel=document.getElementById('grz-session-stats'),root=panel.getBoundingClientRect();
     const issues=[];
     const visible=node=>{const box=node.getBoundingClientRect();return box.width>0 && box.height>0;};
@@ -42,7 +43,7 @@ async function audit(page,scale) {
     const selectors=[
       '.ss-control-label','.ss-group-title','.ss-group-subtitle','.ss-more-mission-name strong',
       '.ss-more-mission-status','.ss-more-label','.ss-bonus-number','.ss-bonus-label','.ss-more-amount',
-      '.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-battle-value',
+      '.ss-money-label','.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-cell-coverage','.ss-battle-value',
     ];
     for(const label of panel.querySelectorAll('.ss-more-pass .ss-more-label')) {
       const walker=document.createTreeWalker(label,NodeFilter.SHOW_TEXT);
@@ -63,6 +64,13 @@ async function audit(page,scale) {
         }
       }
     }
+    for(const symbol of panel.querySelectorAll('.ss-info-symbol')) {
+      if(!visible(symbol)) continue;
+      const range=document.createRange();range.selectNodeContents(symbol);
+      const ink=range.getBoundingClientRect(),button=symbol.closest('button').getBoundingClientRect();
+      if(ink.width<=0 || ink.height<=0 || ink.left<button.left-limit || ink.right>button.right+limit ||
+        ink.top<button.top-limit || ink.bottom>button.bottom+limit) issues.push({kind:'unreadable-info-symbol'});
+    }
     for(const node of panel.querySelectorAll(selectors.join(','))) {
       if(!visible(node)) continue;
       // Mission status can contain a second explanatory line; inspect each
@@ -77,22 +85,45 @@ async function audit(page,scale) {
           issues.push({kind:'clipped-text',className:node.className,text:textNode.textContent.slice(0,100)});break;
         }
       }
-      if(parseFloat(style.fontSize)/scale<11) issues.push({kind:'small-text',className:node.className,text:node.textContent.slice(0,100)});
+      const minFont=node.matches('.ss-money-value .ss-cell-value') ? 13 :
+        node.matches('.ss-metric-row .ss-metric-number') ? 14 : node.matches('.ss-battle-value') ? 16 : 11;
+      if(parseFloat(style.fontSize)/scale<minFont) issues.push({kind:'small-text',className:node.className,text:node.textContent.slice(0,100)});
     }
     const more=first.querySelector('.ss-more-panel');
-    const matrix=more.querySelector('.ss-more-bonuses');
+    const matrix=more && more.querySelector('.ss-more-bonuses');
     const normalize=text=>text.replace(/\s/g,'');
     const allText=normalize(first.textContent);
     if(!allText.includes('12345678') || !allText.includes('10420') || !allText.includes('123456')) {
       issues.push({kind:'missing-full-values'});
     }
-    if(!matrix || !visible(matrix)) issues.push({kind:'missing-bonus-matrix'});
+    if(group==='battles' && (!matrix || !visible(matrix))) issues.push({kind:'missing-bonus-matrix'});
+    const credits=first.querySelector('.ss-money-row');
+    const values=[...credits.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent));
+    const counts=[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
+    if(values.join('|')!=='24691356|-12345678|+12345678') issues.push({kind:'incomplete-finance-values',values});
+    if(group!=='battles' && counts.join('|')!=='1/4|2/4|3/4') issues.push({kind:'missing-finance-coverage',counts});
+    const detail=first.querySelector('.ss-details'),performance=detail.querySelector('.ss-performance').getBoundingClientRect(),
+      economy=detail.querySelector('.ss-economy').getBoundingClientRect(),detailBox=detail.getBoundingClientRect();
+    if(first.getBoundingClientRect().width/scale>=599 &&
+      (performance.right>economy.left+limit || economy.width/detailBox.width>=0.55 || performance.width/detailBox.width<=0.45)) {
+      issues.push({kind:'unbalanced-card-finance',performance:performance.width/scale,economy:economy.width/scale});
+    }
+    const columns=panel.querySelector('.ss-card-columns');
+    const axis=columns && getComputedStyle(columns,':before');
+    const arrow=columns && getComputedStyle(columns,':after');
+    const two=document.getElementById('ss-groups').classList.contains('ss-two-columns');
+    if(two && (!axis.backgroundImage.includes('linear-gradient') || axis.backgroundRepeat!=='repeat-y' ||
+      parseFloat(axis.height)<=0 || arrow.content==='none' || parseFloat(arrow.width)<=0 ||
+      cards.some(card=>{const line=getComputedStyle(card,':before');return !line.backgroundImage.includes('linear-gradient') ||
+        line.backgroundRepeat!=='repeat-x' || parseFloat(line.width)<=0;}))) issues.push({kind:'missing-card-axis'});
+    const canonical=cards.slice().sort((a,b)=>Number(a.dataset.listIndex)-Number(b.dataset.listIndex));
+    if(two && canonical[1].getBoundingClientRect().top<=canonical[0].getBoundingClientRect().top+scale) issues.push({kind:'missing-card-stagger'});
     return {issues,language:document.documentElement.lang,cards:cards.length,
-      logicalWidth:root.width/scale,columns:document.getElementById('ss-groups').classList.contains('ss-two-columns') ? 2 : 1,
-      expanded:first.querySelector('.ss-more-button').getAttribute('aria-expanded')==='true',
+      logicalWidth:root.width/scale,columns:two ? 2 : 1,
+      expanded:group==='battles' ? first.querySelector('.ss-more-button').getAttribute('aria-expanded')==='true' : null,
       cardWidth:first.getBoundingClientRect().width/scale,
       narrowCards:document.getElementById('ss-groups').classList.contains('ss-narrow-cards')};
-  },scale);
+  },{scale,group});
 }
 
 module.exports=async function ({browser,nativeHost,check}) {
@@ -116,7 +147,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         await page.evaluate(({language,messages,mode,objective})=>{
           const payload=JSON.parse(model.payload);
           payload.window_size=[mode.width,1120];
-          if(mode.cardWidth) payload.appearance={card_widths:{battles:mode.cardWidth}};
+          if(mode.cardWidth) payload.appearance={card_widths:{vehicles:mode.cardWidth,maps:mode.cardWidth,tiers:mode.cardWidth,battles:mode.cardWidth}};
           payload.localization={language,selected:language,messages};
           const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
           timeline.from_point=timeline.to_point='';timeline.time_points=[];
@@ -143,23 +174,43 @@ module.exports=async function ({browser,nativeHost,check}) {
             return battle;
           });
           if(timeline.pagination && timeline.pagination.battles) timeline.pagination.battles={page:0,page_size:40,total:4,pages:1};
+          for(const group of ['vehicles','maps','tiers']) {
+            const original=timeline[group][0];
+            timeline[group]=Array.from({length:4},(_,index)=>{
+              const item=JSON.parse(JSON.stringify(original));
+              item.id='locale-'+group+'-'+index;
+              item.name=group==='vehicles' ? 'Pz.Kpfw. Tiger II mit 10,5 cm Kw.K L/68' :
+                group==='maps' ? 'Ruinberg · Pearl River · Westfield' : 'VIII';
+              item.stats.battles=item.stats.observed_battles=4;
+              item.stats.xp_base={count:3,min:123456,avg:123456,max:123456,sum:370368};
+              item.stats.battle_wn8={count:2,min:10420,avg:10420,max:10420,sum:20840};
+              item.stats.wn8=10420;item.stats.wn8_count=3;
+              item.stats.currencies.credits={income:24691356,costs:12345678,net:12345678,
+                income_count:1,costs_count:2,net_count:3};
+              for(const field of ['income','costs','net']) item.stats.currencies.bonds[field+'_count']=4;
+              return item;
+            });
+            if(timeline.pagination && timeline.pagination[group]) timeline.pagination[group]={page:0,page_size:40,total:4,pages:1};
+          }
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
         },{language,messages:catalogs[language],mode,objective:objectives[language]});
         await page.locator('#ss-scope-manual').click();
-        await page.locator('#ss-group-battles').click();
-        await page.locator('[data-list-index="0"] .ss-more-button').click();
-        await page.mouse.move(mode.gameWidth-10,mode.gameHeight-10);
-        await frames(page);
-        const result=await audit(page,mode.scale);
-        audits.push({locale:language,mode:mode.name,expectedColumns:mode.columns,configuredCardWidth:mode.cardWidth || null,...result});
-        if(mode.capture) {
-          // Show both control bars and the compact summary together with the
-          // expanded first card. The tall fixture keeps its details reviewable.
-          await page.locator('#ss-scroll').evaluate(scroll=>{scroll.scrollTop=0;});
+        for(const group of groups) {
+          await page.locator('#ss-group-'+group).click();
+          if(group==='battles') await page.locator('[data-list-index="0"] .ss-more-button').click();
+          await page.mouse.move(mode.gameWidth-10,mode.gameHeight-10);
           await frames(page);
-          const name='session-stats-'+language+'-'+mode.name+'.jpg';
-          const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:78,animations:'disabled'});
-          screenshots.push({name,language,mode:mode.name,width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
+          const result=await audit(page,mode.scale,group);
+          audits.push({locale:language,group,mode:mode.name,expectedColumns:mode.columns,configuredCardWidth:mode.cardWidth || null,...result});
+          if(mode.capture && ['vehicles','battles'].includes(group)) {
+            // Show both control bars and the compact summary together with
+            // Vehicles or the expanded first battle's details.
+            await page.locator('#ss-scroll').evaluate(scroll=>{scroll.scrollTop=0;});
+            await frames(page);
+            const name='session-stats-'+language+'-'+group+'-'+mode.name+'.jpg';
+            const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:74,animations:'disabled'});
+            screenshots.push({name,language,group,mode:mode.name,width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
+          }
         }
       } finally { await page.close(); }
     }
@@ -172,11 +223,12 @@ module.exports=async function ({browser,nativeHost,check}) {
     console.log('GRZ_LOCALE_QA_BUNDLE_V1 BEGIN '+parts+' '+bundle.length+' '+sha(bundle));
     for(let index=0;index<parts;index++) console.log('GRZ_LOCALE_QA_BUNDLE_V1 DATA '+(index+1)+'/'+parts+' '+encoded.slice(index*chunkSize,(index+1)*chunkSize));
     console.log('GRZ_LOCALE_QA_BUNDLE_V1 END');
-    check('All seven locales produce narrow and wide screenshots outside the source tree',screenshots.length===14);
-    check('Locale screenshot payload stays below two MiB',metadata.screenshot_bytes<=2*1024*1024);
-    for(const result of audits) check('Localized battle cards remain readable without overflow or overlap: '+result.language+' '+result.mode+
+    check('All seven locales produce vehicle and battle screenshots at narrow and wide widths',screenshots.length===28);
+    check('Locale screenshot payload stays below four MiB',metadata.screenshot_bytes<=4*1024*1024);
+    check('Encoded locale screenshot log bundle stays below four MiB',encoded.length<=4*1024*1024);
+    for(const result of audits) check('Localized '+result.group+' cards remain readable without overflow or overlap: '+result.language+' '+result.mode+
       (result.issues.length ? ' '+JSON.stringify(result.issues.slice(0,8)) : ''),
-      result.issues.length===0 && result.expanded && result.cards===4 && result.language===result.locale &&
+      result.issues.length===0 && (result.group!=='battles' || result.expanded) && result.cards===4 && result.language===result.locale &&
       result.columns===result.expectedColumns &&
       (!result.configuredCardWidth || Math.abs(result.cardWidth-result.configuredCardWidth)<=1) &&
       (!['floating-470','configured-480'].includes(result.mode) || result.narrowCards));

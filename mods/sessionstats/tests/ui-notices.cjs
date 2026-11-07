@@ -52,7 +52,7 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
   check('Unavailable XP stays unknown instead of becoming zero',
     (await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-metric-number').allTextContents()).every(v=>v==='—'));
   check('Finance coverage explains its own independent available count',
-    await page.locator('#ss-summary .ss-money-row').first().locator('.ss-cell-coverage').first().getAttribute('aria-label')===
+    await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').getAttribute('aria-label')===
       'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.');
   const performance=page.locator('#ss-summary .ss-performance');
   const info=performance.locator('.ss-info-button');
@@ -190,7 +190,9 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
   vehicle.name='Leox';
   partial.observed_battles=4;partial.battles=3;partial.wn8_count=3;
   partial.xp_base.count=3;partial.battle_wn8.count=3;partial.free_xp.count=3;
-  for(const field of ['income','costs','net']) partial.currencies.credits[field+'_count']=3;
+  for(const currency of ['credits','bonds']) for(const field of ['income','costs','net']) partial.currencies[currency][field+'_count']=3;
+  // Non-rendered zero gold must not prevent the visible rows sharing coverage.
+  partial.currencies.gold={income:0,costs:0,net:0,income_count:1,costs_count:1,net_count:1};
   await render(payload);
   check('Partial groups keep numerical WN8 coverage beside the name, explanatory help and Free XP above tables',await page.locator('#ss-groups .ss-group').first().evaluate(group=>{
     const heading=group.querySelector('.ss-group-heading'), note=heading.querySelector('.ss-wn8-coverage');
@@ -202,8 +204,25 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
       note.getBoundingClientRect().left>=title.right && note.getBoundingClientRect().top<title.bottom &&
       free.bottom<=group.querySelector('.ss-details').getBoundingClientRect().top+1;
   }));
-  check('Shared financial coverage appears once per row without tall value cells',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().evaluate(row=>
-    row.querySelectorAll('.ss-cell-coverage').length===1 && row.querySelector('.ss-money-label .ss-cell-coverage').textContent==='3/4' && row.getBoundingClientRect().height<=30));
+  check('Shared financial coverage appears once in the header without repeating or tall value cells',await page.locator('#ss-groups .ss-group').first().locator('.ss-economy').evaluate(table=>
+    table.querySelector('.ss-money-head .ss-cell-coverage').textContent==='3/4' &&
+    table.querySelectorAll('.ss-cell-coverage').length===1 && table.querySelectorAll('.ss-money-row').length===2 &&
+    Array.from(table.querySelectorAll('.ss-money-row')).every(row=>row.getBoundingClientRect().height<=30)));
+  for(const field of ['income','costs','net']) partial.currencies.bonds[field+'_count']=2;
+  await render(payload);
+  check('Currencies with different coverage keep separate row counts instead of a shared header',
+    await page.locator('#ss-groups .ss-group').first().locator('.ss-economy').evaluate(table=>
+      !table.querySelector('.ss-money-head .ss-cell-coverage') &&
+      Array.from(table.querySelectorAll('.ss-money-row .ss-cell-coverage')).map(node=>node.textContent).join('|')==='3/4|2/4'));
+  for(const field of ['income','costs','net']) partial.currencies.bonds[field+'_count']=3;
+  partial.currencies.gold={income:1,costs:0,net:1,income_count:2,costs_count:2,net_count:2};
+  await render(payload);
+  check('Visible gold with different coverage participates in the shared-header decision',
+    await page.locator('#ss-groups .ss-group').first().locator('.ss-economy').evaluate(table=>
+      !table.querySelector('.ss-money-head .ss-cell-coverage') && table.querySelectorAll('.ss-money-row').length===3 &&
+      Array.from(table.querySelectorAll('.ss-money-row .ss-cell-coverage')).map(node=>node.textContent).join('|')==='3/4|3/4|2/4'));
+  partial.currencies.gold={income:0,costs:0,net:0,income_count:1,costs_count:1,net_count:1};
+  await render(payload);
   check('Shared XP and battle WN8 coverage uses the header and keeps both rows compact',await page.locator('#ss-groups .ss-group').first().locator('.ss-performance').evaluate(table=>
     table.querySelector('.ss-metric-head .ss-cell-coverage').textContent==='3/4' &&
     table.querySelectorAll('.ss-metric-row .ss-cell-coverage').length===0 &&
@@ -212,6 +231,11 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
     await page.setViewportSize({width,height:820});payload.viewport.width=width;await render(payload);
     check('Shared partial metric count stays visible at width '+width,await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-count .ss-cell-coverage').evaluate(node=>
       node.textContent==='3/4' && node.getBoundingClientRect().height>0 && node.getBoundingClientRect().width>0));
+    check('Shared financial count stays visible only once in the header at width '+width,await page.locator('#ss-groups .ss-group').first().locator('.ss-economy').evaluate(table=>{
+      const node=table.querySelector('.ss-money-count .ss-cell-coverage'),box=node.getBoundingClientRect();
+      return node.textContent==='3/4' && box.width>0 && box.height>0 &&
+        table.querySelectorAll('.ss-cell-coverage').length===1;
+    }));
   }
   partial.battle_wn8.count=2;await render(payload);
   check('Different XP and WN8 coverage remains independently visible',await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row .ss-cell-coverage').allTextContents().then(values=>values.join('|')===' (3/4)| (2/4)'));

@@ -131,6 +131,11 @@ columns only when both cards and the central gap fit. For example:
 {"cards": {"battles": 580, "vehicles": 560}}
 ```
 
+Every two-column tab uses staggered cards connected to a dashed central axis.
+The three main statistics stay horizontal; the compact performance and finance
+tables wrap together as one group. Matching finance coverage is shown once in
+the table header; differing coverage remains beside its own row or value.
+
 Information icons show explanations after one second over the icon. Moving
 across a statistics section does not open a tooltip. Battle bonuses share one
 row per source with separate resource columns.

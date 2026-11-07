@@ -256,9 +256,10 @@ module.exports = async function ({browser, nativeHost, check}) {
         axis:columns && {image:getComputedStyle(columns,':before').backgroundImage,
           repeat:getComputedStyle(columns,':before').backgroundRepeat,
           size:getComputedStyle(columns,':before').backgroundSize,
-          width:getComputedStyle(columns,':before').width},
-        arrow:columns && getComputedStyle(columns,':after').content,
-        branches:[...groups.querySelectorAll('.ss-battle')].every(card => {
+          width:getComputedStyle(columns,':before').width,height:getComputedStyle(columns,':before').height},
+        arrow:columns && {content:getComputedStyle(columns,':after').content,
+          width:getComputedStyle(columns,':after').width,height:getComputedStyle(columns,':after').height},
+        branches:[...groups.querySelectorAll('.ss-group')].every(card => {
           const style=getComputedStyle(card,':before');
           return style.backgroundImage.includes('linear-gradient') && style.backgroundRepeat==='repeat-x' &&
             parseFloat(style.height)>0 && parseFloat(style.width)>0;
@@ -288,10 +289,12 @@ module.exports = async function ({browser, nativeHost, check}) {
     check('The '+group+' grid keeps canonical alternating card order',
       layout.cards.every((card,index) => card.index===index &&
         Math.abs(card.left-layout.cards[index%2].left)<1));
+    check('Wide '+group+' results share a visible tiled axis, arrow, stagger and card connections',
+      layout.axis.image.includes('linear-gradient') && layout.axis.repeat==='repeat-y' &&
+      parseFloat(layout.axis.width)>0 && parseFloat(layout.axis.height)>0 &&
+      layout.arrow.content!=='none' && parseFloat(layout.arrow.width)>0 && parseFloat(layout.arrow.height)>0 &&
+      layout.branches && layout.cards[1].top>layout.cards[0].top+1);
     if(group==='battles') {
-      check('Wide history has visible tiled axis dashes, arrow and card connections supported by Gameface',
-        layout.axis.image.includes('linear-gradient') && layout.axis.repeat==='repeat-y' &&
-        parseFloat(layout.axis.width)>0 && layout.arrow!=='none' && layout.branches);
       await wide.locator('[data-list-index="0"] .ss-more-button').click();
       const expanded=await readLayout();
       check('More uses native column flow while card height readings remain stale',

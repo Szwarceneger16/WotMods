@@ -6,6 +6,7 @@ module.exports=async function ({browser,nativeHost,check}) {
     {width:1600,scale:1,gameWidth:2400,mode:'wide'},
     {width:800,scale:1,gameWidth:2400,mode:'medium'},
     {width:480,scale:1,gameWidth:2400,mode:'narrow'},
+    {width:470,scale:1,gameWidth:2400,mode:'narrow'},
     {width:430,scale:1,gameWidth:2400,mode:'narrow'},
     {width:320,scale:1,gameWidth:2400,mode:'narrow'},
     {width:1200,scale:2,gameWidth:3840,mode:'wide'},
@@ -28,14 +29,21 @@ module.exports=async function ({browser,nativeHost,check}) {
         payload.scopes.timeline.time_points=[];
         for(const scope of Object.values(payload.scopes)) {
           const stats=scope.summary;
+          stats.battles=stats.observed_battles=4;
+          stats.wins=2;stats.losses=stats.draws=1;
           for(const metric of ['xp_base','xp_received']) {
             for(const key of ['min','avg','max','sum']) stats[metric][key]=123456;
+            stats[metric].count=3;
           }
           stats.wn8=10420;
           for(const key of ['min','avg','max','sum']) stats.battle_wn8[key]=10420;
+          stats.battle_wn8.count=2;
           stats.currencies.credits.income=12345678;
           stats.currencies.credits.costs=12345678;
           stats.currencies.credits.net=-12345678;
+          stats.currencies.credits.income_count=1;
+          stats.currencies.credits.costs_count=2;
+          stats.currencies.credits.net_count=3;
         }
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },testCase);
@@ -49,6 +57,8 @@ module.exports=async function ({browser,nativeHost,check}) {
         };
         const root=bounds(document.getElementById('grz-session-stats'));
         const panels=['.ss-summary-main','#ss-summary .ss-performance','#ss-summary .ss-economy'].map(selector=>bounds(document.querySelector(selector)));
+        const pair=bounds(document.querySelector('#ss-summary .ss-summary-details'));
+        const kpis=[...document.querySelectorAll('#ss-summary .ss-kpi')].map(bounds);
         const filters=[...document.querySelectorAll('.ss-timeline-field')].map(bounds);
         const xp=bounds(document.querySelector('.ss-xp-picker'));
         const scopes=bounds(document.querySelector('.ss-scopes'));
@@ -59,7 +69,7 @@ module.exports=async function ({browser,nativeHost,check}) {
           return box.width>0 && box.height>0 && (box.left<root.left-1 || box.right>root.right+1);
         }).map(node=>node.className);
         const badNumbers=[];
-        for(const node of document.querySelectorAll('#ss-summary .ss-kpi-value,#ss-summary .ss-metric-row .ss-metric-number,#ss-summary .ss-money-value .ss-cell-value')) {
+        for(const node of document.querySelectorAll('#ss-summary .ss-kpi-value,#ss-summary .ss-metric-row .ss-metric-number,#ss-summary .ss-money-value .ss-cell-value,#ss-summary .ss-money-value .ss-cell-coverage')) {
           const box=node.getBoundingClientRect();
           if(!box.width || !box.height) continue;
           const cell=node.closest('.ss-money-value,.ss-metric-number,.ss-kpi-value');
@@ -68,15 +78,16 @@ module.exports=async function ({browser,nativeHost,check}) {
           const text=range.getBoundingClientRect();
           const insetLeft=parseFloat(style.paddingLeft)+parseFloat(style.borderLeftWidth);
           const insetRight=parseFloat(style.paddingRight)+parseFloat(style.borderRightWidth);
-          const minFont=node.classList.contains('ss-kpi-value') ? 24 : cell.classList.contains('ss-metric-number') ? 14 : 13;
+          const minFont=node.classList.contains('ss-cell-coverage') ? 11 : node.classList.contains('ss-kpi-value') ? 24 : cell.classList.contains('ss-metric-number') ? 14 : 13;
           if(text.left<cellBox.left+insetLeft-1 || text.right>cellBox.right-insetRight+1 ||
             parseFloat(getComputedStyle(node).fontSize)/scale<minFont) badNumbers.push(node.textContent);
         }
         const compact=text=>text.replace(/\s/g,'');
         const credits=document.querySelector('#ss-summary .ss-money-row');
-        return {root,panels,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
+        return {root,panels,pair,kpis,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
+          coverage:[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>compact(node.textContent)),
           xpValues:[...document.querySelectorAll('#ss-summary .ss-metric-row .ss-metric-number')].slice(0,3).map(node=>compact(node.textContent)),
           wn8:document.querySelector('#ss-summary .ss-kpi-value.ss-wn8').textContent,
         };
@@ -85,10 +96,17 @@ module.exports=async function ({browser,nativeHost,check}) {
       check('Upper controls and summary stay within the floating window: '+caption,
         Math.abs(audit.root.width-width)<=1 && audit.overflow.length===0);
       check('Summary sections keep capped widths and readable full values: '+caption,
-        audit.panels[0].width<=341 && audit.panels[1].width<=311 && audit.panels[2].width<=421 &&
+        audit.panels[0].width<=461 && audit.pair.width<=651 && audit.panels[1].width<=301 && audit.panels[2].width<=351 &&
         audit.badNumbers.length===0 && audit.values.join('|')==='12345678|-12345678|-12345678' &&
+        audit.coverage.join('|')==='1/4|2/4|3/4' &&
         audit.xpValues.length===3 && audit.xpValues.every(value=>value==='123456') &&
         audit.wn8==='10420');
+      if(width>=470) check('Main battle, win-rate and WN8 KPIs remain horizontal: '+caption,
+        audit.kpis.length===3 && Math.max(...audit.kpis.map(box=>box.top))-Math.min(...audit.kpis.map(box=>box.top))<=1 &&
+        audit.kpis[0].right<=audit.kpis[1].left+1 && audit.kpis[1].right<=audit.kpis[2].left+1);
+      check('Combat and finances remain inside the same wrapping summary pair: '+caption,
+        audit.panels.slice(1).every(box=>box.left>=audit.pair.left-1 && box.right<=audit.pair.right+1 &&
+          box.top>=audit.pair.top-1 && box.bottom<=audit.pair.bottom+1));
       check('Timeline selectors remain bounded and hide the redundant period line: '+caption,
         audit.periodHidden && audit.filters.every(field=>field.width>0 && field.width<=223));
       if(mode==='wide') {
@@ -99,17 +117,19 @@ module.exports=async function ({browser,nativeHost,check}) {
           Math.abs(audit.filters[0].top-audit.xp.top)<=2 &&
           audit.filters[1].right<=audit.xp.left);
         check('Wide result count, pagination and sorting share a bounded row: '+caption,
-          audit.lower[0].width<=169 && audit.lower[1].width<=341 && audit.lower[2].width<=363 &&
+          audit.lower[1].width<=341 && audit.lower[2].width<=363 &&
           audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
           Math.min(...audit.lower.map(box=>box.bottom))-Math.max(...audit.lower.map(box=>box.top))>5 &&
           Math.max(...audit.lowerTriggers.map(box=>box.bottom))-Math.min(...audit.lowerTriggers.map(box=>box.bottom))<=2);
+        check('Pagination follows the result metadata without a reserved blank column: '+caption,
+          Math.abs(audit.lower[1].left-audit.lower[0].right-8)<=1);
         check('Wide summary uses one compact row for main stats, combat and finances: '+caption,
           Math.max(...audit.panels.map(panel=>panel.top))-Math.min(...audit.panels.map(panel=>panel.top))<=1 &&
           audit.panels[0].right<=audit.panels[1].left+1 && audit.panels[1].right<=audit.panels[2].left+1);
       } else if(mode==='medium') {
-        check('Medium summary keeps main and combat together and wraps finances: '+caption,
-          Math.abs(audit.panels[0].top-audit.panels[1].top)<=1 &&
-          audit.panels[2].top>=Math.max(audit.panels[0].bottom,audit.panels[1].bottom)-1);
+        check('Medium summary wraps combat and finances together below the main KPIs: '+caption,
+          audit.pair.top>=audit.panels[0].bottom-1 && Math.abs(audit.panels[1].top-audit.panels[2].top)<=1 &&
+          audit.panels[1].right<=audit.panels[2].left+1);
       } else {
         check('A narrow mod window stacks sections despite the wide game viewport: '+caption,
           audit.panels[1].top>=audit.panels[0].bottom-1 &&

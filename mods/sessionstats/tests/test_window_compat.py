@@ -43,17 +43,59 @@ class WindowCompatibilityTests(unittest.TestCase):
         for corner in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w'):
             self.window._handle_action(self.window._generation, {
                 'action': 'resize_cursor', 'active': 'true', 'corner': corner})
-            # Hovering does not continuously reapply the native glyph.
+            # A bounded retry can restore a glyph overwritten by the host.
             self.window._handle_action(self.window._generation, {
                 'action': 'resize_cursor', 'active': 'true', 'corner': corner})
             self.assertEqual(calls[-1], 'resize')
             self.window._handle_action(self.window._generation, {
                 'action': 'resize_cursor', 'active': 'false', 'corner': corner})
             self.assertEqual(calls[-1], 'arrow')
-        self.assertEqual(calls, ['resize', 'arrow'] * 8)
+        self.assertEqual(calls, ['resize', 'resize', 'arrow'] * 8)
         self.window._handle_action(self.window._generation, {
             'action': 'resize_cursor', 'active': 'true', 'corner': 'outside'})
-        self.assertEqual(len(calls), 16)
+        self.assertEqual(len(calls), 24)
+
+    def test_native_resize_cursor_bypasses_the_hovered_external_component_lock(self):
+        fallback = self._native_cursor()
+        native, visible = [], ['arrow']
+
+        def force(cursor):
+            native.append(cursor)
+            visible[0] = cursor
+
+        manager = runtime_fixtures.Obj(
+            # This path models the client's ignored setCursor call while a
+            # Wulf component owns its external cursor lock.
+            setCursorForced=fallback.append,
+            flashObject=runtime_fixtures.Obj(forceSetCursor=force))
+        self.loader.getDefLobbyApp = lambda: runtime_fixtures.Obj(cursorMgr=manager)
+        self.assertTrue(self.window.open())
+        for corner in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w'):
+            command = {'action': 'resize_cursor', 'active': 'true', 'corner': corner}
+            self.window._handle_action(self.window._generation, command)
+            self.assertEqual(visible[0], 'resize')
+            visible[0] = 'arrow'  # A later host cursor update must be recoverable.
+            self.window._handle_action(self.window._generation, command)
+            self.assertEqual(visible[0], 'resize')
+            self.window._handle_action(self.window._generation, {
+                'action': 'resize_cursor', 'active': 'false', 'corner': corner})
+            self.assertEqual(visible[0], 'arrow')
+        self.assertEqual(native, ['resize', 'resize', 'arrow'] * 8)
+        self.assertEqual(fallback, [])
+
+    def test_resize_cursor_retains_fallback_when_the_flash_proxy_contract_changes(self):
+        fallback = self._native_cursor()
+
+        def unavailable(cursor):
+            raise TypeError('changed native cursor method contract')
+
+        manager = runtime_fixtures.Obj(setCursorForced=fallback.append,
+            flashObject=runtime_fixtures.Obj(forceSetCursor=unavailable))
+        self.loader.getDefLobbyApp = lambda: runtime_fixtures.Obj(cursorMgr=manager)
+        self.assertTrue(self.window.open())
+        self.window._set_resize_cursor(True)
+        self.window._set_resize_cursor(False)
+        self.assertEqual(fallback, ['resize', 'arrow'])
 
     def test_resize_cursor_stays_captured_until_release_and_restores_on_close(self):
         calls = self._native_cursor()
