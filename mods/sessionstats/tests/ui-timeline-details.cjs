@@ -139,8 +139,14 @@ module.exports = async function ({browser, nativeHost, check}) {
     __grzCommands.some(x => x.action === 'timeline_range' && x.account_key === 'fixture-account' &&
       x.from_point === 'first' && x.to_point === '')));
   await page.locator('#ss-group-battles').click();
-  await page.locator('.ss-more-button').first().click();
   const details = page.locator('.ss-more-panel').first();
+  async function ensureMoreOpen(context) {
+    const button=page.locator('.ss-more-button').first();
+    if(await button.getAttribute('aria-expanded')!=='true') await button.click();
+    check('More is expanded and visible for '+context,
+      await button.getAttribute('aria-expanded')==='true' && await details.isVisible());
+  }
+  await ensureMoreOpen('the initial reward fixture');
   const text = await details.textContent();
   check('More renders confirmed mission, points and bonus as plain text',
     text.includes('33 points earned') && text.includes('shield used') &&
@@ -204,7 +210,7 @@ module.exports = async function ({browser, nativeHost, check}) {
       appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150};
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
+  await ensureMoreOpen('the ordinary zero-point fixture');
   const ordinaryRows=await details.locator('.ss-bonus-row').evaluateAll(rows=>rows.map(row=>({
     label:row.querySelector('.ss-bonus-label').textContent,
     values:Array.from(row.querySelectorAll('.ss-bonus-number')).map(cell=>cell.textContent.replace(/\s/g,'')),
@@ -233,23 +239,29 @@ module.exports = async function ({browser, nativeHost, check}) {
     const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.bonuses.wotPlusXP=1234;
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
-  check('A four-digit XP bonus uses full-width fallback and preserves its full formatted value',await details.evaluate(panel=>{
+  await ensureMoreOpen('the four-digit XP fixture');
+  const xpLayout=await details.evaluate(panel=>{
     const scale=parseFloat(document.documentElement.style.fontSize),block=panel.querySelector('.ss-more-bonus-block'),
       table=block.querySelector('.ss-more-bonuses'),columns=panel.querySelector('.ss-more-columns').getBoundingClientRect(),
       missions=panel.querySelector('.ss-more-mission-block').getBoundingClientRect(),box=block.getBoundingClientRect();
     const row=Array.from(table.querySelectorAll('.ss-bonus-row')).find(item=>item.querySelector('.ss-bonus-label').textContent==='WoT Plus'),
       cell=row.querySelector('.ss-bonus-column-1'),bounds=cell.getBoundingClientRect(),css=getComputedStyle(cell),range=document.createRange();
     range.selectNodeContents(cell);const text=range.getBoundingClientRect();
-    return block.classList.contains('ss-long-bonus-values') && table.classList.contains('ss-long-bonus-values') &&
+    const passed=block.classList.contains('ss-long-bonus-values') && table.classList.contains('ss-long-bonus-values') &&
       Math.abs(box.width-columns.width)<=scale && missions.top>=box.bottom-scale && cell.textContent==='+1\u00a0234' &&
       text.left>=bounds.left+parseFloat(css.paddingLeft)-scale && text.right<=bounds.right-parseFloat(css.paddingRight)+scale;
-  }));
+    return {passed,scale,display:getComputedStyle(panel).display,blockClass:block.className,tableClass:table.className,
+      value:cell.textContent,block:{top:box.top,bottom:box.bottom,width:box.width},columnsWidth:columns.width,
+      missionTop:missions.top,cell:{left:bounds.left,right:bounds.right,width:bounds.width},
+      text:{left:text.left,right:text.right,width:text.width},padding:{left:css.paddingLeft,right:css.paddingRight}};
+  });
+  check('A four-digit XP bonus uses full-width fallback and preserves its full formatted value'+
+    (xpLayout.passed ? '' : ' '+JSON.stringify(xpLayout)),xpLayout.passed);
   await page.evaluate(()=>{
     const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.pass_points={battle:0};
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
+  await ensureMoreOpen('the partial zero-point fixture');
   check('A confirmed zero component remains visible without inventing an unknown total',
     await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
     await details.locator('.ss-more-pass .ss-more-label').textContent()==='Battle result:' &&
@@ -259,7 +271,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].xp_bonus_applied=true;
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
+  await ensureMoreOpen('the unknown applied-bonus fixture');
   check('An applied bonus with unknown amount remains a notice without inventing a multiplier',
     await details.locator('.ss-more-factors .ss-more-value').count()===1 &&
     await details.locator('.ss-more-factors').textContent()==='Post-battle XP bonus applied' &&

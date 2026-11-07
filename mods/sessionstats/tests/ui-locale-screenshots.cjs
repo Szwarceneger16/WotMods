@@ -120,18 +120,19 @@ async function audit(page,mode,group) {
       }
       const missionRows=missions ? [...missions.querySelectorAll('.ss-more-mission')] : [],
         descriptions=missions ? [...missions.querySelectorAll('.ss-more-mission-description')] : [];
-      const expectedMissions=stress ? 4 : 3;
-      if(missionRows.length!==expectedMissions || descriptions.length!==expectedMissions || !missionRows.every(visible) || !descriptions.every(visible)) {
+      const expectedMissions=stress ? 4 : 3,expectedDescriptions=stress ? 4 : 0;
+      if(missionRows.length!==expectedMissions || descriptions.length!==expectedDescriptions || !missionRows.every(visible) || !descriptions.every(visible)) {
         issues.push({kind:'collapsed-mission-details'});
       }
       for(const mission of missionRows) {
         const row=mission.getBoundingClientRect(),identity=mission.querySelector('.ss-more-mission-name').getBoundingClientRect(),
           status=mission.querySelector('.ss-more-mission-status').getBoundingClientRect(),outline=getComputedStyle(mission),
-          description=mission.querySelector('.ss-more-mission-description').getBoundingClientRect();
+          descriptionNode=mission.querySelector('.ss-more-mission-description'),
+          description=descriptionNode && descriptionNode.getBoundingClientRect();
         if(status.top<identity.bottom-limit || identity.left<row.left-limit || identity.right>row.right+limit ||
           status.left<row.left-limit || status.right>row.right+limit || status.bottom>row.bottom+limit ||
-          description.top<status.bottom-limit || description.left<row.left-limit || description.right>row.right+limit ||
-          description.bottom>row.bottom+limit ||
+          (description && (description.top<status.bottom-limit || description.left<row.left-limit || description.right>row.right+limit ||
+          description.bottom>row.bottom+limit)) ||
           ['Top','Right','Bottom','Left'].some(edge=>parseFloat(outline['border'+edge+'Width'])<=0)) {
           issues.push({kind:'fragmented-mission-result'});
         }
@@ -234,7 +235,12 @@ module.exports=async function ({browser,nativeHost,check}) {
                 boosterFreeXP:28,boosterTMenXP:544,wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164} :
                 {eventCredits:110000,eventCrystal:24,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96,
                   appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150}};
-            if(!mode.stress) delete battle.details.missions['weekly:fixture'];
+            if(!mode.stress) {
+              delete battle.details.missions['weekly:fixture'];
+              battle.details.missions['daily:fixture'].name=messages['more.kind.daily']+' 1';
+              battle.details.missions['personal:fixture'].name='Operation Fossa';
+              Object.values(battle.details.missions).forEach(mission=>{delete mission.description;});
+            }
             return battle;
           });
           if(timeline.pagination && timeline.pagination.battles) timeline.pagination.battles={page:0,page_size:40,total:4,pages:1};
