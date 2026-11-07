@@ -1462,8 +1462,8 @@
     function resizeNative() {
         if (!state.bound) { return; }
         var rect = root.getBoundingClientRect();
-        var validWidth = hasNumber(rect.width) && rect.width > 0;
-        var validHeight = hasNumber(rect.height) && rect.height > 0;
+        var validWidth = hasNumber(rect.width) && rect.width > state.nativeScale;
+        var validHeight = hasNumber(rect.height) && rect.height > state.nativeScale;
         var fallback = validWidth && validHeight ? null : resizePanelDimensions(rect);
         var width = Math.max(1, Math.ceil(validWidth ? rect.width : fallback.width * state.nativeScale));
         var height = Math.max(1, Math.ceil(validHeight ? rect.height : fallback.height * state.nativeScale));
@@ -1507,10 +1507,10 @@
         // Empty first-layout measurements must not collapse the native surface
         // or its grips. Ignore a 1px placeholder; use a real cached dimension
         // or the native/CSS default (LOGICAL_SIZE), without persisting a guess.
-        if (!hasNumber(width) || width <= 0) {
+        if (!hasNumber(width) || width <= 1) {
             width = hasNumber(state.nativeWidth) && state.nativeWidth > 2 * scale ? state.nativeWidth / scale : 700;
         }
-        if (!hasNumber(height) || height <= 0) {
+        if (!hasNumber(height) || height <= 1) {
             height = hasNumber(state.nativeHeight) && state.nativeHeight > 2 * scale ? state.nativeHeight / scale : 620;
         }
         // Use the requested size and the same viewport bounds as the panel;

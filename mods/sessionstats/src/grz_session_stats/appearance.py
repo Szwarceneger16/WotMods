@@ -403,6 +403,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select-trigger .ss-control-label { flex:1; text-align:left; }
 .ss-select-arrow { display:block; flex-shrink:0; width:6rem; height:6rem; margin:-3rem 3rem 0 6rem; border-right:1rem solid currentColor; border-bottom:1rem solid currentColor; transform:rotate(45deg); }
 .ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_tabs}}rem; background:{{colors.window_background}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
+.ss-sorting .ss-select-options { width:100%; }
 .ss-sort-direction .ss-select-options { left:auto; right:0; }
 .ss-select-option { width:100%; min-height:28rem; padding:4rem 5rem; border:0; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; color:{{colors.list_meta_text}}; justify-content:flex-start; }
 .ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }

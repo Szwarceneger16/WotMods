@@ -35,18 +35,19 @@ module.exports = async function ({browser, nativeHost, check}) {
       });
     });
   }
+  for (const placeholder of [0, 1]) {
   const zeroMeasurements = await nativeHost({newPage:async options => {
     const masked = await browser.newPage(options);
-    await masked.addInitScript(() => {
+    await masked.addInitScript(placeholder => {
       const original = HTMLElement.prototype.getBoundingClientRect;
       window.__restoreResizeRootRect = () => { HTMLElement.prototype.getBoundingClientRect = original; };
       HTMLElement.prototype.getBoundingClientRect = function () {
         if (this.id === 'grz-session-stats') {
-          return {x:0,y:0,left:0,top:0,right:0,bottom:0,width:0,height:0};
+          return {x:0,y:0,left:0,top:0,right:placeholder,bottom:placeholder,width:placeholder,height:placeholder};
         }
         return original.call(this);
       };
-    });
+    }, placeholder);
     return masked;
   }}, {initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1}});
   await zeroMeasurements.evaluate(() => {
@@ -57,9 +58,10 @@ module.exports = async function ({browser, nativeHost, check}) {
     }
     __restoreResizeRootRect();
   });
-  check('Fresh-open resize grips stay mirrored and usable after zero panel measurements without a saved size',
+  check('Fresh-open resize grips stay mirrored and usable after '+placeholder+'px panel measurements without a saved size',
     await mirroredHitBoxes(zeroMeasurements));
   await zeroMeasurements.close();
+  }
   const page = await nativeHost(browser, {
     initialViewport:{width:1600,height:1100}, viewport:{width:1600,height:1100,scale:1},
   });
