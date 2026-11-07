@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.4.0 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.4.1 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -55,6 +55,18 @@ Session Stats uses its own `mod_grz_session_stats` entrypoint, `grz_session_stat
 package, `grz.sessionstats` resources and data/log directory. Medkit Reminder has
 a separate entrypoint and is not a dependency. Built packages have disjoint
 resource paths; coexistence in the actual client still requires an in-game test.
+
+### Read-only Hangar integration
+
+Version 0.4.1 exposes `gui.mods.grz_session_stats.runtime.read_hangar_stats(vehicle_ids)`
+on the already loaded module. Consumers must not import or start Session Stats
+when it is absent. API schema 1 returns only requested vehicle summaries from
+the current account's full recorded Random Battle history, independent of UI
+pages, reset periods and selected timeline bounds. WN8, battles and net credits
+reuse the existing timeline group totals. Sparse daily counts cover the last
+366 calendar days in the game computer's local time. Missing results are not
+invented, and the first recorded battle is never treated as a purchase date.
+The API returns no account identifier, local path or individual battle ledger.
 
 ## Local build
 

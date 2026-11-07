@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.4.0
+# Appearance and scrolling configuration — 0.4.1
 
 ## File placement and applying changes
 

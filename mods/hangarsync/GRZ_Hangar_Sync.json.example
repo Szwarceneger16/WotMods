@@ -1,0 +1,13 @@
+{
+  "enabled": false,
+  "endpoint_url": "",
+  "device_token": "",
+  "sites_access_token": "",
+  "region": "EU",
+  "display_name": "",
+  "allowed_players": [],
+  "include_crew": false,
+  "interval_seconds": 120,
+  "include_missions": false,
+  "mission_diagnostics": true
+}
