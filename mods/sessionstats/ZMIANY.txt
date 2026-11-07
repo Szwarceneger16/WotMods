@@ -13,6 +13,8 @@ SESSION STATS — CHANGELOG
 • Put Battle Pass in a full-width strip above a wider bonus table and compact
   mission cards. Stack each mission's progress below its name within one outline;
   wrap the sections for narrow cards and unusually large rewards.
+• Allow several battle details to stay open together. Fill chronological gaps
+  beside expanded cards before returning to alternating columns below them.
 
 0.3.4 • 2026-10-30
 • Use the requested lowercase installed filename grz_sessions_stats.wotmod.

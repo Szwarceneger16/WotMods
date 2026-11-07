@@ -452,11 +452,15 @@ module.exports = async function ({browser, nativeHost, check}) {
       layout.branches && layout.cards[1].top>layout.cards[0].top+1);
     if(group==='battles') {
       await wide.locator('[data-list-index="0"] .ss-more-button').click();
+      await wide.evaluate(()=>new Promise(resolve=>{
+        let remaining=10;function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+      }));
       const expanded=await readLayout();
       check('More uses native column flow while card height readings remain stale',
-        expanded.cards[2].top>=expanded.cards[0].bottom+15 &&
-        Math.abs(expanded.cards[1].top-layout.cards[1].top)<1 &&
-        Math.abs(expanded.cards[3].top-layout.cards[3].top)<1);
+        expanded.cards.every((card,index)=>card.position!=='absolute' && (!index || card.top>=expanded.cards[index-1].top-1)) &&
+        expanded.cards.every((card,index)=>expanded.cards.slice(index+1).every(other=>
+          Math.min(card.right,other.right)-Math.max(card.left,other.left)<=1 ||
+          Math.min(card.bottom,other.bottom)-Math.max(card.top,other.top)<=1)));
     }
     await setAvailableWidth(2*expectedWidth+64+20);
     layout=await readLayout();
@@ -482,6 +486,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   check('All eight window corners and edges have reachable resize grips',
     await wide.locator('.ss-resize-grip').count()===8);
   await wide.close();
+  await require('./ui-timeline-expansion.cjs')({browser,nativeHost,check});
 
   for(const edge of ['nw','ne','sw','se','n','e','s','w']) {
     const resize=await nativeHost(browser, {

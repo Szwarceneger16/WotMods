@@ -9,7 +9,8 @@
         nativeWidth: 0, nativeHeight: 0, nativeScale: 1, diagnostics: {}, dragging: false,
         scrollSpeed: 1, appearanceNode: null, appearanceCSS: '', destroyed: false,
         orders: {}, openSelect: null, list: [], loadedCount: 40, renderedCount: 0,
-        timelineSignature: null, openBattle: null, more: null, resize: null, logicalSize: null,
+        timelineSignature: null, openBattles: {}, resize: null, logicalSize: null,
+        cardFlowToken: 0, cardFlowQueued: false, cardFlowAttempts: 0, cardFlowTimer: null,
         viewKey: null, scrollTarget: null,
         resizeSequence: 0, timePointAccount: null, timePointCount: null, timePointEdited: false,
         resizeQueued: false, resizeTimer: null, resizeLast: 0, resizeMeasureToken: 0 };
@@ -905,7 +906,6 @@
         button.title = t('more.button');
         append(button, element('span', 'ss-control-label', t('more.button')));
         var panel = append(card, element('div', 'ss-more-panel'));
-        var control = {button:button, panel:panel};
         function show(open) {
             button.setAttribute('aria-expanded', String(open));
             panel.style.display = open ? 'flex' : 'none';
@@ -914,17 +914,16 @@
         }
         button.onclick = function () {
             var open = button.getAttribute('aria-expanded') !== 'true';
-            if (state.more && state.more !== control) { state.more.show(false); }
-            state.openBattle = open ? battle.id : null;
-            state.more = open ? control : null;
+            if (open) { state.openBattles['$' + battle.id] = true; }
+            else { delete state.openBattles['$' + battle.id]; }
+            invalidateCardFlow();
             show(open);
         };
-        control.show = show;
-        show(state.openBattle === battle.id);
-        if (state.openBattle === battle.id) { state.more = control; }
+        show(state.openBattles['$' + battle.id] === true);
     }
 
     function appendGroupBatch(limit) {
+        invalidateCardFlow();
         var list = state.list;
         var end = Math.min(list.length, limit);
         var fragment = document.createDocumentFragment();
@@ -968,10 +967,84 @@
         layoutBattleCards();
         queueResize();
     }
+    function invalidateCardFlow() {
+        state.cardFlowToken += 1;
+        state.cardFlowQueued = false;
+        state.cardFlowAttempts = 0;
+        if (state.cardFlowTimer !== null) {
+            try { window.clearTimeout(state.cardFlowTimer); } catch (error) { /* The retired token also guards retained callbacks. */ }
+            state.cardFlowTimer = null;
+        }
+    }
+    function arrangeCardLanes(desired) {
+        var focused = document.activeElement, scrollTop = nodes.scroll.scrollTop;
+        desired.forEach(function (cards, index) {
+            var lane = state.cardLanes[index], cursor = lane.firstElementChild;
+            cards.forEach(function (card) {
+                if (card !== cursor) { lane.insertBefore(card, cursor); }
+                cursor = card.nextElementSibling;
+            });
+        });
+        if (focused && document.activeElement !== focused && typeof focused.focus === 'function') { focused.focus(); }
+        nodes.scroll.scrollTop = scrollTop;
+    }
+    function hasExpandedBattle() {
+        return state.group === 'battles' && (state.groupCards || []).some(function (card) {
+            var button = card.querySelector('.ss-more-button');
+            return button && button.getAttribute('aria-expanded') === 'true';
+        });
+    }
+    function queueCardFlow() {
+        if (state.destroyed || state.cardFlowQueued || state.cardFlowAttempts >= 3 ||
+                !state.cardLayoutWide || !hasExpandedBattle()) { return; }
+        state.cardFlowQueued = true;
+        var token = state.cardFlowToken;
+        function settle() {
+            if (state.destroyed || token !== state.cardFlowToken) { return; }
+            state.cardFlowQueued = false;
+            state.cardFlowAttempts += 1;
+            if (!state.cardLayoutWide || !hasExpandedBattle() || !state.cardColumns ||
+                    state.cardColumns.parentNode !== nodes.groups) { return; }
+            var scale = state.nativeScale || 1, cards = state.groupCards || [];
+            var cardWidth = (state.cardWidths || {battles:500})[state.group];
+            var heights = [], valid = true;
+            // Read every height at the settled fixed width before moving any
+            // node. Native column flow remains responsible for all positions.
+            cards.forEach(function (card) {
+                var box = card.getBoundingClientRect(), height = box.height;
+                if (!(height > 1)) { height = card.offsetHeight; }
+                if (!hasNumber(height) || height <= 1 || !hasNumber(box.width) ||
+                        Math.abs(box.width / scale - cardWidth) > 1) { valid = false; }
+                heights.push(height / scale);
+            });
+            if (valid) {
+                var next = [16, 68], desired = [[], []];
+                cards.forEach(function (card, index) {
+                    var lane = next[0] <= next[1] ? 0 : 1;
+                    desired[lane].push(card);
+                    next[lane] += heights[index] + 16;
+                });
+                arrangeCardLanes(desired);
+            }
+            // A finite verification catches positive but stale native heights
+            // after expansion; it never starts a resize or polling loop.
+            queueCardFlow();
+        }
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () { window.requestAnimationFrame(settle); });
+        } else {
+            try {
+                state.cardFlowTimer = window.setTimeout(function () {
+                    if (token !== state.cardFlowToken || state.destroyed) { return; }
+                    state.cardFlowTimer = null;
+                    settle();
+                }, 16);
+            } catch (error) { state.cardFlowQueued = false; }
+        }
+    }
     function layoutBattleCards() {
-        /* Gameface can return a new card's previous (or zero) height until its
-           next layout. Let each column's normal flow position the cards: never
-           place a card using synchronous height reads or absolute offsets. */
+        /* Widths are applied first. Expanded cards select their chronological
+           lane after layout; native normal flow always positions the cards. */
         if (!state.cardColumns || state.cardColumns.parentNode !== nodes.groups) { return; }
         var scale = state.nativeScale || 1;
         var width = nodes.groups.getBoundingClientRect().width / scale;
@@ -999,33 +1072,38 @@
             (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
             (Math.min(width, cardWidth) < 500 ? ' ss-stacked-more' : '') +
             (Math.min(width, cardWidth) < (state.group === 'battles' ? 430 : 500) ? ' ss-narrow-cards' : '');
-        var changed = state.cardLayoutWide !== wide;
-        var cards = state.groupCards || [], owned = [], focused = document.activeElement;
+        var layoutKey = [wide, cardWidth, scale, Math.round(Math.min(width, cardWidth) * 1000)].join(':');
+        var changed = state.cardLayoutKey !== layoutKey;
+        if (changed) { invalidateCardFlow(); }
+        var cards = state.groupCards || [], owned = [];
+        var expanded = wide && hasExpandedBattle(), desired = [[], []];
         for (var index = 0; index < cards.length; index += 1) {
             var card = cards[index], lane = state.cardLanes[wide ? index % 2 : 0];
-            if (changed || card.parentNode !== lane) { lane.appendChild(card); }
+            if (changed || !expanded) { desired[wide ? index % 2 : 0].push(card); }
+            else if (card.parentNode !== state.cardLanes[0] && card.parentNode !== state.cardLanes[1]) { lane.appendChild(card); }
             card.setAttribute('aria-posinset', String(index + 1));
             card.setAttribute('aria-setsize', String(state.list.length));
             if (index + 1 < cards.length) { card.setAttribute('aria-flowto', cards[index + 1].id); }
             else { card.removeAttribute('aria-flowto'); }
             owned.push(card.id);
         }
+        if (changed || !expanded) { arrangeCardLanes(desired); }
         /* The independent visual columns use lane order in the DOM. Explicit
            ownership and positions retain the sorted list's accessible order. */
         nodes.groups.setAttribute('aria-owns', owned.join(' '));
         state.cardLayoutWide = wide;
-        if (focused && document.activeElement !== focused && typeof focused.focus === 'function') {
-            focused.focus();
-        }
+        state.cardLayoutKey = layoutKey;
+        queueCardFlow();
     }
     function renderGroups(scope) {
-        state.more = null;
+        invalidateCardFlow();
         clear(nodes.groups);
         nodes.groups.className = 'ss-card-layout';
         nodes.groups.setAttribute('role', 'list');
         nodes.groups.removeAttribute('aria-owns');
         state.groupCards = [];
         state.cardLayoutWide = null;
+        state.cardLayoutKey = null;
         state.cardColumns = append(nodes.groups, element('div', 'ss-card-columns'));
         state.cardColumns.setAttribute('role', 'presentation');
         state.cardLanes = [
@@ -1261,7 +1339,7 @@
                     !value.scopes.launch || !value.scopes.manual) { throw new Error('Invalid snapshot'); }
             if (state.payload && state.payload.account_key !== value.account_key) {
                 showReset(false);
-                state.openBattle = null;
+                state.openBattles = {};
                 state.timelineSignature = null;
             }
             state.payload = value;
@@ -1933,6 +2011,7 @@
     function cleanup() {
         if (state.destroyed) { return; }
         state.destroyed = true;
+        invalidateCardFlow();
         hideHelp();
         root.removeEventListener('mouseover', waitForHelp);
         root.removeEventListener('mousemove', waitForHelp);

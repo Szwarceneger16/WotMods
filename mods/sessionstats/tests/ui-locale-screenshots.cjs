@@ -17,7 +17,9 @@ const objectives={
   uk:'Завдайте шкоди ворожій техніці та увійдіть до числа найкращих гравців обох команд.',
 };
 const sha=data=>crypto.createHash('sha256').update(data).digest('hex');
-const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+const frames=page=>page.evaluate(()=>new Promise(resolve=>{
+  let remaining=10;function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+}));
 
 async function audit(page,mode,group) {
   return page.evaluate(({scale,group,sample,stress})=>{
@@ -177,6 +179,10 @@ async function audit(page,mode,group) {
         line.backgroundRepeat!=='repeat-x' || parseFloat(line.width)<=0;}))) issues.push({kind:'missing-card-axis'});
     const canonical=cards.slice().sort((a,b)=>Number(a.dataset.listIndex)-Number(b.dataset.listIndex));
     if(two && canonical[1].getBoundingClientRect().top<=canonical[0].getBoundingClientRect().top+scale) issues.push({kind:'missing-card-stagger'});
+    if(two && group==='battles') {
+      const anchors=canonical.map(card=>card.getBoundingClientRect().top+parseFloat(getComputedStyle(card,':before').top));
+      if(anchors.some((anchor,index)=>index && anchor<anchors[index-1]-limit)) issues.push({kind:'reversed-expanded-chronology',anchors});
+    }
     return {issues,language:document.documentElement.lang,cards:cards.length,
       logicalWidth:root.width/scale,columns:two ? 2 : 1,
       expanded:group==='battles' ? first.querySelector('.ss-more-button').getAttribute('aria-expanded')==='true' : null,

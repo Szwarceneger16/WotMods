@@ -549,8 +549,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-narrow-cards .ss-group .ss-metric-head .ss-metric-count, .ss-narrow-cards .ss-group .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
 .ss-narrow-cards .ss-group .ss-metric-row .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-row .ss-money-label { width:100%; padding-bottom:0; }
 .ss-narrow-cards .ss-group .ss-metric-number, .ss-narrow-cards .ss-group .ss-money-value { width:33.333%; }
-/* Fixed-width cards use two independent flow columns. Layout never depends on
-   reading a just-created card's height from Gameface. */
+/* Fixed-width cards stay in native column flow. Expanded battle heights are
+   sampled after layout to choose chronological lanes, never absolute offsets. */
 .ss-card-layout { display:flex; align-items:flex-start; justify-content:center; width:100%; }
 .ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
 .ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }

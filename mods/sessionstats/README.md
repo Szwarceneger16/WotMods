@@ -141,6 +141,11 @@ partial card settings remain unchanged. For example:
 ```
 
 Every two-column tab uses staggered cards connected to a dashed central axis.
+Several battle cards can keep More open together. Expanded battles use the
+next available column in sorted order, so consecutive battles fill the space
+beside a tall card and their axis markers retain chronology. With all details
+closed, cards use their usual alternating layout. Refreshing or resizing preserves open cards;
+switching accounts clears their open state.
 The three main statistics stay horizontal; the compact performance and finance
 tables wrap together as one centered group. Summary rows remain centered when
 the window cannot fit them together. Changing the period returns to the top;
