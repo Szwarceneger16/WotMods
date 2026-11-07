@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Bounded local settings with atomic, Python 2.7-compatible replacement."""
+"""Bounded settings with recoverable writes using embedded Python 2.7 stdlib."""
 from __future__ import absolute_import
 
 from copy import deepcopy
-import ctypes
 import errno
 import json
 import os
-import sys
 import tempfile
 
 from .hotkeys import chords_conflict, normalize_chord
@@ -22,6 +20,7 @@ except NameError:
     _NUMBER_TYPES = (int, float)
 
 CONFIG_MAX_BYTES = 16384
+BACKUP_SUFFIX = '.staysharp-backup'
 VOICE_LANGUAGES = ('auto', 'en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
 DEFAULT_HOTKEYS = {'toggle_mod': ['CTRL', 'ALT', 'M'],
                    'toggle_voice': ['CTRL', 'ALT', 'V']}
@@ -46,7 +45,7 @@ def _json_object(pairs):
     return result
 
 
-def _read_document(path):
+def _read_document_raw(path):
     """Return a JSON object and its exact bounded snapshot; None means absent."""
     try:
         with open(path, 'rb') as handle:
@@ -99,40 +98,93 @@ def _effective_payload(document):
     return result
 
 
-def _windows_path(path):
-    if not isinstance(path, _TEXT_TYPE):
-        path = path.decode(sys.getfilesystemencoding() or 'utf-8')
-    path = os.path.abspath(path)
-    if path.startswith('\\\\?\\'):
-        return path
-    if path.startswith('\\\\'):
-        return '\\\\?\\UNC\\' + path[2:]
-    return '\\\\?\\' + path
+def _recover_backup(path):
+    """Recover a stopped Windows rename transaction before creating defaults.
 
-
-def _replace_file(source, destination, replace_existing):
-    """Only move the completed temp file; never delete the live config first."""
-    if os.name == 'nt':
-        # https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-movefileexw
-        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-        move = kernel.MoveFileExW
-        move.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
-        move.restype = ctypes.c_int
-        flags = 0x8 | (0x1 if replace_existing else 0)  # WRITE_THROUGH / REPLACE_EXISTING
-        if not move(_windows_path(source), _windows_path(destination), flags):
-            raise OSError(ctypes.get_last_error(), 'configuration replacement failed')
-    elif replace_existing:
-        os.rename(source, destination)
-    else:
-        # Link the complete file into place exclusively. A config created by
-        # another writer must not be overwritten during first-time setup.
-        os.link(source, destination)
+    A complete primary always wins. Never replace malformed user data, discard
+    an invalid backup, or overwrite a concurrently created primary.
+    """
+    backup = path + BACKUP_SUFFIX
+    if not os.path.lexists(backup):
+        return
+    unused_document, primary_snapshot = _read_document_raw(path)
+    if primary_snapshot is None:
+        unused_document, backup_snapshot = _read_document_raw(backup)
+        if backup_snapshot is not None:
+            _replace_file(backup, path, False)
+        return
+    try:
+        unused_document, backup_snapshot = _read_document_raw(backup)
+    except Exception:
+        # An unexpected recovery artifact is retained. A valid primary can be
+        # read, but another fallback write must not overwrite that artifact.
+        return
+    if backup_snapshot is not None:
         try:
-            os.unlink(source)
+            os.unlink(backup)
         except OSError:
-            # The complete destination is already committed; a leftover private
-            # temp file must not make disk and in-memory settings disagree.
+            # Reading a valid committed primary must not fail on cleanup.
             pass
+
+
+def _read_document(path):
+    _recover_backup(path)
+    return _read_document_raw(path)
+
+
+def _replace_file(source, destination, replace_existing, expected_snapshot=None):
+    """Publish a complete file without optional native Python extensions.
+
+    Windows Python 2.7 has no replacing rename. Its fallback keeps one bounded
+    recovery backup, rolls back ordinary failures, and recovers after restart.
+    The two renames have a brief missing-primary window; they are not one atomic
+    OS operation. POSIX rename and an available os.replace remain atomic.
+    """
+    if not replace_existing:
+        if os.name == 'nt':
+            # Windows rename is create-only: a concurrent config wins.
+            os.rename(source, destination)
+        else:
+            os.link(source, destination)
+            try:
+                os.unlink(source)
+            except OSError:
+                # Publication succeeded; temporary cleanup cannot undo it.
+                pass
+        return
+    if os.name != 'nt':
+        os.rename(source, destination)
+        return
+    replace = getattr(os, 'replace', None)
+    if callable(replace):
+        replace(source, destination)
+        return
+    backup = destination + BACKUP_SUFFIX
+    if os.path.lexists(backup):
+        # Recovery runs before each read/write. Leftover evidence must never
+        # be overwritten if it could not be recovered or cleaned safely.
+        raise _ChangedConfiguration()
+    os.rename(destination, backup)
+    try:
+        unused_document, moved_snapshot = _read_document_raw(backup)
+        if expected_snapshot is not None and moved_snapshot != expected_snapshot:
+            raise _ChangedConfiguration()
+        os.rename(source, destination)
+    except Exception:
+        if not os.path.lexists(destination):
+            try:
+                os.rename(backup, destination)
+            except Exception:
+                # The complete original remains at the fixed recovery name.
+                # The next load retries restoration before creating defaults.
+                pass
+        raise
+    try:
+        os.unlink(backup)
+    except OSError:
+        # The new primary is committed. Keep memory/callbacks consistent even
+        # if the previous complete file can only be cleaned on the next load.
+        pass
 
 
 def _write_document(path, document, expected_snapshot):
@@ -158,7 +210,7 @@ def _write_document(path, document, expected_snapshot):
         unused_document, snapshot = _read_document(path)
         if snapshot != expected_snapshot:
             raise _ChangedConfiguration()
-        _replace_file(temporary, path, expected_snapshot is not None)
+        _replace_file(temporary, path, expected_snapshot is not None, expected_snapshot)
         temporary = None
     finally:
         if temporary is not None:
@@ -171,8 +223,9 @@ def _write_document(path, document, expected_snapshot):
 class SettingsStore(object):
     """Keep the last usable payload; update memory and listeners after saving.
 
-    ``load()`` creates a missing configuration, but never rewrites an existing
-    malformed file. ``update_hotkeys`` merges with a fresh disk read so language,
+    ``load()`` recovers an interrupted Windows transaction before creating a
+    missing configuration, and never rewrites an existing malformed file.
+    ``update_hotkeys`` merges with a fresh disk read so language,
     volume, switches and unknown fields survive a later garage edit.
     """
     def __init__(self, path, log=None, on_change=None):

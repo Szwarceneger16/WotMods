@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.4 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.5 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.4'
+VERSION = '1.8.5'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -1932,13 +1932,14 @@ def _install_garage():
 
 
 def init():
-    """Subscribe once; never modify WoT methods or installed mod hooks."""
+    """Contain startup failures before they can abort the game's mod loader."""
     global _event_bus, _event_scope, _consumables_alias
     if _event_listeners:
         return
-    _load_language()
-    _install_garage()
     try:
+        _log('v' + VERSION + ' startup phase=settings')
+        _load_language()
+        _install_garage()
         from gui.shared import g_eventBus, EVENT_BUS_SCOPE
         from gui.shared.events import ComponentEvent
         from gui.Scaleform.genConsts.BATTLE_VIEW_ALIASES import BATTLE_VIEW_ALIASES
@@ -1966,7 +1967,7 @@ def init():
             _event_listeners.append((event_type, handler))
         _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, repeating ready voice and battle hotkey')
     except Exception:
-        _exception('component event subscription failed; mod disabled')
+        _exception('startup failed; mod disabled; game startup continues')
         fini()
 
 
@@ -1974,12 +1975,18 @@ def fini():
     """Unregister handlers and cleanup without touching native WoT methods."""
     global _event_bus, _event_scope, _consumables_alias, _garage_handle, _garage_open
     _garage_open = False
-    _cancel_capture(publish=False)
-    from staysharp_medkit import garage
     try:
-        garage.uninstall()
+        _cancel_capture(publish=False)
     except Exception:
-        _exception('garage settings cleanup failed')
+        _exception('shortcut cleanup failed')
+    # Cleanup must not import a module that failed or never finished loading.
+    garage = sys.modules.get('staysharp_medkit.garage')
+    cleanup = getattr(garage, 'uninstall', None)
+    if callable(cleanup):
+        try:
+            cleanup()
+        except Exception:
+            _exception('garage settings cleanup failed')
     _garage_handle = None
     if _panel is not None:
         try:

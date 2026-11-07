@@ -1,5 +1,8 @@
-"""Atomic settings updates preserve unrelated local configuration."""
+"""Settings preserve data without optional embedded native extensions."""
+import builtins
+import errno
 import importlib.util
+import os
 import json
 from pathlib import Path
 import sys
@@ -22,6 +25,7 @@ class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.path = Path(self.temporary.name) / 'mods' / 'configs' / 'staysharp.medkit.json'
+        self.backup = self.path.with_name(self.path.name + settings.BACKUP_SUFFIX)
         self.logs = []
         self.changes = []
         self.store = settings.SettingsStore(str(self.path), self.logs.append, self.changes.append)
@@ -225,28 +229,296 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(len(self.changes), 1)
         self.assertIsNone(self.store.last_error)
 
-    def test_windows_replace_uses_unicode_and_write_through_without_delete(self):
-        move = Mock(return_value=1)
-        kernel = types.SimpleNamespace(MoveFileExW=move)
-        with patch.object(settings.os, 'name', 'nt'), \
-                patch.object(settings.ctypes, 'WinDLL', return_value=kernel, create=True), \
-                patch.object(settings, '_windows_path', side_effect=lambda value: value):
-            settings._replace_file('temporary', 'existing', True)
-            self.assertEqual(move.call_args.args, ('temporary', 'existing', 0x9))
-            settings._replace_file('temporary', 'new', False)
-            self.assertEqual(move.call_args.args, ('temporary', 'new', 0x8))
-        self.assertEqual(move.argtypes, (settings.ctypes.c_wchar_p,
-                                        settings.ctypes.c_wchar_p, settings.ctypes.c_uint32))
+    def windows_rename(self, source, destination):
+        # Model Windows Python 2.7: rename may create, never overwrite.
+        if os.path.lexists(destination):
+            raise OSError(errno.EEXIST, 'destination exists')
+        self.real_rename(source, destination)
 
-    def test_windows_replace_failure_is_reported(self):
-        move = Mock(return_value=0)
-        kernel = types.SimpleNamespace(MoveFileExW=move)
-        with patch.object(settings.os, 'name', 'nt'), \
-                patch.object(settings.ctypes, 'WinDLL', return_value=kernel, create=True), \
-                patch.object(settings.ctypes, 'get_last_error', return_value=5, create=True), \
-                patch.object(settings, '_windows_path', side_effect=lambda value: value), \
-                self.assertRaises(OSError):
-            settings._replace_file('temporary', 'existing', True)
+    def windows_fallback(self, rename=None):
+        self.real_rename = settings.os.rename
+        return (patch.object(settings.os, 'name', 'nt'),
+                patch.object(settings.os, 'replace', None, create=True),
+                patch.object(settings.os, 'rename', rename or self.windows_rename))
+
+    def test_import_and_windows_save_do_not_attempt_optional_native_modules(self):
+        original_import = builtins.__import__
+        def guarded_import(name, *args, **kwargs):
+            if name in ('ctypes', '_ctypes'):
+                raise AssertionError('optional native dependency was imported')
+            return original_import(name, *args, **kwargs)
+        spec = importlib.util.spec_from_file_location(PACKAGE + '.without_native', SOURCE / 'settings.py')
+        module = importlib.util.module_from_spec(spec)
+        with patch.object(builtins, '__import__', guarded_import):
+            spec.loader.exec_module(module)
+            store = module.SettingsStore(str(self.path))
+            store.load()
+            self.real_rename = os.rename
+            with patch.object(module.os, 'name', 'nt'), \
+                    patch.object(module.os, 'replace', None, create=True), \
+                    patch.object(module.os, 'rename', self.windows_rename):
+                self.assertTrue(store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertFalse(self.backup.exists())
+
+    def test_windows_fallback_replaces_without_deleting_primary_first(self):
+        self.write({'language': 'pl', 'voice_volume': 35, 'unknown': {'keep': True}})
+        self.store.load()
+        calls = []
+        def renamed(source, destination):
+            calls.append((source, destination))
+            if source == str(self.path):
+                self.assertFalse(self.backup.exists())
+            else:
+                self.assertFalse(self.path.exists())
+                self.assertEqual(json.loads(self.backup.read_text())['unknown'], {'keep': True})
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(renamed)
+        with first, second, third:
+            self.assertTrue(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(calls[0], (str(self.path), str(self.backup)))
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(self.disk()['language'], 'pl')
+        self.assertEqual(self.disk()['voice_volume'], 35)
+        self.assertEqual(self.disk()['unknown'], {'keep': True})
+        self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(self.store.get_payload()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(len(self.changes), 1)
+        self.assertFalse(self.backup.exists())
+        self.assert_no_temporary_files()
+
+    def test_windows_existing_os_replace_is_used_without_backup(self):
+        self.store.load()
+        replace = Mock(wraps=os.replace)
+        with patch.object(settings.os, 'name', 'nt'), patch.object(settings.os, 'replace', replace):
+            self.assertTrue(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(replace.call_count, 1)
+        self.assertFalse(self.backup.exists())
+        self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['F5'])
+
+    def test_windows_first_move_failure_leaves_original_and_memory_intact(self):
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        first, second, third = self.windows_fallback(Mock(side_effect=OSError('move denied')))
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertFalse(self.backup.exists())
+        self.assertEqual(self.changes, [])
+        self.assert_no_temporary_files()
+
+    def test_windows_second_move_failure_rolls_back_complete_original(self):
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        calls = []
+        def failed_move(source, destination):
+            calls.append((source, destination))
+            if len(calls) == 2:
+                raise OSError('install denied')
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(failed_move)
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertFalse(self.backup.exists())
+        self.assertEqual(self.changes, [])
+        self.assert_no_temporary_files()
+
+    def test_windows_failed_rollback_recovers_original_on_next_load(self):
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        calls = []
+        def failed_moves(source, destination):
+            calls.append((source, destination))
+            if len(calls) in (2, 3):
+                raise OSError('install or rollback denied')
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(failed_moves)
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertFalse(self.path.exists())
+        self.assertEqual(self.backup.read_bytes(), original)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertEqual(self.changes, [])
+        first, second, third = self.windows_fallback()
+        with first, second, third:
+            recovered = settings.SettingsStore(str(self.path)).load()
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(recovered, initial)
+        self.assertFalse(self.backup.exists())
+        self.assert_no_temporary_files()
+
+    def test_stopped_process_between_moves_restores_previous_choices(self):
+        class StoppedProcess(BaseException):
+            pass
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        def stopped(source, destination):
+            self.windows_rename(source, destination)
+            if source == str(self.path):
+                raise StoppedProcess()
+        first, second, third = self.windows_fallback(stopped)
+        with first, second, third, self.assertRaises(StoppedProcess):
+            self.store.update_hotkeys({'toggle_mod': ['F5']})
+        self.assertFalse(self.path.exists())
+        self.assertEqual(self.backup.read_bytes(), original)
+        self.assertEqual(self.changes, [])
+        first, second, third = self.windows_fallback()
+        with first, second, third:
+            loaded = settings.SettingsStore(str(self.path)).load()
+        self.assertEqual(loaded, initial)
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertFalse(self.backup.exists())
+
+    def test_stopped_process_after_publication_keeps_new_complete_choices(self):
+        class StoppedProcess(BaseException):
+            pass
+        self.store.load()
+        original = self.path.read_bytes()
+        def stopped(source, destination):
+            self.windows_rename(source, destination)
+            if source != str(self.path):
+                raise StoppedProcess()
+        first, second, third = self.windows_fallback(stopped)
+        with first, second, third, self.assertRaises(StoppedProcess):
+            self.store.update_hotkeys({'toggle_mod': ['F5']})
+        self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(self.backup.read_bytes(), original)
+        self.assertEqual(self.changes, [])
+        loaded = settings.SettingsStore(str(self.path)).load()
+        self.assertEqual(loaded['hotkeys']['toggle_mod'], ['F5'])
+        self.assertFalse(self.backup.exists())
+
+    def test_missing_primary_recovers_backup_before_creating_defaults(self):
+        source = {'language': 'uk', 'enabled': False, 'voice_volume': 17,
+                  'hotkeys': {'toggle_mod': ['F9'], 'toggle_voice': ['F10']},
+                  'future': ['preserved']}
+        self.write(source)
+        original = self.path.read_bytes()
+        self.path.rename(self.backup)
+        first, second, third = self.windows_fallback()
+        with first, second, third:
+            loaded = self.store.load()
+        self.assertEqual(loaded['language'], 'uk')
+        self.assertEqual(loaded['hotkeys'], source['hotkeys'])
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertFalse(self.backup.exists())
+        self.assertEqual(self.changes, [])
+
+    def test_complete_new_primary_wins_after_interrupted_backup_cleanup(self):
+        self.write({'language': 'pl', 'hotkeys': {'toggle_mod': ['F5']}})
+        new_bytes = self.path.read_bytes()
+        self.backup.write_text(json.dumps({'language': 'en', 'hotkeys': {'toggle_mod': ['F6']}}))
+        loaded = self.store.load()
+        self.assertEqual(loaded['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(self.path.read_bytes(), new_bytes)
+        self.assertFalse(self.backup.exists())
+
+    def test_malformed_primary_keeps_recovery_backup_and_is_never_rewritten(self):
+        self.store.load()
+        backup_bytes = self.path.read_bytes()
+        self.backup.write_bytes(backup_bytes)
+        malformed = b'{invalid private configuration'
+        self.path.write_bytes(malformed)
+        self.store.load()
+        self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.path.read_bytes(), malformed)
+        self.assertEqual(self.backup.read_bytes(), backup_bytes)
+        self.assertEqual(self.changes, [])
+
+    def test_invalid_or_oversized_backup_does_not_create_defaults(self):
+        self.path.parent.mkdir(parents=True)
+        for invalid in (b'{invalid backup', b'[]', b'x' * (settings.CONFIG_MAX_BYTES + 1)):
+            with self.subTest(invalid_prefix=invalid[:8]):
+                self.backup.write_bytes(invalid)
+                self.assertEqual(self.store.load(), settings.DEFAULTS)
+                self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+                self.assertFalse(self.path.exists())
+                self.assertEqual(self.backup.read_bytes(), invalid)
+                self.assertEqual(self.changes, [])
+
+    def test_existing_invalid_backup_is_never_overwritten_by_fallback_write(self):
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        unexpected = b'unexpected recovery artifact'
+        self.backup.write_bytes(unexpected)
+        first, second, third = self.windows_fallback()
+        with first, second, third:
+            self.assertEqual(self.store.load(), initial)
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.path.read_bytes(), original)
+        self.assertEqual(self.backup.read_bytes(), unexpected)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertEqual(self.changes, [])
+        self.assert_no_temporary_files()
+
+    def test_windows_backup_cleanup_failure_is_still_a_successful_commit(self):
+        self.store.load()
+        original = self.path.read_bytes()
+        unlink = os.unlink
+        def cleanup(path):
+            if path == str(self.backup):
+                raise OSError('backup cleanup denied')
+            return unlink(path)
+        first, second, third = self.windows_fallback()
+        with first, second, third, patch.object(settings.os, 'unlink', cleanup):
+            self.assertTrue(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(self.store.get_payload()['hotkeys']['toggle_mod'], ['F5'])
+        self.assertEqual(self.backup.read_bytes(), original)
+        self.assertEqual(len(self.changes), 1)
+        self.assertIsNone(self.store.last_error)
+        self.store.load()
+        self.assertFalse(self.backup.exists())
+
+    def test_concurrent_edit_just_before_old_file_move_is_restored_not_clobbered(self):
+        initial = self.store.load()
+        external = {'language': 'de', 'changed_before_move': True}
+        def changed(source, destination):
+            if source == str(self.path):
+                self.write(external)
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(changed)
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.disk(), external)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertEqual(self.changes, [])
+        self.assertFalse(self.backup.exists())
+
+    def test_concurrent_primary_created_during_gap_is_not_overwritten_by_rollback(self):
+        initial = self.store.load()
+        original = self.path.read_bytes()
+        external = {'language': 'fr', 'created_during_gap': True}
+        def created(source, destination):
+            if source != str(self.path) and source != str(self.backup):
+                self.write(external)
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(created)
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.disk(), external)
+        self.assertEqual(self.backup.read_bytes(), original)
+        self.assertEqual(self.store.get_payload(), initial)
+        self.assertEqual(self.changes, [])
+        self.store.load()
+        self.assertEqual(self.disk(), external)
+        self.assertFalse(self.backup.exists())
+
+    def test_windows_first_creation_refuses_concurrent_primary(self):
+        external = {'language': 'pl', 'concurrently_created': True}
+        def created(source, destination):
+            self.write(external)
+            self.windows_rename(source, destination)
+        first, second, third = self.windows_fallback(created)
+        with first, second, third:
+            self.assertFalse(self.store.update_hotkeys({'toggle_mod': ['F5']}))
+        self.assertEqual(self.disk(), external)
+        self.assertEqual(self.changes, [])
+        self.assert_no_temporary_files()
 
 
 if __name__ == '__main__':

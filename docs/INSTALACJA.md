@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.4 - installation and test
+# Stay Sharp Medkit Reminder 1.8.5 - installation and test
 
 ## Install
 
@@ -36,7 +36,7 @@ Select either shortcut row, hold the desired keys together, then release every k
 
 Three/four-key combinations and larger simultaneous combinations are supported, including multiple ordinary keys. The client can only record keys delivered by the OS and keyboard hardware: system-reserved shortcuts such as Ctrl+Alt+Delete and keyboard rollover limits cannot be overridden by this mod. Escape is reserved for cancelling the recorder. Overlapping action bindings are rejected to avoid firing a shorter action while entering a longer one.
 
-Settings are saved immediately to `mods/configs/staysharp.medkit.json` and are loaded again when the window opens and at the next game startup. Existing language, volume, defaults and unrelated configuration fields are preserved. Failed saves retain the previous active binding and show an error. Recording does not trigger either reminder action and stops when the window closes, loses focus or battle starts. Ordinary battle shortcuts remain inactive on a vehicle without the learned perk, and while chat or a battle modal is active.
+Settings are saved immediately without requiring native Python extension modules to `mods/configs/staysharp.medkit.json` and are loaded again when the window opens and at the next game startup. Existing language, volume, defaults and unrelated configuration fields are preserved. Failed saves retain the previous active binding and show an error. On embedded Windows Python 2.7, complete temporary and backup files allow recovery after interruption; this fallback is recoverable rather than a single atomic replacement. The previous configuration is recovered before defaults can be created. Recording does not trigger either reminder action and stops when the window closes, loses focus or battle starts. Ordinary battle shortcuts remain inactive on a vehicle without the learned perk, and while chat or a battle modal is active.
 
 Battle power/voice icons are 16 logical pixels (previously 24) with 40 percent transparency. Their existing plain-click/Ctrl-click behavior is retained. Their battle toggles remain temporary; the next battle restores configured enabled/voice defaults.
 

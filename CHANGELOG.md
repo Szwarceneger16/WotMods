@@ -1,6 +1,12 @@
 # Changelog
 
 
+## 1.8.5
+
+- Remove the settings writer's dependency on ctypes: the embedded WoT client does not provide its native _ctypes module, and importing it during 1.8.4 startup aborted the game loader.
+- Use dependency-free, recoverable configuration replacement on embedded Windows Python 2.7, preserving existing settings and recovering an interrupted backup before loading defaults.
+- Contain initialization errors inside this mod and make cleanup safe after an incomplete startup. Keep the 1.8.4 smaller icons, garage settings and configurable shortcuts.
+
 ## 1.8.4
 
 - Reduce battle power/voice controls from 24 to 16 logical pixels and bake 40 percent transparency into all four icon textures.
