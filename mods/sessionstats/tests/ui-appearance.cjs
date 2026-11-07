@@ -125,12 +125,17 @@ async function pushPanel(page,value){await page.evaluate(value=>pushAppearance(v
 async function wheel(page, deltaY, speed, mode=0, extra={}) {
     await page.evaluate(({speed,defaults})=>pushAppearance({...defaults,scroll_speed:speed}),{speed,defaults:presentation.defaults});
     await page.locator('#ss-group-battles').click();
+    // Finish the render's deferred scroll restoration before establishing a
+    // new programmatic wheel baseline. A real native wheel intentionally uses
+    // any still-pending navigation offset instead of the DOM's previous frame.
+    await frames(page);
     return page.locator('#ss-scroll').evaluate((node,{deltaY,mode,extra})=>{
         node.scrollTop=800;
         const before=node.scrollTop;
         const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY,deltaMode:mode,...extra});
         node.dispatchEvent(event);
-        return {before,after:node.scrollTop,page:node.clientHeight,prevented:event.defaultPrevented};
+        return {before,after:node.scrollTop,page:node.clientHeight,maximum:node.scrollHeight-node.clientHeight,
+            deltaY,mode,prevented:event.defaultPrevented};
     },{deltaY,mode,extra});
 }
 
@@ -204,9 +209,10 @@ async function footer(browser) {
 
         for(const speed of [0.5,1,2]){
             const down=await wheel(page,-120,speed),up=await wheel(page,120,speed);
-            check('Native scroll multiplier '+speed+' scales both directions without changing their sign',
-                Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
-                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented);
+            const matches=Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
+                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented;
+            check('Native scroll multiplier '+speed+' scales both directions without changing their sign'+
+                (matches ? '' : ' '+JSON.stringify({speed,down,up})),matches);
         }
         const pageMode=await wheel(page,-1,2,2);
         check('The configured speed also scales native page-mode scrolling',pageMode.after-pageMode.before===pageMode.page*2 && pageMode.prevented);

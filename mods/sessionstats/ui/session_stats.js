@@ -977,14 +977,15 @@
         }
     }
     function arrangeCardLanes(desired) {
-        var focused = document.activeElement, scrollTop = nodes.scroll.scrollTop;
+        var focused = document.activeElement, scrollTop = nodes.scroll.scrollTop, moved = false;
         desired.forEach(function (cards, index) {
             var lane = state.cardLanes[index], cursor = lane.firstElementChild;
             cards.forEach(function (card) {
-                if (card !== cursor) { lane.insertBefore(card, cursor); }
+                if (card !== cursor) { lane.insertBefore(card, cursor); moved = true; }
                 cursor = card.nextElementSibling;
             });
         });
+        if (!moved) { return; }
         if (focused && document.activeElement !== focused && typeof focused.focus === 'function') { focused.focus(); }
         nodes.scroll.scrollTop = scrollTop;
     }
