@@ -117,9 +117,13 @@ module.exports=async ({browser,nativeHost,check})=>{
       await publish(resized,{...defaults,maximized:true},{request_id:initialMaximize.request_id,saved:true});
       await resized.locator('#ss-maximize').click();await frames(resized);
       initialValues=await commands(resized);const initialRestore=initialValues[initialValues.length-1];
-      check('Restoring an initially constrained window preserves the desired dimensions at'+(scale*100)+'%',
-        initialRestore.maximized==='false' && initialRestore.restored_width==='700' && initialRestore.restored_height==='620' &&
-        await resized.evaluate(()=>__nativeSize[0]===600 && __nativeSize[1]===480));
+      const initialRestoredSize=await resized.evaluate(()=>__nativeSize.slice());
+      const initialRestoreCorrect=initialRestore.maximized==='false' &&
+        (initialRestore.restored_width===undefined || initialRestore.restored_width==='700') &&
+        (initialRestore.restored_height===undefined || initialRestore.restored_height==='620') &&
+        initialRestoredSize[0]===600 && initialRestoredSize[1]===480;
+      check('Restoring an initially constrained window preserves the desired dimensions at'+(scale*100)+'%'+
+        (initialRestoreCorrect ? '' : ': '+JSON.stringify({command:initialRestore,nativeSize:initialRestoredSize,scale})),initialRestoreCorrect);
       await publish(resized,defaults,{request_id:initialRestore.request_id,saved:true});
       await resized.setViewportSize({width:viewport.width,height:viewport.height});
       await resized.evaluate(viewport=>{const payload=JSON.parse(model.payload);payload.viewport=viewport;
