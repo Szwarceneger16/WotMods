@@ -1,6 +1,7 @@
 """Native settings-window lifecycle and placement contract tests."""
 import importlib.util
 import json
+import math
 import os
 import sys
 import types
@@ -142,6 +143,7 @@ class WindowTests(unittest.TestCase):
                                             size=(1920, 1080), onSizeChanged=Event())
         loader = types.SimpleNamespace(scale=1.5, windowsManager=types.SimpleNamespace(
             getMainWindow=lambda: self.parent))
+        self.loader = loader
         wulf = types.ModuleType('frameworks.wulf')
         wulf.ViewModel = Model
         wulf.ViewFlags = types.SimpleNamespace(VIEW=17)
@@ -191,17 +193,17 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(model.props[0][0], 'state')
         self.assertEqual(json.loads(model.props[0][1])['viewport'],
                          {'width': 1920, 'height': 1080, 'scale': 1.5})
-        self.assertEqual(native.position, (210, 627))
+        self.assertEqual(native.position, (210, 552))
         self.assertEqual(native.show_calls, 1)
 
-    def test_actual_native_size_and_parent_resize_clamp_to_viewport(self):
+    def test_parent_resize_refits_layout_without_using_stale_native_bounds(self):
         native, model = self.open()
         native.onSizeChanged(7, 600, 360)
-        self.assertEqual(native.position, (180, 612))
+        self.assertEqual(native.position, (210, 552))
         self.parent.size = (500, 300)
         self.screen_size = (500, 300)
         self.parent.onSizeChanged(1, 500, 300)
-        self.assertEqual(native.position, (0, 0))
+        self.assertEqual(native.position, (24, 24))
         self.assertEqual(json.loads(model.props[0][1])['viewport']['width'], 500)
 
     def test_client_surface_wins_over_default_parent_texture(self):
@@ -209,12 +211,12 @@ class WindowTests(unittest.TestCase):
         native, model = self.open(anchor=0.8)
         self.assertEqual(json.loads(model.props[0][1])['viewport'],
                          {'width': 1920, 'height': 1080, 'scale': 1.5})
-        self.assertEqual(native.position, (1266, 627))
+        self.assertEqual(native.position, (1266, 552))
 
     def test_native_global_footer_anchor_positions_popup_above_the_icon(self):
         self.assertTrue(self.controller.open(0.8, 0.94))
         native = self.controller._window
-        self.assertEqual(native.position, (1266, 658))
+        self.assertEqual(native.position, (1266, 583))
         for anchor_y in (True, -1, 2, float('nan'), float('inf'), object()):
             self.assertFalse(self.controller.open(0.8, anchor_y))
 
@@ -230,7 +232,73 @@ class WindowTests(unittest.TestCase):
             model.onAction({'action': 'layout', 'width': width, 'height': height})
         self.assertEqual(self.controller._reported_size, (480, 320))
         native.onSizeChanged(7, 540, 345)
-        self.assertEqual(native.position, (210, 627))
+        self.assertEqual(native.position, (240, 652))
+
+    def test_all_edges_keep_scaled_gutter_across_aspects_and_interface_scales(self):
+        screens = ((1920, 1080), (1920, 1200), (2560, 1080), (3440, 1440),
+                   (1280, 720), (800, 600), (640, 360), (600, 900),
+                   (320, 480), (320, 200), (200, 160))
+        for width, height in screens:
+            for scale in (1, 1.25, 1.5, 2, 3):
+                for anchor_x, anchor_y in ((0, 0), (1, 0), (0, 1), (1, 1)):
+                    with self.subTest(screen=(width, height), scale=scale,
+                                      anchor=(anchor_x, anchor_y)):
+                        self.controller.close(notify=False)
+                        self.screen_size = (width, height)
+                        self.loader.scale = scale
+                        self.assertTrue(self.controller.open(anchor_x, anchor_y))
+                        native = self.controller._window
+                        viewport = self.controller._viewport()
+                        size, gutter, unused_available = views._fit_geometry(viewport)
+                        expected_gutter = min(int(math.ceil(16 * scale)), max(1, min(width, height) // 4))
+                        self.assertEqual(gutter, expected_gutter)
+                        self.assertTrue(self.controller.report_layout(*size))
+                        left, top = native.position
+                        self.assertGreaterEqual(left, gutter)
+                        self.assertGreaterEqual(top, gutter)
+                        self.assertLessEqual(left + size[0], width - gutter)
+                        self.assertLessEqual(top + size[1], height - gutter)
+                        self.assertGreater(size[0], 0)
+                        self.assertGreater(size[1], 0)
+                        # One uniformly scaled 360x280 design, with only the
+                        # requested physical-pixel rounding allowed to differ.
+                        self.assertLess(abs(size[0] / 360.0 - size[1] / 280.0), 1.0 / 280)
+
+    def test_native_default_and_fullscreen_observations_never_override_document_size(self):
+        native, unused_model = self.open(anchor=1)
+        self.assertTrue(self.controller.report_layout(540, 420))
+        expected = native.position
+        self.assertEqual(expected, (1356, 552))
+        for native_size in ((256, 256), (1920, 1080), (540, 420)):
+            native.onSizeChanged(7, *native_size)
+            self.assertEqual(native.position, expected)
+            self.assertEqual(self.controller._reported_size, (540, 420))
+
+    def test_resize_and_scale_changes_reject_old_document_geometry(self):
+        native, model = self.open(anchor=1)
+        self.assertTrue(self.controller.report_layout(540, 420))
+        self.screen_size = self.parent.size = (320, 200)
+        self.loader.scale = 2
+        self.parent.onSizeChanged(1, 320, 200)
+        self.assertEqual(json.loads(model.props[0][1])['viewport'],
+                         {'width': 320, 'height': 200, 'scale': 2})
+        size, gutter, unused_available = views._fit_geometry(self.controller._viewport())
+        self.assertFalse(self.controller.report_layout(540, 420))
+        self.assertEqual(native.position, (320 - gutter - size[0], gutter))
+        self.assertTrue(self.controller.report_layout(*size))
+        native.onSizeChanged(7, 1920, 1080)
+        self.assertEqual(native.position, (320 - gutter - size[0], gutter))
+        self.screen_size = self.parent.size = (2560, 1080)
+        self.loader.scale = 1.25
+        self.parent.onSizeChanged(1, 2560, 1080)
+        self.assertEqual(native.position, (2090, 640))
+
+    def test_one_pixel_client_degrades_gutter_instead_of_overflowing(self):
+        self.screen_size = (1, 1)
+        native, unused_model = self.open(anchor=1)
+        self.assertEqual(views._fit_geometry(self.controller._viewport()), ((1, 1), 0, (1, 1)))
+        self.assertEqual(native.position, (0, 0))
+        self.assertTrue(self.controller.report_layout(1, 1))
 
     def test_repeated_open_does_not_steal_focus_or_show_again(self):
         native, unused_model = self.open()

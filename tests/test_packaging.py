@@ -32,9 +32,9 @@ class Tests(unittest.TestCase):
     def test_02_single_file_is_zip(self):
         self.assertTrue(zipfile.is_zipfile(self.target))
 
-    def test_03_exactly_42_files(self):
+    def test_03_exactly_43_files(self):
         with zipfile.ZipFile(self.target) as z:
-            self.assertEqual(len(z.namelist()),42)
+            self.assertEqual(len(z.namelist()),43)
 
     def test_04_all_zipstored(self):
         with zipfile.ZipFile(self.target) as z:
@@ -365,7 +365,8 @@ class Tests(unittest.TestCase):
             'res/gui/gameface/mods/staysharp_medkit/footer.css',
             'res/gui/gameface/mods/staysharp_medkit/settings.html',
             'res/gui/gameface/mods/staysharp_medkit/settings.js',
-            'res/gui/gameface/mods/staysharp_medkit/settings.css'}
+            'res/gui/gameface/mods/staysharp_medkit/settings.css',
+            'res/gui/gameface/mods/staysharp_medkit/settings_camo.png'}
         with zipfile.ZipFile(self.target) as archive:
             names = set(archive.namelist())
             self.assertEqual({name for name in names if name.endswith('.pyc')},
@@ -389,7 +390,7 @@ class Tests(unittest.TestCase):
 
     def test_32_ui_files_are_packaged_without_source_transformation(self):
         with zipfile.ZipFile(self.target) as archive:
-            for name in ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css'):
+            for name in ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css', 'settings_camo.png'):
                 self.assertEqual(archive.read('res/gui/gameface/mods/staysharp_medkit/' + name),
                                  (ROOT / 'source/staysharp_medkit/ui' / name).read_bytes())
             self.assertEqual(archive.read('res/gui/gen_resources/grz.staysharp_medkit.json'),
@@ -405,6 +406,8 @@ class Tests(unittest.TestCase):
                 (package / (name + '.py')).write_bytes(b'# reviewed ' + name.encode('ascii'))
             for name in ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css'):
                 (ui / name).write_bytes(b'/* reviewed */')
+            (ui / 'settings_camo.png').write_bytes(
+                (ROOT / 'source/staysharp_medkit/ui/settings_camo.png').read_bytes())
             (ui / 'grz.staysharp_medkit.json').write_bytes(
                 (ROOT / 'source/staysharp_medkit/ui/grz.staysharp_medkit.json').read_bytes())
             (package / 'unreviewed.py').write_bytes(b'raise RuntimeError()')
@@ -412,7 +415,7 @@ class Tests(unittest.TestCase):
             (ui / 'credentials.json').write_bytes(b'{}')
             with patch.object(build, 'HERE', here):
                 resources = build.load_runtime_resources()
-            self.assertEqual(len(resources), 11)
+            self.assertEqual(len(resources), 12)
             self.assertFalse(any('unreviewed' in path or 'credentials' in path
                                  for path, unused_payload in resources))
 
@@ -422,6 +425,7 @@ class Tests(unittest.TestCase):
             ('PACKAGE_MODULES', ('__init__', '../unreviewed')),
             ('PACKAGE_MODULES', ('settings', 'settings')),
             ('GAMEFACE_FILES', ('../footer.js',)),
+            ('GAMEFACE_IMAGES', ('../settings_camo.png',)),
             ('RESOURCE_REGISTRY', '../grz.staysharp_medkit.json'))
         for setting, value in invalid:
             with self.subTest(setting=setting, value=value), patch.object(build, setting, value):

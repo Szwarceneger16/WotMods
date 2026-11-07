@@ -54,6 +54,7 @@ async function nodeContracts(){
     const state={hotkeys:{toggle_mod:['KEY_LCONTROL','KEY_LALT','KEY_M'],toggle_voice:['KEY_LCONTROL','KEY_LALT','KEY_V']},display:{toggle_mod:'Ctrl + Alt + M',toggle_voice:'Ctrl + Alt + V'},capturing:null,preview:[],labels:{},status:'',error:''};
     const events={},actions=[],layouts=[],callbacks=[],warnings=[],frames=[],sizes=[],observers=[];
     if(options.settings){const view=el('section','grz-medkit-settings','grz-medkit-settings',doc.body);for(const suffix of ['title','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel'])el(suffix==='mod'||suffix==='voice'||suffix.indexOf('clear-')===0||suffix==='close'||suffix==='cancel'?'button':'div','grz-medkit-settings-'+suffix,'',view);}
+    if(options.captions){for(const suffix of ['mod','voice','clear-mod','clear-voice','cancel','close'])el('span','grz-medkit-settings-'+suffix+'-caption','grz-medkit-settings-button-label',doc.getElementById('grz-medkit-settings-'+suffix));}
     state.viewport={width:1920,height:1080,scale:1.5};
     const model={state:{value:JSON.stringify(state)},onAction:args=>{const copy=JSON.parse(JSON.stringify(args));(copy.action==='layout'?layouts:actions).push(copy);}};
     const context={document:doc,innerWidth:1000,innerHeight:36,console:{warn:message=>warnings.push(message)},isDomBuilt:!options.pendingDom,testID:41,
@@ -118,7 +119,7 @@ async function nodeContracts(){
   for(const viewEnvModel of [false,true]){
     const s=fixture({settings:true,sync:true,viewEnvModel});await Promise.resolve();
     assert.deepStrictEqual(s.actions,[],'Native Settings binding cannot replay an action');assert.deepStrictEqual(s.callbacks,[['add',0]]);
-    assert.deepStrictEqual(s.sizes,[[540,345]],'Texture sizing uses Python GUI scale, never browser DPR');
+    assert.deepStrictEqual(s.sizes,[[540,420]],'Texture sizing uses Python GUI scale, never browser DPR');
     assert.strictEqual(s.doc.documentElement.style.fontSize,'1.5px');
     assert.strictEqual(find(s,'#grz-medkit-settings-mod').textContent,'Ctrl + Alt + M');
     find(s,'#grz-medkit-settings-mod').click();assert.deepStrictEqual(s.actions.at(-1),{action:'begin_capture',binding:'toggle_mod'});
@@ -134,6 +135,16 @@ async function nodeContracts(){
     find(s,'#grz-medkit-settings-voice').dispatchEvent({type:'keydown',key:'Escape'});assert.deepStrictEqual(s.actions.at(-1),{action:'close'});
     s.patch({capturing:'toggle_voice',preview:['Ctrl','Alt','V']});s.context.GRZStaySharpSettings.destroy();s.context.GRZStaySharpSettings.destroy();assert.deepStrictEqual(s.actions.at(-1),{action:'cancel_capture'});assert.deepStrictEqual(s.callbacks.at(-1),['remove',0]);assert.strictEqual((s.doc.listeners.keydown||[]).filter(item=>item.capture).length,0);
   }
+  const labeled=fixture({settings:true,captions:true});await Promise.resolve();
+  const originalCaption=find(labeled,'#grz-medkit-settings-mod-caption');
+  assert.strictEqual(originalCaption.textContent,'Ctrl + Alt + M');
+  labeled.patch({capturing:'toggle_mod',preview:['Ctrl','Alt','Shift','M'],labels:{clear:'Wyczyść',cancel:'Anuluj'}});
+  assert.strictEqual(find(labeled,'#grz-medkit-settings-mod-caption'),originalCaption,'Native caption elements survive model changes');
+  assert.strictEqual(originalCaption.parentNode,find(labeled,'#grz-medkit-settings-mod'));
+  assert.strictEqual(originalCaption.textContent,'Ctrl + Alt + Shift + M');
+  assert.strictEqual(find(labeled,'#grz-medkit-settings-clear-mod-caption').textContent,'Wyczyść');
+  assert.strictEqual(find(labeled,'#grz-medkit-settings-cancel-caption').textContent,'Anuluj');
+  labeled.context.GRZStaySharpSettings.destroy();
   const html=fs.readFileSync(path.join(root,'source/staysharp_medkit/ui/settings.html'),'utf8');
   for(const suffix of ['title','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel'])assert(html.includes('id="grz-medkit-settings-'+suffix+'"'));
   assert(!/\beval\s*\(|innerHTML|https?:\/\//.test(fs.readFileSync(script,'utf8')+fs.readFileSync(settingsScript,'utf8')),'Native frontend has no executable/remote/config-HTML path');
@@ -150,7 +161,7 @@ async function browserContracts(){
     await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/footer.css')});await page.addScriptTag({path:script});await page.waitForSelector('#grz-medkit-footer-button');assert(await page.evaluate(()=>document.querySelector('#grz-medkit-footer-host').nextElementSibling.getAttribute('data-test-id')==='menu'));assert.strictEqual(await page.locator('.App_footer_test > div').count(),3);await page.locator('#grz-medkit-footer-button').click();assert.strictEqual((await page.evaluate(()=>actions))[0].action,'open');
     await page.setContent(fs.readFileSync(path.join(root,'source/staysharp_medkit/ui/settings.html'),'utf8').replace(/<link[^>]+>|<script[^>]+><\/script>/g,''));
     await page.evaluate(()=>{window.actions=[];window.layouts=[];window.state={hotkeys:{toggle_mod:['Ctrl','Alt','M'],toggle_voice:['Ctrl','Alt','V']},capturing:'toggle_mod',preview:['Ctrl','Alt','Shift','M'],viewport:{width:1920,height:1080,scale:1}};window.model={state:JSON.stringify(state),onAction:args=>(args.action==='layout'?layouts:actions).push(args)};window.isDomBuilt=true;window.engine={whenReady:Promise.resolve(),on(){},off(){}};window.viewEnv={addDataChangedCallback(){return 1;},removeDataChangedCallback(){},resizeViewPx(){}};});
-    await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/settings.css')});await page.addScriptTag({path:settingsScript});await page.waitForSelector('#grz-medkit-settings-mod');await page.evaluate(()=>Promise.resolve());assert.strictEqual(await page.locator('#grz-medkit-settings-mod').textContent(),'Ctrl + Alt + Shift + M');const dimensions=await page.locator('#grz-medkit-settings').boundingBox();assert.strictEqual(dimensions.width,360);assert.strictEqual(dimensions.height,230);await page.locator('#grz-medkit-settings-mod').focus();await page.keyboard.press('Space');assert.deepStrictEqual(await page.evaluate(()=>actions),[]);await page.locator('#grz-medkit-settings-cancel').click();assert.deepStrictEqual(await page.evaluate(()=>actions),[{action:'cancel_capture'}]);if(process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT)await page.screenshot({path:process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT});assert.deepStrictEqual(errors,[]);console.log('PASS: real-browser native footer icon and 360x230 Settings layout.');
+    await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/settings.css')});await page.addScriptTag({path:settingsScript});await page.waitForSelector('#grz-medkit-settings-mod');await page.evaluate(()=>Promise.resolve());assert.strictEqual(await page.locator('#grz-medkit-settings-mod').textContent(),'Ctrl + Alt + Shift + M');const dimensions=await page.locator('#grz-medkit-settings').boundingBox();assert.strictEqual(dimensions.width,360);assert.strictEqual(dimensions.height,280);await page.locator('#grz-medkit-settings-mod').focus();await page.keyboard.press('Space');assert.deepStrictEqual(await page.evaluate(()=>actions),[]);await page.locator('#grz-medkit-settings-cancel').click();assert.deepStrictEqual(await page.evaluate(()=>actions),[{action:'cancel_capture'}]);if(process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT)await page.screenshot({path:process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT});assert.deepStrictEqual(errors,[]);console.log('PASS: real-browser native footer icon and 360x280 Settings layout.');
   }finally{await browser.close();}
 }
 (async()=>{await nodeContracts();if(process.env.GRZ_MEDKIT_BROWSER_TEST==='1')await browserContracts();})().catch(error=>{console.error(error);process.exitCode=1;});

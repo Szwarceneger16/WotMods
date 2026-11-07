@@ -12,7 +12,8 @@ import math
 
 LOG = logging.getLogger('staysharp.medkit')
 LAYOUT_PATH = ('mods', 'grz', 'staysharp_medkit', 'views', 'Settings')
-LOGICAL_SIZE = (360, 230)
+LOGICAL_SIZE = (360, 280)
+EDGE_GUTTER = 16
 MAX_DIMENSION = 32768
 MAX_STATE_CHARS = 16384
 BLUR_POLL_DELAY = 0.02
@@ -55,6 +56,25 @@ def _dimensions(value):
     except (TypeError, ValueError):
         pass
     return None
+
+
+def _fit_geometry(viewport):
+    """Fit the complete logical design inside a scaled client-edge gutter."""
+    width, height, scale = viewport['width'], viewport['height'], viewport['scale']
+    if width <= 0 or height <= 0:
+        return None
+    gutter = min(max(1, int(math.ceil(EDGE_GUTTER * scale))),
+                 max(1, int(min(width, height) // 4)))
+    # A one-pixel client cannot contain two one-pixel gutters. Degrade the
+    # inset only for that degenerate surface, keeping all coordinates valid.
+    gutter = min(gutter, max(0, (min(width, height) - 1) // 2))
+    available = (width - 2 * gutter, height - 2 * gutter)
+    if min(available) < 1:
+        return None
+    fitted_scale = min(scale, float(available[0]) / LOGICAL_SIZE[0],
+                       float(available[1]) / LOGICAL_SIZE[1])
+    size = tuple(max(1, int(math.floor(value * fitted_scale))) for value in LOGICAL_SIZE)
+    return size, gutter, available
 
 
 def _layout_id():
@@ -177,6 +197,7 @@ class SettingsWindow(object):
         self._anchor_y = None
         self._size = None
         self._reported_size = None
+        self._reported_viewport = None
         self._blur_callback = None
         self._blur_pending = None
         self._layout_logs = 0
@@ -356,8 +377,13 @@ class SettingsWindow(object):
         size = _dimensions((width, height))
         if size is None or not self.is_open():
             return False
+        viewport = self._viewport()
+        fit = _fit_geometry(viewport)
+        if fit is None or any(actual > limit for actual, limit in zip(size, fit[2])):
+            return False
         changed = size != self._reported_size
         self._reported_size = size
+        self._reported_viewport = (viewport['width'], viewport['height'], viewport['scale'])
         if changed:
             self._diagnose_layout('document')
         self._place()
@@ -371,17 +397,23 @@ class SettingsWindow(object):
             return False
         viewport = self._viewport()
         width, height = viewport['width'], viewport['height']
-        if not width or not height:
+        fit = _fit_geometry(viewport)
+        if fit is None:
             return False
         scale = viewport['scale']
-        fallback = tuple(int(math.ceil(value * scale)) for value in LOGICAL_SIZE)
-        size = self._size or self._reported_size or fallback
+        size, gutter, available = fit
+        signature = (width, height, scale)
+        if (self._reported_size is not None and self._reported_viewport == signature and
+                all(actual <= limit for actual, limit in zip(self._reported_size, available))):
+            size = self._reported_size
+        # Native defaults (256px or fullscreen) are observations, not the
+        # intended document bounds. They must not override the fitted layout.
         left = int(round(self._anchor * width - size[0] / 2.0))
         bottom = (self._anchor_y * height - 8 * scale if self._anchor_y is not None
                   else height - 72 * scale)
         top = int(round(bottom - size[1]))
-        target = (max(0, min(max(0, width - size[0]), left)),
-                  max(0, min(max(0, height - size[1]), top)))
+        target = (max(gutter, min(width - gutter - size[0], left)),
+                  max(gutter, min(height - gutter - size[1], top)))
         # Verified WindowImpl.move(x, y, xAnchor=LEFT, yAnchor=TOP).
         accepted = self._window.move(target[0], target[1]) is not False
         self._diagnose_layout('place', target, accepted)
@@ -486,6 +518,7 @@ class SettingsWindow(object):
             self._notified = False
             self._layout_logs = 0
             self._reported_size = None
+            self._reported_viewport = None
 
             def dispatch(arg):
                 if generation == self._generation and self.is_open():

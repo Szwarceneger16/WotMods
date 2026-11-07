@@ -38,6 +38,8 @@ PYC_PATH = 'res/scripts/client/gui/mods/mod_staysharp_medkit.pyc'
 PACKAGE_NAME = 'staysharp_medkit'
 PACKAGE_MODULES = ('__init__', 'hotkeys', 'settings', 'garage', 'views')
 GAMEFACE_FILES = ('footer.js', 'footer.css', 'settings.html', 'settings.js', 'settings.css')
+GAMEFACE_IMAGES = ('settings_camo.png',)
+CAMO_SHA256 = 'ba90effcb9d9e9b023147886690ffe6d61ef447f2f8c07c471df2f9ba6a5844f'
 RESOURCE_REGISTRY = 'grz.staysharp_medkit.json'
 DDS_PREFIX = 'res/gui/maps/staysharp/medkit_pulse_'
 FRAME_COUNT = 21
@@ -112,6 +114,8 @@ def load_runtime_resources():
     if len(set(GAMEFACE_FILES)) != len(GAMEFACE_FILES) or any(
             not re.fullmatch(r'[a-z][a-z0-9_]*\.(html|js|css)', name) for name in GAMEFACE_FILES):
         raise ValueError('Invalid Gameface resource names')
+    if GAMEFACE_IMAGES != ('settings_camo.png',):
+        raise ValueError('Invalid Gameface image names')
     if RESOURCE_REGISTRY != 'grz.%s.json' % PACKAGE_NAME:
         raise ValueError('Invalid Gameface registry name')
     package = HERE / PACKAGE_NAME
@@ -125,6 +129,11 @@ def load_runtime_resources():
     for name in GAMEFACE_FILES:
         path = 'res/gui/gameface/mods/%s/%s' % (PACKAGE_NAME, name)
         resources.append((path, _read_reviewed_file(ui / name, ui)))
+    for name in GAMEFACE_IMAGES:
+        payload = _read_reviewed_file(ui / name, ui)
+        if hashlib.sha256(payload).hexdigest() != CAMO_SHA256:
+            raise ValueError('Camouflage image integrity mismatch')
+        resources.append(('res/gui/gameface/mods/%s/%s' % (PACKAGE_NAME, name), payload))
     registry = _read_reviewed_file(ui / RESOURCE_REGISTRY, ui)
     _validate_resource_registry(registry)
     resources.append(('res/gui/gen_resources/' + RESOURCE_REGISTRY, registry))

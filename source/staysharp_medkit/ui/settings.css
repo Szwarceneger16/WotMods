@@ -1,21 +1,167 @@
-/* A complete native 360 x 230 logical-pixel surface; never uses footer hit space. */
+/* Native 360 x 280 logical-pixel surface. Insets stay inside the Wulf texture. */
 html { font-size:1px; margin:0; padding:0; background:transparent; }
-body { margin:0; padding:0; width:360rem; height:230rem; overflow:hidden; background:transparent; }
-.grz-medkit-settings { box-sizing:border-box; width:360rem; height:230rem; padding:13rem 14rem; border:1rem solid #5c5949; border-top-color:#81775d; background:#20211d; color:#c6c2b4; font-family:Warhelios, Arial, sans-serif; font-size:13rem; line-height:17rem; }
-.grz-medkit-settings-header { position:relative; height:27rem; margin:0 0 7rem; padding-right:24rem; }
-.grz-medkit-settings-header h1 { margin:0; color:#e1d9bb; font-size:18rem; font-weight:normal; line-height:23rem; }
-.grz-medkit-settings-close { position:absolute; right:-3rem; top:-5rem; width:25rem; height:27rem; padding:0; border:0; background:transparent; color:#a6a495; font-size:24rem; line-height:24rem; cursor:pointer; }
-.grz-medkit-settings-row { display:flex; align-items:center; height:37rem; }
-.grz-medkit-settings-label { flex:0 0 84rem; width:84rem; padding-right:6rem; color:#b5b2a5; font-size:13rem; }
-.grz-medkit-settings-binding,.grz-medkit-settings-clear,.grz-medkit-settings-cancel { box-sizing:border-box; border:1rem solid #65604b; background:#303027; color:#d5c9a5; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:16rem; cursor:pointer; }
-.grz-medkit-settings-binding { flex:1 1 auto; min-width:0; height:32rem; padding:3rem 5rem; overflow:hidden; text-align:center; white-space:normal; word-wrap:break-word; }
-.grz-medkit-settings-clear { flex:0 0 43rem; width:43rem; height:30rem; margin-left:6rem; padding:4rem 1rem; }
-.grz-medkit-settings-hint { margin-top:8rem; min-height:32rem; color:#8e9086; font-size:11rem; line-height:15rem; }
-.grz-medkit-settings-bottom { display:flex; align-items:center; height:42rem; margin-top:3rem; }
-.grz-medkit-settings-feedback { flex:1 1 auto; min-width:0; max-height:40rem; overflow:hidden; color:#b8c79e; font-size:11rem; line-height:13rem; white-space:normal; word-wrap:break-word; }
-.grz-medkit-settings-cancel { display:none; flex:0 0 auto; min-width:58rem; height:27rem; margin-left:7rem; padding:3rem 7rem; }
-.grz-medkit-settings-binding:hover,.grz-medkit-settings-clear:hover,.grz-medkit-settings-cancel:hover { background:#403e30; border-color:#91815c; color:#f1dfb0; }
-.grz-medkit-settings-close:hover { color:#eee5cb; }
-.grz-medkit-settings-binding:focus,.grz-medkit-settings-clear:focus,.grz-medkit-settings-cancel:focus,.grz-medkit-settings-close:focus { outline:1rem solid #c5b78a; outline-offset:1rem; }
-.grz-medkit-settings-capturing { border-color:#c1a467; background:#3c3727; color:#f0d997; }
-.grz-medkit-settings-error { color:#df9d83; }
+body { margin:0; padding:0; width:360rem; height:280rem; overflow:hidden; background:transparent; }
+.grz-medkit-settings,.grz-medkit-settings * { box-sizing:border-box; }
+.grz-medkit-settings {
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    width:360rem;
+    height:280rem;
+    max-width:100%;
+    max-height:100%;
+    overflow:hidden;
+    border:1rem solid #646044;
+    border-radius:8rem;
+    background:#111309;
+    background-image:url("settings_camo.png");
+    background-repeat:repeat;
+    background-size:560rem 460rem;
+    box-shadow:inset 0 1rem 1rem #88805c,inset 0 0 28rem #292819,inset 0 -1rem #080b04;
+    color:#d4d0bd;
+    font-family:Warhelios,Arial,sans-serif;
+    font-size:13rem;
+    line-height:17rem;
+}
+.grz-medkit-settings-header {
+    position:relative;
+    display:flex;
+    align-items:center;
+    flex:0 0 46rem;
+    min-height:46rem;
+    padding:0 45rem 0 14rem;
+    border-radius:7rem 7rem 0 0;
+    background:linear-gradient(#343428,#1c1e12);
+    box-shadow:inset 0 1rem #646149,inset 0 -1rem #050601;
+}
+.grz-medkit-settings-badge {
+    position:relative;
+    display:block;
+    flex:0 0 22rem;
+    width:22rem;
+    height:22rem;
+    margin-right:10rem;
+    border:1rem solid #65634b;
+    border-radius:4rem;
+    background:linear-gradient(#4a4c37,#292f20);
+    box-shadow:inset 0 1rem rgba(236,220,174,0.24),inset 0 -1rem #10150a;
+}
+.grz-medkit-settings-badge:before,.grz-medkit-settings-badge:after {
+    content:"";
+    position:absolute;
+    display:block;
+    background:#d2c39a;
+    box-shadow:0 1rem #12180b;
+}
+.grz-medkit-settings-badge:before { left:5rem; top:9rem; width:10rem; height:3rem; }
+.grz-medkit-settings-badge:after { left:9rem; top:5rem; width:3rem; height:10rem; }
+.grz-medkit-settings-header h1 {
+    flex:1 1 auto;
+    min-width:0;
+    overflow:hidden;
+    margin:0;
+    color:#f0eddc;
+    font-size:18rem;
+    font-weight:bold;
+    line-height:24rem;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    text-shadow:0 1rem 2rem #000;
+}
+.grz-medkit-settings-body {
+    display:flex;
+    flex-direction:column;
+    flex:1 1 auto;
+    min-height:0;
+    padding:10rem 14rem 8rem;
+    overflow-x:hidden;
+    overflow-y:auto;
+    background:linear-gradient(rgba(9,13,6,0.24),rgba(7,11,5,0.46));
+}
+.grz-medkit-settings-body::-webkit-scrollbar { width:6rem; background:#10150a; }
+.grz-medkit-settings-body::-webkit-scrollbar-thumb { border:1rem solid #72794e; border-radius:3rem; background:#454d31; }
+.grz-medkit-settings-row { flex:0 0 auto; min-width:0; }
+.grz-medkit-settings-row + .grz-medkit-settings-row { margin-top:11rem; }
+.grz-medkit-settings-label {
+    display:block;
+    margin:0 0 4rem;
+    color:#d2cfbc;
+    font-size:12rem;
+    line-height:15rem;
+    text-shadow:0 1rem 1rem #000;
+}
+.grz-medkit-settings-controls { display:flex; align-items:stretch; min-width:0; height:34rem; }
+.grz-medkit-settings-binding,.grz-medkit-settings-clear,.grz-medkit-settings-cancel,.grz-medkit-settings-close {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    margin:0;
+    border:1rem solid #555944;
+    border-radius:5rem;
+    background:linear-gradient(#45483a,#34392a 48%,#2d3325);
+    box-shadow:inset 0 1rem rgba(236,220,174,0.3),inset 1rem 0 rgba(213,191,132,0.12),inset -1rem 0 rgba(213,191,132,0.12);
+    color:#dfd4ae;
+    font-family:Warhelios,Arial,sans-serif;
+    font-size:12rem;
+    line-height:16rem;
+    text-shadow:0 1rem 1rem #000;
+    cursor:pointer;
+}
+.grz-medkit-settings-button-label {
+    display:block;
+    flex:0 1 auto;
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+    font-family:Warhelios,Arial,sans-serif;
+    font-size:12rem;
+    line-height:16rem;
+    text-align:center;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    pointer-events:none;
+}
+.grz-medkit-settings-binding {
+    flex:1 1 auto;
+    min-width:0;
+    height:34rem;
+    padding:5rem 8rem;
+    border-color:#202717;
+    background:linear-gradient(#13190f,#1e2717);
+    box-shadow:inset 0 2rem 4rem #050803,inset 0 -1rem rgba(156,160,108,0.32);
+    color:#e0dcc4;
+}
+.grz-medkit-settings-clear { flex:0 0 72rem; width:72rem; height:34rem; margin-left:8rem; padding:5rem 8rem; }
+.grz-medkit-settings-close { position:absolute; top:9rem; right:9rem; width:27rem; height:27rem; padding:0; color:#bcb693; }
+.grz-medkit-settings-close .grz-medkit-settings-button-label { font-size:23rem; line-height:23rem; }
+.grz-medkit-settings-hint {
+    flex:0 0 auto;
+    margin-top:8rem;
+    padding:4rem 8rem;
+    border:1rem solid rgba(137,145,101,0.2);
+    border-radius:4rem;
+    background:rgba(9,14,6,0.62);
+    box-shadow:inset 0 1rem 2rem rgba(0,0,0,0.45);
+    color:#b7bba6;
+    font-size:11rem;
+    line-height:14rem;
+    text-shadow:0 1rem #080c05;
+}
+.grz-medkit-settings-bottom { display:flex; align-items:center; flex:0 0 auto; min-height:28rem; margin-top:auto; padding-top:8rem; }
+.grz-medkit-settings-feedback { flex:1 1 auto; min-width:0; max-height:42rem; overflow:hidden; color:#c1d5a4; font-size:11rem; line-height:14rem; white-space:normal; word-wrap:break-word; text-shadow:0 1rem #080c05; }
+.grz-medkit-settings-cancel { display:none; flex:0 0 auto; min-width:72rem; height:28rem; margin-left:8rem; padding:4rem 9rem; }
+.grz-medkit-settings-binding:hover,.grz-medkit-settings-clear:hover,.grz-medkit-settings-cancel:hover,.grz-medkit-settings-close:hover {
+    border-color:#a7996c;
+    background:linear-gradient(#555b42,#3b452e 48%,#2e3926);
+    box-shadow:inset 0 1rem rgba(236,220,174,0.4),inset 0 0 7rem rgba(213,191,132,0.12);
+    color:#f1e3b8;
+}
+.grz-medkit-settings-binding:active,.grz-medkit-settings-clear:active,.grz-medkit-settings-cancel:active,.grz-medkit-settings-close:active {
+    background:linear-gradient(#252d1d,#343d29);
+    box-shadow:inset 0 2rem 4rem #050803,inset 0 -1rem rgba(213,191,132,0.12);
+    text-shadow:none;
+}
+.grz-medkit-settings-binding:focus,.grz-medkit-settings-clear:focus,.grz-medkit-settings-cancel:focus,.grz-medkit-settings-close:focus { border-color:#c5b78a; box-shadow:inset 0 0 0 1rem #c5b78a,inset 0 1rem rgba(236,220,174,0.3),inset 0 0 8rem rgba(213,191,132,0.12); }
+.grz-medkit-settings-capturing,.grz-medkit-settings-capturing:hover { border-color:#c1a467; background:linear-gradient(#3c3e29,#292e1d); box-shadow:inset 0 1rem rgba(242,220,159,0.38),inset 0 0 12rem rgba(190,159,74,0.16); color:#f3dfad; }
+.grz-medkit-settings-error { color:#efb49b; }

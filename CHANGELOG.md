@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.7
+
+- Restyle garage shortcut settings with the same bundled camouflage as Session Stats, rounded corners, an inset beveled frame, raised buttons and recessed shortcut fields.
+- Place labels above each shortcut and widen clear buttons, retaining explicit native button captions and capture/error feedback.
+- Keep a scaled 16-pixel inset on every client edge and uniformly fit the complete panel on smaller windows or larger UI scales, including portrait and ultrawide layouts.
+
 ## 1.8.6
 
 - Place the garage medkit icon immediately before the native settings gear and keep the popup above that button.
