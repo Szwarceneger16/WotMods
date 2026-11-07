@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.7.0 - installation and test
+# Stay Sharp Medkit Reminder 1.8.7 - installation and test
 
 ## Install
 
@@ -20,36 +20,60 @@
    not loaded. Preserve any existing `.json` when updating. To configure before
    startup, copy the example and remove only its final `.example`. Otherwise,
    start the game normally: the mod creates `mods/configs/staysharp.medkit.json`
-   with `{"language":"auto"}` when the directory is writable. To force Polish,
+   with automatic language, reminder and voice enabled, and 70 percent voice
+   volume when the directory is writable. A previous language-only configuration
+   uses these same defaults. To force Polish,
    change `auto` to `pl` and restart WoT. See [all seven languages](AUDIO.md#language-configuration).
 7. Installer metadata, checksums, audio instructions and voice attribution are
    included under `docs/staysharp/`. Session Stats is the separate second ZIP;
    its existing installer is carried forward without being rebuilt.
 
+## Garage shortcuts
+
+The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. Click it to open a small settings window above the button; click the icon again or click elsewhere in the garage to close it. The rounded, beveled panel uses the same bundled camouflage as Session Stats, with labels above shortcut fields and wider clear buttons. A 16-logical-pixel edge margin follows the game UI scale; when the complete 360×280 design cannot fit, the panel scales down uniformly within the available client area. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
+
+Select either shortcut row, hold the desired keys together, then release every key to save. The two actions toggle the whole reminder or toggle voice independently. Defaults are Ctrl+Alt+M and Ctrl+Alt+V. Use Clear to disable a shortcut; Escape or Cancel abandons a recording. Left/right modifiers are preserved when recording. The configuration also accepts generic CTRL, ALT and SHIFT names for either side.
+
+Three/four-key combinations and larger simultaneous combinations are supported, including multiple ordinary keys. The client can only record keys delivered by the OS and keyboard hardware: system-reserved shortcuts such as Ctrl+Alt+Delete and keyboard rollover limits cannot be overridden by this mod. Escape is reserved for cancelling the recorder. Overlapping action bindings are rejected to avoid firing a shorter action while entering a longer one.
+
+Settings are saved immediately without requiring native Python extension modules to `mods/configs/staysharp.medkit.json` and are loaded again when the window opens and at the next game startup. Existing language, volume, defaults and unrelated configuration fields are preserved. Failed saves retain the previous active binding and show an error. On embedded Windows Python 2.7, complete temporary and backup files allow recovery after interruption; this fallback is recoverable rather than a single atomic replacement. The previous configuration is recovered before defaults can be created. Recording does not trigger either reminder action and stops when the window closes, loses focus or battle starts. Ordinary battle shortcuts remain inactive on a vehicle without the learned perk, and while chat or a battle modal is active.
+
+Battle power/voice icons are 16 logical pixels (previously 24) with 40 percent transparency. Their existing plain-click/Ctrl-click behavior is retained. Their battle toggles remain temporary; the next battle restores configured enabled/voice defaults.
+
 ## In-game verification
+
+- On a vehicle without a learned Stay Sharp perk, expect no mod icons, outline,
+  voice or active mouse monitoring. Repeat with missing crew data: it stays dormant.
+- On artillery with the perk, repeatedly switch views using the minimap right
+  mouse button and the normal view controls, including while the medkit is cooling
+  down. Verify both regular and trajectory artillery views and leaving/rejoining
+  battle. The icons must accept left clicks without native GUI input callbacks.
 
 - Before battle starts and during equipment selection, expect no outline or
   extra audio.
-- With the Stay Sharp perk permitting medkit use and the kit available,
-  expect the original four-second orange pulse and one **"Medkit is ready"**
-  voice after one second, in the selected language. There should be no additional immediate ping on
-  top of the game's cooldown-complete sound.
-- If you leave the kit ready, expect its normal **activation effect** four
-  seconds after the announcement and every four seconds thereafter.
-- Check arcade, sniper, SPG top-down and trajectory cameras. Switching camera
-  modes must not repeat the voice or reset the reminder interval.
-- Use the medkit; the outline and extra sounds must stop during cooldown.
-  The next eligible readiness interval should produce one new voice.
-- Hide/show the HUD: silence while hidden, no duplicate voice when restored.
-- Check an injury/stun warning, perk permission loss, own vehicle destruction,
-  battle end and return to the garage. No reminder should continue there.
-- Test `language: auto` with your game language, then force another supported
-  code in the configuration and restart. Confirm that the spoken language
-  changes while timing and the native repeated effect remain the same.
-- Change WoT master/voice notification volume and mute; check the voice
-  follows the game settings. The repeated native effect follows its existing
-  game audio channel. Restore your preferred volume afterward.
-- If other sound mods are installed, verify their effects still work too.
+- With the perk permitting use and the medkit ready, expect the orange pulse
+  continuously. With a medkit ready at battle start, expect the selected voice
+  one second after the battle starts, then every ten seconds while eligible.
+- Use the medkit and check the next cooldown: the voice starts about half a
+  second before it ends; the outline resumes only after actual readiness.
+  There must be no second announcement when the countdown reaches zero.
+  There must be no native medkit activation effect from this mod.
+- Press the configured whole-mod shortcut (default Ctrl+Alt+M) to turn the outline and voice off, then press it again to
+  restore them. The voice shortcut defaults to Ctrl+Alt+V. Show the game cursor (normally with Ctrl) and left-click the
+  power or speaker icon above the medkit to toggle the reminder or voice
+  separately. Clicking works both with and without Ctrl when the cursor is
+  visible and active; no modifier state needs to reach the mod.
+  The next battle restores the configured defaults. Verify the
+  shortcut does not react while battle chat is focused.
+- Verify both icons appear in arcade and artillery views. The normal tank
+  sniper view hides the icons. The speaker switch can mute the voice while
+  the medkit outline keeps pulsing.
+- Check arcade, sniper and artillery cameras, cooldown, HUD visibility,
+  warnings, destruction and battle end. The reminder must stop when ineligible.
+- Test automatic and manually selected languages and WoT voice volume.
+- Check the local log shows `settings enabled=True voice_enabled=True voice_volume=70`
+  for a default configuration and `audio voice volume=70` when the voice is created.
+- If other sound mods are installed, verify that their effects still work.
 
 Offline checks cannot confirm native bank loading, final voice loudness or
 client rendering. If there is no voice, inspect the game's sound errors and
@@ -60,10 +84,23 @@ build until the new one has passed an actual battle test.
 
 Local log: `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
-`ready voice unavailable` or `native medkit reminder unavailable` means an
-API call failed and that path was disabled for the battle. Wwise can also
-report failures only in `python.log`. `overlay suspended` explains why the
-visual and audio reminder paused. Logs remain local and are not uploaded.
+The log records the mod version, selected voice event, readiness transitions,
+whether the game resource manager can see the bank, whether the resolved
+`audio_mods.xml` mentions it, playback attempts and their API results, and the
+battle hotkey. It does not list other mods from the audio configuration.
+Playback attempts are sampled after the first three; counts are also recorded
+at battle end. Logs are local, rotate at roughly 512 KiB, and are not uploaded.
+If rotation occurs, include `staysharp.log.old` as well.
+
+`bank_visible=True` and `bank_entry=yes` do not prove that Wwise loaded the
+bank. The meaning of `play()` return values is not established, so the mod
+logs them without treating falsey values as failures. `isPlaying=True` and
+`audible=unknown` do not prove that the player can hear the voice.
+`ready voice unavailable` means the Python API raised an exception and audio
+was disabled for that battle.
+Wwise may report additional failures only in the game's `python.log`.
+`overlay suspended` explains why the reminder paused. The game's `python.log`
+may contain information from WoT and other mods; review it before sharing.
 
 To uninstall, remove this mod's `.wotmod`. If you manually merged a bank
 entry into a separate audio configuration, remove only the

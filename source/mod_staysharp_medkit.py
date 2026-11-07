@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.7.0 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.7 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
-no lifecycle monkeypatches; subscribes to native ComponentEvent lifecycle.
+native ComponentEvent battle lifecycle; optional owned garage footer adapter.
 It preserves the working v1.5.0 rendering and detects incompatible HUD
-shapes before attempting to paint. Bundled ready voice and native medkit SFX;
+shapes before attempting to paint. Bundled ready voice;
 no SWF replacement or downloads.
 """
 from __future__ import absolute_import
@@ -28,19 +28,22 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.7.0'
+VERSION = '1.8.7'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
 HALF_PULSE = 2.0               # 0%->100% in 2 s, then 100%->0% in 2 s
 PULSE_TICK = 0.10              # 10 texture switches/s, never allocate new GUI roots
 STATE_TICK = 0.25
+DORMANT_TICK = 1.0
 STABLE_READY_DELAY = 0.90
 READY_VOICE_DELAY = 1.0
+READY_VOICE_LEAD = 0.5
+READY_VOICE_REPEAT = 10.0
 READY_VOICE_EVENT = 'staysharp_medkit_ready'
 VOICE_LANGUAGES = ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk')
 CONFIG_FILENAME = 'staysharp.medkit.json'
-CONFIG_MAX_BYTES = 4096
+CONFIG_MAX_BYTES = 16384
 BORDER_SIZE = 54.0
 OFFSET_X = 0.0
 OFFSET_Y = 0.0
@@ -78,15 +81,34 @@ _consumables_alias = None
 _log_file = None
 _audio_key = None
 _audio_since = None
+_audio_due = None
+_battle_voice_due = None
+_cooldown_deadlines = {}
+_equipment_controller = None
 _audio_announced = False
 _audio_next_reminder = None
 _voice_player = None
 _voice_disabled = False
-_effect_sound = None
-_effect_compact = None
-_effect_disabled = False
+_reminder_enabled = True
+_voice_enabled = True
+_default_reminder_enabled = True
+_default_voice_enabled = True
+_voice_volume = 70
+_key_handler = None
 _audio_suspended = True
 _language = 'en'
+_voice_attempts = 0
+_voice_failures = 0
+_controls = []
+_controls_disabled = False
+_perk_state = 'unknown'
+_settings_store = None
+_shortcut_tracker = None
+_capture_target = None
+_garage_open = False
+_garage_handle = None
+_settings_status = ''
+_settings_error = ''
 
 
 def _language_code(value):
@@ -158,48 +180,20 @@ def _config_path():
 
 
 def _load_language():
-    """Read a bounded local JSON once at startup; never overwrite user data."""
-    global _language
-    selected = 'auto'
-    path = _config_path()
-    if path is not None:
-        folder = os.path.dirname(path)
-        try:
-            try:
-                with open(path, 'rb') as handle:
-                    raw = handle.read(CONFIG_MAX_BYTES + 1)
-            except IOError as error:
-                if error.errno != errno.ENOENT:
-                    raise
-                if not os.path.isdir(folder):
-                    try:
-                        os.makedirs(folder)
-                    except OSError:
-                        if not os.path.isdir(folder):
-                            raise
-                # Exclusive creation protects an existing config in a race.
-                try:
-                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-                except OSError as error:
-                    if error.errno != errno.EEXIST:
-                        raise
-                else:
-                    with os.fdopen(fd, 'wb') as handle:
-                        handle.write(b'{\n  "language": "auto"\n}\n')
-                with open(path, 'rb') as handle:
-                    raw = handle.read(CONFIG_MAX_BYTES + 1)
-            if len(raw) > CONFIG_MAX_BYTES:
-                raise ValueError('configuration exceeds size limit')
-            config = json.loads(raw.decode('utf-8-sig'))
-            if not isinstance(config, dict):
-                raise ValueError('configuration must be a JSON object')
-            value = _language_code(config.get('language', 'auto'))
-            if value not in VOICE_LANGUAGES + ('auto',):
-                raise ValueError('unsupported voice language')
-            selected = value
-        except Exception:
-            # Do not echo file contents or a private filesystem path.
-            _log('invalid or unreadable configuration; using automatic language')
+    """Read bounded local settings; preserve legacy values and unknown fields."""
+    global _language, _default_reminder_enabled, _default_voice_enabled, _voice_volume
+    global _reminder_enabled, _voice_enabled, _settings_store, _shortcut_tracker
+    from staysharp_medkit.settings import SettingsStore
+    from staysharp_medkit.hotkeys import ChordTracker
+    _settings_store = SettingsStore(_config_path(), log=_log, on_change=_settings_changed)
+    config = _settings_store.load()
+    selected = config.get('language', 'auto')
+    _default_reminder_enabled = config['enabled']
+    _default_voice_enabled = config['voice_enabled']
+    _voice_volume = config['voice_volume']
+    _reminder_enabled = _default_reminder_enabled
+    _voice_enabled = _default_voice_enabled
+    _shortcut_tracker = ChordTracker(_configured_chords(config))
     if selected == 'auto':
         try:
             from helpers import getClientLanguage
@@ -208,10 +202,67 @@ def _load_language():
             selected = None
     _language = selected if selected in VOICE_LANGUAGES else 'en'
     _log('ready voice language=' + _language)
+    _log('settings enabled=%s voice_enabled=%s voice_volume=%s' % (
+        _reminder_enabled, _voice_enabled, _voice_volume))
+
+
+def _configured_chords(config):
+    # Unknown future configuration fields stay on disk, outside input/UI state.
+    source = config.get('hotkeys', {})
+    return dict((key, source.get(key, [])) for key in ('toggle_mod', 'toggle_voice'))
+
+
+def _settings_changed(config):
+    global _default_reminder_enabled, _default_voice_enabled, _voice_volume
+    _default_reminder_enabled = config['enabled']
+    _default_voice_enabled = config['voice_enabled']
+    _voice_volume = config['voice_volume']
+    # Persisted shortcuts become active only after the complete atomic write.
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.set_chords(_configured_chords(config))
+    _publish_garage_settings()
 
 
 def _ready_voice_event():
     return READY_VOICE_EVENT if _language == 'en' else READY_VOICE_EVENT + '_' + _language
+
+
+def _audio_diagnostics():
+    """Inspect resolved resources, without claiming a bank is loaded or audible."""
+    try:
+        present = bool(ResMgr.isFile('audioww/staysharp_medkit.bnk'))
+        _log('audio resource bank_visible=%s' % present)
+    except Exception:
+        _exception('audio resource bank_visibility=unknown')
+    try:
+        root = ResMgr.openSection('audioww/audio_mods.xml')
+        if root is None:
+            _log('audio config resolved=missing bank_entry=unknown')
+            return
+        banks = root['loadBanks']
+        if banks is None:
+            _log('audio config resolved=yes loadBanks=missing bank_entry=no')
+            return
+        # Do not log other mods' names or dump the shared XML.
+        found = False
+        count = 0
+        truncated = False
+        for section in banks.values():
+            if count >= 128:
+                truncated = True
+                break
+            count += 1
+            name = section.asString
+            if not name or not name.strip():
+                child = section['name']
+                name = child.asString if child is not None else ''
+            if name.strip().lower() == 'staysharp_medkit.bnk':
+                found = True
+                break
+        state = 'yes' if found else ('unknown' if truncated else 'no')
+        _log('audio config resolved=yes bank_entry=%s scan_limited=%s' % (state, truncated))
+    except Exception:
+        _exception('audio config resolved=unknown bank_entry=unknown')
 
 
 def _suspend_audio():
@@ -224,95 +275,182 @@ def _suspend_audio():
     if _voice_player is not None:
         try:
             _voice_player.stop()
+            _log('audio voice stop requested')
         except Exception:
             _exception('voice stop failed')
-    if _effect_sound is not None:
-        try:
-            _effect_sound.stop()
-        except Exception:
-            _exception('native reminder stop failed')
 
 
 def _reset_audio():
-    global _audio_key, _audio_since, _audio_announced
+    global _audio_key, _audio_since, _audio_due, _audio_announced
     _suspend_audio()
     _audio_key = None
     _audio_since = None
+    _audio_due = None
     _audio_announced = False
 
 
-def _track_audio_ready(panel, slot):
-    """Track actual readiness even while the player temporarily hides HUD."""
-    global _audio_key, _audio_since
+def _track_battle_start(panel):
+    """Translate the client's server-time battle start to the local audio clock."""
+    global _battle_voice_due
+    if _battle_voice_due is not None:
+        return
+    arena = getattr(BigWorld.player(), 'arena', None)
+    if getattr(arena, 'period', None) != ARENA_PERIOD.BATTLE:
+        return
+    elapsed = 0.0
+    try:
+        end = float(arena.periodEndTime)
+        length = float(arena.periodLength)
+        value = float(BigWorld.serverTime()) - (end - length)
+        if end > 0 and length > 0 and 0 <= value <= length:
+            elapsed = value
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        pass
+    _battle_voice_due = _time() + max(0.0, READY_VOICE_DELAY - elapsed)
+    _log('audio schedule initial_delay=%.2fs lead=%.2fs repeat=%.2fs' % (
+        max(0.0, _battle_voice_due - _time()), READY_VOICE_LEAD, READY_VOICE_REPEAT))
+
+
+def _on_equipment_updated(compact, item):
+    """Native remaining time is a snapshot, timestamp it once per server update."""
+    if _perk_state != 'present':
+        return
+    previous = _cooldown_deadlines.pop(compact, None)
+    try:
+        if item is None or not item.isInCooldown() or item.getQuantity() <= 0:
+            return
+        remaining = item.getTimeRemaining()
+        if isinstance(remaining, bool) or not isinstance(remaining, (int, long, float)):
+            return
+        if not 0 < remaining < 86400:
+            return
+        deadline = _time() + remaining
+        if (_audio_key is not None and _audio_key[1] == compact and
+                (previous is None or previous[0] is not item or deadline > previous[1] + STATE_TICK)):
+            _reset_audio()
+        _cooldown_deadlines[compact] = (item, deadline)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return
+
+
+def _subscribe_equipment(panel):
+    global _equipment_controller
+    session = getattr(panel, 'sessionProvider', None)
+    controller = getattr(getattr(session, 'shared', None), 'equipments', None)
+    if controller is None:
+        return
+    try:
+        controller.onEquipmentUpdated += _on_equipment_updated
+        _equipment_controller = controller
+        _log('audio cooldown updates subscribed=yes')
+    except Exception:
+        # Without a timestamp, announce at actual readiness instead of guessing.
+        _exception('audio cooldown updates unavailable; ready-state fallback')
+
+
+def _unsubscribe_equipment():
+    global _equipment_controller
+    controller = _equipment_controller
+    _equipment_controller = None
+    if controller is not None:
+        try:
+            controller.onEquipmentUpdated -= _on_equipment_updated
+        except Exception:
+            _exception('audio cooldown unsubscription failed')
+    _cooldown_deadlines.clear()
+
+
+def _cooldown_soon(compact, item):
+    record = _cooldown_deadlines.get(compact)
+    if record is None or record[0] is not item:
+        return False
+    try:
+        if not item.isInCooldown() or item.getQuantity() <= 0:
+            return False
+    except (AttributeError, TypeError):
+        return False
+    remaining = record[1] - _time()
+    # Preserve the in-flight announcement across the server's READY update.
+    grace = 2.0 if _audio_announced and _audio_key is not None and _audio_key[1] == compact else 0.0
+    return -grace <= remaining <= READY_VOICE_LEAD
+
+
+def _track_audio_ready(panel, slot, reason='ready'):
+    """Keep the same announcement latch from anticipation through actual READY."""
+    global _audio_key, _audio_since, _audio_due
     key = (slot, panel._cds[slot]) if slot is not None else None
     if key != _audio_key:
         _reset_audio()
         _audio_key = key
         if key is not None:
             _audio_since = _time()
+            _audio_due = (_audio_since if reason == 'cooldown_soon' else
+                          max(_audio_since, _battle_voice_due or _audio_since))
+            _log('audio readiness=%s slot=%d voice_delay=%.2fs' % (
+                reason, slot, _audio_due - _audio_since))
+        else:
+            _log('audio readiness=not_ready')
 
 
-def _play_medkit_effect(compact):
-    """Use the same descriptor-to-event mapping as WoT's activation code."""
-    global _effect_sound, _effect_compact, _effect_disabled
-    if _effect_disabled:
+def _play_ready_voice():
+    global _voice_player, _voice_disabled, _voice_attempts, _voice_failures
+    if (_voice_disabled or not _voice_enabled or not _reminder_enabled
+            or _panel is None or _crew_perk_status(_panel) != 'present'):
         return
+    _voice_attempts += 1
+    report = _voice_attempts <= 3 or _voice_attempts % 10 == 0
     try:
-        import SoundGroups
-        from gui.battle_control.controllers.consumables.equipment_ctrl import EquipmentSound
-        if _effect_sound is None or _effect_compact != compact:
-            if _effect_sound is not None:
-                _effect_sound.stop()
-            event = EquipmentSound._soundMap.get(compact)
-            if not event:
-                raise ValueError('no native medkit activation sound for descriptor')
-            _effect_sound = SoundGroups.g_instance.getSound2D(event)
-            _effect_compact = compact
-        result = _effect_sound.play()
-        if result is not None and not result:
-            raise RuntimeError('native medkit playback failed')
+        if _voice_player is None:
+            import SoundGroups
+            _log('audio create event=' + _ready_voice_event())
+            _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
+            _log('audio handle present=%s' % (_voice_player is not None))
+            _voice_player.volume = _voice_volume / 100.0
+            _log('audio voice volume=%s' % _voice_volume)
+        result = _voice_player.play()
+        result_label = 'none' if result is None else ('truthy' if result else 'false')
+        if report:
+            playing = 'unknown'
+            try:
+                state = getattr(_voice_player, 'isPlaying', None)
+                if isinstance(state, bool):
+                    playing = str(state)
+            except Exception:
+                pass
+            result_type = type(result).__name__
+            _log('audio play attempt=%d result=%s result_type=%s isPlaying=%s audible=unknown' % (
+                _voice_attempts, result_label, result_type, playing))
+        # WoT's own callers do not interpret play()'s return value as a
+        # success flag. A falsey result can coexist with isPlaying=True.
     except Exception:
-        _effect_disabled = True
-        _exception('native medkit reminder unavailable; disabled for battle')
+        _voice_failures += 1
+        _voice_disabled = True
+        _exception('ready voice unavailable; audio disabled for battle')
 
 
-def _play_ready_voice(compact):
-    global _voice_player, _voice_disabled
-    if not _voice_disabled:
-        try:
-            if _voice_player is None:
-                import SoundGroups
-                _voice_player = SoundGroups.g_instance.getSound2D(_ready_voice_event())
-            result = _voice_player.play()
-            if result is not None and not result:
-                raise RuntimeError('ready voice playback failed')
-            return
-        except Exception:
-            _voice_disabled = True
-            _exception('ready voice unavailable; using native medkit effect for battle')
-    _play_medkit_effect(compact)
-
-
-def _update_audio():
+def _update_audio(eligible=False, anticipating=False):
     """Run on the existing state tick; no extra callbacks or catch-up bursts."""
     global _audio_announced, _audio_next_reminder, _audio_suspended
-    if not _overlay_active or _audio_key is None:
+    if (not _voice_enabled or not _reminder_enabled or _graphics_disabled
+            or not (_overlay_active or eligible) or _audio_key is None):
         _suspend_audio()
         return
     now = _time()
-    if now - _audio_since < READY_VOICE_DELAY:
+    if _audio_due is None or now < _audio_due:
         return
     _audio_suspended = False
     if not _audio_announced:
         _audio_announced = True
-        _play_ready_voice(_audio_key[1])
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        _play_ready_voice()
+        _audio_next_reminder = now + READY_VOICE_REPEAT
+    elif anticipating:
+        return
     elif _audio_next_reminder is None:
-        # Resume at the next complete pulse without repeating the voice.
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
+        # Resume after a full voice interval without replaying on HUD visibility.
+        _audio_next_reminder = now + READY_VOICE_REPEAT
     elif now >= _audio_next_reminder:
-        _audio_next_reminder = now + 2.0 * HALF_PULSE
-        _play_medkit_effect(_audio_key[1])
+        _audio_next_reminder = now + READY_VOICE_REPEAT
+        _play_ready_voice()
 
 
 def _log(message):
@@ -358,7 +496,11 @@ def _log(message):
 
 def _exception(message):
     _log(message)
-    _log(traceback.format_exc())
+    exc_type, unused_value, tb = sys.exc_info()
+    frames = traceback.extract_tb(tb)[-8:] if tb is not None else []
+    locations = ' > '.join('%s:%s:%s' % (os.path.basename(path), line, name)
+                           for path, line, name, unused_source in frames)
+    _log('exception=%s frames=%s' % (getattr(exc_type, '__name__', 'unknown'), locations))
 
 
 def _time():
@@ -394,7 +536,8 @@ def _cancel_pulse():
 def _schedule_state():
     global _state_callback
     if _panel is not None and _state_callback is None and not _graphics_disabled:
-        _state_callback = BigWorld.callback(STATE_TICK, _check_state)
+        interval = STATE_TICK if _perk_state == 'present' else DORMANT_TICK
+        _state_callback = BigWorld.callback(interval, _check_state)
 
 
 def _schedule_pulse():
@@ -543,7 +686,71 @@ def _resolve_player_vehicle(panel, avatar):
     return (None, 'vehicle_entity_unavailable')
 
 
-def _probe_medkit(panel):
+# The skill configuration maps commander_staySharp to VSE perk 108.
+# Vehicle.crewCompactDescrs is the server's own-vehicle crew snapshot.
+STAY_SHARP_SKILL = 'commander_staySharp'
+_crew_perk_cache_key = None
+_crew_perk_cache_status = 'unknown'
+
+
+def _clear_crew_perk_cache():
+    global _crew_perk_cache_key, _crew_perk_cache_status
+    _crew_perk_cache_key = None
+    _crew_perk_cache_status = 'unknown'
+
+
+def _crew_perk_status(panel):
+    """Read learned active-role skills, independently of temporary perkEffects.
+
+    Unknown or incomplete crew data must never enable native GUI/input/audio.
+    Decode a changed snapshot once; never log the compact descriptions or IDs.
+    """
+    global _crew_perk_cache_key, _crew_perk_cache_status
+    try:
+        player = BigWorld.player()
+        if player is None:
+            return 'unknown'
+        vehicle, unused_origin = _resolve_player_vehicle(panel, player)
+        if vehicle is None:
+            return 'unknown'
+        crew_data = getattr(vehicle, 'crewCompactDescrs', None)
+        descriptor = getattr(vehicle, 'typeDescriptor', None)
+        roles_data = getattr(getattr(descriptor, 'type', None), 'crewRoles', None)
+        if crew_data is None or roles_data is None:
+            return 'unknown'
+        crew = tuple(crew_data)
+        roles = tuple(tuple(slot_roles) for slot_roles in roles_data)
+        if not crew or len(crew) > 16 or len(roles) != len(crew):
+            return 'unknown'
+        key = (id(vehicle), getattr(vehicle, 'id', None), crew, roles)
+        if key == _crew_perk_cache_key:
+            return _crew_perk_cache_status
+        from items.tankmen import TankmanDescr
+        try:
+            string_types = (basestring,)
+        except NameError:
+            string_types = (str, bytes)
+        status = 'absent'
+        for compact, active_roles in zip(crew, roles):
+            if (not compact or not isinstance(compact, string_types)
+                    or len(compact) > 65536 or not active_roles):
+                status = 'unknown'
+                continue
+            tankman = TankmanDescr(compact, battleOnly=True)
+            for skill_name, skill_level in tankman.skillLevels(active_roles):
+                if skill_name == STAY_SHARP_SKILL and skill_level > 0:
+                    _crew_perk_cache_key, _crew_perk_cache_status = key, 'present'
+                    return 'present'
+        # Do not cache incomplete snapshots; the server can populate them later.
+        if status != 'unknown':
+            _crew_perk_cache_key, _crew_perk_cache_status = key, status
+        return status
+    except Exception:
+        # Client versions without this read-only contract stay dormant.
+        return 'unknown'
+
+
+def _probe_medkit(panel, for_audio=False):
     """Return ready slot and reason. Check the *real* player tank, not camera.
 
     The equipment is ready only if the game reports it usable and explicitly
@@ -598,7 +805,8 @@ def _probe_medkit(panel):
         if item is None:
             continue
         had_medkit = True
-        if not item.isAvailableToUse:
+        anticipating = for_audio and _cooldown_soon(compact, item)
+        if not item.isAvailableToUse and not anticipating:
             continue
         descriptor = item.getDescriptor()
         if descriptor is None or descriptor.name not in enabled:
@@ -606,7 +814,7 @@ def _probe_medkit(panel):
         # Native _MedKitItem._canActivate uses avatar.vehicle when avatar
         # is omitted. Explicit avatar selects BigWorld.entity(playerVehicleID)
         # in sniper/strategic/arty modes and prevents the camera-only bug.
-        if not item.canActivate(avatar=player)[0]:
+        if not anticipating and not item.canActivate(avatar=player)[0]:
             continue
         try:
             slot = slots.index(compact)
@@ -615,10 +823,19 @@ def _probe_medkit(panel):
         valid, slot_reason = _slot_contract(panel, slot, compact)
         if not valid:
             return (None, 'incompatible_hud_' + slot_reason)
-        # The game's injury/stun warning must always have priority.
-        if slot in getattr(panel, '_equipmentsGlowCallbacks', {}):
+        # Keep native visual warnings on top. The same callback map also
+        # contains the ordinary green READY flash: it must not cut the voice
+        # that started just before zero, or delay an actual-ready announcement.
+        ready_flash = False
+        if for_audio and bool(getattr(item, 'becomeReady', False)):
+            try:
+                warning = getattr(panel, '_canApplyingGlowEquipment', None)
+                ready_flash = callable(warning) and not warning(item)
+            except Exception:
+                pass
+        if slot in getattr(panel, '_equipmentsGlowCallbacks', {}) and not ready_flash:
             return (None, 'vanilla_equipment_glow_priority')
-        return (slot, 'ready')
+        return (slot, 'cooldown_soon' if anticipating else 'ready')
     return (None, 'medkit_unavailable' if had_medkit else 'medkit_not_equipped')
 
 def _hud_visibility(panel):
@@ -772,6 +989,284 @@ def _geometry(panel, slot):
              1.0 - 2.0 * center_y / height,
              BORDER_SIZE * scale), 'centered_layout_' + native_origin)
 
+# GUI.Simple native key/mouse callbacks are unsafe in the current client:
+# its callback bridge raises "Unregistered type : BW::KeyEvent" in native code.
+# These components stay visual-only; one timer reads primitive cursor/button
+# state for both icons and applies completed clicks on a separate callback.
+_controls_poll_callback = None
+_controls_mouse_down = None
+_controls_cursor_was_active = False
+_controls_pending_actions = []
+_controls_pending_detaches = []
+
+
+class _ControlState(object):
+    def __init__(self, action, component):
+        self.action = action
+        self.component = component
+        self.pressed = False
+
+    def contains(self, point):
+        width, height = GUI.screenResolution()[:2]
+        x, y = point
+        center, size = self.component.position, self.component.size
+        return (abs(x - center[0]) < float(size[0]) / width and
+                abs(y - center[1]) < float(size[1]) / height)
+
+
+def _controls_cursor_active():
+    if _panel is None or not any(entry[0].visible for entry in _controls):
+        return False
+    try:
+        cursor = GUI.mcursor()
+        if not cursor.active or not cursor.visible:
+            return False
+        app = getattr(_panel, 'app', None)
+        modal = getattr(app, 'isModalViewShown', None)
+        if callable(modal) and modal():
+            return False
+        # Ctrl only exposes the game's cursor. Modifiers are not click inputs.
+        return _control_slot(_panel) is not None
+    except Exception:
+        return False
+
+
+def _control_slot(panel):
+    if _crew_perk_status(panel) != 'present':
+        return None
+    shown, unused_reason = _hud_visibility(panel)
+    if not shown:
+        return None
+    session = getattr(panel, 'sessionProvider', None)
+    if session is None or session.isReplayPlaying:
+        return None
+    player = BigWorld.player()
+    if player is None or player.isObserver() or not getattr(player, 'isVehicleAlive', True):
+        return None
+    vehicle, unused_reason = _resolve_player_vehicle(panel, player)
+    if vehicle is None or getattr(vehicle, 'health', 0) <= 0:
+        return None
+    if _camera_view(panel) == 2:
+        descriptor = getattr(vehicle, 'typeDescriptor', None)
+        tags = getattr(getattr(descriptor, 'type', None), 'tags', ())
+        if 'SPG' not in tags:
+            return None
+    valid, unused_reason = _panel_contract(panel)
+    if not valid:
+        return None
+    controller = getattr(getattr(session, 'shared', None), 'equipments', None)
+    iterator = getattr(controller, 'iterEquipmentsByTag', None)
+    if not callable(iterator):
+        return None
+    for compact, item in iterator(MEDKIT_TAG):
+        if item is None or compact not in panel._cds:
+            continue
+        slot = panel._cds.index(compact)
+        valid, unused_reason = _slot_contract(panel, slot, compact)
+        if valid:
+            return slot
+    return None
+
+
+def _cancel_control_actions():
+    actions = list(_controls_pending_actions)
+    _controls_pending_actions[:] = []
+    for action in actions:
+        try:
+            BigWorld.cancelCallback(action['callback'])
+        except Exception:
+            _exception('HUD control action cancellation failed')
+
+
+def _queue_control_action(state):
+    action = {'callback': None, 'panel': _panel, 'state': state}
+    def apply_control_action():
+        if action not in _controls_pending_actions:
+            return
+        _controls_pending_actions.remove(action)
+        panel = action['panel']
+        current = any(entry[3] is state and entry[0].visible for entry in _controls)
+        if panel is not _panel or not current or not _controls_cursor_active():
+            return
+        _log('HUD control click: ' + state.action)
+        if state.action == 'power':
+            _toggle_reminder()
+        else:
+            _toggle_voice()
+        # The regular state tick refreshes textures. Never mutate GUI roots
+        # or call Flash layout functions synchronously from input dispatch.
+    _controls_pending_actions.append(action)
+    try:
+        action['callback'] = BigWorld.callback(0.0, apply_control_action)
+    except Exception:
+        _controls_pending_actions.remove(action)
+        raise
+
+
+def _schedule_control_poll(delay):
+    global _controls_poll_callback
+    if _controls_poll_callback is None and _controls and _panel is not None:
+        _controls_poll_callback = BigWorld.callback(delay, _poll_controls)
+
+
+def _poll_controls():
+    global _controls_poll_callback, _controls_mouse_down, _controls_disabled, _controls_cursor_was_active
+    _controls_poll_callback = None
+    if not _controls or _panel is None:
+        return
+    try:
+        import Keys
+        cursor = GUI.mcursor()
+        down = bool(BigWorld.isKeyDown(Keys.KEY_LEFTMOUSE))
+        active = bool(cursor.active and cursor.visible and any(entry[0].visible for entry in _controls))
+        previous = _controls_mouse_down
+        was_active = _controls_cursor_was_active
+        _controls_mouse_down = down
+        _controls_cursor_was_active = active
+        if not active:
+            for entry in _controls:
+                entry[3].pressed = False
+        elif was_active and previous is not None and down != previous:
+            eligible = _controls_cursor_active()
+            for component, unused_owner, unused_mount, state in _controls:
+                inside = eligible and component.visible and state.contains(cursor.position)
+                if down:
+                    state.pressed = inside
+                else:
+                    clicked = state.pressed and inside
+                    state.pressed = False
+                    if clicked:
+                        _queue_control_action(state)
+        # The first sample is only a baseline: a button held before these
+        # icons appeared must not turn its eventual release into a click.
+        _schedule_control_poll(0.02 if active else 0.10)
+    except Exception:
+        _controls_disabled = True
+        _exception('HUD controls disabled after input polling failure')
+        _delete_controls()
+
+
+def _hide_controls():
+    global _controls_mouse_down, _controls_cursor_was_active
+    _controls_mouse_down = None
+    _controls_cursor_was_active = False
+    _cancel_control_actions()
+    for component, unused_owner, unused_mount, state in _controls:
+        component.visible = False
+        state.pressed = False
+
+
+def _dispose_control_roots(entries):
+    for component, owner, mount, unused_state in entries:
+        try:
+            if mount == 'hud_child':
+                owner.delChild(component)
+            elif mount == 'gui_root':
+                GUI.delRoot(component)
+        except Exception:
+            _exception('HUD control cleanup failed')
+
+
+def _delete_controls():
+    global _controls_poll_callback, _controls_mouse_down, _controls_cursor_was_active
+    callback = _controls_poll_callback
+    _controls_poll_callback = None
+    _controls_mouse_down = None
+    _controls_cursor_was_active = False
+    if callback is not None:
+        try:
+            BigWorld.cancelCallback(callback)
+        except Exception:
+            _exception('HUD control polling cancellation failed')
+    _cancel_control_actions()
+    entries = list(_controls)
+    _controls[:] = []
+    for component, unused_owner, unused_mount, state in entries:
+        component.visible = False
+        state.pressed = False
+    if not entries:
+        return
+    # Component disposal can run inside another native GUI handler. Removing
+    # roots there invalidates SimpleGUI's vector while it is still iterating.
+    # Keep the components alive and detach on the next engine callback instead.
+    pending = {'callback': None, 'entries': entries}
+    def detach_control_roots():
+        if pending not in _controls_pending_detaches:
+            return
+        _controls_pending_detaches.remove(pending)
+        _dispose_control_roots(entries)
+    _controls_pending_detaches.append(pending)
+    try:
+        pending['callback'] = BigWorld.callback(0.0, detach_control_roots)
+    except Exception:
+        # Hidden visual-only roots are safer than modifying an active native
+        # input traversal synchronously. Retain them if scheduling is unavailable.
+        _exception('HUD control deferred cleanup unavailable; hidden roots retained')
+
+
+def _sync_controls(panel):
+    """Keep visual-only switches and their one polling timer in sync with HUD."""
+    global _controls_disabled
+    if _controls_disabled:
+        return
+    try:
+        slot = _control_slot(panel)
+        geometry, unused_reason = _geometry(panel, slot) if slot is not None else (None, None)
+        if geometry is None:
+            _hide_controls()
+            return
+        if not _controls:
+            for action in ('power', 'voice'):
+                for state in ('on', 'off'):
+                    if not ResMgr.isFile('gui/maps/staysharp/control_%s_%s.dds' % (action, state)):
+                        raise ValueError('HUD control texture unavailable')
+            for action in ('power', 'voice'):
+                path = 'gui/maps/staysharp/control_%s_on.dds' % action
+                component = GUI.Simple(path)
+                state = _ControlState(action, component)
+                # An unattached allocation needs no native detach if setup fails.
+                entry = [component, None, 'unattached', state]
+                _controls.append(entry)
+                component.script = None
+                component.focus = False
+                component.moveFocus = False
+                component.mouseButtonFocus = False
+                component.widthMode = GUI.Simple.eSizeMode.PIXEL
+                component.heightMode = GUI.Simple.eSizeMode.PIXEL
+                component.horizontalPositionMode = GUI.Simple.ePositionMode.CLIP
+                component.verticalPositionMode = GUI.Simple.ePositionMode.CLIP
+                component.horizontalAnchor = GUI.Simple.eHAnchor.CENTER
+                component.verticalAnchor = GUI.Simple.eVAnchor.CENTER
+                component.materialFX = GUI.Simple.eMaterialFX.BLEND
+                component.filterType = GUI.Simple.eFilterType.LINEAR
+                component.visible = False
+                component.colour = (255, 255, 255, 255)
+                component.position = (0.0, 0.0, GUI_DEPTH)
+                # Record ownership before attachment for partial-failure cleanup.
+                entry[2] = 'gui_root'
+                GUI.addRoot(component)
+            _log('HUD controls created; visual-only roots; cursor polling; left-click power or voice')
+        width, height = GUI.screenResolution()[:2]
+        size = geometry[2] * (16.0 / BORDER_SIZE)
+        y = geometry[1] + 2.0 * (geometry[2] * 0.5 + size * 0.5 + 4.0 * _interface_scale(panel)) / height
+        for index, entry in enumerate(_controls):
+            component = entry[0]
+            action = 'power' if index == 0 else 'voice'
+            enabled = _reminder_enabled if index == 0 else _voice_enabled
+            path = 'gui/maps/staysharp/control_%s_%s.dds' % (action, 'on' if enabled else 'off')
+            if component.textureName != path:
+                component.textureName = path
+            component.size = (size, size)
+            component.position = (geometry[0] + (index * 2 - 1) * (size + 3.0 * _interface_scale(panel)) / width,
+                                  y, GUI_DEPTH)
+            component.visible = True
+        _schedule_control_poll(0.02)
+    except Exception:
+        _controls_disabled = True
+        _exception('HUD controls disabled after GUI failure')
+        _delete_controls()
+
+
 def _set_frame(level):
     """Update a single component's texture; no shader/colour writes per tick.
 
@@ -793,9 +1288,10 @@ def _set_frame(level):
     _frame = level
 
 
-def _hide_overlay(reason='not_ready'):
+def _hide_overlay(reason='not_ready', suspend_audio=True):
     global _overlay_active, _frame
-    _suspend_audio()
+    if suspend_audio:
+        _suspend_audio()
     _cancel_pulse()
     if not _overlay_active:
         return
@@ -998,6 +1494,30 @@ def _animate():
 def _refresh(panel):
     global _ready_slot, _ready_since, _last_reason, _last_panel_active
     global _last_hud_status, _last_geometry_source, _last_geometry_camera, _last_camera_view
+    global _perk_state, _voice_player
+    status = _crew_perk_status(panel)
+    if status != _perk_state:
+        _log('crew stay_sharp=%s; reminder %s' % (
+            status, 'awake' if status == 'present' else 'dormant'))
+    _perk_state = status
+    if status != 'present':
+        _ready_slot, _ready_since = None, None
+        _reset_audio()
+        _voice_player = None
+        _unsubscribe_hotkey()
+        _unsubscribe_equipment()
+        _delete_controls()
+        _delete_overlay()
+        return
+    if _key_handler is None:
+        _subscribe_hotkey()
+    if _equipment_controller is None:
+        _subscribe_equipment(panel)
+    _sync_controls(panel)
+    _track_battle_start(panel)
+    if not _reminder_enabled:
+        _hide_overlay('disabled_by_player')
+        return
     panel_active = getattr(panel, 'isActive', None)
     camera = _camera_view(panel)
     if camera != _last_camera_view:
@@ -1013,8 +1533,8 @@ def _refresh(panel):
         _log('native HUD visibility=' + hud_reason)
     if not shown:
         if hud_reason == 'native_panel_hidden':
-            slot, _ = _probe_medkit(panel)
-            _track_audio_ready(panel, slot)
+            slot, reason = _probe_medkit(panel, for_audio=True)
+            _track_audio_ready(panel, slot, reason)
         else:
             _reset_audio()
         _ready_slot, _ready_since = None, None
@@ -1022,21 +1542,21 @@ def _refresh(panel):
         return
 
     slot, reason = _probe_medkit(panel)
-    _track_audio_ready(panel, slot)
+    audio_slot, audio_reason = (slot, reason) if slot is not None else _probe_medkit(panel, for_audio=True)
+    _track_audio_ready(panel, audio_slot, audio_reason)
     if reason != _last_reason:
         _last_reason = reason
         _log('equipment state=' + reason + (' slot=%d' % slot if slot is not None else ''))
     if slot is None:
         _ready_slot, _ready_since = None, None
+        if audio_slot is not None:
+            geometry, _ = _geometry(panel, audio_slot)
+            if geometry is not None:
+                _hide_overlay(reason, suspend_audio=False)
+                _update_audio(eligible=True, anticipating=audio_reason == 'cooldown_soon')
+                return
         _hide_overlay(reason)
         return
-    if slot != _ready_slot:
-        _ready_slot, _ready_since = slot, _time()
-        _hide_overlay('slot_changed')
-        return
-    if _time() - _ready_since < STABLE_READY_DELAY:
-        return
-
     geometry, origin = _geometry(panel, slot)
     if origin != _last_geometry_source or camera != _last_geometry_camera:
         _last_geometry_source = origin
@@ -1046,8 +1566,14 @@ def _refresh(panel):
     if geometry is None:
         _hide_overlay('panel_geometry_unavailable_' + origin)
         return
+    _update_audio(eligible=True)
+    if slot != _ready_slot:
+        _ready_slot, _ready_since = slot, _time()
+        _hide_overlay('slot_changed', suspend_audio=False)
+        return
+    if _time() - _ready_since < STABLE_READY_DELAY:
+        return
     _show_overlay(slot, geometry)
-    _update_audio()
 
 def _check_state():
     global _state_callback, _error_count, _graphics_disabled
@@ -1074,20 +1600,253 @@ def _check_state():
         _exception('state scheduler failed')
 
 
+# Written into the game entrypoint; only primitive keys cross this boundary.
+_GARAGE_LABELS = json.loads(r'''{"en":{"title":"Medkit hotkeys","toggle_mod":"Toggle mod","toggle_voice":"Toggle voice","cancel":"Cancel","clear":"Clear","close":"Close","capture":"Press keys...","not_assigned":"Not assigned","hint":"Select a shortcut, hold the keys together, then release all keys. Esc cancels.","saved":"Shortcut saved","cancelled":"Recording cancelled","conflict":"These shortcuts overlap. Choose another combination.","failed":"Could not save. Previous shortcuts remain active."},"pl":{"title":"Skr\u00f3ty apteczki","toggle_mod":"W\u0142\u0105cz / wy\u0142\u0105cz mod","toggle_voice":"W\u0142\u0105cz / wy\u0142\u0105cz g\u0142os","cancel":"Anuluj","clear":"Wyczy\u015b\u0107","close":"Zamknij","capture":"Naci\u015bnij klawisze...","not_assigned":"Nieprzypisany","hint":"Wybierz skr\u00f3t, przytrzymaj klawisze razem, potem zwolnij wszystkie. Esc anuluje.","saved":"Skr\u00f3t zapisany","cancelled":"Nagrywanie anulowane","conflict":"Skr\u00f3ty nak\u0142adaj\u0105 si\u0119. Wybierz inn\u0105 kombinacj\u0119.","failed":"Nie uda\u0142o si\u0119 zapisa\u0107. Poprzednie skr\u00f3ty pozostaj\u0105 aktywne."},"de":{"title":"Tastenk\u00fcrzel f\u00fcr Erste Hilfe","toggle_mod":"Mod ein / aus","toggle_voice":"Stimme ein / aus","cancel":"Abbrechen","clear":"L\u00f6schen","close":"Schlie\u00dfen","capture":"Tasten dr\u00fccken...","not_assigned":"Nicht belegt","hint":"Tasten gemeinsam halten, dann alle loslassen. Esc bricht ab.","saved":"Tastenk\u00fcrzel gespeichert","cancelled":"Aufnahme abgebrochen","conflict":"Tastenk\u00fcrzel \u00fcberschneiden sich.","failed":"Speichern fehlgeschlagen. Bisherige Tastenk\u00fcrzel bleiben aktiv."},"fr":{"title":"Raccourcis de la trousse","toggle_mod":"Activer le mod","toggle_voice":"Activer la voix","cancel":"Annuler","clear":"Effacer","close":"Fermer","capture":"Appuyez sur les touches...","not_assigned":"Non attribu\u00e9","hint":"Maintenez les touches ensemble puis rel\u00e2chez-les toutes. \u00c9chap annule.","saved":"Raccourci enregistr\u00e9","cancelled":"Enregistrement annul\u00e9","conflict":"Ces raccourcis se chevauchent.","failed":"\u00c9chec de l\u2019enregistrement. Les anciens raccourcis restent actifs."},"es":{"title":"Atajos del botiqu\u00edn","toggle_mod":"Activar mod","toggle_voice":"Activar voz","cancel":"Cancelar","clear":"Borrar","close":"Cerrar","capture":"Pulsa las teclas...","not_assigned":"Sin asignar","hint":"Mant\u00e9n las teclas juntas y su\u00e9ltalas todas. Esc cancela.","saved":"Atajo guardado","cancelled":"Grabaci\u00f3n cancelada","conflict":"Los atajos se superponen.","failed":"No se pudo guardar. Se conservan los atajos anteriores."},"ru":{"title":"\u041a\u043b\u0430\u0432\u0438\u0448\u0438 \u0430\u043f\u0442\u0435\u0447\u043a\u0438","toggle_mod":"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043c\u043e\u0434","toggle_voice":"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0433\u043e\u043b\u043e\u0441","cancel":"\u041e\u0442\u043c\u0435\u043d\u0430","clear":"\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c","close":"\u0417\u0430\u043a\u0440\u044b\u0442\u044c","capture":"\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043a\u043b\u0430\u0432\u0438\u0448\u0438...","not_assigned":"\u041d\u0435 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u043e","hint":"\u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043a\u043b\u0430\u0432\u0438\u0448\u0438 \u0432\u043c\u0435\u0441\u0442\u0435, \u0437\u0430\u0442\u0435\u043c \u043e\u0442\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u0441\u0435. Esc \u043e\u0442\u043c\u0435\u043d\u044f\u0435\u0442.","saved":"\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e","cancelled":"\u0417\u0430\u043f\u0438\u0441\u044c \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430","conflict":"\u0421\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u043f\u0435\u0440\u0435\u0441\u0435\u043a\u0430\u044e\u0442\u0441\u044f.","failed":"\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c. \u041f\u0440\u0435\u0436\u043d\u0438\u0435 \u0441\u043e\u0447\u0435\u0442\u0430\u043d\u0438\u044f \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u043c\u0438."},"uk":{"title":"\u041a\u043b\u0430\u0432\u0456\u0448\u0456 \u0430\u043f\u0442\u0435\u0447\u043a\u0438","toggle_mod":"\u0423\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u043c\u043e\u0434","toggle_voice":"\u0423\u0432\u0456\u043c\u043a\u043d\u0443\u0442\u0438 \u0433\u043e\u043b\u043e\u0441","cancel":"\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438","clear":"\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0438","close":"\u0417\u0430\u043a\u0440\u0438\u0442\u0438","capture":"\u041d\u0430\u0442\u0438\u0441\u043d\u0456\u0442\u044c \u043a\u043b\u0430\u0432\u0456\u0448\u0456...","not_assigned":"\u041d\u0435 \u043f\u0440\u0438\u0437\u043d\u0430\u0447\u0435\u043d\u043e","hint":"\u0423\u0442\u0440\u0438\u043c\u0443\u0439\u0442\u0435 \u043a\u043b\u0430\u0432\u0456\u0448\u0456 \u0440\u0430\u0437\u043e\u043c, \u043f\u043e\u0442\u0456\u043c \u0432\u0456\u0434\u043f\u0443\u0441\u0442\u0456\u0442\u044c \u0443\u0441\u0456. Esc \u0441\u043a\u0430\u0441\u043e\u0432\u0443\u0454.","saved":"\u0421\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043d\u043e","cancelled":"\u0417\u0430\u043f\u0438\u0441 \u0441\u043a\u0430\u0441\u043e\u0432\u0430\u043d\u043e","conflict":"\u0421\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u043f\u0435\u0440\u0435\u0442\u0438\u043d\u0430\u044e\u0442\u044c\u0441\u044f.","failed":"\u041d\u0435 \u0432\u0434\u0430\u043b\u043e\u0441\u044f \u0437\u0431\u0435\u0440\u0435\u0433\u0442\u0438. \u041f\u043e\u043f\u0435\u0440\u0435\u0434\u043d\u0456 \u0441\u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u044f \u0437\u0430\u043b\u0438\u0448\u0430\u044e\u0442\u044c\u0441\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u0438\u043c\u0438."}}''')
+
+
+def _garage_payload():
+    from staysharp_medkit.hotkeys import format_chord
+    config = _settings_store.get_payload() if _settings_store is not None else {}
+    hotkeys = _configured_chords(config)
+    return {'hotkeys': hotkeys,
+            'display': dict((key, format_chord(value).replace('+', ' + ')) for key, value in hotkeys.items()
+                            if key in ('toggle_mod', 'toggle_voice')),
+            'capturing': _capture_target,
+            'preview': list(_shortcut_tracker.held_keys) if _capture_target and _shortcut_tracker else [],
+            'status': _settings_status, 'error': _settings_error,
+            'labels': _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en']),
+            'enabled': _default_reminder_enabled, 'voice_enabled': _default_voice_enabled}
+
+
+def _publish_garage_settings():
+    if _garage_handle is not None:
+        from staysharp_medkit import garage
+        garage.update(_garage_payload())
+
+
+def _cancel_capture(publish=True):
+    global _capture_target
+    _capture_target = None
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.reset()
+    if _panel is None:
+        _unsubscribe_hotkey()
+    if publish:
+        _publish_garage_settings()
+
+
+def _garage_action(command):
+    global _garage_open, _capture_target, _settings_error, _settings_status
+    action = command.get('action')
+    if action in ('close', 'cancel_capture'):
+        if action == 'close':
+            _garage_open = False
+        _settings_status = ''
+        _settings_error = ''
+        _cancel_capture()
+        return
+    # A late garage command must never activate recording during battle.
+    player = BigWorld.player()
+    if _panel is not None or getattr(player, 'arena', None) is not None:
+        return False
+    if action == 'open':
+        _cancel_capture(publish=False)
+        _garage_open = True
+        _settings_status = _settings_error = ''
+        if _settings_store is not None:
+            _settings_changed(_settings_store.load())
+        _publish_garage_settings()
+        return
+    binding = command.get('binding')
+    if not _garage_open or binding not in ('toggle_mod', 'toggle_voice'):
+        return
+    _settings_status = _settings_error = ''
+    if action == 'begin_capture':
+        _cancel_capture(publish=False)
+        _capture_target = binding
+        _shortcut_tracker.begin_capture(side_specific=True)
+        _subscribe_hotkey()
+        if _key_handler is None:
+            _capture_target = None
+            _shortcut_tracker.reset()
+            _settings_error = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['failed']
+    elif action == 'clear_binding':
+        _cancel_capture(publish=False)
+        _save_binding(binding, [])
+    _publish_garage_settings()
+
+
+def _save_binding(binding, chord):
+    global _settings_status, _settings_error
+    labels = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])
+    if _settings_store is not None and _settings_store.update_hotkeys({binding: chord}):
+        _settings_status, _settings_error = labels['saved'], ''
+        _log('shortcut configuration saved')
+    else:
+        code = _settings_store.last_error if _settings_store is not None else None
+        _settings_status = ''
+        _settings_error = labels['conflict' if code == 'conflicting_hotkeys' else 'failed']
+    _publish_garage_settings()
+
+
+def _garage_capture_allowed():
+    from staysharp_medkit import garage
+    return garage.is_capture_allowed()
+
+
+def _input_blocked():
+    try:
+        from messenger import MessengerEntry
+        if MessengerEntry.g_instance.gui.isFocused():
+            return True
+        app = getattr(_panel, 'app', None)
+        modal = getattr(app, 'isModalViewShown', None)
+        return bool(callable(modal) and modal())
+    except Exception:
+        return True
+
+
+def _on_key_down(event):
+    _handle_shortcut_key(event, True)
+
+
+def _on_key_up(event):
+    _handle_shortcut_key(event, False)
+
+
+def _handle_shortcut_key(event, down):
+    global _capture_target, _settings_status
+    from staysharp_medkit.hotkeys import key_name
+    if _shortcut_tracker is None:
+        return
+    try:
+        # Ignore all mouse/unsupported input before querying vehicle or crew.
+        key = key_name(event.key)
+        if key is None:
+            return
+        repeated = bool(event.isRepeatedEvent()) if down else False
+        if repeated:
+            return
+        blocked = _input_blocked()
+        capturing = _capture_target is not None
+        if capturing:
+            blocked = (blocked or not _garage_open or _panel is not None
+                       or getattr(BigWorld.player(), 'arena', None) is not None
+                       or not _garage_capture_allowed())
+        elif _panel is None or _crew_perk_status(_panel) != 'present':
+            _shortcut_tracker.reset()
+            return
+        reconciled = _shortcut_tracker.reconcile(getattr(BigWorld, 'isKeyDown', None), current_key=event.key)
+        if reconciled and capturing:
+            _settings_status = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['cancelled']
+            _cancel_capture()
+            return
+        outcome = _shortcut_tracker.feed(key, down, repeated=repeated, blocked=blocked)
+        if capturing:
+            if outcome['cancelled']:
+                _settings_status = _GARAGE_LABELS.get(_language, _GARAGE_LABELS['en'])['cancelled']
+                _cancel_capture()
+            elif outcome['captured'] is not None:
+                binding = _capture_target
+                _capture_target = None
+                _save_binding(binding, outcome['captured'])
+                if _panel is None:
+                    _unsubscribe_hotkey()
+            else:
+                _publish_garage_settings()
+            return
+        for action in outcome['actions']:
+            if action == 'toggle_mod':
+                _toggle_reminder()
+            elif action == 'toggle_voice':
+                _toggle_voice()
+    except Exception:
+        _cancel_capture(publish=False)
+        _exception('shortcut input unavailable')
+
+
+def _toggle_reminder():
+    global _reminder_enabled
+    if _panel is None:
+        return
+    _reminder_enabled = not _reminder_enabled
+    _reset_audio()
+    if not _reminder_enabled:
+        _hide_overlay('disabled_by_player')
+    _log('reminder enabled=%s for current battle' % _reminder_enabled)
+
+
+def _toggle_voice():
+    global _voice_enabled
+    if _panel is None:
+        return
+    _voice_enabled = not _voice_enabled
+    _reset_audio()
+    _log('voice enabled=%s for current battle' % _voice_enabled)
+
+
+def _subscribe_hotkey():
+    global _key_handler
+    if _key_handler is not None:
+        return
+    handler = None
+    try:
+        from gui import InputHandler
+        handler = InputHandler.g_instance
+        handler.onKeyDown += _on_key_down
+        handler.onKeyUp += _on_key_up
+        _key_handler = handler
+        _log('configured keyboard shortcuts subscribed')
+    except Exception:
+        if handler is not None:
+            for name, callback in (('onKeyDown', _on_key_down), ('onKeyUp', _on_key_up)):
+                try:
+                    event = getattr(handler, name)
+                    event -= callback
+                except Exception:
+                    pass
+        _exception('shortcut subscription failed')
+
+
+def _unsubscribe_hotkey():
+    global _key_handler
+    handler, _key_handler = _key_handler, None
+    if handler is not None:
+        for name, callback in (('onKeyDown', _on_key_down), ('onKeyUp', _on_key_up)):
+            try:
+                event = getattr(handler, name)
+                event -= callback
+            except Exception:
+                _exception('shortcut unsubscription failed')
+    if _shortcut_tracker is not None:
+        _shortcut_tracker.reset()
+
+
 def _activate(panel):
     global _panel, _ready_slot, _ready_since, _graphics_disabled, _error_count
     global _last_reason, _last_panel_active, _last_hud_status
     global _last_geometry_source, _last_geometry_camera, _last_camera_view
     global _last_vehicle_source
-    global _voice_player, _voice_disabled, _effect_disabled, _effect_sound, _effect_compact
+    global _voice_player, _voice_disabled, _reminder_enabled, _voice_enabled, _voice_attempts, _voice_failures
+    global _controls_disabled, _battle_voice_due, _perk_state
     if panel is _panel:
         return
     if _panel is not None:
         _deactivate(_panel)
+    _cancel_capture(publish=False)
+    from staysharp_medkit import garage
+    garage.close_window()
     _reset_audio()
+    _battle_voice_due = None
+    _cooldown_deadlines.clear()
+    _clear_crew_perk_cache()
     _voice_player = None
-    _voice_disabled, _effect_disabled = False, False
-    _effect_sound, _effect_compact = None, None
+    _voice_disabled = False
+    _voice_attempts = 0
+    _voice_failures = 0
+    _controls_disabled = False
+    _reminder_enabled = _default_reminder_enabled
+    _voice_enabled = _default_voice_enabled
     _panel = panel
     _ready_slot = None
     _ready_since = None
@@ -1100,6 +1859,15 @@ def _activate(panel):
     _last_geometry_camera = None
     _last_camera_view = None
     _last_vehicle_source = None
+    _perk_state = _crew_perk_status(panel)
+    _log('crew stay_sharp=%s; reminder %s' % (
+        _perk_state, 'awake' if _perk_state == 'present' else 'dormant'))
+    if _perk_state == 'present':
+        _subscribe_hotkey()
+        _subscribe_equipment(panel)
+    _log('audio battle_start mod_version=%s language=%s event=%s' % (VERSION, _language, _ready_voice_event()))
+    if _perk_state == 'present':
+        _audio_diagnostics()
     _log('battle panel populated; renderer deferred; HUD visibility required')
     _schedule_state()
 
@@ -1108,11 +1876,17 @@ def _deactivate(panel):
     global _panel, _ready_slot, _ready_since
     if panel is None or panel is not _panel:
         return
+    _log('audio battle_end attempts=%d failures=%d disabled=%s' % (
+        _voice_attempts, _voice_failures, _voice_disabled))
+    _unsubscribe_hotkey()
+    _unsubscribe_equipment()
     _panel = None
     _ready_slot = None
     _ready_since = None
     _cancel_state()
     _reset_audio()
+    _clear_crew_perk_cache()
+    _delete_controls()
     _delete_overlay()
     _log('battle panel disposed')
 
@@ -1147,13 +1921,25 @@ def _on_component_unregistered(event):
             _exception('HUD unregistration handler failed')
 
 
+def _install_garage():
+    global _garage_handle
+    try:
+        from staysharp_medkit import garage
+        _garage_handle = garage.install(_garage_action, _garage_payload)
+        _log('garage settings available=%s' % (_garage_handle is not None))
+    except Exception:
+        _exception('garage settings unavailable; battle reminder remains active')
+
+
 def init():
-    """Subscribe once; never modify WoT methods or installed mod hooks."""
+    """Contain startup failures before they can abort the game's mod loader."""
     global _event_bus, _event_scope, _consumables_alias
     if _event_listeners:
         return
-    _load_language()
     try:
+        _log('v' + VERSION + ' startup phase=settings')
+        _load_language()
+        _install_garage()
         from gui.shared import g_eventBus, EVENT_BUS_SCOPE
         from gui.shared.events import ComponentEvent
         from gui.Scaleform.genConsts.BATTLE_VIEW_ALIASES import BATTLE_VIEW_ALIASES
@@ -1179,15 +1965,29 @@ def init():
                     pass
                 raise
             _event_listeners.append((event_type, handler))
-        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, ready voice + native medkit reminders')
+        _log('v' + VERSION + ' loaded; component events, strict HUD layout adapter, repeating ready voice and battle hotkey')
     except Exception:
-        _exception('component event subscription failed; mod disabled')
+        _exception('startup failed; mod disabled; game startup continues')
         fini()
 
 
 def fini():
     """Unregister handlers and cleanup without touching native WoT methods."""
-    global _event_bus, _event_scope, _consumables_alias
+    global _event_bus, _event_scope, _consumables_alias, _garage_handle, _garage_open
+    _garage_open = False
+    try:
+        _cancel_capture(publish=False)
+    except Exception:
+        _exception('shortcut cleanup failed')
+    # Cleanup must not import a module that failed or never finished loading.
+    garage = sys.modules.get('staysharp_medkit.garage')
+    cleanup = getattr(garage, 'uninstall', None)
+    if callable(cleanup):
+        try:
+            cleanup()
+        except Exception:
+            _exception('garage settings cleanup failed')
+    _garage_handle = None
     if _panel is not None:
         try:
             _deactivate(_panel)
