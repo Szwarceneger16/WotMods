@@ -318,8 +318,10 @@ button:disabled { opacity:0.45; }
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
 .ss-group .ss-performance { flex:1 1 280rem; min-width:0; width:auto; }
 .ss-group .ss-economy { flex:1 1 300rem; min-width:0; width:auto; }
-.ss-group .ss-money-label { width:23%; font-size:12rem; }
-.ss-group .ss-money-value { width:25.666%; }
+/* Reclaim cell insets before widening a table: translated currency names and
+   complete signed eight-digit amounts must fit the same compact card. */
+.ss-group .ss-money-label { width:24%; padding-left:2rem; padding-right:0; font-size:12rem; }
+.ss-group .ss-money-value { width:25.333%; padding-right:1rem; }
 .ss-group .ss-money-row .ss-money-value { font-size:13rem; }
 .ss-narrow-cards .ss-group .ss-performance, .ss-narrow-cards .ss-group .ss-economy { flex-basis:100%; }
 .ss-narrow-cards .ss-group .ss-performance { padding-right:0; }
