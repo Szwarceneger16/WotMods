@@ -6,6 +6,10 @@ SESSION STATS — CHANGELOG
 • Include account-level bond awards in the same battle finances as vehicle earnings.
 • Replace the account reset tab with a timeline of saved points and prior reset boundaries.
 • Add a resize grip that respects the game's interface scale.
+• Show per-battle WN8 in the native Random Battle overview's bottom statistics.
+  Keep its label visible with a spinner while processing and a dash if unavailable.
+• Place the garage button just after built-in statistics in the native control
+  row, preserving the original notification spacing.
 
 0.3.4 • 2026-10-30
 • Use the requested lowercase installed filename grz_sessions_stats.wotmod.

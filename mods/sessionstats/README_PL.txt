@@ -49,7 +49,8 @@ QUICK INSTALLATION
    one copy of that library. Install the grz.sessionstats package and any desired
    JSON overrides. Replace an older OpenWG file with the included newer version.
 5. Start the game and enter the garage. Click the three-bar icon with a small
-   WN8 label in the upper-right garage footer, or press Ctrl+F10. The shortcut
+   WN8 label immediately to the right of the built-in statistics in the
+   lower-right garage footer, or press Ctrl+F10. The shortcut
    toggles the window; Esc and the close button also close it. Drag the title
    bar with the left mouse button to move the window.
 
@@ -235,6 +236,14 @@ be promised; the gap stays explicit. See source/docs/OFFLINE_RESULT_RECOVERY.md.
 
 Resetting starts a new visible period and preserves the old journal on disk.
 A battle started before the reset does not enter the new manual period.
+
+WN8 ON THE NATIVE BATTLE RESULT
+The Random Battle overview adds WN8 to its bottom personal-statistics strip.
+The WN8 label remains visible while a spinner replaces the value during
+processing. The number belongs to the displayed battle, including an older
+result, and zero is a valid value. Unavailable or unsupported data shows a dash.
+Missing data stops spinning after 30 seconds; a later result can still update it.
+This optional display requires OpenWG Gameface, like the garage button.
 
 SPINNER AND PENDING RESULTS
 A small spinner appears above the garage icon's bars while waiting for a result

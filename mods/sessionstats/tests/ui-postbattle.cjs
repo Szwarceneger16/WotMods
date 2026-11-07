@@ -25,6 +25,10 @@ async function fixture(browser,options,errors) {
     <main id="overview" class="Overview_sourceFixture"></main>
     <aside class="PersonalEfficiency_messagesPanel_wrongScope"><p>Unrelated native explanation</p></aside>
   </body></html>`);
+  // Initialize Playwright's main/utility helpers before changing the app's
+  // observer capability; those helpers need their own native observer once.
+  await page.waitForFunction(()=>true);
+  await page.locator('body').count();
   await page.evaluate(options=>{
     const t=window.__postbattleTest={events:{},eventCalls:[],modelCalls:[],activeCallbacks:new Map(),
       sequence:1000,featureId:41,present:options.feature!==false,wrapped:false,iterator:false,
