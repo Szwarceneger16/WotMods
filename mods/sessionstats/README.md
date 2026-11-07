@@ -150,7 +150,10 @@ the table header; differing coverage remains beside its own row or value.
 Information icons show explanations after one second over the icon. Moving
 across a statistics section does not open a tooltip. Battle bonuses share one
 row per source with separate resource columns; premium credit/XP multipliers
-share a row too. Battle Pass values use compact cells above the mission rows.
+share a row too. Battle Pass is a compact strip above the details. A wider bonus
+table sits beside the mission cards; each mission has its name, progress and
+description inside one outline. These sections wrap when the card cannot fit
+them without crowding, including unusually large numerical rewards.
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

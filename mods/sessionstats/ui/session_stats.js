@@ -795,18 +795,25 @@
         var data = battle.details || {}, points = data.pass_points || {};
         var missions = data.missions || {}, ids = Object.keys(missions);
         var bonuses = data.bonuses || {};
-        var rewards = append(panel, element('div', 'ss-more-rewards'));
         if (hasNumber(points.credited) || ['battle', 'missions', 'vehicle'].some(function (key) { return hasNumber(points[key]); })) {
-            var pass = append(rewards, element('div', 'ss-more-reward-block ss-more-pass-block'));
+            var pass = append(panel, element('div', 'ss-more-reward-block ss-more-pass-block'));
             append(pass, element('h3', 'ss-more-title', t('more.pass')));
             var passTable = rewardTable(pass, 'ss-more-pass');
             if (hasNumber(points.credited)) { rewardRow(passTable, t('more.pass.total', [number(points.credited)])); }
             ['battle', 'missions', 'vehicle'].forEach(function (key) {
-                if (points[key] > 0) { rewardRow(passTable, t('more.pass.' + key, [number(points[key])])); }
+                if (points[key] > 0 || (!hasNumber(points.credited) && hasNumber(points[key]))) {
+                    rewardRow(passTable, t('more.pass.' + key, [number(points[key])]));
+                }
             });
         }
+        var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
+        var hasBonuses = keys.length || battle.xp_bonus_applied;
+        var detailColumns = ids.length || hasBonuses ? append(panel, element('div', 'ss-more-columns')) : null;
+        // Keep the reading order stable when either section is absent or wraps.
+        var bonusBlock = hasBonuses ? append(detailColumns,
+            element('div', 'ss-more-reward-block ss-more-bonus-block')) : null;
         if (ids.length) {
-            var missionBlock = append(panel, element('div', 'ss-more-mission-block'));
+            var missionBlock = append(detailColumns, element('div', 'ss-more-mission-block'));
             append(missionBlock, element('h3', 'ss-more-title', t('more.missions')));
             if (data.active_crucible && ids.indexOf(data.active_crucible) > 0) {
                 ids.splice(ids.indexOf(data.active_crucible), 1);
@@ -832,12 +839,10 @@
                     var counter = mission.progress_kind === 'vehicles' ? 'more.progress.vehicles' : 'more.progress';
                     append(status, element('div', 'ss-more-caption', t(counter, [number(mission.before), number(mission.after)])));
                 }
-                if (mission.description) { append(identity, element('div', 'ss-more-mission-description ss-more-caption', mission.description)); }
+                if (mission.description) { append(row, element('div', 'ss-more-mission-description ss-more-caption', mission.description)); }
             });
         }
-        var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
-        if (keys.length || battle.xp_bonus_applied) {
-            var bonusBlock = append(rewards, element('div', 'ss-more-reward-block ss-more-bonus-block'));
+        if (bonusBlock) {
             append(bonusBlock, element('h3', 'ss-more-title', t('more.bonuses')));
             var columns = ['finance.credits', 'more.column.xp', 'more.column.free_xp', 'more.column.crew_xp', 'finance.bonds'];
             var sources = [
@@ -853,19 +858,21 @@
                 return sources.some(function (source) { return source[index] && hasNumber(bonuses[source[index]]); });
             });
             var longBonus = sources.some(function (source) {
-                return source.some(function (key) {
-                    return key && key.indexOf('Factor') < 0 && hasNumber(bonuses[key]) && Math.abs(bonuses[key]) >= 1000000;
+                return source.some(function (key, index) {
+                    return key && key.indexOf('Factor') < 0 && hasNumber(bonuses[key]) &&
+                        Math.abs(bonuses[key]) >= (index === 1 ? 1000 : 1000000);
                 });
             });
+            if (longBonus) { bonusBlock.className += ' ss-long-bonus-values'; }
+            bonusBlock.setAttribute('data-resource-count', String(visible.filter(function (value) { return value; }).length));
             var bonusTable = sources.length ? rewardTable(bonusBlock, 'ss-more-bonuses' + (longBonus ? ' ss-long-bonus-values' : '')) : null;
             var factors = null;
-            bonusBlock.style.flexBasis = Math.max(240, 120 + visible.filter(function (value) { return value; }).length * 60) + 'rem';
             if (sources.length) {
                 var heading = append(bonusTable, element('div', 'ss-bonus-row ss-bonus-head'));
                 heading.setAttribute('role', 'row');
                 append(heading, element('div', 'ss-bonus-label', t('more.bonuses'))).setAttribute('role', 'columnheader');
                 columns.forEach(function (label, index) {
-                    if (visible[index]) { append(heading, element('div', 'ss-bonus-number', t(label))).setAttribute('role', 'columnheader'); }
+                    if (visible[index]) { append(heading, element('div', 'ss-bonus-number ss-bonus-column-' + index, t(label))).setAttribute('role', 'columnheader'); }
                 });
                 sources.forEach(function (source) {
                     var first = source.filter(function (key) { return key && hasNumber(bonuses[key]); })[0];
@@ -880,7 +887,7 @@
                         var key = source[index];
                         var divisor = key && (key.slice(-9) === 'Factor100' ? 100 : key.slice(-8) === 'Factor10' ? 10 : null);
                         var output = hasNumber(value) ? (divisor ? '\u00d7' + String(value / divisor).replace('.', t('format.decimal')) : signed(value)) : t('format.missing');
-                        append(row, element('div', 'ss-bonus-number' + (divisor ? ' ss-bonus-factor' : ''), output)).setAttribute('role', 'cell');
+                        append(row, element('div', 'ss-bonus-number ss-bonus-column-' + index + (divisor ? ' ss-bonus-factor' : ''), output)).setAttribute('role', 'cell');
                     });
                 });
             }
@@ -890,7 +897,6 @@
             }
         }
         if (data.suicide) { append(panel, element('p', 'ss-more-caption', t('more.suicide'))); }
-        if (!rewards.firstChild) { panel.removeChild(rewards); }
         if (!panel.firstChild) { append(panel, element('p', '', t('more.empty'))); }
     }
     function attachBattleMore(card, header, battle) {
@@ -991,6 +997,7 @@
         });
         nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns ss-card-stream' : '') +
             (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
+            (Math.min(width, cardWidth) < 500 ? ' ss-stacked-more' : '') +
             (Math.min(width, cardWidth) < (state.group === 'battles' ? 430 : 500) ? ' ss-narrow-cards' : '');
         var changed = state.cardLayoutWide !== wide;
         var cards = state.groupCards || [], owned = [], focused = document.activeElement;

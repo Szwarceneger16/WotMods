@@ -45,17 +45,17 @@ async function audit(page,mode,group) {
         Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>limit) issues.push({kind:'overlapping-header-controls',i,j});
     }
     const selectors=[
-      '.ss-control-label','.ss-group-title','.ss-group-subtitle','.ss-more-mission-name strong',
+      '.ss-control-label','.ss-group-title','.ss-group-subtitle','.ss-more-mission-name strong','.ss-more-mission-description','.ss-more-caption',
       '.ss-more-mission-status','.ss-more-label','.ss-bonus-number','.ss-bonus-label','.ss-more-amount',
       '.ss-money-label','.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-cell-coverage','.ss-battle-value','.ss-group-kpi .ss-kpi-value',
     ];
-    for(const label of panel.querySelectorAll('.ss-more-pass .ss-more-label')) {
+    for(const label of panel.querySelectorAll('.ss-more-pass .ss-more-label,.ss-bonus-head .ss-bonus-number')) {
       const walker=document.createTreeWalker(label,NodeFilter.SHOW_TEXT);
       let node;
-      while((node=walker.nextNode())) for(const word of node.textContent.matchAll(/\S+/g)) {
+      while((node=walker.nextNode())) for(const word of node.textContent.matchAll(/[^\s\u002d\u2010-\u2015]+/g)) {
         const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);
         const fragments=[...range.getClientRects()];
-        if(fragments.some(rect=>Math.abs(rect.top-fragments[0].top)>limit)) issues.push({kind:'split-point-word',text:word[0]});
+        if(fragments.some(rect=>Math.abs(rect.top-fragments[0].top)>limit)) issues.push({kind:label.closest('.ss-bonus-head') ? 'split-bonus-heading-word' : 'split-point-word',text:word[0]});
       }
     }
     for(const row of panel.querySelectorAll('.ss-bonus-row')) {
@@ -102,26 +102,50 @@ async function audit(page,mode,group) {
     }
     if(group==='battles' && (!matrix || !visible(matrix))) issues.push({kind:'missing-bonus-matrix'});
     if(group==='battles') {
-      const rewards=more.querySelector('.ss-more-rewards'),missions=more.querySelector('.ss-more-mission-block'),
+      const columns=more.querySelector('.ss-more-columns'),missions=more.querySelector('.ss-more-mission-block'),
         pass=more.querySelector('.ss-more-pass-block'),bonus=more.querySelector('.ss-more-bonus-block');
-      if(!rewards || !rewards.contains(pass) || !rewards.contains(bonus) || rewards.contains(missions) ||
-        rewards.getBoundingClientRect().bottom>missions.getBoundingClientRect().top+limit) issues.push({kind:'fragmented-numerical-rewards'});
-      const missionRows=[...missions.querySelectorAll('.ss-more-mission')],descriptions=[...missions.querySelectorAll('.ss-more-mission-description')];
-      if(missionRows.length!==4 || descriptions.length!==4 || !missionRows.every(visible) || !descriptions.every(visible)) {
+      if(!columns || !pass || !missions || !bonus || pass.parentNode!==more || bonus.parentNode!==columns || missions.parentNode!==columns) {
+        issues.push({kind:'missing-more-columns'});
+      } else {
+        const passBox=pass.getBoundingClientRect(),columnBox=columns.getBoundingClientRect(),moreBox=more.getBoundingClientRect(),
+          bonusBox=bonus.getBoundingClientRect(),missionBox=missions.getBoundingClientRect();
+        if(Math.abs(passBox.width-moreBox.width)>limit || passBox.bottom>columnBox.top+limit) issues.push({kind:'misplaced-point-strip'});
+        if(first.getBoundingClientRect().width/scale>=499 && !bonus.classList.contains('ss-long-bonus-values')) {
+          if(Math.abs(bonusBox.top-missionBox.top)>limit || bonusBox.right>missionBox.left+limit) issues.push({kind:'stacked-wide-more-columns'});
+        } else if(missionBox.top<bonusBox.bottom-limit) issues.push({kind:'unwrapped-more-columns'});
+        if(!stress) {
+          const title=pass.querySelector('.ss-more-title').getBoundingClientRect(),points=pass.querySelector('.ss-more-pass').getBoundingClientRect();
+          if(title.right>points.left+limit || Math.min(title.bottom,points.bottom)-Math.max(title.top,points.top)<=0) issues.push({kind:'noninline-point-strip'});
+        }
+      }
+      const missionRows=missions ? [...missions.querySelectorAll('.ss-more-mission')] : [],
+        descriptions=missions ? [...missions.querySelectorAll('.ss-more-mission-description')] : [];
+      const expectedMissions=stress ? 4 : 3;
+      if(missionRows.length!==expectedMissions || descriptions.length!==expectedMissions || !missionRows.every(visible) || !descriptions.every(visible)) {
         issues.push({kind:'collapsed-mission-details'});
       }
-      if(!stress) {
-        const pointCells=pass.querySelectorAll('.ss-more-value'),factorCells=matrix.querySelectorAll('.ss-bonus-factor');
-        const walker=document.createTreeWalker(pass,NodeFilter.SHOW_TEXT);let textNode,maxInk=0;
-        while((textNode=walker.nextNode())) {
-          const range=document.createRange();range.selectNodeContents(textNode);
-          maxInk=Math.max(maxInk,...[...range.getClientRects()].map(rect=>rect.width/scale));
+      for(const mission of missionRows) {
+        const row=mission.getBoundingClientRect(),identity=mission.querySelector('.ss-more-mission-name').getBoundingClientRect(),
+          status=mission.querySelector('.ss-more-mission-status').getBoundingClientRect(),outline=getComputedStyle(mission),
+          description=mission.querySelector('.ss-more-mission-description').getBoundingClientRect();
+        if(status.top<identity.bottom-limit || identity.left<row.left-limit || identity.right>row.right+limit ||
+          status.left<row.left-limit || status.right>row.right+limit || status.bottom>row.bottom+limit ||
+          description.top<status.bottom-limit || description.left<row.left-limit || description.right>row.right+limit ||
+          description.bottom>row.bottom+limit ||
+          ['Top','Right','Bottom','Left'].some(edge=>parseFloat(outline['border'+edge+'Width'])<=0)) {
+          issues.push({kind:'fragmented-mission-result'});
         }
-        if(pointCells.length!==1 || pass.getBoundingClientRect().width/scale>maxInk+40 ||
-          matrix.querySelectorAll('.ss-bonus-row').length!==3 || factorCells.length!==2 ||
+      }
+      if(!stress && pass && matrix) {
+        const pointCells=pass.querySelectorAll('.ss-more-value'),factorCells=matrix.querySelectorAll('.ss-bonus-factor');
+        if(pointCells.length!==3 || matrix.querySelectorAll('.ss-bonus-head .ss-bonus-number').length!==5 ||
+          matrix.querySelectorAll('.ss-bonus-row').length!==4 || factorCells.length!==2 ||
           [...factorCells].some(cell=>cell.textContent.replace(',','.')!=='×1.5') || more.querySelector('.ss-more-factors')) {
           issues.push({kind:'expanded-ordinary-bonus-layout'});
         }
+        const pointValues=[...pointCells].map(cell=>normalize(cell.querySelector('.ss-more-amount').textContent));
+        if(!(pointValues[0] || '').includes('25') || pointValues[1]!=='+5' || pointValues[2]!=='+20' ||
+          ![...matrix.querySelectorAll('.ss-bonus-number')].some(cell=>normalize(cell.textContent)==='+110000')) issues.push({kind:'missing-reported-shape-values'});
       }
     }
     const credits=first.querySelector('.ss-money-row');
@@ -199,7 +223,7 @@ module.exports=async function ({browser,nativeHost,check}) {
             const money=index%2 ? (mode.stress ? {income:12345678,costs:24691356,net:-12345678} :
               {income:74321,costs:87654,net:-13333}) : {income:sample.income,costs:sample.costs,net:sample.net};
             battle.stats.currencies.credits={...money,income_count:1,costs_count:1,net_count:1};
-            battle.details={pass_points:mode.stress ? {credited:33,battle:8,missions:10,vehicle:15} : {credited:0,battle:0,missions:0,vehicle:0},
+            battle.details={pass_points:mode.stress ? {credited:33,battle:8,missions:10,vehicle:15} : {credited:25,battle:5,missions:20,vehicle:0},
               missions:{
                 'daily:fixture':{kind:'daily',name:messages['more.kind.daily']+' · '+messages['more.mission.completed'],status:'completed',description:objective},
                 'weekly:fixture':{kind:'weekly',name:messages['more.kind.weekly']+' · '+messages['more.mission.progress'],status:'progress',description:objective,before:12,after:16},
@@ -208,8 +232,9 @@ module.exports=async function ({browser,nativeHost,check}) {
               },active_crucible:'challenge:fixture',
               bonuses:mode.stress ? {dailyXPFactor10:20,eventCrystal:43,eventCredits:12345678,boosterCredits:26943,boosterXP:136,
                 boosterFreeXP:28,boosterTMenXP:544,wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164} :
-                {wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96,
+                {eventCredits:110000,eventCrystal:24,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96,
                   appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150}};
+            if(!mode.stress) delete battle.details.missions['weekly:fixture'];
             return battle;
           });
           if(timeline.pagination && timeline.pagination.battles) timeline.pagination.battles={page:0,page_size:40,total:4,pages:1};

@@ -10,6 +10,9 @@ SESSION STATS — CHANGELOG
   Keep its label visible with a spinner while processing and a dash if unavailable.
 • Place the garage button just after built-in statistics in the native control
   row, preserving the original notification spacing.
+• Put Battle Pass in a full-width strip above a wider bonus table and compact
+  mission cards. Stack each mission's progress below its name within one outline;
+  wrap the sections for narrow cards and unusually large rewards.
 
 0.3.4 • 2026-10-30
 • Use the requested lowercase installed filename grz_sessions_stats.wotmod.

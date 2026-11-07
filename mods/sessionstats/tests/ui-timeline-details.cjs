@@ -167,11 +167,20 @@ module.exports = async function ({browser, nativeHost, check}) {
     await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>row.children.length===6)) &&
     await details.locator('.ss-more-bonuses .ss-more-value').count()===0 &&
     await details.locator('.ss-more-factors').count()===0);
-  check('All numerical rewards precede the separate, fully visible mission rows',await details.evaluate(panel=>{
-    const rewards=panel.querySelector('.ss-more-rewards'),missions=panel.querySelector('.ss-more-mission-block');
-    return rewards.contains(panel.querySelector('.ss-more-pass-block')) && rewards.contains(panel.querySelector('.ss-more-bonus-block')) &&
-      !rewards.contains(missions) && rewards.getBoundingClientRect().bottom<=missions.getBoundingClientRect().top+1 &&
-      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
+  check('The full-width point strip precedes separate bonus and mission columns',await details.evaluate(panel=>{
+    const points=panel.querySelector('.ss-more-pass-block'),columns=panel.querySelector('.ss-more-columns'),
+      bonus=panel.querySelector('.ss-more-bonus-block'),missions=panel.querySelector('.ss-more-mission-block');
+    const tolerance=parseFloat(document.documentElement.style.fontSize);
+    return points.parentNode===panel && columns.parentNode===panel && columns.firstElementChild===bonus &&
+      bonus.parentNode===columns && missions.parentNode===columns &&
+      Math.abs(points.getBoundingClientRect().width-panel.getBoundingClientRect().width)<=tolerance &&
+      points.getBoundingClientRect().bottom<=columns.getBoundingClientRect().top+tolerance &&
+      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>{
+        const box=row.getBoundingClientRect(),name=row.querySelector('.ss-more-mission-name').getBoundingClientRect(),
+          status=row.querySelector('.ss-more-mission-status').getBoundingClientRect(),style=getComputedStyle(row);
+        return box.height>0 && status.top>=name.bottom-tolerance && status.bottom<=box.bottom+tolerance &&
+          ['Top','Right','Bottom','Left'].every(edge=>parseFloat(style['border'+edge+'Width'])>0);
+      });
   }));
   check('More groups rewards and paired mission outcomes into compact tables',
     await details.locator('.ss-more-table[role="table"]').count() >= 3 &&
@@ -208,18 +217,44 @@ module.exports = async function ({browser, nativeHost, check}) {
     await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
     await details.locator('.ss-more-pass').textContent()==='0 points earned' &&
     await details.locator('.ss-more-factors').count()===0);
-  check('Zero points use intrinsic space beside bonuses while missions remain separate',await details.evaluate(panel=>{
+  check('Zero points stay inline with the heading above bonus and mission columns',await details.evaluate(panel=>{
     const scale=parseFloat(document.documentElement.style.fontSize),card=panel.closest('.ss-group').getBoundingClientRect();
     const pass=panel.querySelector('.ss-more-pass-block'),bonus=panel.querySelector('.ss-more-bonus-block'),
       missions=panel.querySelector('.ss-more-mission-block');
-    const point=pass.getBoundingClientRect(),rewards=panel.querySelector('.ss-more-rewards').getBoundingClientRect();
-    const label=pass.querySelector('.ss-more-total'),range=document.createRange();range.selectNodeContents(label);
-    const bonusBox=bonus.getBoundingClientRect();
-    return Math.abs(card.width/scale-500)<=1 && point.width/scale<=range.getBoundingClientRect().width/scale+40 &&
-      Math.abs(point.top-bonusBox.top)<=scale && point.right<=bonusBox.left+scale &&
-      rewards.bottom<=missions.getBoundingClientRect().top+scale &&
+    const point=pass.getBoundingClientRect(),columns=panel.querySelector('.ss-more-columns').getBoundingClientRect(),
+      title=pass.querySelector('.ss-more-title').getBoundingClientRect(),table=pass.querySelector('.ss-more-pass').getBoundingClientRect(),
+      bonusBox=bonus.getBoundingClientRect(),missionBox=missions.getBoundingClientRect();
+    return Math.abs(card.width/scale-500)<=1 && Math.abs(point.width-panel.getBoundingClientRect().width)<=scale &&
+      title.right<=table.left+scale && Math.min(title.bottom,table.bottom)>Math.max(title.top,table.top) &&
+      point.bottom<=columns.top+scale && Math.abs(bonusBox.top-missionBox.top)<=scale && bonusBox.right<=missionBox.left+scale &&
       Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
   }));
+  await page.evaluate(()=>{
+    const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.bonuses.wotPlusXP=1234;
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await page.locator('.ss-more-button').first().click();
+  check('A four-digit XP bonus uses full-width fallback and preserves its full formatted value',await details.evaluate(panel=>{
+    const scale=parseFloat(document.documentElement.style.fontSize),block=panel.querySelector('.ss-more-bonus-block'),
+      table=block.querySelector('.ss-more-bonuses'),columns=panel.querySelector('.ss-more-columns').getBoundingClientRect(),
+      missions=panel.querySelector('.ss-more-mission-block').getBoundingClientRect(),box=block.getBoundingClientRect();
+    const row=Array.from(table.querySelectorAll('.ss-bonus-row')).find(item=>item.querySelector('.ss-bonus-label').textContent==='WoT Plus'),
+      cell=row.querySelector('.ss-bonus-column-1'),bounds=cell.getBoundingClientRect(),css=getComputedStyle(cell),range=document.createRange();
+    range.selectNodeContents(cell);const text=range.getBoundingClientRect();
+    return block.classList.contains('ss-long-bonus-values') && table.classList.contains('ss-long-bonus-values') &&
+      Math.abs(box.width-columns.width)<=scale && missions.top>=box.bottom-scale && cell.textContent==='+1\u00a0234' &&
+      text.left>=bounds.left+parseFloat(css.paddingLeft)-scale && text.right<=bounds.right-parseFloat(css.paddingRight)+scale;
+  }));
+  await page.evaluate(()=>{
+    const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.pass_points={battle:0};
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await page.locator('.ss-more-button').first().click();
+  check('A confirmed zero component remains visible without inventing an unknown total',
+    await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
+    await details.locator('.ss-more-pass .ss-more-label').textContent()==='Battle result:' &&
+    await details.locator('.ss-more-pass .ss-more-amount').textContent().then(text=>text.trim()==='+0') &&
+    await details.locator('.ss-more-pass .ss-more-total').count()===0);
   await page.evaluate(()=>{
     const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].xp_bonus_applied=true;
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
@@ -269,7 +304,10 @@ module.exports = async function ({browser, nativeHost, check}) {
         timeline.from_point=timeline.to_point='';timeline.time_points=[];
         timeline.battles=[timeline.battles[0]];
         timeline.battles[0].name='IS-4';timeline.battles[0].xp_bonus_applied=false;
-        timeline.battles[0].details={pass_points:{credited:0},missions:{},
+        timeline.battles[0].details={pass_points:{credited:25,battle:5,missions:20},missions:{
+          'daily:fixture':{kind:'daily',name:'Synthetic daily mission',status:'completed',description:'Finish the objective.'},
+          'weekly:fixture':{kind:'weekly',name:'Synthetic weekly mission',status:'progress',description:'Finish the objective.'},
+          'personal:fixture':{kind:'personal',name:'Synthetic personal mission',status:'observed',description:'Finish the objective.'}},
           bonuses:{eventCredits:12345678,eventCrystal:43,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96}};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },testCase.window);
@@ -286,9 +324,13 @@ module.exports = async function ({browser, nativeHost, check}) {
             text.right>box.right-parseFloat(css.paddingRight)+1) bad.push(cell.textContent);
         }
         const event=[...table.querySelectorAll('.ss-bonus-row')].find(row=>row.querySelector('.ss-bonus-label').textContent==='Event');
+        const bonus=table.closest('.ss-more-bonus-block').getBoundingClientRect(),
+          missions=table.closest('.ss-more-panel').querySelector('.ss-more-mission-block').getBoundingClientRect();
         return {long:table.classList.contains('ss-long-bonus-values'),bad,
           panelWidth:document.getElementById('grz-session-stats').getBoundingClientRect().width,
           cardWidth:table.closest('.ss-group').getBoundingClientRect().width,
+          paired:Math.abs(bonus.top-missions.top)<=1 && bonus.right<=missions.left+1,
+          wrapped:missions.top>=bonus.bottom-1,
           headings:[...table.querySelectorAll('.ss-bonus-head .ss-bonus-number')].map(cell=>compact(cell.textContent)),
           event:[...event.querySelectorAll('.ss-bonus-number')].map(cell=>compact(cell.textContent))};
       });
@@ -296,6 +338,7 @@ module.exports = async function ({browser, nativeHost, check}) {
         (bonusAudit.bad.length ? ' '+JSON.stringify(bonusAudit.bad) : ''),
         bonusAudit.long && bonusAudit.bad.length===0 &&
         Math.abs(bonusAudit.panelWidth-testCase.window)<=1 && (!testCase.card || Math.abs(bonusAudit.cardWidth-testCase.card)<=1) &&
+        bonusAudit.wrapped &&
         bonusAudit.headings.join('|')==='Credits|XP|FreeXP|CrewXP|Bonds' &&
         bonusAudit.event.join('|')==='+12345678|—|—|—|+43');
     } finally {await narrowMore.close();}

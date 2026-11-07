@@ -463,8 +463,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-panel { display:flex; flex-wrap:wrap; align-items:flex-start; padding:5rem 0 2rem; border-top:1rem solid {{colors.group_tabs_border_bottom}}; font-size:13rem; line-height:18rem; overflow-wrap:break-word; }
 .ss-more-panel > p { width:100%; margin:3rem 5rem; }
 .ss-more-title { margin:4rem 5rem; color:{{colors.session_tab_active_text}}; font-size:13rem; line-height:18rem; }
-.ss-more-mission { display:flex; align-items:center; width:100%; padding:5rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
-.ss-more-caption { color:{{colors.period_text}}; font-size:12rem; }
+.ss-more-mission { display:block; width:100%; margin:0 0 6rem; padding:6rem 7rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-more-caption { color:{{colors.period_text}}; font-size:12rem; line-height:16rem; }
 .ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
 .ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }
@@ -478,11 +478,14 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-resize-edge::before { display:none; }
 .ss-resize-n, .ss-resize-s { height:6rem; cursor:ns-resize; }
 .ss-resize-e, .ss-resize-w { width:6rem; cursor:ew-resize; }
-.ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 100%; min-width:0; width:100%; }
-.ss-more-mission-block { flex:1 1 100%; min-width:0; width:100%; padding:0 4rem 4rem; }
-.ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 4rem 4rem; }
-.ss-more-pass-block { flex:0 1 auto; }
-.ss-more-pass-block .ss-more-table { width:auto; max-width:100%; }
+.ss-more-columns { display:flex; flex-wrap:wrap; align-items:flex-start; width:100%; min-width:0; }
+.ss-more-mission-block { flex:1 1 170rem; min-width:0; max-width:100%; width:auto; padding:0 0 4rem; }
+.ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 0 4rem; }
+/* The current point total stays beside its heading. Additional point sources
+   wrap as complete cells, keeping the numerical strip above both columns. */
+.ss-more-pass-block { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 100%; width:100%; margin:0 0 3rem; padding:0 0 5rem; border-bottom:1rem solid {{colors.details_separator_border_top}}; }
+.ss-more-pass-block .ss-more-title { flex:0 0 auto; margin:2rem 8rem 2rem 0; }
+.ss-more-pass-block .ss-more-table { flex:1 1 200rem; min-width:0; width:auto; max-width:100%; border:0; background:{{colors.close_background}}; }
 .ss-more-table { display:block; width:100%; margin:0; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
 .ss-more-table .ss-more-body { display:block; width:100%; }
 .ss-more-table .ss-more-label, .ss-more-table .ss-more-amount { display:block; min-width:0; padding:0; vertical-align:top; }
@@ -492,34 +495,37 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
 .ss-more-pass .ss-more-body { display:flex; flex-wrap:wrap; align-items:stretch; }
-.ss-more-pass .ss-more-value { align-items:center; flex:0 1 auto; min-width:0; max-width:100%; width:auto; padding:2rem 5rem; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
+.ss-more-pass .ss-more-value { align-items:center; flex:0 1 auto; min-width:0; max-width:100%; width:auto; padding:2rem 5rem; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; overflow-wrap:normal; }
 .ss-more-pass .ss-more-value:last-child { border-right:0; }
 .ss-more-pass .ss-more-value .ss-more-label { flex:0 1 auto; width:auto; padding-right:5rem; }
-.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:auto; margin-top:0; text-align:right; }
-.ss-more-pass .ss-more-value .ss-more-total { text-align:left; }
+.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:auto; margin-top:0; text-align:right; white-space:nowrap; }
+.ss-more-pass .ss-more-value .ss-more-total { padding:2rem 6rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.table_header_background_start}}; text-align:left; white-space:normal; }
 .ss-more-value:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-more-mission:first-child { border-top:0; }
+.ss-more-pass .ss-more-value { background:{{colors.close_background}}; }
+.ss-more-mission:last-child { margin-bottom:0; }
 .ss-more-mission:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-more-table .ss-more-mission-name { flex:1 1 0rem; min-width:0; padding-right:12rem; }
-.ss-more-table .ss-more-mission-status { flex:0 0 36%; min-width:0; padding-left:8rem; color:{{colors.metric_value_text}}; }
-.ss-more-mission-description { width:100%; margin-top:3rem; }
-.ss-more-reward-block.ss-more-bonus-block { flex:1 1 350rem; }
+.ss-more-table.ss-more-missions { border:0; background:{{colors.close_background}}; }
+.ss-more-table .ss-more-mission-name { display:block; min-width:0; width:100%; padding:0; }
+.ss-more-mission-name strong { display:block; }
+.ss-more-table .ss-more-mission-status { display:block; min-width:0; width:100%; margin-top:4rem; padding:4rem 0 0; border-top:1rem solid {{colors.details_separator_border_top}}; color:{{colors.metric_value_text}}; font-size:12rem; line-height:16rem; }
+.ss-more-mission-description { width:100%; margin-top:4rem; }
+/* 308 + 8 + 170 fits the 486rem content of a default 500rem battle card. */
+.ss-more-reward-block.ss-more-bonus-block { flex:1 1 308rem; margin-right:8rem; }
+.ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:100%; width:100%; margin-right:0; }
 .ss-bonus-matrix { width:100%; }
-.ss-bonus-row { display:flex; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
 .ss-bonus-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-bonus-label { display:block; flex:0 0 30%; min-width:0; padding-right:8rem; color:{{colors.metric_label_text}}; }
-.ss-bonus-number { display:block; flex:1 1 0rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
+.ss-bonus-label { display:block; flex:0 0 100%; min-width:0; width:100%; padding:0 0 1rem; color:{{colors.metric_label_text}}; font-size:12rem; line-height:16rem; }
+.ss-bonus-number { display:block; flex:1 0 60rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
+.ss-bonus-column-0 { flex-basis:66rem; }
+.ss-bonus-column-1 { flex-basis:39rem; }
+.ss-bonus-column-3 { flex-basis:66rem; }
 .ss-bonus-head { min-height:23rem; background:{{colors.table_header_background_start}}; }
-.ss-bonus-head .ss-bonus-label, .ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; }
-.ss-bonus-head .ss-bonus-number { white-space:normal; }
-.ss-narrow-cards .ss-bonus-row { flex-wrap:wrap; }
-.ss-narrow-cards .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
-.ss-narrow-cards .ss-bonus-head .ss-bonus-label { display:none; }
-.ss-long-bonus-values .ss-bonus-row { flex-wrap:wrap; }
-.ss-long-bonus-values .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
-.ss-long-bonus-values .ss-bonus-head .ss-bonus-label { display:none; }
-.ss-long-bonus-values .ss-bonus-number { flex:1 1 84rem; }
+.ss-bonus-head .ss-bonus-label { display:none; }
+.ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; white-space:normal; overflow-wrap:normal; }
+.ss-long-bonus-values .ss-bonus-number { flex:1 0 84rem; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
