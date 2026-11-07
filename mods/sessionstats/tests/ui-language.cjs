@@ -2,6 +2,8 @@
 const fs=require('fs'),path=require('path');
 module.exports=async ({browser,nativeHost,check})=>{
  const catalogs=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
+ check('The panel ships all seven supported locale catalogs',
+  ['en','pl','de','fr','es','ru','uk'].every(code=>catalogs[code] && typeof catalogs[code].title==='string'));
  const page=await nativeHost(browser,{});
  await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',selected:'auto',messages:{}};model.payload=JSON.stringify(s);GRZSessionStats.update(model.payload);});
  check('Language picker defaults to Automatic',await page.locator('#ss-language .ss-select-trigger .ss-control-label').textContent()==='Automatic');

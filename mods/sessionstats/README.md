@@ -17,8 +17,8 @@ reported result. Personal missions show the operation name and completion with
 honors when the additional objective is confirmed. The card also shows Battle
 Pass points and the available bonus breakdown. The finance tables include
 vehicle and account-level bonds reported for each recorded Random Battle.
-Older saved battles may have no mission or bonus details. The bottom-right grip
-resizes the window and keeps the size across garage openings during the same
+Older saved battles may have no mission or bonus details. All four corners and all four edges
+resize the window and keep its size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.
 
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
@@ -133,6 +133,29 @@ omitted fields and nested settings use defaults. For example:
 ```json
 {"language": "pl", "scroll": {"speed_multiplier": 1.5}}
 ```
+
+Card widths can be set independently in logical pixels (before the game's UI
+scale), from 480 to 900. Omitted values use Battles 500, Vehicles 560, Maps 560,
+and Tiers 520. Cards within a tab keep the same width; the layout switches to two
+columns only when both cards and the central gap fit. The complete previous
+untouched width preset follows these compact defaults on load; customized or
+partial card settings remain unchanged. For example:
+
+```json
+{"cards": {"battles": 580, "vehicles": 560}}
+```
+
+Every two-column tab uses staggered cards connected to a dashed central axis.
+The three main statistics stay horizontal; the compact performance and finance
+tables wrap together as one centered group. Summary rows remain centered when
+the window cannot fit them together. Changing the period returns to the top;
+incoming result updates preserve the current scroll position. Matching finance coverage is shown once in
+the table header; differing coverage remains beside its own row or value.
+
+Information icons show explanations after one second over the icon. Moving
+across a statistics section does not open a tooltip. Battle bonuses share one
+row per source with separate resource columns; premium credit/XP multipliers
+share a row too. Battle Pass values use compact cells above the mission rows.
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

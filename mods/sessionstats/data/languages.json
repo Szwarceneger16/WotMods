@@ -284,7 +284,11 @@
       "more.mission.honors": "Completed with honors",
       "more.progress.vehicles": "Unique vehicles: {0} → {1}",
       "more.bonus.event.bonds": "Mission or event reward: +{0} bonds",
-      "timeline.name": "Time point name"
+      "timeline.name": "Time point name",
+      "help.info": "Information",
+      "more.column.xp": "XP",
+      "more.column.free_xp": "Free XP",
+      "more.column.crew_xp": "Crew XP"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -569,7 +573,11 @@
       "more.mission.honors": "Ukończona z wyróżnieniem",
       "more.progress.vehicles": "Unikalne pojazdy: {0} → {1}",
       "more.bonus.event.bonds": "Nagroda za misję lub wydarzenie: +{0} obligacji",
-      "timeline.name": "Nazwa punktu czasu"
+      "timeline.name": "Nazwa punktu czasu",
+      "help.info": "Informacje",
+      "more.column.xp": "PD",
+      "more.column.free_xp": "Wolne PD",
+      "more.column.crew_xp": "PD załogi"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -854,7 +862,11 @@
       "more.mission.honors": "Выполнена с отличием",
       "more.progress.vehicles": "Уникальные машины: {0} → {1}",
       "more.bonus.event.bonds": "Награда за задачу или событие: +{0} бон",
-      "timeline.name": "Название точки времени"
+      "timeline.name": "Название точки времени",
+      "help.info": "Информация",
+      "more.column.xp": "опыт",
+      "more.column.free_xp": "свободный опыт",
+      "more.column.crew_xp": "опыт экипажа"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1139,7 +1151,11 @@
       "more.mission.honors": "Terminée avec les honneurs",
       "more.progress.vehicles": "Véhicules uniques : {0} → {1}",
       "more.bonus.event.bonds": "Récompense de mission ou d’événement : +{0} obligations",
-      "timeline.name": "Nom du repère temporel"
+      "timeline.name": "Nom du repère temporel",
+      "help.info": "Informations",
+      "more.column.xp": "EXP.",
+      "more.column.free_xp": "EXP. libre",
+      "more.column.crew_xp": "EXP. équipage"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1424,7 +1440,11 @@
       "more.mission.honors": "Mit Auszeichnung abgeschlossen",
       "more.progress.vehicles": "Unterschiedliche Fahrzeuge: {0} → {1}",
       "more.bonus.event.bonds": "Auftrags- oder Ereignisbelohnung: +{0} Anleihen",
-      "timeline.name": "Name des Zeitpunkts"
+      "timeline.name": "Name des Zeitpunkts",
+      "help.info": "Informationen",
+      "more.column.xp": "EP",
+      "more.column.free_xp": "Freie EP",
+      "more.column.crew_xp": "Besatzungs-EP"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1709,7 +1729,11 @@
       "more.mission.honors": "Completada con honores",
       "more.progress.vehicles": "Vehículos distintos: {0} → {1}",
       "more.bonus.event.bonds": "Recompensa de misión o evento: +{0} bonos",
-      "timeline.name": "Nombre del punto temporal"
+      "timeline.name": "Nombre del punto temporal",
+      "help.info": "Información",
+      "more.column.xp": "EXP",
+      "more.column.free_xp": "EXP libre",
+      "more.column.crew_xp": "EXP de tripulación"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -1994,7 +2018,11 @@
       "more.mission.honors": "Виконано з відзнакою",
       "more.progress.vehicles": "Унікальні машини: {0} → {1}",
       "more.bonus.event.bonds": "Нагорода за завдання чи подію: +{0} бонів",
-      "timeline.name": "Назва часової точки"
+      "timeline.name": "Назва часової точки",
+      "help.info": "Інформація",
+      "more.column.xp": "досвід",
+      "more.column.free_xp": "вільний досвід",
+      "more.column.crew_xp": "досвід екіпажу"
     }
   }
 }

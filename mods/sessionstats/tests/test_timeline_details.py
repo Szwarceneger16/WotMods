@@ -45,6 +45,9 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertTrue(self.service.record_result(result('last', 140)))
         self.assertTrue(self.service.record_result(result('unknown', None)))
         self.assertTrue(self.service.set_timeline_range(legacy, cutoff))
+        self.assertTrue(self.service.timeline_snapshot()['loading'])
+        while self.service.advance_timeline():
+            pass
         scope = self.service.timeline_snapshot()
         self.assertEqual([row['id'] for row in scope['battles']], ['first'])
         self.assertEqual(scope['summary']['battles'], 1)

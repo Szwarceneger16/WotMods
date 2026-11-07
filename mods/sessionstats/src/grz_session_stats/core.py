@@ -264,7 +264,10 @@ class StatsService(object):
         self._indexes = None
         self._timeline_enabled = timeline_enabled
         self._timeline_range = ('', '')
+        self._timeline_bounds = (0, None)
         self._filtered_timeline = None
+        self._timeline_job = None
+        self._timeline_error = None
         self._pages = {}
         self._orders = {}
         self._receipt = None
@@ -322,6 +325,7 @@ class StatsService(object):
 
     def cancel_loading(self):
         self._closed = True
+        self.cancel_timeline()
         if self._loader is not None:
             self._loader.close()
             self._loader = None
@@ -522,7 +526,9 @@ class StatsService(object):
                 index.replace(record, item)
         if self._timeline_enabled:
             self._indexes['timeline'].replace(record, item)
-            self._filtered_timeline = None
+            filtered = self._filtered_timeline or (self._timeline_job or {}).get('index')
+            if filtered is not None:
+                self._update_timeline_record(filtered, record, item)
         if record.get('_manual_id') is None or record.get('_launch_id') is None:
             self._unassigned += 1
 
@@ -920,28 +926,77 @@ class StatsService(object):
         if start and end and points[start] >= points[end]:
             return False
         selected = (start, end)
-        if selected != self._timeline_range:
+        if selected != self._timeline_range or self._timeline_error:
+            self.cancel_timeline()
             self._timeline_range = selected
+            self._timeline_bounds = (points.get(start, 0), points[end] if end else None)
             self._filtered_timeline = None
+            self._timeline_error = None
             self._pages.pop('timeline', None)
+            if start or end:
+                from .projection import ScopeIndex
+                self._timeline_job = {
+                    'index': ScopeIndex('timeline:{0}:{1}'.format(start, end), self.expected_table),
+                    'lower': self._timeline_bounds[0], 'upper': self._timeline_bounds[1],
+                    'cursor': None}
         return True
 
-    def _timeline_index(self):
-        from .projection import ScopeIndex
+    @property
+    def timeline_loading(self):
+        return self._timeline_job is not None
+
+    def cancel_timeline(self):
+        self._timeline_job = None
+
+    def _update_timeline_record(self, index, record, item):
+        started_at = record.get('started_at')
+        lower, upper = self._timeline_bounds
+        member = (started_at is not None and started_at >= lower and
+                  (upper is None or started_at < upper))
+        if member:
+            previous = index.records.get(record['arena_id'])
+            # A live update can add a record before the cooperative cursor
+            # reaches it. Never remove/re-add the same immutable contribution.
+            if previous is None or previous[1] is not item:
+                index.replace(record, item)
+        else:
+            index.discard(record['arena_id'])
+
+    def advance_timeline(self, budget=0.002, max_steps=512):
+        """Build the selected projection cooperatively; never publish a prefix."""
+        if self._timeline_job is None or self._closed or not self.ready:
+            return False
+        timer = getattr(time, 'perf_counter', time.time)
+        deadline = timer() + max(0, budget)
+        job = self._timeline_job
         full = self._indexes['timeline']
+        try:
+            for unused in range(max(1, max_steps)):
+                # Re-seek after each record rather than holding list offsets:
+                # durable corrections can move/insert records between slices.
+                position = (bisect.bisect_right(full.order, job['cursor']) if job['cursor'] is not None else
+                            bisect.bisect_left(full.order, (job['lower'], '')))
+                if position >= len(full.order) or (job['upper'] is not None and full.order[position][0] >= job['upper']):
+                    self._filtered_timeline = job['index']
+                    self._timeline_job = None
+                    break
+                key = full.order[position]
+                job['cursor'] = key
+                record, item = full.records[key[1]]
+                self._update_timeline_record(job['index'], record, item)
+                if timer() >= deadline:
+                    break
+        except Exception:
+            # A projection failure must not make the durable account read-only
+            # or expose partial totals as a completed selected range.
+            self._timeline_job = None
+            self._timeline_error = message('error.snapshot')
+        return self.timeline_loading
+
+    def _timeline_index(self):
         start, end = self._timeline_range
         if not start and not end:
-            return full
-        if self._filtered_timeline is None:
-            points = self._time_points()
-            lower = bisect.bisect_left(full.order, (points.get(start, 0), ''))
-            upper = bisect.bisect_left(full.order, (points[end], '')) if end else len(full.order)
-            index = ScopeIndex('timeline:{0}:{1}'.format(start, end), self.expected_table)
-            # Bounded ranges require an actual battle time, even when the
-            # lower end of the filter is the beginning of the history.
-            index.build([full.records[key[1]][1] for key in full.order[lower:upper]
-                         if full.records[key[1]][0].get('started_at') is not None])
-            self._filtered_timeline = index
+            return self._indexes['timeline']
         return self._filtered_timeline
 
     def timeline_snapshot(self):
@@ -951,9 +1006,15 @@ class StatsService(object):
         ready = self.ready and not self.loading
         points = self._time_points() if ready else {}
         start, end = self._timeline_range
-        index = self._timeline_index() if ready else ScopeIndex('timeline', self.expected_table)
+        index = self._timeline_index() if ready else None
+        if index is None:
+            identifier = 'timeline:{0}:{1}'.format(start, end) if start or end else 'timeline'
+            index = ScopeIndex(identifier, self.expected_table)
         scope = index.snapshot(message('scope.timeline'), points.get(start),
                                self._pages.get('timeline'), self._orders.get('timeline'))
+        scope['loading'] = self.timeline_loading
+        if ready and self._timeline_error:
+            scope['load_error'] = self._timeline_error
         scope['time_points'] = sorted(points.items(), key=lambda point: (point[1], point[0]))
         scope['time_point_names'] = dict(self._state.get('time_point_names', {})) if ready else {}
         scope['from_point'], scope['to_point'] = start, end

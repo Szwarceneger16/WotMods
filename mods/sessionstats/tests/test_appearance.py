@@ -169,6 +169,48 @@ class AppearanceTests(unittest.TestCase):
                 result = style.validate_config({section: {key: value}})
                 self.assertEqual(result[section][key], style.DEFAULT_CONFIG[section][key])
 
+    def test_card_widths_are_optional_independent_and_bounded(self):
+        defaults = style.default_config()['cards']
+        self.assertEqual(defaults, {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520})
+        actual = self.write({'cards': {'battles': 480, 'maps': 900}})
+        self.assertEqual(actual['cards'], dict(defaults, battles=480, maps=900))
+        presentation = style.build_presentation(actual)
+        self.assertEqual(presentation['card_widths'], actual['cards'])
+        presentation['card_widths']['maps'] = 600
+        self.assertEqual(actual['cards']['maps'], 900)
+        for invalid in (True, None, '620', 479, 901, float('nan'), float('inf')):
+            self.assertEqual(style.validate_config({'cards': {'battles': invalid}})['cards'], defaults)
+        self.assertEqual(style.validate_config({'cards': []})['cards'], defaults)
+
+    def test_load_upgrades_complete_previous_card_defaults_without_writing(self):
+        raw = style.default_config()
+        raw['cards'] = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        raw['language'] = 'pl'
+        raw['colors']['window_border'] = '#123456'
+        incoming = (json.dumps(raw, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+        actual = self.write(incoming)
+        expected = style.validate_config(raw)
+        expected['cards'] = style.default_config()['cards']
+        self.assertEqual(actual, expected)
+        self.assertEqual(style.load_config(self.path), expected)
+        with io.open(self.path, 'rb') as source:
+            self.assertEqual(source.read(), incoming)
+
+    def test_load_preserves_partial_custom_and_extended_card_maps(self):
+        previous = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        for cards in ({'battles': 620}, {'battles': 620, 'vehicles': 600}, dict(previous, vehicles=640),
+                      dict(previous, custom=700)):
+            raw = {'cards': cards}
+            incoming = json.dumps(raw).encode('utf-8')
+            self.assertEqual(self.write(incoming)['cards'], style.validate_config(raw)['cards'])
+            with io.open(self.path, 'rb') as source:
+                self.assertEqual(source.read(), incoming)
+
+    def test_validation_and_presentation_accept_explicit_previous_card_widths(self):
+        previous = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        self.assertEqual(style.validate_config({'cards': previous})['cards'], previous)
+        self.assertEqual(style.build_presentation({'cards': previous})['card_widths'], previous)
+
     def test_supported_colors_have_safe_normalized_css_spellings(self):
         cases = [('#AbC', '#abc'), (' #123ABC ', '#123abc'),
                  ('#12345600', 'rgba(18,52,86,0)'), ('#123456ff', 'rgba(18,52,86,1)'),
