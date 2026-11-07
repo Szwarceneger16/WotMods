@@ -15,6 +15,8 @@ LAYOUT_PATH = ('mods', 'grz', 'staysharp_medkit', 'views', 'Settings')
 LOGICAL_SIZE = (360, 230)
 MAX_DIMENSION = 32768
 MAX_STATE_CHARS = 16384
+BLUR_POLL_DELAY = 0.02
+BLUR_MAX_SAMPLES = 150
 try:
     text_types = (basestring,)
 except NameError:
@@ -172,7 +174,12 @@ class SettingsWindow(object):
         self._events = []
         self._state = '{}'
         self._anchor = 0.5
+        self._anchor_y = None
         self._size = None
+        self._reported_size = None
+        self._blur_callback = None
+        self._blur_pending = None
+        self._layout_logs = 0
         self._generation = 0
         self._closing = False
         self._destroying = False
@@ -186,15 +193,16 @@ class SettingsWindow(object):
 
     def _viewport(self):
         size = None
-        if self._parent is not None:
+        # A loading main Window can still expose its default 256px texture.
+        # Placement and responsive CSS need the client surface, not that texture.
+        try:
+            import GUI
+            size = _dimensions(GUI.screenResolution())
+        except Exception:
+            pass
+        if size is None and self._parent is not None:
             try:
                 size = _dimensions(self._parent.size)
-            except Exception:
-                pass
-        if size is None:
-            try:
-                import GUI
-                size = _dimensions(GUI.screenResolution())
             except Exception:
                 pass
         return {'width': size[0] if size else 0, 'height': size[1] if size else 0,
@@ -270,6 +278,91 @@ class SettingsWindow(object):
             except Exception:
                 self._warn()
 
+    def _cancel_blur(self):
+        callback = self._blur_callback
+        self._blur_callback = self._blur_pending = None
+        if callback is not None:
+            try:
+                import BigWorld
+                BigWorld.cancelCallback(callback)
+            except Exception:
+                self._warn()
+
+    def _schedule_blur(self):
+        self._cancel_blur()
+        generation = self._generation
+        pending = {'samples': 0, 'released': False}
+        self._blur_pending = pending
+
+        def dismiss():
+            if self._blur_pending is not pending or generation != self._generation:
+                return
+            self._blur_callback = None
+            if not self.is_open():
+                self._blur_pending = None
+                return
+            if getattr(self._window, 'isFocused', False):
+                self._blur_pending = None
+                return
+            held = False
+            if not pending['released'] and pending['samples'] < BLUR_MAX_SAMPLES:
+                try:
+                    import BigWorld
+                    import Keys
+                    held = bool(BigWorld.isKeyDown(Keys.KEY_LEFTMOUSE))
+                except Exception:
+                    pass
+            pending['samples'] += 1
+            if held:
+                schedule()
+            elif not pending['released']:
+                # Let the footer's mouse-release command toggle this window
+                # before blur cleanup. A long press must not close/reopen it.
+                pending['released'] = True
+                schedule()
+            else:
+                self._blur_pending = None
+                self.close()
+
+        def schedule():
+            try:
+                import BigWorld
+                self._blur_callback = BigWorld.callback(BLUR_POLL_DELAY, dismiss)
+            except Exception:
+                # Never destroy a native window inside its focus dispatcher.
+                # Capture is already cancelled; another close can retry cleanup.
+                self._blur_pending = None
+                self._warn()
+
+        schedule()
+
+    def _diagnose_layout(self, stage, target=None, accepted=None):
+        if self._layout_logs >= 6:
+            return
+        self._layout_logs += 1
+        try:
+            native = self._window
+            LOG.info('Medkit settings layout stage=%s client=%s parent=%s native=%s '
+                     'document=%s anchor=%s target=%s position=%s accepted=%s',
+                     stage, self._viewport(),
+                     _dimensions(self._parent.size) if self._parent is not None else None,
+                     _dimensions(native.size) if native is not None else None,
+                     self._reported_size, (self._anchor, self._anchor_y), target,
+                     native.position if native is not None else None, accepted)
+        except Exception:
+            self._warn()
+
+    def report_layout(self, width, height):
+        size = _dimensions((width, height))
+        if size is None or not self.is_open():
+            return False
+        changed = size != self._reported_size
+        self._reported_size = size
+        if changed:
+            self._diagnose_layout('document')
+        self._place()
+        return True
+
     def _place(self):
         if not self.is_open():
             return False
@@ -282,12 +375,17 @@ class SettingsWindow(object):
             return False
         scale = viewport['scale']
         fallback = tuple(int(math.ceil(value * scale)) for value in LOGICAL_SIZE)
-        size = self._size or fallback
+        size = self._size or self._reported_size or fallback
         left = int(round(self._anchor * width - size[0] / 2.0))
-        top = int(round(height - 72 * scale - size[1]))
+        bottom = (self._anchor_y * height - 8 * scale if self._anchor_y is not None
+                  else height - 72 * scale)
+        top = int(round(bottom - size[1]))
         target = (max(0, min(max(0, width - size[0]), left)),
                   max(0, min(max(0, height - size[1]), top)))
-        return self._window.move(*target) is not False
+        # Verified WindowImpl.move(x, y, xAnchor=LEFT, yAnchor=TOP).
+        accepted = self._window.move(target[0], target[1]) is not False
+        self._diagnose_layout('place', target, accepted)
+        return accepted
 
     def _on_ready(self, native):
         if native is not self._window or not self.is_open():
@@ -296,8 +394,11 @@ class SettingsWindow(object):
         return True
 
     def _on_size(self, unique_id, width, height):
-        self._size = _dimensions((width, height))
-        self._place()
+        size = _dimensions((width, height))
+        if size is not None:
+            self._size = size
+            self._diagnose_layout('native_size')
+            self._place()
 
     def _on_parent_size(self, *args):
         if self.is_open():
@@ -307,6 +408,9 @@ class SettingsWindow(object):
     def _on_focus(self, focused):
         if focused is False and self.is_open():
             self._notify('cancel_capture')
+            self._schedule_blur()
+        elif focused is True:
+            self._cancel_blur()
 
     def _on_status(self, native, status):
         from frameworks.wulf import WindowStatus
@@ -322,6 +426,7 @@ class SettingsWindow(object):
         self._destroying = True
         try:
             self._closing = True
+            self._cancel_blur()
             self._notify_close()
             self._detach()
             if self._model is not None:
@@ -344,7 +449,7 @@ class SettingsWindow(object):
                 self._warn()
         return False
 
-    def open(self, anchor=0.5):
+    def open(self, anchor=0.5, anchor_y=None):
         if self._destroying:
             return False
         try:
@@ -353,14 +458,20 @@ class SettingsWindow(object):
             anchor = float(anchor)
             if math.isnan(anchor) or math.isinf(anchor) or not 0 <= anchor <= 1:
                 return False
+            if anchor_y is not None:
+                if isinstance(anchor_y, bool):
+                    return False
+                anchor_y = float(anchor_y)
+                if math.isnan(anchor_y) or math.isinf(anchor_y) or not 0 <= anchor_y <= 1:
+                    return False
             self._anchor = anchor
+            self._anchor_y = anchor_y
             if self._window is not None and not self.is_open():
                 if not self.close(notify=False):
                     return False
             if self.is_open():
                 self.update(self._get_state())
                 self._place()
-                self._window.show(True)
                 return True
             self._generation += 1
             self._parent = _main_window()
@@ -373,10 +484,16 @@ class SettingsWindow(object):
             generation = self._generation
             self._closing = False
             self._notified = False
+            self._layout_logs = 0
+            self._reported_size = None
 
             def dispatch(arg):
                 if generation == self._generation and self.is_open():
-                    self._on_action(arg)
+                    getter = getattr(arg, 'get', None)
+                    if callable(getter) and getter('action') == 'layout':
+                        self.report_layout(getter('width'), getter('height'))
+                    else:
+                        self._on_action(arg)
 
             model = build_model_class()(self._payload(), dispatch)
             content = build_view_class()(_layout_id(), model)
@@ -409,6 +526,7 @@ class SettingsWindow(object):
             else:
                 self._notified = True
             self._generation += 1
+            self._cancel_blur()
             self._detach()
             if self._model is not None:
                 self._model.deactivate()

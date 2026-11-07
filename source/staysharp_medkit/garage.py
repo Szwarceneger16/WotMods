@@ -66,12 +66,13 @@ def _command(arg):
         if binding is not None:
             result['binding'] = binding
         if action == 'open':
-            anchor = getter('anchorX')
-            if anchor is not None:
-                if (isinstance(anchor, bool) or not isinstance(anchor, number_types) or
-                        math.isnan(anchor) or math.isinf(anchor) or not 0 <= anchor <= 1):
-                    return None
-                result['anchorX'] = float(anchor)
+            for name in ('anchorX', 'anchorY'):
+                anchor = getter(name)
+                if anchor is not None:
+                    if (isinstance(anchor, bool) or not isinstance(anchor, number_types) or
+                            math.isnan(anchor) or math.isinf(anchor) or not 0 <= anchor <= 1):
+                        return None
+                    result[name] = float(anchor)
         return result
     except Exception:
         return None
@@ -212,6 +213,9 @@ class FooterInstallation(object):
         if command is None:
             return False
         try:
+            if (command['action'] == 'open' and self._settings is not None and
+                    self._settings.is_open()):
+                command = {'action': 'close'}
             # Close itself is a capture-cancellation action in the runtime.
             if self._on_action(command) is False:
                 return False
@@ -220,7 +224,7 @@ class FooterInstallation(object):
                 if self._settings is None:
                     from .views import SettingsWindow
                     self._settings = SettingsWindow(self.dispatch, lambda: self._state)
-                if not self._settings.open(command.get('anchorX', 0.5)):
+                if not self._settings.open(command.get('anchorX', 0.5), command.get('anchorY')):
                     self._on_action({'action': 'close'})
                     self._refresh()
                     return False

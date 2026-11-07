@@ -86,6 +86,9 @@ class NativeWindow(object):
         self._onReady()
 
     def move(self, x, y):
+        if (isinstance(x, bool) or isinstance(y, bool) or
+                not isinstance(x, int) or not isinstance(y, int)):
+            raise TypeError('WindowImpl.move expects separate pixel coordinates')
         self.position = (x, y)
         self.moves.append(self.position)
         return True
@@ -117,6 +120,24 @@ class NativeWindow(object):
 class WindowTests(unittest.TestCase):
     def setUp(self):
         NativeWindow.instances = []
+        self.mouse_down = False
+        self.jobs = {}
+        self.serial = 0
+
+        def callback(delay, fn):
+            self.serial += 1
+            self.jobs[self.serial] = (delay, fn)
+            return self.serial
+
+        world = types.ModuleType('BigWorld')
+        world.callback = callback
+        world.cancelCallback = lambda key: self.jobs.pop(key, None)
+        world.isKeyDown = lambda key: self.mouse_down if key == 1 else False
+        keys = types.ModuleType('Keys')
+        keys.KEY_LEFTMOUSE = 1
+        self.screen_size = (1920, 1080)
+        gui = types.ModuleType('GUI')
+        gui.screenResolution = lambda: self.screen_size
         self.parent = types.SimpleNamespace(proxy=object(), windowStatus=2,
                                             size=(1920, 1080), onSizeChanged=Event())
         loader = types.SimpleNamespace(scale=1.5, windowsManager=types.SimpleNamespace(
@@ -139,7 +160,8 @@ class WindowTests(unittest.TestCase):
         skeleton = types.ModuleType('skeletons.gui.impl')
         skeleton.IGuiLoader = object
         modules = {'frameworks.wulf': wulf, 'gui.impl.pub': pub,
-                   'gui.impl.gen': gen, 'helpers': helpers, 'skeletons.gui.impl': skeleton}
+                   'gui.impl.gen': gen, 'helpers': helpers, 'skeletons.gui.impl': skeleton,
+                   'BigWorld': world, 'Keys': keys, 'GUI': gui}
         self.patch = patch.dict(sys.modules, modules)
         self.patch.start()
         self.addCleanup(self.patch.stop)
@@ -151,6 +173,13 @@ class WindowTests(unittest.TestCase):
     def open(self, anchor=0.25):
         self.assertTrue(self.controller.open(anchor))
         return self.controller._window, self.controller._model
+
+    def tick(self):
+        self.assertTrue(self.jobs)
+        key = min(self.jobs)
+        delay, fn = self.jobs.pop(key)
+        fn()
+        return delay
 
     def test_registered_resource_model_and_scaled_bottom_placement(self):
         native, model = self.open()
@@ -170,9 +199,44 @@ class WindowTests(unittest.TestCase):
         native.onSizeChanged(7, 600, 360)
         self.assertEqual(native.position, (180, 612))
         self.parent.size = (500, 300)
+        self.screen_size = (500, 300)
         self.parent.onSizeChanged(1, 500, 300)
         self.assertEqual(native.position, (0, 0))
         self.assertEqual(json.loads(model.props[0][1])['viewport']['width'], 500)
+
+    def test_client_surface_wins_over_default_parent_texture(self):
+        self.parent.size = (256, 256)
+        native, model = self.open(anchor=0.8)
+        self.assertEqual(json.loads(model.props[0][1])['viewport'],
+                         {'width': 1920, 'height': 1080, 'scale': 1.5})
+        self.assertEqual(native.position, (1266, 627))
+
+    def test_native_global_footer_anchor_positions_popup_above_the_icon(self):
+        self.assertTrue(self.controller.open(0.8, 0.94))
+        native = self.controller._window
+        self.assertEqual(native.position, (1266, 658))
+        for anchor_y in (True, -1, 2, float('nan'), float('inf'), object()):
+            self.assertFalse(self.controller.open(0.8, anchor_y))
+
+    def test_layout_command_is_bounded_and_stays_inside_window_controller(self):
+        native, model = self.open()
+        model.onAction({'action': 'layout', 'width': 480, 'height': 320})
+        self.assertEqual(self.controller._reported_size, (480, 320))
+        self.assertEqual(native.position, (240, 652))
+        self.assertEqual(self.actions, [])
+        for width, height in ((True, 320), (0, 320), (-1, 320),
+                              (float('nan'), 320), (480, float('inf')),
+                              (views.MAX_DIMENSION + 1, 320)):
+            model.onAction({'action': 'layout', 'width': width, 'height': height})
+        self.assertEqual(self.controller._reported_size, (480, 320))
+        native.onSizeChanged(7, 540, 345)
+        self.assertEqual(native.position, (210, 627))
+
+    def test_repeated_open_does_not_steal_focus_or_show_again(self):
+        native, unused_model = self.open()
+        self.assertTrue(self.controller.open(0.75))
+        self.assertEqual(len(NativeWindow.instances), 1)
+        self.assertEqual(native.show_calls, 1)
 
     def test_capture_requires_loaded_focused_visible_window(self):
         native, model = self.open()
@@ -187,6 +251,69 @@ class WindowTests(unittest.TestCase):
         native.hidden = False
         native.windowStatus = 0
         self.assertFalse(self.controller.is_capture_allowed())
+
+    def test_focus_loss_cancels_capture_then_closes_outside_native_dispatch(self):
+        native, unused_model = self.open()
+        native.isFocused = False
+        native.onFocusChanged(False)
+        self.assertTrue(self.controller.is_open())
+        self.assertEqual(native.destroy_calls, 0)
+        self.assertEqual(self.actions, [{'action': 'cancel_capture'}])
+        self.tick()
+        self.assertTrue(self.controller.is_open())
+        self.tick()
+        self.assertFalse(self.controller.is_open())
+        self.assertEqual(native.destroy_calls, 1)
+        self.assertEqual(self.actions[-1], {'action': 'close'})
+
+    def test_long_mouse_press_keeps_window_for_release_toggle_without_reopening(self):
+        native, unused_model = self.open()
+        self.mouse_down = True
+        native.isFocused = False
+        native.onFocusChanged(False)
+        for unused in range(40):
+            self.tick()
+        self.assertTrue(self.controller.is_open())
+        self.assertEqual(native.destroy_calls, 0)
+        self.mouse_down = False
+        self.tick()
+        # The footer's release command closes the existing window before the
+        # deferred focus cleanup, even after a press longer than one frame.
+        self.assertTrue(self.controller.is_open())
+        self.controller.close()
+        self.assertEqual(native.destroy_calls, 1)
+        self.assertEqual(self.jobs, {})
+        self.assertEqual(len(NativeWindow.instances), 1)
+
+    def test_blur_cleanup_is_bounded_and_focus_regain_cancels_it(self):
+        native, unused_model = self.open()
+        self.mouse_down = True
+        native.isFocused = False
+        native.onFocusChanged(False)
+        self.tick()
+        native.isFocused = True
+        native.onFocusChanged(True)
+        self.assertEqual(self.jobs, {})
+        self.assertTrue(self.controller.is_open())
+        native.isFocused = False
+        native.onFocusChanged(False)
+        for unused in range(views.BLUR_MAX_SAMPLES + 2):
+            if self.jobs:
+                self.tick()
+        self.assertFalse(self.controller.is_open())
+        self.assertEqual(self.jobs, {})
+
+    def test_retained_blur_callback_is_inert_after_close_and_new_window(self):
+        native, unused_model = self.open()
+        native.isFocused = False
+        native.onFocusChanged(False)
+        callback = next(iter(self.jobs.values()))[1]
+        self.controller.close()
+        new, unused_model = self.open()
+        callback()
+        self.assertTrue(self.controller.is_open())
+        self.assertIs(self.controller._window, new)
+        self.assertEqual(new.destroy_calls, 0)
 
     def test_native_external_destroy_notifies_close_once_without_reentrant_destroy(self):
         native, model = self.open()

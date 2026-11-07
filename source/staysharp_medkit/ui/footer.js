@@ -4,6 +4,7 @@
     if (window.GRZStaySharpFooter) { return; }
     var host = null, button = null, feature = null, subscription = null;
     var dataEngine = null, readyEngine = null, bound = false, destroyed = false, updating = false;
+    var observer = null;
     var reported = {};
     function report(stage) {
         if (reported[stage]) { return; }
@@ -33,32 +34,58 @@
     function insertionPoint() {
         var footer = document.querySelector('[class*="App_footer_"]');
         if (!footer) { return null; }
-        var current = footer.querySelector('[class*="SessionStats"], [class*="sessionStats"], [class*="SessionStatistics"]');
-        if (current) {
-            while (current.parentNode && current.parentNode !== footer && current.parentNode.getAttribute && /SessionStats|sessionStats|SessionStatistics/.test(current.parentNode.getAttribute('class') || '')) { current = current.parentNode; }
-            /* Start the whole native controls row, including controls that are
-               already before WG session statistics. Never anchor on WN8. */
-            return {parent:current.parentNode, before:current.parentNode.firstChild};
-        }
-        return {parent:footer, before:footer.firstChild};
+        // Native footer: Ping/EU2, menu gear, divider, notifications.
+        // Keep the outer footer's three space-between sections intact.
+        var menu = footer.querySelector('[data-test-id="menu"]'), parent = menu && menu.parentNode;
+        if (!parent || !parent.getAttribute || !/(^|\s)Footer_section_/.test(parent.getAttribute('class') || '')) { return null; }
+        return {parent:parent, before:menu};
     }
     function removeHost() { if (host && host.parentNode) { host.parentNode.removeChild(host); } host = button = null; }
+    function finite(value) { return typeof value === 'number' && isFinite(value); }
+    function positive(value) { return finite(value) && value > 0; }
+    function normalized(value) { return Math.max(0, Math.min(1, value)); }
+    function anchorFor(rect) {
+        var args = {action:'open', anchorX:0.5}, env = window.viewEnv, client, origin, x, y, width;
+        if (!rect || !finite(rect.left) || !finite(rect.top) || !positive(rect.width)) { return args; }
+        try {
+            if (env && typeof env.getClientSizePx === 'function' && typeof env.getViewGlobalPositionRem === 'function' && typeof env.remToPx === 'function') {
+                client = env.getClientSizePx(); origin = env.getViewGlobalPositionRem();
+                if (client && origin && positive(client.width) && positive(client.height) && finite(origin.x) && finite(origin.y)) {
+                    x = env.remToPx(origin.x); y = env.remToPx(origin.y);
+                    if (finite(x) && finite(y)) {
+                        args.anchorX = normalized((x + rect.left + rect.width / 2) / client.width);
+                        args.anchorY = normalized((y + rect.top) / client.height);
+                        return args;
+                    }
+                }
+            }
+        } catch (ignored) { report('native anchor'); }
+        // Coherent may omit innerWidth. Its document width is a valid fallback
+        // for X; footer-local height is never treated as full-screen height.
+        width = document.documentElement && document.documentElement.clientWidth;
+        if (!positive(width)) { width = window.innerWidth; }
+        if (!positive(width)) { width = document.body && document.body.clientWidth; }
+        if (positive(width)) { args.anchorX = normalized((rect.left + rect.width / 2) / width); }
+        return args;
+    }
     function open(event) {
         if (event && typeof event.stopPropagation === 'function') { event.stopPropagation(); }
         if (destroyed || !feature || !button) { return; }
-        var anchor = 0, rect, width, command = feature.onAction;
+        var command = feature.onAction;
         try {
-            rect = button.getBoundingClientRect(); width = window.innerWidth;
-            if (typeof width === 'number' && isFinite(width) && width > 0) { anchor = Math.max(0, Math.min(1, (rect.left + rect.width / 2) / width)); }
-            var args = {action:'open', anchorX:anchor};
+            var args = anchorFor(button.getBoundingClientRect());
             if (typeof command === 'function') { command.call(feature, args); }
             else if (command && typeof command.value === 'function') { command.value.call(command, args); }
         } catch (error) { report('command'); }
     }
     function ensureHost() {
-        if (host && document.documentElement.contains(host)) { return; }
         var insertion = insertionPoint();
         if (!insertion || !feature) { removeHost(); return; }
+        if (host && document.documentElement.contains(host)) {
+            if (host.parentNode !== insertion.parent || host.nextSibling !== insertion.before) { insertion.parent.insertBefore(host, insertion.before); }
+            return;
+        }
+        removeHost();
         host = document.createElement('div'); host.id = 'grz-medkit-footer-host'; host.className = 'grz-medkit-footer-host';
         button = document.createElement('button'); button.id = 'grz-medkit-footer-button'; button.className = 'grz-medkit-footer-button'; button.type = 'button';
         button.setAttribute('aria-haspopup', 'dialog'); button.onclick = open; host.appendChild(button);
@@ -118,7 +145,23 @@
     function bind() {
         if (destroyed || bound || !window.engine || !window.viewEnv || typeof window.engine.on !== 'function') { return; }
         bound = true;
-        try { dataEngine = window.engine; dataEngine.on('viewEnv.onDataChanged', update); if (destroyed) { off(dataEngine, 'viewEnv.onDataChanged', update); return; } update(); }
+        try {
+            dataEngine = window.engine; dataEngine.on('viewEnv.onDataChanged', update);
+            if (destroyed) { off(dataEngine, 'viewEnv.onDataChanged', update); return; }
+            if (typeof window.MutationObserver === 'function') {
+                try {
+                    observer = new window.MutationObserver(function () {
+                        var insertion = insertionPoint();
+                        if (!host || !insertion || host.parentNode !== insertion.parent || host.nextSibling !== insertion.before) { update(); }
+                    });
+                    observer.observe(document.documentElement, {childList:true, subtree:true});
+                } catch (ignored) {
+                    if (observer) { try { observer.disconnect(); } catch (cleanupIgnored) { /* Optional observation can be unavailable. */ } }
+                    observer = null; report('native menu observation');
+                }
+            }
+            update();
+        }
         catch (error) { report('bind'); destroy(); }
     }
     function ready() {
@@ -134,6 +177,7 @@
         var owner = subscription, callback = owner ? owner.callbackId : null, data = dataEngine, readyOwner = readyEngine;
         subscription = dataEngine = readyEngine = feature = null; bound = false;
         if (owner) { owner.active = false; owner.callbackId = null; }
+        if (observer) { try { observer.disconnect(); } catch (ignored) { report('observer cleanup'); } observer = null; }
         off(data, 'viewEnv.onDataChanged', update); off(readyOwner, 'self.onDomBuilt', bind); removeModelCallback(owner, callback); removeHost(); window.removeEventListener('beforeunload', destroy);
     }
     window.GRZStaySharpFooter = {refresh:update, destroy:destroy};

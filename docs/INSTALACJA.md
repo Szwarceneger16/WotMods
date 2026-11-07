@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.5 - installation and test
+# Stay Sharp Medkit Reminder 1.8.6 - installation and test
 
 ## Install
 
@@ -30,7 +30,7 @@
 
 ## Garage shortcuts
 
-The medkit button is the leftmost button in the garage footer, before the native WG session statistics button. Its muted grey/beige icon matches the surrounding buttons. Click it to open a small settings window above the button. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
+The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. Click it to open a small settings window above the button; click the icon again or click elsewhere in the garage to close it. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
 
 Select either shortcut row, hold the desired keys together, then release every key to save. The two actions toggle the whole reminder or toggle voice independently. Defaults are Ctrl+Alt+M and Ctrl+Alt+V. Use Clear to disable a shortcut; Escape or Cancel abandons a recording. Left/right modifiers are preserved when recording. The configuration also accepts generic CTRL, ALT and SHIFT names for either side.
 

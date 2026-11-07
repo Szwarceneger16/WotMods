@@ -193,7 +193,8 @@ class GarageTests(unittest.TestCase):
     def test_open_loads_current_payload_before_window_and_validates_anchor(self):
         order = []
         settings = types.SimpleNamespace(
-            open=lambda anchor: order.append(('open', anchor, self.handle._state)) or True,
+            open=lambda anchor, anchor_y=None: order.append(('open', anchor, self.handle._state)) or True,
+            is_open=lambda: False,
             update=lambda state: order.append(('update', state)),
             close=lambda notify=True: True,
             is_capture_allowed=lambda: True)
@@ -218,6 +219,30 @@ class GarageTests(unittest.TestCase):
         count = len(order)
         self.assertFalse(self.handle.dispatch({'action': 'open', 'anchorX': 0.5}))
         self.assertEqual(len(order), count)
+
+    def test_icon_reclick_closes_existing_window_instead_of_opening_it_again(self):
+        calls = []
+        settings = types.SimpleNamespace(
+            is_open=lambda: True,
+            update=lambda state: calls.append('update'),
+            close=lambda notify=True: calls.append(('close', notify)) or True,
+            open=lambda *args: calls.append('unexpected open'))
+        self.handle._settings = settings
+        self.assertTrue(self.handle.dispatch({'action': 'open', 'anchorX': 0.75}))
+        self.assertEqual(self.actions, [{'action': 'close'}])
+        self.assertEqual(calls[-1], ('close', False))
+        self.assertNotIn('unexpected open', calls)
+
+    def test_native_footer_y_anchor_is_validated_and_forwarded(self):
+        calls = []
+        self.handle._settings = types.SimpleNamespace(
+            is_open=lambda: False, update=lambda state: None,
+            open=lambda x, y: calls.append((x, y)) or True,
+            close=lambda notify=True: True)
+        self.assertTrue(self.handle.dispatch({'action': 'open', 'anchorX': 0.75, 'anchorY': 0.94}))
+        self.assertEqual(calls, [(0.75, 0.94)])
+        for y in (True, '0.5', -1, 2, float('nan'), float('inf')):
+            self.assertFalse(self.handle.dispatch({'action': 'open', 'anchorY': y}))
 
     def test_weak_child_tracking_does_not_keep_native_views_alive(self):
         view, child, commands = self.attach()

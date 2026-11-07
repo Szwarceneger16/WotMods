@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.5 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.6 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.5'
+VERSION = '1.8.6'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity

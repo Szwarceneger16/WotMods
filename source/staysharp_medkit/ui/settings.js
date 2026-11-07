@@ -5,6 +5,9 @@
     var root = document.getElementById('grz-medkit-settings'), nodes = {}, state = {};
     var engineOwner = null, viewOwner = null, readyOwner = null, callbackId = null;
     var bound = false, registering = false, destroyed = false, updating = false, lastWidth = 0, lastHeight = 0;
+    var resizeTimer = null, resizeAttempts = 0, resizing = false, layoutReported = false;
+    var layoutEvents = ['self.onLoaded', 'self.onTextureReady', 'clientResized', 'self.onScaleUpdated'];
+    var layoutCallbacks = [], layoutReadySeen = {};
     var defaults = {title:'Medkit hotkeys', toggle_mod:'Toggle mod', toggle_voice:'Toggle voice', cancel:'Cancel', clear:'Clear', close:'Close', capture:'Press keys\u2026', not_assigned:'Not assigned', hint:'Select a shortcut. Hold the keys together, then release all keys to save.'};
     var ids = ['title', 'close', 'label-mod', 'label-voice', 'mod', 'voice', 'clear-mod', 'clear-voice', 'hint', 'feedback', 'cancel'], index;
     for (index = 0; index < ids.length; index += 1) { nodes[ids[index]] = document.getElementById('grz-medkit-settings-' + ids[index]); }
@@ -34,6 +37,44 @@
     bindButton(nodes.mod, 'begin_capture', 'toggle_mod'); bindButton(nodes.voice, 'begin_capture', 'toggle_voice');
     bindButton(nodes['clear-mod'], 'clear_binding', 'toggle_mod'); bindButton(nodes['clear-voice'], 'clear_binding', 'toggle_voice');
     bindButton(nodes.cancel, 'cancel_capture'); bindButton(nodes.close, 'close');
+    function cancelResize() {
+        if (resizeTimer !== null && typeof window.clearTimeout === 'function') { window.clearTimeout(resizeTimer); }
+        resizeTimer = null;
+    }
+    function reportLayout(width, height) {
+        if (layoutReported || !bound || destroyed) { return; }
+        var owner = model(), command = owner && owner.onAction, args = {action:'layout', width:width, height:height};
+        try {
+            if (typeof command === 'function') { command.call(owner, args); layoutReported = true; }
+            else if (command && typeof command.value === 'function') { command.value.call(command, args); layoutReported = true; }
+        } catch (ignored) { /* Native resize notifications can still place the window. */ }
+    }
+    function requestResize() {
+        if (destroyed || !bound || resizing || !lastWidth || !lastHeight) { return; }
+        resizing = true;
+        var actual = null, accepted = false;
+        try {
+            try { if (viewOwner && typeof viewOwner.getViewSizePx === 'function') { actual = viewOwner.getViewSizePx(); } }
+            catch (ignoredSize) { /* A missing measurement must not prevent requesting the texture. */ }
+            accepted = actual && actual.width === lastWidth && actual.height === lastHeight;
+            if (!accepted && viewOwner && typeof viewOwner.resizeViewPx === 'function') {
+                viewOwner.resizeViewPx(lastWidth, lastHeight);
+            }
+        } catch (ignored) { /* Retry after native loading or texture creation. */ }
+        finally { resizing = false; }
+        reportLayout(lastWidth, lastHeight);
+        if (!accepted && resizeAttempts < 6 && resizeTimer === null && typeof window.setTimeout === 'function') {
+            resizeAttempts += 1;
+            resizeTimer = window.setTimeout(function () { resizeTimer = null; requestResize(); }, 100);
+        }
+    }
+    function onLayoutReady(eventName) {
+        if (destroyed || !bound || layoutReadySeen[eventName]) { return; }
+        layoutReadySeen[eventName] = true;
+        cancelResize(); layoutReported = false;
+        resize();
+    }
+    function layoutCallback(eventName) { return function () { onLayoutReady(eventName); }; }
     function resize() {
         var viewport = state.viewport, scale = viewport && viewport.scale, logicalWidth = 360;
         if (typeof scale !== 'number' || !isFinite(scale) || scale < 0.5 || scale > 4) { scale = 1; }
@@ -41,10 +82,11 @@
         document.documentElement.style.fontSize = String(scale) + 'px';
         root.style.width = String(logicalWidth) + 'rem'; document.body.style.width = String(logicalWidth) + 'rem';
         var width = Math.max(1, Math.ceil(logicalWidth * scale)), height = Math.ceil(230 * scale);
-        if (lastWidth === width && lastHeight === height) { return; }
-        try {
-            if (viewOwner && typeof viewOwner.resizeViewPx === 'function') { viewOwner.resizeViewPx(width, height); lastWidth = width; lastHeight = height; }
-        } catch (ignored) { /* Python keeps a bounded native-window fallback. */ }
+        if (lastWidth !== width || lastHeight !== height) {
+            cancelResize(); resizeAttempts = 0; layoutReported = false; layoutReadySeen = {};
+            lastWidth = width; lastHeight = height;
+        }
+        requestResize();
     }
     function renderRow(binding, suffix) {
         var control = nodes[suffix], value = chord(state.display && state.display[binding]) || chord(state.hotkeys && state.hotkeys[binding]);
@@ -101,7 +143,15 @@
     function bind() {
         if (destroyed || bound || !window.engine || !window.viewEnv || typeof window.engine.on !== 'function') { return; }
         engineOwner = window.engine; viewOwner = window.viewEnv; bound = true;
-        try { engineOwner.on('viewEnv.onDataChanged', update); if (destroyed) { off(engineOwner, 'viewEnv.onDataChanged', update); return; } update(); }
+        try {
+            engineOwner.on('viewEnv.onDataChanged', update);
+            if (destroyed) { off(engineOwner, 'viewEnv.onDataChanged', update); return; }
+            for (var i = 0; i < layoutEvents.length; i += 1) {
+                layoutCallbacks[i] = layoutCallback(layoutEvents[i]);
+                engineOwner.on(layoutEvents[i], layoutCallbacks[i]);
+            }
+            update();
+        }
         catch (ignored) { destroy(); }
     }
     function ready() {
@@ -113,9 +163,12 @@
         if (destroyed) { return; }
         if (capturing()) { state = {}; send('cancel_capture'); }
         if (destroyed) { return; }
-        destroyed = true; bound = false;
+        destroyed = true; bound = false; cancelResize();
         var owner = viewOwner, id = callbackId; callbackId = null; viewOwner = null;
-        off(engineOwner, 'viewEnv.onDataChanged', update); off(readyOwner, 'self.onDomBuilt', bind); engineOwner = readyOwner = null;
+        off(engineOwner, 'viewEnv.onDataChanged', update);
+        for (var i = 0; i < layoutEvents.length; i += 1) { off(engineOwner, layoutEvents[i], layoutCallbacks[i]); }
+        layoutCallbacks = [];
+        off(readyOwner, 'self.onDomBuilt', bind); engineOwner = readyOwner = null;
         try { if (owner && id !== null && typeof owner.removeDataChangedCallback === 'function') { owner.removeDataChangedCallback(id, 0); } } catch (ignored) { /* Native view already disposed. */ }
         document.removeEventListener('keydown', onKey, true); document.removeEventListener('keyup', onKey, true); window.removeEventListener('beforeunload', destroy);
     }

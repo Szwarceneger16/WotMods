@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.6
+
+- Place the garage medkit icon immediately before the native settings gear and keep the popup above that button.
+- Verify and retry native texture sizing after loading so the entire shortcut panel remains visible instead of being clipped by the initial surface.
+- Close settings on another icon click or garage focus loss, cancelling unfinished key capture and preserving saved shortcuts.
+
 
 ## 1.8.5
 

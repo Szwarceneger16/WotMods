@@ -1,11 +1,13 @@
 /* Owned LobbyFooter controls; native footer layout and handlers stay intact. */
 .grz-medkit-footer-host {
     position:relative;
-    display:block;
+    display:flex;
+    align-items:center;
+    align-self:center;
     flex:0 0 40rem;
     width:40rem;
     height:36rem;
-    margin:0 3rem 0 0;
+    margin:0;
     font-family:Warhelios, Arial, sans-serif;
 }
 .grz-medkit-footer-button {
