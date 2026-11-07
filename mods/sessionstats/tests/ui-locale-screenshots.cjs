@@ -3,6 +3,10 @@
 const fs=require('fs'),path=require('path'),os=require('os'),zlib=require('zlib'),crypto=require('crypto');
 const languages=['en','pl','de','fr','es','ru','uk'];
 const groups=['vehicles','maps','tiers','battles'];
+const samples={
+  ordinary:{xp:456,wn8:1750,income:97531,costs:64321,net:33210},
+  stress:{xp:123456,wn8:10420,income:24691356,costs:12345678,net:12345678},
+};
 const objectives={
   en:'Cause damage to enemy vehicles and finish among the top players in both teams.',
   pl:'Zadaj uszkodzenia pojazdom przeciwnika i znajdź się wśród najlepszych graczy obu drużyn.',
@@ -15,8 +19,8 @@ const objectives={
 const sha=data=>crypto.createHash('sha256').update(data).digest('hex');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 
-async function audit(page,scale,group) {
-  return page.evaluate(({scale,group})=>{
+async function audit(page,mode,group) {
+  return page.evaluate(({scale,group,sample,stress})=>{
     const panel=document.getElementById('grz-session-stats'),root=panel.getBoundingClientRect();
     const issues=[];
     const visible=node=>{const box=node.getBoundingClientRect();return box.width>0 && box.height>0;};
@@ -43,7 +47,7 @@ async function audit(page,scale,group) {
     const selectors=[
       '.ss-control-label','.ss-group-title','.ss-group-subtitle','.ss-more-mission-name strong',
       '.ss-more-mission-status','.ss-more-label','.ss-bonus-number','.ss-bonus-label','.ss-more-amount',
-      '.ss-money-label','.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-cell-coverage','.ss-battle-value',
+      '.ss-money-label','.ss-metric-row .ss-metric-number','.ss-money-value .ss-cell-value','.ss-cell-coverage','.ss-battle-value','.ss-group-kpi .ss-kpi-value',
     ];
     for(const label of panel.querySelectorAll('.ss-more-pass .ss-more-label')) {
       const walker=document.createTreeWalker(label,NodeFilter.SHOW_TEXT);
@@ -93,21 +97,51 @@ async function audit(page,scale,group) {
     const matrix=more && more.querySelector('.ss-more-bonuses');
     const normalize=text=>text.replace(/\s/g,'');
     const allText=normalize(first.textContent);
-    if(!allText.includes('12345678') || !allText.includes('10420') || !allText.includes('123456')) {
+    if(!allText.includes(String(sample.net)) || !allText.includes(String(sample.wn8)) || !allText.includes(String(sample.xp))) {
       issues.push({kind:'missing-full-values'});
     }
     if(group==='battles' && (!matrix || !visible(matrix))) issues.push({kind:'missing-bonus-matrix'});
+    if(group==='battles') {
+      const rewards=more.querySelector('.ss-more-rewards'),missions=more.querySelector('.ss-more-mission-block'),
+        pass=more.querySelector('.ss-more-pass-block'),bonus=more.querySelector('.ss-more-bonus-block');
+      if(!rewards || !rewards.contains(pass) || !rewards.contains(bonus) || rewards.contains(missions) ||
+        rewards.getBoundingClientRect().bottom>missions.getBoundingClientRect().top+limit) issues.push({kind:'fragmented-numerical-rewards'});
+      const missionRows=[...missions.querySelectorAll('.ss-more-mission')],descriptions=[...missions.querySelectorAll('.ss-more-mission-description')];
+      if(missionRows.length!==4 || descriptions.length!==4 || !missionRows.every(visible) || !descriptions.every(visible)) {
+        issues.push({kind:'collapsed-mission-details'});
+      }
+      if(!stress) {
+        const pointCells=pass.querySelectorAll('.ss-more-value'),factorCells=matrix.querySelectorAll('.ss-bonus-factor');
+        const walker=document.createTreeWalker(pass,NodeFilter.SHOW_TEXT);let textNode,maxInk=0;
+        while((textNode=walker.nextNode())) {
+          const range=document.createRange();range.selectNodeContents(textNode);
+          maxInk=Math.max(maxInk,...[...range.getClientRects()].map(rect=>rect.width/scale));
+        }
+        if(pointCells.length!==1 || pass.getBoundingClientRect().width/scale>maxInk+40 ||
+          matrix.querySelectorAll('.ss-bonus-row').length!==3 || factorCells.length!==2 ||
+          [...factorCells].some(cell=>cell.textContent.replace(',','.')!=='×1.5') || more.querySelector('.ss-more-factors')) {
+          issues.push({kind:'expanded-ordinary-bonus-layout'});
+        }
+      }
+    }
     const credits=first.querySelector('.ss-money-row');
     const values=[...credits.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent));
     const counts=[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
-    if(values.join('|')!=='24691356|-12345678|+12345678') issues.push({kind:'incomplete-finance-values',values});
-    if(group!=='battles' && counts.join('|')!=='1/4|2/4|3/4') issues.push({kind:'missing-finance-coverage',counts});
+    if(values.join('|')!==[sample.income,-sample.costs,'+'+sample.net].join('|')) issues.push({kind:'incomplete-finance-values',values});
+    const headerCount=first.querySelector('.ss-money-count .ss-cell-coverage');
+    if(group!=='battles' && (stress ? counts.join('|')!=='1/4|2/4|3/4' :
+      counts.length!==0 || !headerCount || normalize(headerCount.textContent)!=='123/137')) {
+      issues.push({kind:'missing-finance-coverage',counts,header:headerCount && headerCount.textContent});
+    }
     const detail=first.querySelector('.ss-details'),performance=detail.querySelector('.ss-performance').getBoundingClientRect(),
-      economy=detail.querySelector('.ss-economy').getBoundingClientRect(),detailBox=detail.getBoundingClientRect();
-    if(first.getBoundingClientRect().width/scale>=599 &&
-      (performance.right>economy.left+limit || economy.width/detailBox.width>=0.55 || performance.width/detailBox.width<=0.45)) {
+      economy=detail.querySelector('.ss-economy').getBoundingClientRect();
+    const cardWidth=first.getBoundingClientRect().width/scale;
+    if(group==='battles' && cardWidth>=499 && (performance.width/scale>177 || economy.width/scale<296 ||
+      performance.right>economy.left+limit)) {
       issues.push({kind:'unbalanced-card-finance',performance:performance.width/scale,economy:economy.width/scale});
     }
+    if(group!=='battles' && !stress && cardWidth>=559 && (performance.width/scale<240 || economy.width/scale<296 ||
+      performance.right>economy.left+limit)) issues.push({kind:'unbalanced-group-finance',performance:performance.width/scale,economy:economy.width/scale});
     const columns=panel.querySelector('.ss-card-columns');
     const axis=columns && getComputedStyle(columns,':before');
     const arrow=columns && getComputedStyle(columns,':after');
@@ -121,9 +155,9 @@ async function audit(page,scale,group) {
     return {issues,language:document.documentElement.lang,cards:cards.length,
       logicalWidth:root.width/scale,columns:two ? 2 : 1,
       expanded:group==='battles' ? first.querySelector('.ss-more-button').getAttribute('aria-expanded')==='true' : null,
-      cardWidth:first.getBoundingClientRect().width/scale,
+      cardWidth,
       narrowCards:document.getElementById('ss-groups').classList.contains('ss-narrow-cards')};
-  },{scale,group});
+  },{scale:mode.scale,group,sample:samples[mode.stress ? 'stress' : 'ordinary'],stress:mode.stress});
 }
 
 module.exports=async function ({browser,nativeHost,check}) {
@@ -131,11 +165,12 @@ module.exports=async function ({browser,nativeHost,check}) {
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'grz-locale-qa-'));
   const screenshots=[],audits=[];
   const modes=[
-    {name:'narrow',width:720,scale:1,gameWidth:1920,gameHeight:1300,capture:true,columns:1},
-    {name:'wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:true,columns:2},
-    {name:'scaled-200',width:720,scale:2,gameWidth:3840,gameHeight:2560,capture:false,columns:1},
-    {name:'floating-470',width:470,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:1},
-    {name:'configured-480',width:1200,cardWidth:480,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:2},
+    {name:'narrow',width:720,scale:1,gameWidth:1920,gameHeight:1300,capture:true,columns:1,stress:false},
+    {name:'wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:true,columns:2,stress:false},
+    {name:'stress-wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:false,columns:2,stress:true},
+    {name:'scaled-200',width:720,scale:2,gameWidth:3840,gameHeight:2560,capture:false,columns:1,stress:true},
+    {name:'floating-470',width:470,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:1,stress:true},
+    {name:'configured-480',width:1200,cardWidth:480,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:2,stress:true},
   ];
   try {
     for(const language of languages) for(const mode of modes) {
@@ -144,7 +179,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         viewport:{width:mode.gameWidth,height:mode.gameHeight,scale:mode.scale},
       });
       try {
-        await page.evaluate(({language,messages,mode,objective})=>{
+        await page.evaluate(({language,messages,mode,objective,sample})=>{
           const payload=JSON.parse(model.payload);
           payload.window_size=[mode.width,1120];
           if(mode.cardWidth) payload.appearance={card_widths:{vehicles:mode.cardWidth,maps:mode.cardWidth,tiers:mode.cardWidth,battles:mode.cardWidth}};
@@ -155,22 +190,26 @@ module.exports=async function ({browser,nativeHost,check}) {
           timeline.battles=Array.from({length:4},(_,index)=>{
             const battle=JSON.parse(JSON.stringify(original));
             battle.id='locale-fixture-'+index;
-            battle.name='Pz.Kpfw. Tiger II mit 10,5 cm Kw.K L/68';
-            battle.map='Ruinberg · Pearl River · Westfield';
+            battle.name=mode.stress ? 'Pz.Kpfw. Tiger II mit 10,5 cm Kw.K L/68' : ['Leox','IS-4','Conqueror GC','TS-54'][index];
+            battle.map=mode.stress ? 'Ruinberg · Pearl River · Westfield' : ['Cliff','Berlin','Highway','Westfield'][index];
             battle.outcome=index%2 ? 'loss' : 'win';
-            battle.stats.xp_base={count:1,min:123456,avg:123456,max:123456,sum:123456};
-            battle.stats.wn8=10420;battle.stats.wn8_count=1;
-            battle.stats.currencies.credits={income:24691356,costs:12345678,net:index%2 ? -12345678 : 12345678,
-              income_count:1,costs_count:1,net_count:1};
-            battle.details={pass_points:{credited:33,battle:8,missions:10,vehicle:15},
+            battle.xp_bonus_applied=false;
+            battle.stats.xp_base={count:1,min:sample.xp,avg:sample.xp,max:sample.xp,sum:sample.xp};
+            battle.stats.wn8=sample.wn8;battle.stats.wn8_count=1;
+            const money=index%2 ? (mode.stress ? {income:12345678,costs:24691356,net:-12345678} :
+              {income:74321,costs:87654,net:-13333}) : {income:sample.income,costs:sample.costs,net:sample.net};
+            battle.stats.currencies.credits={...money,income_count:1,costs_count:1,net_count:1};
+            battle.details={pass_points:mode.stress ? {credited:33,battle:8,missions:10,vehicle:15} : {credited:0,battle:0,missions:0,vehicle:0},
               missions:{
                 'daily:fixture':{kind:'daily',name:messages['more.kind.daily']+' · '+messages['more.mission.completed'],status:'completed',description:objective},
                 'weekly:fixture':{kind:'weekly',name:messages['more.kind.weekly']+' · '+messages['more.mission.progress'],status:'progress',description:objective,before:12,after:16},
                 'personal:fixture':{kind:'personal',name:'Operation Fossa — '+messages['more.mission.honors'],operation:'Operation Fossa',status:'honors',description:objective},
                 'challenge:fixture':{kind:'crucible',name:messages['more.kind.crucible']+' · '+messages['more.stage'].replace('{0}','15'),stage:15,status:'failed',description:objective},
               },active_crucible:'challenge:fixture',
-              bonuses:{dailyXPFactor10:20,eventCrystal:43,eventCredits:50000,boosterCredits:26943,boosterXP:136,
-                boosterFreeXP:28,boosterTMenXP:544,wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164}};
+              bonuses:mode.stress ? {dailyXPFactor10:20,eventCrystal:43,eventCredits:12345678,boosterCredits:26943,boosterXP:136,
+                boosterFreeXP:28,boosterTMenXP:544,wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164} :
+                {wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96,
+                  appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150}};
             return battle;
           });
           if(timeline.pagination && timeline.pagination.battles) timeline.pagination.battles={page:0,page_size:40,total:4,pages:1};
@@ -179,29 +218,31 @@ module.exports=async function ({browser,nativeHost,check}) {
             timeline[group]=Array.from({length:4},(_,index)=>{
               const item=JSON.parse(JSON.stringify(original));
               item.id='locale-'+group+'-'+index;
-              item.name=group==='vehicles' ? 'Pz.Kpfw. Tiger II mit 10,5 cm Kw.K L/68' :
-                group==='maps' ? 'Ruinberg · Pearl River · Westfield' : 'VIII';
-              item.stats.battles=item.stats.observed_battles=4;
-              item.stats.xp_base={count:3,min:123456,avg:123456,max:123456,sum:370368};
-              item.stats.battle_wn8={count:2,min:10420,avg:10420,max:10420,sum:20840};
-              item.stats.wn8=10420;item.stats.wn8_count=3;
-              item.stats.currencies.credits={income:24691356,costs:12345678,net:12345678,
-                income_count:1,costs_count:2,net_count:3};
-              for(const field of ['income','costs','net']) item.stats.currencies.bonds[field+'_count']=4;
+              item.name=group==='vehicles' ? (mode.stress ? 'Pz.Kpfw. Tiger II mit 10,5 cm Kw.K L/68' : ['Leox','IS-4','Conqueror GC','TS-54'][index]) :
+                group==='maps' ? (mode.stress ? 'Ruinberg · Pearl River · Westfield' : ['Cliff','Berlin','Highway','Westfield'][index]) : 'VIII';
+              item.stats.battles=mode.stress ? 4 : 123;item.stats.observed_battles=mode.stress ? 4 : 137;
+              if(!mode.stress) {item.stats.wins=61;item.stats.losses=60;item.stats.draws=2;item.stats.win_rate=6100/123;item.stats.free_xp.count=123;}
+              const xpCount=mode.stress ? 3 : 123,wn8Count=mode.stress ? 2 : 123;
+              item.stats.xp_base={count:xpCount,min:sample.xp,avg:sample.xp,max:sample.xp,sum:sample.xp*xpCount};
+              item.stats.battle_wn8={count:wn8Count,min:sample.wn8,avg:sample.wn8,max:sample.wn8,sum:sample.wn8*wn8Count};
+              item.stats.wn8=sample.wn8;item.stats.wn8_count=mode.stress ? 3 : 123;
+              item.stats.currencies.credits={income:sample.income,costs:sample.costs,net:sample.net,
+                income_count:mode.stress ? 1 : 123,costs_count:mode.stress ? 2 : 123,net_count:mode.stress ? 3 : 123};
+              for(const field of ['income','costs','net']) item.stats.currencies.bonds[field+'_count']=mode.stress ? 4 : 123;
               return item;
             });
             if(timeline.pagination && timeline.pagination[group]) timeline.pagination[group]={page:0,page_size:40,total:4,pages:1};
           }
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-        },{language,messages:catalogs[language],mode,objective:objectives[language]});
+        },{language,messages:catalogs[language],mode,objective:objectives[language],sample:samples[mode.stress ? 'stress' : 'ordinary']});
         await page.locator('#ss-scope-manual').click();
         for(const group of groups) {
           await page.locator('#ss-group-'+group).click();
           if(group==='battles') await page.locator('[data-list-index="0"] .ss-more-button').click();
           await page.mouse.move(mode.gameWidth-10,mode.gameHeight-10);
           await frames(page);
-          const result=await audit(page,mode.scale,group);
-          audits.push({locale:language,group,mode:mode.name,expectedColumns:mode.columns,configuredCardWidth:mode.cardWidth || null,...result});
+          const result=await audit(page,mode,group);
+          audits.push({locale:language,group,mode:mode.name,fixture:mode.stress ? 'stress' : 'ordinary',expectedColumns:mode.columns,configuredCardWidth:mode.cardWidth || null,...result});
           if(mode.capture && ['vehicles','battles'].includes(group)) {
             // Show both control bars and the compact summary together with
             // Vehicles or the expanded first battle's details.
@@ -209,7 +250,7 @@ module.exports=async function ({browser,nativeHost,check}) {
             await frames(page);
             const name='session-stats-'+language+'-'+group+'-'+mode.name+'.jpg';
             const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:74,animations:'disabled'});
-            screenshots.push({name,language,group,mode:mode.name,width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
+            screenshots.push({name,language,group,mode:mode.name,fixture:'ordinary',width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
           }
         }
       } finally { await page.close(); }
@@ -231,6 +272,6 @@ module.exports=async function ({browser,nativeHost,check}) {
       result.issues.length===0 && (result.group!=='battles' || result.expanded) && result.cards===4 && result.language===result.locale &&
       result.columns===result.expectedColumns &&
       (!result.configuredCardWidth || Math.abs(result.cardWidth-result.configuredCardWidth)<=1) &&
-      (!['floating-470','configured-480'].includes(result.mode) || result.narrowCards));
+      result.narrowCards===(result.cardWidth<(result.group==='battles' ? 430 : 500)));
   } finally { fs.rmSync(directory,{recursive:true,force:true}); }
 };

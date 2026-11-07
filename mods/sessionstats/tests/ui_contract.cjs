@@ -574,6 +574,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-connection.cjs',browser);
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
+  await runFeatureSuite('./ui-scroll-state.cjs',browser);
   await runFeatureSuite('./ui-pagination.cjs',browser);
   await runFeatureSuite('./ui-outcomes.cjs',browser);
   await runFeatureSuite('./ui-loading.cjs',browser);

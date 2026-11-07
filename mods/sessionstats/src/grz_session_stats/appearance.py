@@ -186,7 +186,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'garage_spinner': 5},
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45},
  'scroll': {'speed_multiplier': 1.0},
- 'cards': {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520},
+ 'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
  'sessions': {'instance_tab': False}}
 
 PANEL_TEMPLATE = '''/* Native Gameface view. Deliberately limited to block/flex layout. */
@@ -220,14 +220,15 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-scope:hover, .ss-scope:focus { color:{{colors.session_tab_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
 .ss-scope.is-active { color:{{colors.session_tab_active_text}}; background:linear-gradient({{colors.session_tab_active_background_start}}, {{colors.session_tab_active_background_middle}} 56%, {{colors.session_tab_active_background_end}}); text-shadow:0 0 7rem {{colors.session_tab_active_text_shadow}}; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:{{colors.session_tab_marker_background}}; border-right:1rem solid {{colors.session_tab_marker_border_right}}; border-bottom:1rem solid {{colors.session_tab_marker_border_bottom}}; transform:rotate(45deg); }
-.ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; min-height:37rem; padding-top:4rem; }
+.ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; min-height:37rem; padding-top:4rem; }
 .ss-period { display:block; flex:0 1 184rem; min-width:0; width:184rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
 .ss-xp-picker { display:flex; flex:0 0 auto; min-width:212rem; width:auto; max-width:100%; margin-bottom:4rem; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
 .ss-small-toggle { flex:1 0 auto; min-width:98rem; width:auto; border:0; background:{{colors.xp_toggle_background}}; color:{{colors.xp_toggle_text}}; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 #ss-xp-received { min-width:112rem; }
 .ss-small-toggle.is-active { background:linear-gradient({{colors.xp_toggle_active_background_start}}, {{colors.xp_toggle_active_background_end}}); color:{{colors.xp_toggle_active_text}}; box-shadow:inset 0 1rem {{colors.xp_toggle_active_shadow}}; }
 .ss-small-toggle:hover, .ss-small-toggle:focus { color:{{colors.xp_toggle_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
-.ss-scroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:0 12rem 10rem; }
+/* Reserve the same scrollbar width for empty and populated scopes. */
+.ss-scroll { flex:1; min-height:0; overflow-y:scroll; overflow-x:hidden; padding:0 12rem 10rem; }
 .ss-scroll::-webkit-scrollbar { width:8rem; background:{{colors.scrollbar_track_background}}; }
 .ss-scroll::-webkit-scrollbar-thumb { background:{{colors.scrollbar_thumb_background}}; border:1rem solid {{colors.scrollbar_thumb_border}}; border-radius:{{radii.scrollbar_thumb}}rem; }
 .ss-summary { margin:0; padding:0 0 8rem; }
@@ -246,17 +247,22 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-detail-title { margin:0 0 5rem; color:{{colors.detail_title_text}}; font-size:14rem; line-height:18rem; font-weight:bold; }
 /* Keep the three headline values horizontal. The two detail tables move as
    one unit and only split when their own parent cannot fit both tables. */
-.ss-summary-layout.ss-details { flex-direction:row; flex-wrap:wrap; align-items:flex-start; padding:0; border:0; }
-.ss-summary-main { flex:0 1 460rem; width:460rem; max-width:100%; min-width:0; padding:0 12rem 0 0; margin:0 0 8rem; }
-.ss-summary-details { display:flex; flex-wrap:wrap; align-items:flex-start; flex:0 1 650rem; width:650rem; max-width:100%; min-width:0; }
+.ss-summary-layout.ss-details { flex-direction:row; flex-wrap:wrap; align-items:flex-start; justify-content:center; padding:0; border:0; }
+.ss-summary-main { flex:0 1 460rem; width:460rem; max-width:100%; min-width:0; padding:0 6rem; margin:0 0 8rem; }
+.ss-summary-details { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; flex:0 1 650rem; width:650rem; max-width:100%; min-width:0; }
 .ss-summary-details > .ss-performance { flex:0 1 300rem; width:300rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
 .ss-summary-details > .ss-economy { flex:0 1 350rem; width:350rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
+.ss-summary-wrap .ss-summary-layout { flex-direction:column; align-items:center; }
+.ss-summary-wrap .ss-summary-main, .ss-summary-wrap .ss-summary-details { flex-basis:auto; }
+.ss-summary-stacked .ss-summary-details { flex-direction:column; align-items:center; }
+.ss-summary-stacked .ss-summary-details > .ss-performance, .ss-summary-stacked .ss-summary-details > .ss-economy { flex-basis:auto; }
+.ss-summary-stacked .ss-summary-details > .ss-performance { padding-right:0; }
 .ss-summary-main .ss-headline { display:flex; align-items:flex-start; padding:0 0 4rem; }
 .ss-summary-main .ss-kpi { flex:1 1 0rem; min-width:0; }
 .ss-summary-main .ss-kpi-label { min-height:34rem; text-align:center; }
 .ss-summary-main .ss-kpi-value { min-width:0; max-width:100%; text-align:center; }
 .ss-summary-main .ss-outcomes { justify-content:center; margin:0 4rem 4rem; }
-.ss-summary-main .ss-summary-meta { margin:0 4rem; }
+.ss-summary-main .ss-summary-meta { justify-content:center; margin:0 4rem; }
 .ss-summary-details .ss-money-head, .ss-summary-details .ss-money-row { flex-wrap:nowrap; }
 .ss-summary-details .ss-money-label { display:block; width:23%; }
 .ss-summary-details .ss-money-value { width:25.666%; font-size:14rem; }
@@ -317,7 +323,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-outcome-win { background:{{colors.win_background}}; color:{{colors.win_text}}; }
 .ss-outcome-loss { background:{{colors.loss_background}}; color:{{colors.loss_text}}; }
 .ss-outcome-draw, .ss-outcome-unknown { background:{{colors.draw_background}}; color:{{colors.draw_text}}; }
-.ss-group-kpi { flex-shrink:0; width:90rem; text-align:right; padding-left:5rem; }
+.ss-group-kpi { flex-shrink:0; width:80rem; text-align:right; padding-left:5rem; }
+.ss-group-kpi.ss-group-count { width:90rem; }
 .ss-group-kpi .ss-kpi-label { font-size:12rem; line-height:16rem; }
 .ss-group-kpi .ss-kpi-value { font-size:20rem; line-height:23rem; }
 .ss-group .ss-details { border-top:0; padding-top:4rem; }
@@ -353,6 +360,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-group-name { min-width:75%; }
   .ss-battle .ss-group-name { min-width:0; }
   .ss-group-kpi { width:33.333%; margin-top:3rem; }
+  .ss-group-kpi.ss-group-count { width:33.333%; }
   .ss-group-kpi .ss-kpi-value { font-size:19rem; }
   .ss-group .ss-detail-title { display:none; }
 }
@@ -383,11 +391,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select.ss-language-select { flex:1 1 0rem; width:0; }
 .ss-language-select .ss-select-options { left:auto; right:0; }
 .ss-page-center { flex:1 1 160rem; min-width:0; padding:0 6rem; }
-.ss-sorting { display:flex; flex-wrap:nowrap; align-items:flex-end; flex:0 1 362rem; min-width:0; width:362rem; max-width:100%; margin:0 0 5rem; }
+.ss-sorting { display:flex; flex-wrap:nowrap; align-items:flex-end; flex:0 1 294rem; min-width:0; width:294rem; max-width:100%; margin:0 0 5rem; }
 .ss-sort-field { min-width:0; }
-.ss-sort-statistic { flex:0 1 84rem; width:84rem; max-width:100%; padding-right:5rem; }
-.ss-sort-metric { flex:0 1 144rem; width:144rem; max-width:100%; padding-right:5rem; }
-.ss-sort-direction { flex:0 1 134rem; width:134rem; max-width:100%; }
+.ss-sort-statistic { flex:0 1 70rem; width:70rem; max-width:100%; padding-right:5rem; }
+.ss-sort-metric { flex:0 1 120rem; width:120rem; max-width:100%; padding-right:5rem; }
+.ss-sort-direction { flex:0 1 104rem; width:104rem; max-width:100%; }
 .ss-sort-caption { display:block; margin-bottom:2rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ss-select { position:relative; width:100%; min-width:0; }
 .ss-select-trigger { width:100%; min-width:0; height:29rem; min-height:29rem; padding:4rem 6rem; justify-content:space-between; }
@@ -445,9 +453,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary .ss-kpi-label { display:flex; align-items:center; justify-content:center; }
 .ss-summary .ss-detail-title { display:flex; align-items:center; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
-.ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
-.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; color:{{colors.table_header_text}}; }
-.ss-timeline-field:first-child { margin-right:8rem; }
+.ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
+.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; margin:0 4rem; color:{{colors.table_header_text}}; }
 .ss-timeline-field > span { flex-shrink:0; margin-right:6rem; }
 .ss-timeline-field .ss-select { flex:1 1 0rem; width:0; }
 .ss-timeline-field .ss-select-options { width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
@@ -457,20 +464,24 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-title { margin:4rem 5rem; color:{{colors.session_tab_active_text}}; font-size:13rem; line-height:18rem; }
 .ss-more-mission { display:flex; align-items:center; width:100%; padding:5rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-more-caption { color:{{colors.period_text}}; font-size:12rem; }
-.ss-resize-grip { position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
-.ss-resize-grip::before { content:""; display:block; margin:5rem 3rem 3rem 5rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; }
+.ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
+.ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }
-.ss-resize-nw { top:0; left:0; right:auto; bottom:auto; transform:rotate(180deg); }
-.ss-resize-ne { top:0; bottom:auto; transform:rotate(-90deg); cursor:nesw-resize; }
-.ss-resize-sw { left:0; right:auto; transform:rotate(90deg); cursor:nesw-resize; }
+.ss-resize-nw { top:0; left:0; right:auto; bottom:auto; }
+.ss-resize-nw::before { top:3rem; left:3rem; right:auto; bottom:auto; border-top:2rem solid currentColor; border-left:2rem solid currentColor; border-right:0; border-bottom:0; }
+.ss-resize-ne { top:0; bottom:auto; cursor:nesw-resize; }
+.ss-resize-ne::before { top:3rem; bottom:auto; border-top:2rem solid currentColor; border-bottom:0; }
+.ss-resize-sw { left:0; right:auto; cursor:nesw-resize; }
+.ss-resize-sw::before { left:3rem; right:auto; border-left:2rem solid currentColor; border-right:0; }
+.ss-resize-edge { width:0; height:0; }
 .ss-resize-edge::before { display:none; }
-.ss-resize-n, .ss-resize-s { left:16rem; right:16rem; width:auto; height:6rem; cursor:ns-resize; }
-.ss-resize-n { top:0; bottom:auto; }
-.ss-resize-e, .ss-resize-w { top:16rem; bottom:16rem; width:6rem; height:auto; cursor:ew-resize; }
-.ss-resize-w { left:0; right:auto; }
+.ss-resize-n, .ss-resize-s { height:6rem; cursor:ns-resize; }
+.ss-resize-e, .ss-resize-w { width:6rem; cursor:ew-resize; }
 .ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 100%; min-width:0; width:100%; }
 .ss-more-mission-block { flex:1 1 100%; min-width:0; width:100%; padding:0 4rem 4rem; }
-.ss-more-reward-block { flex:1 1 220rem; min-width:0; padding:0 4rem 4rem; }
+.ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 4rem 4rem; }
+.ss-more-pass-block { flex:0 1 auto; }
+.ss-more-pass-block .ss-more-table { width:auto; max-width:100%; }
 .ss-more-table { display:block; width:100%; margin:0; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
 .ss-more-table .ss-more-body { display:block; width:100%; }
 .ss-more-table .ss-more-label, .ss-more-table .ss-more-amount { display:block; min-width:0; padding:0; vertical-align:top; }
@@ -480,10 +491,10 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
 .ss-more-pass .ss-more-body { display:flex; flex-wrap:wrap; align-items:stretch; }
-.ss-more-pass .ss-more-value { flex-direction:column; align-items:stretch; justify-content:center; flex:1 1 130rem; min-width:0; width:auto; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
+.ss-more-pass .ss-more-value { align-items:center; flex:0 1 auto; min-width:0; max-width:100%; width:auto; padding:2rem 5rem; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
 .ss-more-pass .ss-more-value:last-child { border-right:0; }
-.ss-more-pass .ss-more-value .ss-more-label { flex:0 0 auto; width:100%; padding-right:0; }
-.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:100%; margin-top:2rem; text-align:right; }
+.ss-more-pass .ss-more-value .ss-more-label { flex:0 1 auto; width:auto; padding-right:5rem; }
+.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:auto; margin-top:0; text-align:right; }
 .ss-more-pass .ss-more-value .ss-more-total { text-align:left; }
 .ss-more-value:nth-child(even) { background:{{colors.table_row_following_background}}; }
 .ss-more-mission:first-child { border-top:0; }
@@ -491,7 +502,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-table .ss-more-mission-name { flex:1 1 0rem; min-width:0; padding-right:12rem; }
 .ss-more-table .ss-more-mission-status { flex:0 0 36%; min-width:0; padding-left:8rem; color:{{colors.metric_value_text}}; }
 .ss-more-mission-description { width:100%; margin-top:3rem; }
-.ss-more-reward-block.ss-more-bonus-block { flex-basis:100%; }
+.ss-more-reward-block.ss-more-bonus-block { flex:1 1 350rem; }
 .ss-bonus-matrix { width:100%; }
 .ss-bonus-row { display:flex; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
@@ -504,15 +515,24 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-narrow-cards .ss-bonus-row { flex-wrap:wrap; }
 .ss-narrow-cards .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
 .ss-narrow-cards .ss-bonus-head .ss-bonus-label { display:none; }
+.ss-long-bonus-values .ss-bonus-row { flex-wrap:wrap; }
+.ss-long-bonus-values .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
+.ss-long-bonus-values .ss-bonus-head .ss-bonus-label { display:none; }
+.ss-long-bonus-values .ss-bonus-number { flex:1 1 84rem; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
-.ss-group .ss-performance { flex:1 1 280rem; min-width:0; width:auto; }
-.ss-group .ss-economy { flex:1 1 300rem; min-width:0; width:auto; }
+.ss-group .ss-performance { flex:1 1 246rem; min-width:0; width:auto; }
+.ss-group .ss-economy { flex:1 1 296rem; min-width:0; width:auto; }
+.ss-group .ss-economy.ss-long-finance { flex-basis:304rem; }
+.ss-group .ss-metric-name { width:32%; padding-left:1rem; padding-right:0; }
+.ss-group .ss-metric-number { width:22.666%; padding-right:2rem; }
+.ss-group .ss-long-metrics .ss-metric-row .ss-metric-number { font-size:14rem; }
+.ss-group .ss-battle-performance { flex:0 0 176rem; padding-right:7rem; }
 /* Reclaim cell insets before widening a table: translated currency names and
    complete signed eight-digit amounts must fit the same compact card. */
-.ss-group .ss-money-label { width:24%; padding-left:2rem; padding-right:0; font-size:12rem; }
-.ss-group .ss-money-value { width:25.333%; padding-right:1rem; }
+.ss-group .ss-money-label { width:24.5%; padding-left:2rem; padding-right:0; font-size:12rem; }
+.ss-group .ss-money-value { width:25.166%; padding-right:1rem; }
 .ss-group .ss-money-row .ss-money-value { font-size:13rem; }
 .ss-narrow-cards .ss-group .ss-performance, .ss-narrow-cards .ss-group .ss-economy { flex-basis:100%; }
 .ss-narrow-cards .ss-group .ss-performance { padding-right:0; }
@@ -858,6 +878,11 @@ def load_config(path):
         LOG.warning('CONFIG parse failed reason=%s line=%s column=%s; using the built-in appearance defaults.',
                     reason, line, column)
         return default_config()
+    # Earlier installations saved this complete default preset. Update only
+    # that exact map in memory; custom/partial maps and the file stay intact.
+    if isinstance(parsed, dict) and parsed.get('cards') == {
+            'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}:
+        parsed['cards'] = copy.deepcopy(DEFAULT_CONFIG['cards'])
     return validate_config(parsed)
 
 

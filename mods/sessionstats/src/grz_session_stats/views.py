@@ -500,6 +500,8 @@ class StatsWindow(object):
         # setCursorForced goes through AS3 setCursor, which respects the
         # external Wulf component's cursor lock. The public forceSetCursor
         # method reaches WG.setCursor directly without changing that lock.
+        # The verified client cursor table supplies one generic RESIZE glyph;
+        # directional CSS names are not verified native WG.setCursor values.
         manager = self._resize_cursor_manager
         if not active and manager is None:
             return

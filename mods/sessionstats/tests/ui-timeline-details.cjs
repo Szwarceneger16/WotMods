@@ -19,9 +19,10 @@ module.exports = async function ({browser, nativeHost, check}) {
         'challenge:8:2':{kind:'crucible', name:'<b>Fixture stage</b>', stage:2, status:'failed'},
         'personal:123':{kind:'personal', name:'Fixture mission', operation:'Operation Fossa', status:'honors'},
       },
-      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20,eventCrystal:43,eventCredits:50000,
+      active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20,eventCrystal:43,eventCredits:12345678,
         boosterCredits:26943,boosterXP:136,boosterFreeXP:28,boosterTMenXP:544,
-        wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164},
+        wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164,
+        appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150},
     };
     model.payload = JSON.stringify(payload);
     __grzEvents['viewEnv.onDataChanged']();
@@ -143,7 +144,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   const text = await details.textContent();
   check('More renders confirmed mission, points and bonus as plain text',
     text.includes('33 points earned') && text.includes('shield used') &&
-    text.includes('First victory: ×2 XP') && text.includes('<b>Fixture stage</b>') &&
+    text.includes('First victory') && text.includes('×2') && text.includes('<b>Fixture stage</b>') &&
     text.includes('Operation Fossa') && text.includes('Completed with honors') &&
     text.includes('+43') &&
     await details.locator('b').count() === 0);
@@ -153,17 +154,25 @@ module.exports = async function ({browser, nativeHost, check}) {
   })));
   check('Bonus amounts align beneath their currency and XP column headers',
     bonusRows[0].values.join('|')==='Credits|XP|FreeXP|CrewXP|Bonds' &&
-    bonusRows.find(row=>row.label==='Event').values.join('|')==='+50000|—|—|—|+43');
+    bonusRows.find(row=>row.label==='Event').values.join('|')==='+12345678|—|—|—|+43');
   check('Reserve and WoT Plus rewards share one row per source without losing or duplicating amounts',
     bonusRows.filter(row=>row.label==='Personal reserve').length===1 &&
     bonusRows.find(row=>row.label==='Personal reserve').values.join('|')==='+26943|+136|+28|+544|—' &&
     bonusRows.filter(row=>row.label==='WoT Plus').length===1 &&
     bonusRows.find(row=>row.label==='WoT Plus').values.join('|')==='+8083|+41|+2|+164|—');
-  check('Multipliers keep a separate two-column table from the six-column resource matrix',
+  check('Premium and first-victory factors align with resource amounts without full-width factor rows',
+    bonusRows.filter(row=>row.label==='Premium account').length===1 &&
+    bonusRows.find(row=>row.label==='Premium account').values.join('|')==='×1.5|×1.5|—|—|—' &&
+    bonusRows.find(row=>row.label==='First victory').values.join('|')==='—|×2|—|—|—' &&
     await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>row.children.length===6)) &&
     await details.locator('.ss-more-bonuses .ss-more-value').count()===0 &&
-    await details.locator('.ss-more-factors[role="table"] .ss-more-value').count()===1 &&
-    await details.locator('.ss-more-factors .ss-more-value').evaluateAll(rows=>rows.every(row=>row.children.length===2)));
+    await details.locator('.ss-more-factors').count()===0);
+  check('All numerical rewards precede the separate, fully visible mission rows',await details.evaluate(panel=>{
+    const rewards=panel.querySelector('.ss-more-rewards'),missions=panel.querySelector('.ss-more-mission-block');
+    return rewards.contains(panel.querySelector('.ss-more-pass-block')) && rewards.contains(panel.querySelector('.ss-more-bonus-block')) &&
+      !rewards.contains(missions) && rewards.getBoundingClientRect().bottom<=missions.getBoundingClientRect().top+1 &&
+      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
+  }));
   check('More groups rewards and paired mission outcomes into compact tables',
     await details.locator('.ss-more-table[role="table"]').count() >= 3 &&
     await details.locator('.ss-more-mission-name').count() === 2 &&
@@ -173,6 +182,54 @@ module.exports = async function ({browser, nativeHost, check}) {
     await details.locator('[role="row"] [role="cell"]').count() >= 5);
   await page.locator('.ss-more-button').first().click();
   check('More closes in its own battle card', await details.isHidden());
+
+  await page.evaluate(()=>{
+    window.__moreStressSnapshot=JSON.parse(model.payload);
+    const payload=JSON.parse(model.payload),battle=payload.scopes.timeline.battles[0];
+    battle.name='Leox';battle.map='Cliff';
+    battle.xp_bonus_applied=false;
+    battle.stats.xp_base={count:1,min:456,avg:456,max:456,sum:456};battle.stats.wn8=1750;battle.stats.wn8_count=1;
+    battle.stats.currencies.credits={income:74321,costs:87654,net:-13333,income_count:1,costs_count:1,net_count:1};
+    battle.details.pass_points={credited:0,battle:0,missions:0,vehicle:0};
+    battle.details.bonuses={wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96,
+      appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150};
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await page.locator('.ss-more-button').first().click();
+  const ordinaryRows=await details.locator('.ss-bonus-row').evaluateAll(rows=>rows.map(row=>({
+    label:row.querySelector('.ss-bonus-label').textContent,
+    values:Array.from(row.querySelectorAll('.ss-bonus-number')).map(cell=>cell.textContent.replace(/\s/g,'')),
+  })));
+  check('An ordinary 500px battle keeps zero points and paired premium factors in a compact matrix',
+    ordinaryRows.length===3 && ordinaryRows[0].values.join('|')==='Credits|XP|FreeXP|CrewXP' &&
+    ordinaryRows.find(row=>row.label==='WoT Plus').values.join('|')==='+3456|+64|+8|+96' &&
+    ordinaryRows.filter(row=>row.label==='Premium account').length===1 &&
+    ordinaryRows.find(row=>row.label==='Premium account').values.join('|')==='×1.5|×1.5|—|—' &&
+    await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
+    await details.locator('.ss-more-pass').textContent()==='0 points earned' &&
+    await details.locator('.ss-more-factors').count()===0);
+  check('Zero points use intrinsic space beside bonuses while missions remain separate',await details.evaluate(panel=>{
+    const scale=parseFloat(document.documentElement.style.fontSize),card=panel.closest('.ss-group').getBoundingClientRect();
+    const pass=panel.querySelector('.ss-more-pass-block'),bonus=panel.querySelector('.ss-more-bonus-block'),
+      missions=panel.querySelector('.ss-more-mission-block');
+    const point=pass.getBoundingClientRect(),rewards=panel.querySelector('.ss-more-rewards').getBoundingClientRect();
+    const label=pass.querySelector('.ss-more-total'),range=document.createRange();range.selectNodeContents(label);
+    const bonusBox=bonus.getBoundingClientRect();
+    return Math.abs(card.width/scale-500)<=1 && point.width/scale<=range.getBoundingClientRect().width/scale+40 &&
+      Math.abs(point.top-bonusBox.top)<=scale && point.right<=bonusBox.left+scale &&
+      rewards.bottom<=missions.getBoundingClientRect().top+scale &&
+      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
+  }));
+  await page.evaluate(()=>{
+    const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].xp_bonus_applied=true;
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await page.locator('.ss-more-button').first().click();
+  check('An applied bonus with unknown amount remains a notice without inventing a multiplier',
+    await details.locator('.ss-more-factors .ss-more-value').count()===1 &&
+    await details.locator('.ss-more-factors').textContent()==='Post-battle XP bonus applied' &&
+    await details.locator('.ss-bonus-factor').count()===2);
+  await page.evaluate(()=>{model.payload=JSON.stringify(__moreStressSnapshot);__grzEvents['viewEnv.onDataChanged']();});
 
   const grip = await page.locator('#ss-resize-grip').boundingBox();
   check('4K viewport uses the resolved 200 percent game scale',
@@ -199,6 +256,50 @@ module.exports = async function ({browser, nativeHost, check}) {
   await page.waitForFunction(() => __nativeSize[0] === 460);
   check('Title actions wrap together and timeline selectors fit in a narrow window', await controlsFit(true));
   await page.close();
+
+  for(const testCase of [{window:700,card:500,label:'500px battle card'},{window:320,label:'320px floating window'}]) {
+    const narrowMore=await nativeHost(browser,{
+      initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
+    });
+    try {
+      await narrowMore.evaluate(width=>{
+        const payload=JSON.parse(model.payload);payload.window_size=[width,900];
+        payload.localization={language:'en',messages:{}};
+        const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
+        timeline.from_point=timeline.to_point='';timeline.time_points=[];
+        timeline.battles=[timeline.battles[0]];
+        timeline.battles[0].name='IS-4';timeline.battles[0].xp_bonus_applied=false;
+        timeline.battles[0].details={pass_points:{credited:0},missions:{},
+          bonuses:{eventCredits:12345678,eventCrystal:43,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96}};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },testCase.window);
+      await narrowMore.locator('#ss-scope-manual').click();
+      await narrowMore.locator('#ss-group-battles').click();
+      await narrowMore.locator('.ss-more-button').first().click();
+      const bonusAudit=await narrowMore.locator('.ss-more-bonuses').evaluate(table=>{
+        const compact=text=>text.replace(/\s/g,'');
+        const cells=[...table.querySelectorAll('.ss-bonus-number')],bad=[];
+        for(const cell of cells) {
+          const box=cell.getBoundingClientRect(),css=getComputedStyle(cell),range=document.createRange();
+          range.selectNodeContents(cell);
+          for(const text of range.getClientRects()) if(text.left<box.left+parseFloat(css.paddingLeft)-1 ||
+            text.right>box.right-parseFloat(css.paddingRight)+1) bad.push(cell.textContent);
+        }
+        const event=[...table.querySelectorAll('.ss-bonus-row')].find(row=>row.querySelector('.ss-bonus-label').textContent==='Event');
+        return {long:table.classList.contains('ss-long-bonus-values'),bad,
+          panelWidth:document.getElementById('grz-session-stats').getBoundingClientRect().width,
+          cardWidth:table.closest('.ss-group').getBoundingClientRect().width,
+          headings:[...table.querySelectorAll('.ss-bonus-head .ss-bonus-number')].map(cell=>compact(cell.textContent)),
+          event:[...event.querySelectorAll('.ss-bonus-number')].map(cell=>compact(cell.textContent))};
+      });
+      check('More preserves all five resource columns and a full eight-digit bonus in a '+testCase.label+
+        (bonusAudit.bad.length ? ' '+JSON.stringify(bonusAudit.bad) : ''),
+        bonusAudit.long && bonusAudit.bad.length===0 &&
+        Math.abs(bonusAudit.panelWidth-testCase.window)<=1 && (!testCase.card || Math.abs(bonusAudit.cardWidth-testCase.card)<=1) &&
+        bonusAudit.headings.join('|')==='Credits|XP|FreeXP|CrewXP|Bonds' &&
+        bonusAudit.event.join('|')==='+12345678|—|—|—|+43');
+    } finally {await narrowMore.close();}
+  }
 
   const wide = await nativeHost(browser, {
     initialViewport:{width:2400,height:1300},viewport:{width:2400,height:1300,scale:1},realTimers:true,
@@ -274,7 +375,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     },width);
     await wide.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   }
-  const widths={vehicles:600,maps:560,tiers:520,battles:620};
+  const widths={vehicles:560,maps:560,tiers:520,battles:500};
   for(const group of ['vehicles','maps','tiers','battles']) {
     const expectedWidth=widths[group];
     await wide.locator('#ss-group-'+group).click();
@@ -302,7 +403,7 @@ module.exports = async function ({browser, nativeHost, check}) {
         Math.abs(expanded.cards[1].top-layout.cards[1].top)<1 &&
         Math.abs(expanded.cards[3].top-layout.cards[3].top)<1);
     }
-    await setAvailableWidth(1000);
+    await setAvailableWidth(2*expectedWidth+64+20);
     layout=await readLayout();
     check('The '+group+' grid collapses below two complete cards without stretching them',
       !layout.two && layout.group.width<2*expectedWidth+64 && layout.cards.every((card,index) =>
@@ -310,17 +411,19 @@ module.exports = async function ({browser, nativeHost, check}) {
         (!index || card.top>=layout.cards[index-1].bottom+15)));
     await setAvailableWidth(2400);
   }
-  await setAvailableWidth(1200);
-  await wide.evaluate(()=>{
+  const configuredWidth=widths.battles+80;
+  await setAvailableWidth(2*widths.battles+64+74);
+  check('The default battle width still permits two columns before a live width update',(await readLayout()).two);
+  await wide.evaluate(configuredWidth=>{
     const payload=JSON.parse(model.payload);
-    payload.appearance={card_widths:{battles:540}};
+    payload.appearance={card_widths:{battles:configuredWidth}};
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-  });
+  },configuredWidth);
   await wide.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const configured=await readLayout();
   check('A card-width configuration change updates fixed widths and the two-column threshold in the open panel',
-    configured.two && configured.cards.every(card=>Math.abs(card.width-540)<=1) &&
-    configured.group.width>=2*540+64 && configured.group.width<2*620+64);
+    !configured.two && configured.cards.every(card=>Math.abs(card.width-configuredWidth)<=1) &&
+    configured.group.width>=2*widths.battles+64 && configured.group.width<2*configuredWidth+64);
   check('All eight window corners and edges have reachable resize grips',
     await wide.locator('.ss-resize-grip').count()===8);
   await wide.close();

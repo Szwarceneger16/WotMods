@@ -123,9 +123,11 @@ omitted fields and nested settings use defaults. For example:
 ```
 
 Card widths can be set independently in logical pixels (before the game's UI
-scale), from 480 to 900. Omitted values use Battles 620, Vehicles 600, Maps 560,
+scale), from 480 to 900. Omitted values use Battles 500, Vehicles 560, Maps 560,
 and Tiers 520. Cards within a tab keep the same width; the layout switches to two
-columns only when both cards and the central gap fit. For example:
+columns only when both cards and the central gap fit. The complete previous
+untouched width preset follows these compact defaults on load; customized or
+partial card settings remain unchanged. For example:
 
 ```json
 {"cards": {"battles": 580, "vehicles": 560}}
@@ -133,12 +135,15 @@ columns only when both cards and the central gap fit. For example:
 
 Every two-column tab uses staggered cards connected to a dashed central axis.
 The three main statistics stay horizontal; the compact performance and finance
-tables wrap together as one group. Matching finance coverage is shown once in
+tables wrap together as one centered group. Summary rows remain centered when
+the window cannot fit them together. Changing the period returns to the top;
+incoming result updates preserve the current scroll position. Matching finance coverage is shown once in
 the table header; differing coverage remains beside its own row or value.
 
 Information icons show explanations after one second over the icon. Moving
 across a statistics section does not open a tooltip. Battle bonuses share one
-row per source with separate resource columns.
+row per source with separate resource columns; premium credit/XP multipliers
+share a row too. Battle Pass values use compact cells above the mission rows.
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

@@ -10,6 +10,7 @@
         scrollSpeed: 1, appearanceNode: null, appearanceCSS: '', destroyed: false,
         orders: {}, openSelect: null, list: [], loadedCount: 40, renderedCount: 0,
         timelineSignature: null, openBattle: null, more: null, resize: null, logicalSize: null,
+        viewKey: null, scrollTarget: null,
         resizeSequence: 0, timePointAccount: null, timePointCount: null, timePointEdited: false,
         resizeQueued: false, resizeTimer: null, resizeLast: 0, resizeMeasureToken: 0 };
     // BEGIN GENERATED ENGLISH
@@ -236,7 +237,7 @@
     }
     function applyAppearance(raw) {
         state.scrollSpeed = 1;
-        state.cardWidths = {battles:620, vehicles:600, maps:560, tiers:520};
+        state.cardWidths = {battles:500, vehicles:560, maps:560, tiers:520};
         try {
             var value = unwrap(raw);
             if (value === undefined || value === null) { clearAppearance(); return; }
@@ -342,6 +343,7 @@
         var holder = append(parent, element('div', compact ? 'ss-group-kpi' : 'ss-kpi'));
         append(holder, element('span', 'ss-kpi-label', label));
         append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
+        return holder;
     }
     function measureRow(parent, label, data, wn8, total, sharedCoverage) {
         var row = append(parent, element('div', 'ss-metric-row'));
@@ -414,6 +416,9 @@
             battleMeasure(performance, t('metric.wn8'), stats.wn8_count === 1 ? stats.wn8 : null, true);
         } else {
             var battleWN8 = series(stats.battle_wn8);
+            if (!global && [xp.min, xp.avg, xp.max, battleWN8.min, battleWN8.avg, battleWN8.max].some(function (value) {
+                return hasNumber(value) && Math.abs(value) >= 100000;
+            })) { performance.className += ' ss-long-metrics'; }
             var shared = xp.count === battleWN8.count && !!coverage(xp.count, total);
             var header = append(performance, element('div', 'ss-metric-head'));
             var countHeader = append(header, element('div', 'ss-metric-name' + (shared ? ' ss-metric-count' : ''), ''));
@@ -437,6 +442,11 @@
                 (hasNumber(gold.net) && gold.net !== 0)) {
             currencyRows.push({name:t('finance.gold'), data:gold});
         }
+        if (!global && currencyRows.some(function (currency) {
+            return ['income', 'costs', 'net'].some(function (field) {
+                return hasNumber(currency.data[field]) && Math.abs(currency.data[field]) >= 10000000;
+            });
+        })) { economy.className += ' ss-long-finance'; }
         var moneyCount = currencyRows[0].data.income_count;
         var sharedMoneyCoverage = !!coverage(moneyCount, total) && currencyRows.every(function (currency) {
             return currency.data.income_count === moneyCount && currency.data.costs_count === moneyCount &&
@@ -465,7 +475,8 @@
         if (!hasNumber(preferred)) { preferred = 700; }
         var available = hasNumber(viewport.width) ? viewport.width : window.innerWidth;
         var width = Math.max(0, Math.min(preferred, (available - (state.bound ? 20 : 0)) / scale) - 34);
-        nodes.summary.className = 'ss-summary' + (width < 350 ? ' ss-narrow-summary' : '');
+        nodes.summary.className = 'ss-summary' + (width < 1110 ? ' ss-summary-wrap' : '') +
+            (width < 650 ? ' ss-summary-stacked' : '') + (width < 350 ? ' ss-narrow-summary' : '');
     }
     function renderSummary(stats, scope) {
         clear(nodes.summary);
@@ -574,7 +585,7 @@
         var current = getOrder(scope), options = {}, key;
         for (key in defaultOrder) { options[key] = current[key]; }
         options[field] = value;
-        state.loadedCount = 40; nodes.scroll.scrollTop = 0;
+        state.loadedCount = 40;
         if (state.nativeSession && scope.pagination) {
             options.scope = scopeName(); options.group = state.group;
             options.period_id = scope.period_id; options.account_key = state.payload.account_key;
@@ -714,7 +725,7 @@
             var control = makeSelect('timeline-' + field, holder, choices, function (value) {
                 if (value === selected) { return; }
                 state.loadedCount = 40;
-                nodes.scroll.scrollTop = 0;
+                resetViewScroll();
                 invoke('timeline_range', {account_key:state.payload.account_key,
                     from_point:from ? value : timeline.from_point, to_point:from ? timeline.to_point : value});
             });
@@ -786,7 +797,7 @@
         var bonuses = data.bonuses || {};
         var rewards = append(panel, element('div', 'ss-more-rewards'));
         if (hasNumber(points.credited) || ['battle', 'missions', 'vehicle'].some(function (key) { return hasNumber(points[key]); })) {
-            var pass = append(rewards, element('div', 'ss-more-reward-block'));
+            var pass = append(rewards, element('div', 'ss-more-reward-block ss-more-pass-block'));
             append(pass, element('h3', 'ss-more-title', t('more.pass')));
             var passTable = rewardTable(pass, 'ss-more-pass');
             if (hasNumber(points.credited)) { rewardRow(passTable, t('more.pass.total', [number(points.credited)])); }
@@ -826,8 +837,7 @@
         }
         var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
         if (keys.length || battle.xp_bonus_applied) {
-            var bonusBlock = append(panel, element('div', 'ss-more-reward-block ss-more-bonus-block'));
-            if (missionBlock) { panel.insertBefore(bonusBlock, missionBlock); }
+            var bonusBlock = append(rewards, element('div', 'ss-more-reward-block ss-more-bonus-block'));
             append(bonusBlock, element('h3', 'ss-more-title', t('more.bonuses')));
             var columns = ['finance.credits', 'more.column.xp', 'more.column.free_xp', 'more.column.crew_xp', 'finance.bonds'];
             var sources = [
@@ -835,13 +845,21 @@
                 ['boosterCredits', 'boosterXP', 'boosterFreeXP', 'boosterTMenXP'],
                 ['orderCredits', 'orderXP', 'orderFreeXP', 'orderTMenXP'],
                 ['wotPlusCredits', 'wotPlusXP', 'wotPlusFreeXP', 'wotPlusCrewXP'],
-                [null, 'premiumVehicleXP'], [null, 'squadXP']
+                [null, 'premiumVehicleXP'], [null, 'squadXP'],
+                ['appliedPremiumCreditsFactor100', 'appliedPremiumXPFactor100'],
+                [null, 'dailyXPFactor10'], [null, 'additionalXPFactor10']
             ].filter(function (source) { return source.some(function (key) { return key && hasNumber(bonuses[key]); }); });
             var visible = columns.map(function (label, index) {
                 return sources.some(function (source) { return source[index] && hasNumber(bonuses[source[index]]); });
             });
-            var bonusTable = sources.length ? rewardTable(bonusBlock, 'ss-more-bonuses') : null;
+            var longBonus = sources.some(function (source) {
+                return source.some(function (key) {
+                    return key && key.indexOf('Factor') < 0 && hasNumber(bonuses[key]) && Math.abs(bonuses[key]) >= 1000000;
+                });
+            });
+            var bonusTable = sources.length ? rewardTable(bonusBlock, 'ss-more-bonuses' + (longBonus ? ' ss-long-bonus-values' : '')) : null;
             var factors = null;
+            bonusBlock.style.flexBasis = Math.max(240, 120 + visible.filter(function (value) { return value; }).length * 60) + 'rem';
             if (sources.length) {
                 var heading = append(bonusTable, element('div', 'ss-bonus-row ss-bonus-head'));
                 heading.setAttribute('role', 'row');
@@ -859,17 +877,13 @@
                     columns.forEach(function (label, index) {
                         if (!visible[index]) { return; }
                         var value = source[index] && bonuses[source[index]];
-                        append(row, element('div', 'ss-bonus-number', hasNumber(value) ? signed(value) : t('format.missing'))).setAttribute('role', 'cell');
+                        var key = source[index];
+                        var divisor = key && (key.slice(-9) === 'Factor100' ? 100 : key.slice(-8) === 'Factor10' ? 10 : null);
+                        var output = hasNumber(value) ? (divisor ? '\u00d7' + String(value / divisor).replace('.', t('format.decimal')) : signed(value)) : t('format.missing');
+                        append(row, element('div', 'ss-bonus-number' + (divisor ? ' ss-bonus-factor' : ''), output)).setAttribute('role', 'cell');
                     });
                 });
             }
-            keys.forEach(function (key) {
-                var divisor = key.slice(-9) === 'Factor100' ? 100 : key.slice(-8) === 'Factor10' ? 10 : null;
-                if (!divisor) { return; }
-                var amount = String(bonuses[key] / divisor).replace('.', t('format.decimal'));
-                if (!factors) { factors = rewardTable(bonusBlock, 'ss-more-factors'); }
-                rewardRow(factors, t('more.bonus.' + bonusLabels[key], [amount]));
-            });
             if (battle.xp_bonus_applied && !hasNumber(bonuses.additionalXPFactor10)) {
                 if (!factors) { factors = rewardTable(bonusBlock, 'ss-more-factors'); }
                 rewardRow(factors, t('more.bonus.applied'));
@@ -935,7 +949,7 @@
             if (battle) {
                 appendOutcome(header, item);
             } else {
-                headlineStat(header, t('metric.battles'), battleCount(stats), false, true);
+                headlineStat(header, t('metric.battles'), battleCount(stats), false, true).className += ' ss-group-count';
                 headlineStat(header, t('metric.win_rate'), rate(stats.win_rate), false, true);
                 headlineStat(header, t('metric.wn8'), integer(stats.wn8), true, true);
             }
@@ -966,7 +980,7 @@
             var available = hasNumber(viewport.width) ? viewport.width : window.innerWidth;
             width = Math.max(0, Math.min(preferred, (available - (state.bound ? 20 : 0)) / scale) - 34);
         }
-        var cardWidth = (state.cardWidths || {battles:620, vehicles:600, maps:560, tiers:520})[state.group];
+        var cardWidth = (state.cardWidths || {battles:500, vehicles:560, maps:560, tiers:520})[state.group];
         var columnWidth = cardWidth * 2 + 64;
         var wide = width >= columnWidth;
         state.cardColumns.style.width = (wide ? columnWidth : cardWidth) + 'rem';
@@ -977,7 +991,7 @@
         });
         nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns ss-card-stream' : '') +
             (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
-            (Math.min(width, cardWidth) < 600 ? ' ss-narrow-cards' : '');
+            (Math.min(width, cardWidth) < (state.group === 'battles' ? 430 : 500) ? ' ss-narrow-cards' : '');
         var changed = state.cardLayoutWide !== wide;
         var cards = state.groupCards || [], owned = [], focused = document.activeElement;
         for (var index = 0; index < cards.length; index += 1) {
@@ -1073,12 +1087,41 @@
         if (event.deltaMode === 2) { step = -vertical * nodes.scroll.clientHeight; }
         step *= state.scrollSpeed;
         var last = Math.max(0, nodes.scroll.scrollHeight - nodes.scroll.clientHeight);
-        nodes.scroll.scrollTop = Math.max(0, Math.min(last, nodes.scroll.scrollTop + step));
+        var current = state.scrollTarget === null ? nodes.scroll.scrollTop : state.scrollTarget;
+        state.scrollTarget = null;
+        nodes.scroll.scrollTop = Math.max(0, Math.min(last, current + step));
         /* Some client revisions deliver programmatic scroll events later.
            Appending near the end must not depend on another wheel notch. */
         loadNearBottom();
     }
     function setStatus(message) { nodes.status.textContent = message; }
+    function resetViewScroll() {
+        // Native scroll setters can be applied after the next layout. Keep the
+        // navigation intent instead of reading the old offset straight back.
+        state.scrollTarget = 0;
+        nodes.scroll.scrollTop = 0;
+    }
+    function restoreViewScroll() {
+        if (state.scrollTarget === null) { return; }
+        var target = state.scrollTarget;
+        state.scrollTarget = null;
+        nodes.scroll.scrollTop = target;
+    }
+    function onScrollIntent(event) {
+        // Native wheel input consumes the pending logical offset itself before
+        // cancelling restoration; its DOM getter can still expose an old frame.
+        if (event.type === 'wheel' && state.bound) { return; }
+        if (event.type === 'keydown') {
+            var key = event.key || event.keyCode;
+            if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 38, 40, 33, 34, 36, 35, 32].indexOf(key) < 0) { return; }
+        }
+        // A wheel, scrollbar drag or scrolling key after rendering belongs to
+        // the user; a queued layout must not undo that newer movement.
+        state.scrollTarget = null;
+    }
+    nodes.scroll.addEventListener('wheel', onScrollIntent, true);
+    nodes.scroll.addEventListener('mousedown', onScrollIntent, true);
+    nodes.scroll.addEventListener('keydown', onScrollIntent, true);
     function render() {
         var payload = state.payload;
         if (!payload || !payload.scopes) { return; }
@@ -1100,7 +1143,13 @@
             hasInstance ? t('scope.launch.short') : t('scope.launch');
         var scope = currentScope();
         if (!scope || !scope.summary) { return; }
-        var oldTop = nodes.scroll.scrollTop;
+        var page = scope.pagination && scope.pagination[state.group];
+        var viewKey = JSON.stringify([payload.account_key, scopeName(), state.group,
+            scope.period_id, scope.from_point, scope.to_point, page && page.page]);
+        var oldTop = state.viewKey !== viewKey ? 0 :
+            (state.scrollTarget === null ? nodes.scroll.scrollTop : state.scrollTarget);
+        state.viewKey = viewKey;
+        state.scrollTarget = oldTop;
         selected('ss-scope-launch', state.scope === 'launch');
         selected('ss-scope-manual', state.scope === 'manual');
         selected('ss-scope-instance', state.scope === 'instance');
@@ -1156,6 +1205,8 @@
                 }
             }
             setStatus(loadingText);
+            nodes.scroll.scrollTop = oldTop;
+            queueResize();
             return;
         }
         renderSummary(scope.summary, scope);
@@ -1182,6 +1233,7 @@
         if (visibleWarnings.length) { text += ' · ' + t('status.notes', [visibleWarnings.length]); }
         setStatus(state.actionError || text);
         nodes.scroll.scrollTop = oldTop;
+        queueResize();
     }
     function update(payload) {
         closeSelect(false);
@@ -1276,11 +1328,13 @@
         }
     }
     function showReset(show) {
+        var wasOpen = state.dialog;
         if (show) { endNativeDrag(); }
         state.dialog = !!show;
         resetText();
         nodes['reset-overlay'].style.display = show ? 'flex' : 'none';
-        if (show) { focusControl(nodes['reset-cancel']); } else if (state.scope !== 'launch') { focusControl(nodes.reset); }
+        if (show) { focusControl(nodes['reset-cancel']); }
+        else if (wasOpen && state.scope !== 'launch') { focusControl(nodes.reset); }
     }
     function resetText() {
         document.getElementById('ss-confirm-title').textContent = state.scope === 'instance' ?
@@ -1293,19 +1347,19 @@
         closeSelect(false);
         if (!state.payload || !state.payload.scopes[scope]) { return; }
         state.scope = scope; state.loadedCount = 40;
-        showReset(false); nodes.scroll.scrollTop = 0; render();
+        showReset(false); resetViewScroll(); render();
     }
     function switchGroup(group) {
         closeSelect(false);
         if (state.group !== group) { state.loadedCount = 40; }
-        state.group = group; nodes.scroll.scrollTop = 0; render();
+        state.group = group; resetViewScroll(); render();
     }
     function changePage(direction) {
         if (state.destroyed || !state.payload || !state.payload.scopes) { return; }
         var scope = currentScope();
         var page = scope && scope.pagination && scope.pagination[state.group];
         if (!page || page.page + direction < 0 || page.page + direction >= page.pages) { return; }
-        state.loadedCount = 40; nodes.scroll.scrollTop = 0;
+        state.loadedCount = 40; resetViewScroll();
         invoke('page', {scope:scopeName(), group:state.group, page:page.page + direction,
             period_id:scope.period_id, account_key:state.payload.account_key});
     }
@@ -1408,8 +1462,11 @@
     function resizeNative() {
         if (!state.bound) { return; }
         var rect = root.getBoundingClientRect();
-        var width = Math.max(1, Math.ceil(rect.width));
-        var height = Math.max(1, Math.ceil(rect.height));
+        var validWidth = hasNumber(rect.width) && rect.width > 0;
+        var validHeight = hasNumber(rect.height) && rect.height > 0;
+        var fallback = validWidth && validHeight ? null : resizePanelDimensions(rect);
+        var width = Math.max(1, Math.ceil(validWidth ? rect.width : fallback.width * state.nativeScale));
+        var height = Math.max(1, Math.ceil(validHeight ? rect.height : fallback.height * state.nativeScale));
         if (state.nativeWidth === width && state.nativeHeight === height) { return; }
         state.nativeWidth = width;
         state.nativeHeight = height;
@@ -1439,6 +1496,54 @@
         // receive this mouse event. This is the client's native handled flag.
         if (state.bound && window.viewEnv && typeof window.viewEnv.setEventHandled === 'function') {
             try { window.viewEnv.setEventHandled(); } catch (error) { /* DOM cancellation still applies. */ }
+        }
+    }
+    function resizePanelDimensions(rect) {
+        var scale = state.nativeScale || 1;
+        var viewport = state.payload && state.payload.viewport;
+        if (!state.logicalSize && !rect) { rect = root.getBoundingClientRect(); }
+        var width = state.logicalSize ? state.logicalSize.width : rect.width / scale;
+        var height = state.logicalSize ? state.logicalSize.height : rect.height / scale;
+        // Empty first-layout measurements must not collapse the native surface
+        // or its grips. Ignore a 1px placeholder; use a real cached dimension
+        // or the native/CSS default (LOGICAL_SIZE), without persisting a guess.
+        if (!hasNumber(width) || width <= 0) {
+            width = hasNumber(state.nativeWidth) && state.nativeWidth > 2 * scale ? state.nativeWidth / scale : 700;
+        }
+        if (!hasNumber(height) || height <= 0) {
+            height = hasNumber(state.nativeHeight) && state.nativeHeight > 2 * scale ? state.nativeHeight / scale : 620;
+        }
+        // Use the requested size and the same viewport bounds as the panel;
+        // Gameface can report old element offsets immediately after resizing.
+        var maxWidth = Math.max(1, state.bound && viewport && hasNumber(viewport.width) ? Math.floor(viewport.width - 20) : window.innerWidth) / scale;
+        var maxHeight = Math.max(1, state.bound && viewport && hasNumber(viewport.height) ? Math.floor(viewport.height - 20) : window.innerHeight) / scale;
+        width = Math.min(maxWidth, Math.max(Math.min(300 / scale, maxWidth), width));
+        height = Math.min(maxHeight, Math.max(1, height));
+        return {width:width, height:height};
+    }
+    function layoutResizeGrips() {
+        var dimensions = resizePanelDimensions();
+        // Absolute coordinates start inside the panel's 1rem border. Mirror
+        // every hit box there, using explicit sizes rather than button auto layout.
+        var width = Math.max(0, dimensions.width - 2);
+        var height = Math.max(0, dimensions.height - 2);
+        var corner = Math.min(16, width / 2, height / 2), depth = Math.min(6, corner);
+        var boxes = {
+            nw:[0, 0, corner, corner], ne:[width - corner, 0, corner, corner],
+            sw:[0, height - corner, corner, corner], se:[width - corner, height - corner, corner, corner],
+            n:[corner, 0, width - 2 * corner, depth], s:[corner, height - depth, width - 2 * corner, depth],
+            w:[0, corner, depth, height - 2 * corner], e:[width - depth, corner, depth, height - 2 * corner]
+        };
+        var grips = root.querySelectorAll('.ss-resize-grip');
+        for (var index = 0; index < grips.length; index += 1) {
+            var grip = grips[index], box = boxes[grip.getAttribute('data-corner') || 'se'];
+            if (!box) { continue; }
+            grip.style.left = box[0] + 'rem';
+            grip.style.top = box[1] + 'rem';
+            grip.style.width = box[2] + 'rem';
+            grip.style.height = box[3] + 'rem';
+            grip.style.right = 'auto';
+            grip.style.bottom = 'auto';
         }
     }
     var resizeCursorGrip = null, resizeCursorAt = null, resizeCursorTimer = null, resizeCursorToken = 0;
@@ -1690,9 +1795,11 @@
         function measure() {
             if (state.destroyed || ticket !== state.resizeMeasureToken) { return; }
             state.resizeQueued = false;
+            layoutResizeGrips();
             layoutSummary();
             layoutBattleCards();
             resizeNative();
+            restoreViewScroll();
         }
         if (typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(function () { window.requestAnimationFrame(measure); });
@@ -1827,6 +1934,9 @@
         root.removeEventListener('focusout', leaveHelp);
         root.removeEventListener('click', clickHelp);
         nodes.scroll.removeEventListener('scroll', hideHelp);
+        nodes.scroll.removeEventListener('wheel', onScrollIntent, true);
+        nodes.scroll.removeEventListener('mousedown', onScrollIntent, true);
+        nodes.scroll.removeEventListener('keydown', onScrollIntent, true);
         window.removeEventListener('blur', hideHelp);
         window.removeEventListener('resize', hideHelp);
         closeSelect(false);

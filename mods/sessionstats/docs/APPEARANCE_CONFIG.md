@@ -69,8 +69,8 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `opacity.garage_button` | `1.0` | Entire garage button |
 | `opacity.disabled_controls` | `0.45` | Disabled controls |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
-| `cards.battles` | `620` | Battle card width in logical pixels |
-| `cards.vehicles` | `600` | Vehicle card width in logical pixels |
+| `cards.battles` | `500` | Battle card width in logical pixels |
+| `cards.vehicles` | `560` | Vehicle card width in logical pixels |
 | `cards.maps` | `560` | Map card width in logical pixels |
 | `cards.tiers` | `520` | Tier card width in logical pixels |
 

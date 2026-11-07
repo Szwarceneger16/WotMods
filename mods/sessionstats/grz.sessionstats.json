@@ -167,8 +167,8 @@
     "speed_multiplier": 1.0
   },
   "cards": {
-    "battles": 620,
-    "vehicles": 600,
+    "battles": 500,
+    "vehicles": 560,
     "maps": 560,
     "tiers": 520
   },

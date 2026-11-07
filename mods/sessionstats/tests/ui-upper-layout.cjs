@@ -1,5 +1,6 @@
 /* Exercise the MOD window width independently of the full game's viewport.
    Viewport-only media queries cannot fix a small floating native window. */
+const fs=require('fs'),path=require('path');
 module.exports=async function ({browser,nativeHost,check}) {
   const cases=[
     {width:1200,scale:1,gameWidth:2000,mode:'wide'},
@@ -58,6 +59,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         const root=bounds(document.getElementById('grz-session-stats'));
         const panels=['.ss-summary-main','#ss-summary .ss-performance','#ss-summary .ss-economy'].map(selector=>bounds(document.querySelector(selector)));
         const pair=bounds(document.querySelector('#ss-summary .ss-summary-details'));
+        const summary=bounds(document.querySelector('#ss-summary .ss-summary-layout'));
         const kpis=[...document.querySelectorAll('#ss-summary .ss-kpi')].map(bounds);
         const filters=[...document.querySelectorAll('.ss-timeline-field')].map(bounds);
         const xp=bounds(document.querySelector('.ss-xp-picker'));
@@ -84,7 +86,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         }
         const compact=text=>text.replace(/\s/g,'');
         const credits=document.querySelector('#ss-summary .ss-money-row');
-        return {root,panels,pair,kpis,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
+        return {root,panels,pair,summary,kpis,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
           coverage:[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>compact(node.textContent)),
@@ -117,7 +119,7 @@ module.exports=async function ({browser,nativeHost,check}) {
           Math.abs(audit.filters[0].top-audit.xp.top)<=2 &&
           audit.filters[1].right<=audit.xp.left);
         check('Wide result count, pagination and sorting share a bounded row: '+caption,
-          audit.lower[1].width<=341 && audit.lower[2].width<=363 &&
+          audit.lower[1].width<=341 && audit.lower[2].width<=295 &&
           audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
           Math.min(...audit.lower.map(box=>box.bottom))-Math.max(...audit.lower.map(box=>box.top))>5 &&
           Math.max(...audit.lowerTriggers.map(box=>box.bottom))-Math.min(...audit.lowerTriggers.map(box=>box.bottom))<=2);
@@ -126,6 +128,8 @@ module.exports=async function ({browser,nativeHost,check}) {
         check('Wide summary uses one compact row for main stats, combat and finances: '+caption,
           Math.max(...audit.panels.map(panel=>panel.top))-Math.min(...audit.panels.map(panel=>panel.top))<=1 &&
           audit.panels[0].right<=audit.panels[1].left+1 && audit.panels[1].right<=audit.panels[2].left+1);
+        check('The compact wide summary row is centered in the floating window: '+caption,
+          Math.abs(audit.panels[0].left+audit.pair.right-audit.summary.left-audit.summary.right)<=2);
       } else if(mode==='medium') {
         check('Medium summary wraps combat and finances together below the main KPIs: '+caption,
           audit.pair.top>=audit.panels[0].bottom-1 && Math.abs(audit.panels[1].top-audit.panels[2].top)<=1 &&
@@ -136,6 +140,9 @@ module.exports=async function ({browser,nativeHost,check}) {
           audit.panels[2].top>=audit.panels[1].bottom-1 &&
           audit.xp.top>=Math.max(...audit.filters.map(field=>field.bottom))-1);
       }
+      if(mode!=='wide') check('Wrapped summary rows stay centered: '+caption,
+        Math.abs(audit.panels[0].left+audit.panels[0].right-audit.summary.left-audit.summary.right)<=2 &&
+        Math.abs(audit.pair.left+audit.pair.right-audit.summary.left-audit.summary.right)<=2);
       await page.evaluate(()=>{
         const payload=JSON.parse(model.payload);
         payload.scopes.timeline.summary.currencies.credits.net=12345678;
@@ -143,6 +150,87 @@ module.exports=async function ({browser,nativeHost,check}) {
       });
       check('Positive finance totals retain their full signed amount: '+caption,
         await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value .ss-cell-value').last().textContent().then(text=>text.replace(/\s/g,'')==='+12345678'));
+    } finally { await page.close(); }
+  }
+  const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
+  const transitionCases=[{width:470,scale:1},{width:700,scale:1},{width:1000,scale:1},
+    {width:1200,scale:1},{width:700,scale:2}];
+  for(const {width,scale} of transitionCases) {
+    const page=await nativeHost(browser,{initialViewport:{width:3000,height:2200},
+      viewport:{width:3000,height:2200,scale}});
+    try {
+      for(const [language,messages] of Object.entries(languages)) {
+        await page.evaluate(({width,language,messages})=>{
+          const payload=JSON.parse(model.payload);
+          payload.window_size=[width,1000];payload.localization={language,messages};
+          const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
+          timeline.from_point=timeline.to_point='';timeline.time_points=[];
+          payload.scopes.launch=JSON.parse(JSON.stringify(timeline));
+          const empty=payload.scopes.launch;
+          empty.battles=[];empty.vehicles=[];empty.maps=[];empty.tiers=[];empty.pending=0;
+          const stats=empty.summary;
+          stats.battles=stats.observed_battles=stats.wins=stats.losses=stats.draws=stats.wn8_count=0;
+          stats.win_rate=stats.wn8=null;
+          for(const metric of ['xp_base','xp_received','battle_wn8','free_xp']) {
+            stats[metric]={min:null,avg:null,max:null,sum:null,count:0};
+          }
+          for(const currency of Object.values(stats.currencies)) for(const field of ['income','costs','net']) {
+            currency[field]=null;currency[field+'_count']=0;
+          }
+          model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+        },{width,language,messages});
+        await page.locator('#ss-scope-launch').click();
+        const geometry=async()=>{
+          await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+          return page.evaluate(scale=>{
+            const rect=node=>{const box=node.getBoundingClientRect();return {left:box.left/scale,right:box.right/scale,
+              top:box.top/scale,bottom:box.bottom/scale,width:box.width/scale};};
+            const summary=document.getElementById('ss-summary');
+            return {mode:summary.className,layout:rect(summary.querySelector('.ss-summary-layout')),
+              panels:['.ss-summary-main','.ss-summary-details','.ss-performance','.ss-economy'].map(s=>rect(summary.querySelector(s))),
+              kpis:[...summary.querySelectorAll('.ss-kpi')].map(rect)};
+          },scale);
+        };
+        const empty=await geometry();
+        await page.locator('#ss-scope-manual').click();
+        const full=await geometry();
+        const caption=language+' at '+width+' logical pixels / '+scale*100+'%';
+        check('Empty launch and populated timeline keep deterministic summary widths: '+caption,
+          empty.mode===full.mode && empty.panels.every((box,index)=>
+            Math.abs(box.left-full.panels[index].left)<=1 && Math.abs(box.width-full.panels[index].width)<=1));
+        const center=box=>(box.left+box.right)/2;
+        check('Summary rows and horizontal KPIs stay centered across periods: '+caption,
+          [empty,full].every(data=>{
+            const [main,pair,performance,economy]=data.panels;
+            const rows=width<1144 ? [main,pair] : [{left:main.left,right:pair.right}];
+            return rows.every(row=>Math.abs(center(row)-center(data.layout))<=1) &&
+              (width>=684 || [performance,economy].every(row=>Math.abs(center(row)-center(pair))<=1)) &&
+              data.kpis.length===3 && data.kpis.every(box=>Math.abs(box.top-data.kpis[0].top)<=1);
+          }));
+        check('All localized sort options fit the compact bounded selectors: '+caption,
+          await page.locator('#ss-sorting').evaluate(bar=>{
+            const box=bar.getBoundingClientRect(),fields=[...bar.querySelectorAll('.ss-sort-field')];
+            const scale=parseFloat(getComputedStyle(document.documentElement).fontSize);
+            if(box.width<=0 || box.width/scale>295 || fields.length!==3 ||
+              fields.some((field,index)=>field.getBoundingClientRect().width/scale>[71,121,105][index])) return false;
+            return fields.every(field=>{
+              const label=field.querySelector('.ss-select-trigger .ss-control-label'),original=label.textContent;
+              const available=label.getBoundingClientRect().width,range=document.createRange();
+              const fits=[...field.querySelectorAll('[role=option]')].every(option=>{
+                label.textContent=option.textContent;range.selectNodeContents(label);
+                return range.getBoundingClientRect().width<=available+1;
+              });
+              label.textContent=original;
+              const caption=field.querySelector('.ss-sort-caption');range.selectNodeContents(caption);
+              return fits && range.getBoundingClientRect().width<=caption.getBoundingClientRect().width+1;
+            });
+          }));
+        await page.locator('#ss-scope-launch').click();
+        const restored=await geometry();
+        check('Returning to the empty period restores the centered summary without a layout drift: '+caption,
+          restored.mode===empty.mode && restored.panels.every((box,index)=>
+            Math.abs(box.left-empty.panels[index].left)<=1 && Math.abs(box.width-empty.panels[index].width)<=1));
+      }
     } finally { await page.close(); }
   }
 };
