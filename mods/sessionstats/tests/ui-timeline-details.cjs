@@ -374,6 +374,9 @@ module.exports = async function ({browser, nativeHost, check}) {
     };
     const payload=JSON.parse(model.payload);
     payload.window_size=[2200,1160];
+    // Keep this pre-existing base-width/stale-measurement matrix independent
+    // of the separate two-column wide-preset threshold regression.
+    payload.appearance={wide_card_widths:{vehicles:560,maps:560,tiers:520,battles:500}};
     const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
     timeline.from_point=timeline.to_point='';timeline.time_points=[];
     for (const group of ['vehicles','maps','tiers','battles']) {

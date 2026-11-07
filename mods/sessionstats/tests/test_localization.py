@@ -284,6 +284,28 @@ class LocalizationTests(unittest.TestCase):
         self.assertEqual(rows[1]['name'], self.catalog['de']['unknown.vehicle'])
         self.assertEqual(rows[1]['map'], 'Karte 42')
 
+    def test_progress_display_formats_do_not_parse_arbitrary_colon_notices(self):
+        values = ('Fixture: Pending: 3', 'Nieznany pojazd: 1/2',
+                  'Nieznany pojazd: 1 → 2 (+1)', 'Fixture: ' * 30 + 'Pending: 3')
+        for language in loc.SUPPORTED:
+            translator = loc.Localizer(language)
+            for value in values:
+                self.assertEqual(translator.translate(value), value, language)
+            # These formats remain available for explicit keyed UI rendering.
+            self.assertEqual(translator.text('more.progress.change', 'Fixture', '+2'),
+                             self.catalog[language]['more.progress.change'].format('Fixture', '+2'))
+
+    def test_parameterized_legacy_warnings_keep_their_own_message_pattern(self):
+        examples = (('runtime.backlog', (13,)), ('status.pending', (3,)),
+                    ('health.notice', ('damage: missing', 'Fixture: read error')))
+        for language in loc.SUPPORTED:
+            translator = loc.Localizer(language)
+            for key, arguments in examples:
+                expected = self.catalog[language][key].format(*arguments)
+                for source in (loc.ENGLISH, loc.LEGACY_POLISH):
+                    self.assertEqual(translator.translate(source[key].format(*arguments)), expected,
+                                     language + ':' + key)
+
     def test_all_backend_warnings_round_trip_to_each_language(self):
         prefixes = ('storage.', 'core.', 'normalize.', 'health.', 'log.', 'runtime.', 'installation.')
         for code in self.catalog:

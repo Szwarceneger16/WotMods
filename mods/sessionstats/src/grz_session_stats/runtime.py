@@ -336,6 +336,7 @@ class Runtime(object):
         self._appearance_override_path = appearance_path
         self.appearance_path = None
         self._presentation = {'panel_css': '', 'footer_css': '', 'scroll_speed': 1.0}
+        self._window_settings_result = None
         self.services = {}
         self.active_service = None
         self.active_key = None
@@ -607,6 +608,8 @@ class Runtime(object):
             LOG.exception('CONFIG appearance unavailable; built-in styles and scrolling remain active.')
         if not self._instance_tab_enabled:
             self.compatibility_warnings.pop('installation:identity', None)
+        if self._window_settings_result is not None:
+            self._presentation['window_settings_result'] = dict(self._window_settings_result)
         if self.running and self.active_service is not None:
             self._ensure_installation_session()
         self._publish_appearance()
@@ -1623,6 +1626,33 @@ class Runtime(object):
                 self._window_call('refresh')
             else:
                 self._notify(message('language.save_error'))
+        elif action == 'window_settings' and self.active_service is not None:
+            if getter('account_key') != self.active_key:
+                return
+            request = getter('request_id')
+            if isinstance(request, bytes) and not isinstance(request, text_type):
+                try:
+                    request = request.decode('ascii')
+                except UnicodeError:
+                    return
+            if (not isinstance(request, text_type) or not 1 <= len(request) <= 64 or
+                    any(char not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-' for char in request)):
+                return
+            from .appearance import window_settings_patch
+            from .config_files import save_window_settings
+            fields = ('background_transparency', 'maximized', 'restored_width', 'restored_height')
+            values = dict((key, getter(key)) for key in fields if getter(key) is not None)
+            checked = window_settings_patch(values, command=True)
+            allowed = set(fields + ('action', 'account_key', 'request_id'))
+            keys = getattr(arg, 'keys', None)
+            if callable(keys) and any(key not in allowed for key in keys()):
+                checked = None
+            saved = checked is not None and save_window_settings(self.appearance_path, checked)
+            self._window_settings_result = {'request_id': request, 'saved': bool(saved)}
+            # Re-read the actual file even after a rejected concurrent edit or
+            # failed publication. The UI rolls back to persisted settings.
+            self._load_appearance()
+            self._window_call('refresh')
         elif action == 'refresh':
             self._load_appearance()
             self._refresh_posted()

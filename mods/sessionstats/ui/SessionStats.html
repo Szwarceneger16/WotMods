@@ -8,6 +8,7 @@
 </head>
 <body>
   <div id="grz-session-stats" class="ss-window">
+    <div id="ss-window-background" class="ss-window-background" aria-hidden="true"></div>
     <header id="ss-titlebar" class="ss-titlebar">
       <div class="ss-title-identity">
         <h1 data-i18n="title">Session statistics</h1>
@@ -18,8 +19,16 @@
           <button id="ss-time-point" class="ss-control ss-button ss-time-point" type="button"><span class="ss-control-label" data-i18n="timeline.create">Create time point</span></button>
           <input id="ss-time-point-name" class="ss-time-point-name" type="text" maxlength="80" autocomplete="off" data-i18n-aria="timeline.name" aria-label="Time point name">
         </div>
+        <div class="ss-background-control">
+          <span id="ss-background-transparency-label" class="ss-background-caption" data-i18n="window.background">Background</span>
+          <div id="ss-background-transparency" class="ss-background-slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Background transparency" data-i18n-aria="window.background_transparency" title="Background transparency" data-i18n-title="window.background_transparency">
+            <div id="ss-background-transparency-track" class="ss-background-track"><div id="ss-background-transparency-thumb" class="ss-background-thumb"></div></div>
+          </div>
+          <span id="ss-background-transparency-value" class="ss-background-value" aria-hidden="true">0%</span>
+        </div>
         <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
       </div>
+      <button id="ss-maximize" class="ss-control ss-window-toggle" type="button" tabindex="0" aria-pressed="false" aria-label="Maximize window" data-i18n-aria="window.maximize" title="Maximize window" data-i18n-title="window.maximize"><span id="ss-maximize-symbol" class="ss-window-toggle-symbol" aria-hidden="true"></span></button>
       <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" data-i18n="close.symbol">×</span></button>
     </header>
     <div class="ss-controls">

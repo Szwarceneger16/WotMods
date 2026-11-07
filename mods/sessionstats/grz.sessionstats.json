@@ -172,6 +172,18 @@
     "maps": 560,
     "tiers": 520
   },
+  "wide_cards": {
+    "battles": 800,
+    "vehicles": 800,
+    "maps": 800,
+    "tiers": 800
+  },
+  "window": {
+    "background_transparency": 0,
+    "maximized": false,
+    "restored_width": 700,
+    "restored_height": 620
+  },
   "sessions": {
     "instance_tab": false
   }

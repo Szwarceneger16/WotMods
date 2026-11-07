@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import re
+from copy import deepcopy
 
 from .normalize import _integer, _number, _text, integer_types, text_type
 
@@ -13,6 +14,9 @@ MARKUP = re.compile(r'<[^>]*>')
 MISSION_KINDS = ('crucible', 'daily', 'daily_bonus', 'daily_epic', 'weekly',
                  'premium', 'personal', 'battle_matters', 'other')
 MISSION_STATES = ('observed', 'progress', 'reset', 'failed', 'completed', 'honors')
+PROGRESS_STATES = ('changed', 'unchanged', 'unavailable')
+PROGRESS_UNITS = ('battles', 'vehicles', 'damage', 'kills', 'xp', 'seconds', 'counter')
+OBJECTIVE_LIMIT = 12
 POINT_FIELDS = {'battle': 'bpTopPoints', 'missions': 'eventBattlePassPoints',
                 'vehicle': 'bpBonusPoints'}
 BONUS_FIELDS = {
@@ -40,6 +44,33 @@ def _label(value, length):
 def _bounded_number(value):
     number = _number(value)
     return number if number is not None and number <= 10 ** 12 else None
+
+
+def _bounded_delta(value):
+    number = _number(value, nonnegative=False)
+    return number if number is not None and abs(number) <= 10 ** 12 else None
+
+
+def _clean_objectives(value):
+    if not isinstance(value, (list, tuple)):
+        return []
+    result = []
+    for incoming in value[:OBJECTIVE_LIMIT]:
+        incoming = _mapping(incoming)
+        key = _text(incoming.get('key'))
+        if not MISSION_ID.match(key) or incoming.get('unit') not in PROGRESS_UNITS:
+            continue
+        objective = {'key': key, 'unit': incoming['unit']}
+        label = _label(incoming.get('label'), 160)
+        if label:
+            objective['label'] = label
+        for field in ('before', 'after', 'target', 'delta'):
+            amount = (_bounded_delta if field == 'delta' else _bounded_number)(incoming.get(field))
+            if amount is not None:
+                objective[field] = amount
+        if 'after' in objective or 'delta' in objective:
+            result.append(objective)
+    return result
 
 
 def clean_details(value):
@@ -79,13 +110,17 @@ def clean_details(value):
             if label:
                 mission[field] = label
         for field, options in (('kind', MISSION_KINDS), ('status', MISSION_STATES),
-                               ('progress_kind', ('battles', 'vehicles'))):
+                               ('progress_kind', ('battles', 'vehicles')),
+                               ('progress_state', PROGRESS_STATES)):
             if row.get(field) in options:
                 mission[field] = row[field]
         for field in ('stage', 'before', 'after'):
             amount = _bounded_number(row.get(field))
             if amount is not None:
                 mission[field] = amount
+        objectives = _clean_objectives(row.get('objectives'))
+        if objectives:
+            mission['objectives'] = objectives
         if mission:
             missions[key] = mission
     if missions:
@@ -103,8 +138,17 @@ def merge_details(existing, incoming, revise):
                     legacy = combined.pop('pm2:' + key[len('personal:'):], {}) if key.startswith('personal:') else {}
                     legacy = dict((name, value) for name, value in legacy.items() if name != 'status')
                     row = dict(combined.get(key, legacy))
+                    if item.get('objectives'):
+                        objectives = dict((objective['key'], objective) for objective in row.get('objectives', ()))
+                        for objective in item['objectives']:
+                            if objective['key'] not in objectives or revise:
+                                objectives[objective['key']] = objective
+                        _set_progress(row, [objectives[name] for name in sorted(objectives)],
+                                      item.get('progress_state') == 'unchanged')
                     for name, entry in item.items():
                         previous = row.get(name)
+                        if name in ('objectives', 'progress_state') and row.get('objectives'):
+                            continue
                         if name == 'status' and previous is not None:
                             if MISSION_STATES.index(entry) > MISSION_STATES.index(previous):
                                 row[name] = entry
@@ -137,6 +181,38 @@ def _pass_points(avatar):
         if unallocated or deltas:
             points['credited'] = (unallocated or 0) + sum(deltas)
     return points
+
+
+def _set_progress(row, objectives, comparable=False):
+    objectives = _clean_objectives(objectives)
+    if objectives:
+        row['objectives'] = objectives
+    deltas = [objective.get('delta') for objective in objectives]
+    if any(delta is not None and delta != 0 for delta in deltas):
+        row['progress_state'] = 'changed'
+        if row.get('status', 'observed') == 'observed':
+            row['status'] = 'progress'
+    elif comparable and deltas and all(delta == 0 for delta in deltas):
+        row['progress_state'] = 'unchanged'
+    else:
+        row['progress_state'] = 'unavailable'
+
+
+def _result_counters(previous, current):
+    objectives = []
+    before = _bounded_number(previous.get('battlesCount'))
+    after = _bounded_number(current.get('battlesCount'))
+    if before is not None and after is not None:
+        objectives.append(dict(key='battlesCount', unit='battles', before=before,
+                               after=after, delta=after - before))
+    containers = (dict, list, tuple, set, frozenset)
+    before_vehicles = previous.get('battlesUniqueVehicles')
+    after_vehicles = current.get('battlesUniqueVehicles')
+    if isinstance(before_vehicles, containers) and isinstance(after_vehicles, containers):
+        before, after = len(before_vehicles), len(after_vehicles)
+        objectives.append(dict(key='battlesUniqueVehicles', unit='vehicles',
+                               before=before, after=after, delta=after - before))
+    return objectives
 
 
 def result_details(avatar, vehicle, active=None, mission_resolver=None):
@@ -182,21 +258,21 @@ def result_details(avatar, vehicle, active=None, mission_resolver=None):
                 if row.get('status') != 'completed':
                     row.update(kind='crucible', stage=int(challenge.group(1)), status='failed')
             continue
-        before = _bounded_number(previous.get('battlesCount', 0))
+        before = _bounded_number(previous.get('battlesCount'))
         after = _bounded_number(current.get('battlesCount'))
-        if not complete and previous == current and quest_id != active:
-            continue
         row = missions.setdefault(quest_id, {})
-        status = 'completed' if complete else 'progress' if previous != current else 'observed'
+        status = 'completed' if complete else 'observed'
         if status == 'completed' or row.get('status') != 'failed':
             row['status'] = status
+        row['_result_progress'] = (entry[0], previous, current)
+        _set_progress(row, _result_counters(previous, current), previous == current)
         if challenge:
             row.update(kind='crucible', stage=int(challenge.group(1)))
         if before is not None and after is not None and before != after:
             row.update(before=before, after=after)
         unique_vehicles = current.get('battlesUniqueVehicles')
         if isinstance(unique_vehicles, (dict, list, tuple, set, frozenset)):
-            previous_vehicles = previous.get('battlesUniqueVehicles', ())
+            previous_vehicles = previous.get('battlesUniqueVehicles')
             if isinstance(previous_vehicles, (dict, list, tuple, set, frozenset)):
                 if len(previous_vehicles) != len(unique_vehicles):
                     row.update(before=len(previous_vehicles), after=len(unique_vehicles), progress_kind='vehicles')
@@ -206,7 +282,9 @@ def result_details(avatar, vehicle, active=None, mission_resolver=None):
             mission_id = _integer(mission_id)
             if mission_id is None or mission_id > 10 ** 6 or not _mapping(subquests):
                 continue
-            row = missions.setdefault('personal:{0}'.format(mission_id), {'kind': 'personal', 'status': 'progress'})
+            row = missions.setdefault('personal:{0}'.format(mission_id), {'kind': 'personal', 'status': 'observed',
+                                                                       'progress_state': 'unavailable'})
+            row['_pm_progress'] = subquests
             completed = row.setdefault('_completed_conditions', set())
             completed.update(_text(key) for key, value in subquests.items()
                              if value is True and MISSION_ID.match(_text(key)))
@@ -228,6 +306,136 @@ def _quest_labels(quest, row):
             break
 
 
+def _objective_unit(key, condition=None):
+    key = key[5:] if key.startswith('unit_') else key
+    if key == 'battlesCount':
+        return 'battles'
+    if key in ('vehicleKills', 'kills'):
+        return 'kills'
+    if key in ('xp', 'originalXP'):
+        return 'xp'
+    if key in ('vehicleDamage', 'vehicleStun'):
+        event_count = getattr(condition, 'isEventCount', None)
+        if not callable(event_count) or event_count():
+            return 'counter'
+        return 'damage' if key == 'vehicleDamage' else 'seconds'
+    if key in ('damageDealt', 'damageAssistedRadio', 'damageAssistedTrack',
+               'damageAssistedStun', 'damageBlockedByArmor'):
+        return 'damage'
+    return 'counter'
+
+
+def _cumulative_conditions(group, depth=0):
+    if depth > 8:
+        return
+    for condition in getattr(group, 'items', ())[:128]:
+        if callable(getattr(condition, 'getProgressPerGroup', None)):
+            yield condition
+        elif hasattr(condition, 'items'):
+            for nested in _cumulative_conditions(condition, depth + 1):
+                yield nested
+
+
+def _common_objectives(quest, row):
+    data = row.get('_result_progress')
+    bonus = getattr(quest, 'bonusCond', None)
+    get_conditions = getattr(bonus, 'getConditions', None)
+    if not data or not callable(get_conditions):
+        return
+    group, previous, current = data
+    objectives, comparable = [], True
+    for condition in _cumulative_conditions(get_conditions()):
+        if len(objectives) >= OBJECTIVE_LIMIT:
+            comparable = False
+            break
+        key = _text(condition.getKey())
+        before = _bounded_number(previous.get(key))
+        after = _bounded_number(current.get(key))
+        if before is None or after is None:
+            comparable = False
+            continue
+        # The native helper handles capped and repeating quests. Its missing
+        # counter defaults must not turn an absent result value into zero.
+        packed = condition.getProgressPerGroup({group: current}, {group: previous}, True).get(group)
+        if not isinstance(packed, (list, tuple)) or len(packed) != 4:
+            comparable = False
+            continue
+        after, target, delta = _bounded_number(packed[0]), _bounded_number(packed[1]), _bounded_delta(packed[2])
+        if after is None or delta is None:
+            comparable = False
+            continue
+        objective = dict(key=key, unit=_objective_unit(key, condition), after=after, delta=delta)
+        before = _bounded_number(after - delta)
+        if before is not None:
+            objective['before'] = before
+        if target is not None:
+            objective['target'] = target
+        label = ''
+        for getter in ('getCustomTitle', 'getUserString', 'getCustomDescription'):
+            get_label = getattr(condition, getter, None)
+            label = _label(get_label(), 160) if callable(get_label) else ''
+            if label:
+                break
+        if label:
+            objective['label'] = label
+        objectives.append(objective)
+    if objectives:
+        # PM3's unique-vehicle counter is independent of cumulative fields.
+        objectives.extend(item for item in row.get('objectives', ()) if item['key'] == 'battlesUniqueVehicles')
+        _set_progress(row, objectives, comparable)
+        in_row = getattr(bonus, 'isInRow', None)
+        if (row.get('status') == 'progress' and callable(in_row) and in_row() and
+                any(item.get('delta', 0) < 0 and item.get('after') == 0 for item in objectives)):
+            row['status'] = 'reset'
+
+
+def _personal_objectives(quest, row):
+    current = _mapping(_mapping(row.get('_pm_progress')).get('current'))
+    get_config = getattr(quest, 'getConditionsConfig', None)
+    if not current or not callable(get_config):
+        return
+    from gui.server_events.personal_progress.storage import PostBattleProgressStorage
+
+    # Native storage augments config dictionaries with unique-vehicle state.
+    # A result read must not mutate the live mission catalog.
+    config = deepcopy(get_config())
+    storage = PostBattleProgressStorage(quest.getGeneralQuestID(), config, current, quest.isOneBattleQuest())
+    objectives = list(row.get('objectives', ()))
+    body = storage.getBodyProgresses()
+    for progress_id in sorted(body, key=_text):
+        progress = body[progress_id]
+        if len(objectives) >= OBJECTIVE_LIMIT:
+            break
+        raw = _mapping(current.get(progress_id))
+        settings = _mapping(_mapping(config.get(progress_id)).get('config'))
+        # Native storage creates zero-valued objects for omitted progress IDs.
+        # Only an explicitly supplied numeric value/container is evidence.
+        value = _bounded_number(raw.get('value'))
+        counter = raw.get('counter')
+        if value is None and not (isinstance(counter, dict) and
+                                  all(_bounded_number(amount) is not None for amount in counter.values())):
+            continue
+        goal_known = ('goal' in raw if settings.get('dynamicGoal') else
+                      any(key in settings for key in ('goal', 'totalGoal', 'uniqueGoal')))
+        after = _bounded_number(progress.getCurrent() if goal_known else
+                                value if value is not None else sum(counter.values()))
+        if after is None:
+            continue
+        objective = dict(key='pm:' + _text(progress_id), unit='counter', after=after)
+        # Descriptions interpolate the goal; an omitted dynamic goal would
+        # otherwise render the storage object's synthetic zero in the text.
+        label = _label(progress.getDescription(), 160) if goal_known else ''
+        if label:
+            objective['label'] = label
+        target = _bounded_number(progress.getGoal()) if goal_known else None
+        if target is not None:
+            objective['target'] = target
+        objectives.append(objective)
+    if objectives:
+        # PM2 current has no previous snapshot. Its value is not a battle delta.
+        _set_progress(row, objectives)
+
+
 def _personal_mission_rows(missions, ids, quests, operations):
     # PM1–PM4 can report main and additional conditions as separate quest IDs
     # for the same mission. Only the named additional condition grants honors.
@@ -239,6 +447,11 @@ def _personal_mission_rows(missions, ids, quests, operations):
             missions[key]['kind'] = 'personal'
             continue
         row = missions[key].copy()
+        try:
+            _personal_objectives(quest, row)
+        except Exception:
+            # Completion evidence remains usable without optional UI metadata.
+            pass
         source_keys.append(key)
         target_id = 'personal:{0}'.format(mission_id)
         if '_completed_conditions' in row:
@@ -251,7 +464,7 @@ def _personal_mission_rows(missions, ids, quests, operations):
             row['status'] = 'completed'
         elif row.get('status') == 'completed':
             # Award-list and technical subquests do not confirm an objective.
-            row['status'] = 'progress'
+            row['status'] = 'progress' if row.get('progress_state') == 'changed' else 'observed'
         row['kind'] = 'personal'
         other = normalized.get(target_id, {})
         if MISSION_STATES.index(row['status']) >= MISSION_STATES.index(other.get('status', 'observed')):
@@ -260,6 +473,13 @@ def _personal_mission_rows(missions, ids, quests, operations):
         else:
             combined = row.copy()
             combined.update(other)
+        objectives = {}
+        for objective in list(other.get('objectives', ())) + list(row.get('objectives', ())):
+            objectives[objective['key']] = objective
+        if objectives:
+            _set_progress(combined, [objectives[name] for name in sorted(objectives)],
+                          row.get('progress_state') == 'unchanged' and
+                          other.get('progress_state', 'unchanged') == 'unchanged')
         normalized[target_id] = combined
 
     for key in source_keys:
@@ -274,6 +494,12 @@ def _personal_mission_rows(missions, ids, quests, operations):
         if operation is not None:
             row['operation'] = _label(operation.getUserName(), 160)
         _quest_labels(quest, row)
+        try:
+            _common_objectives(quest, row)
+        except Exception:
+            # Preserve explicit result counters if the catalog cannot resolve
+            # this client's cumulative-condition implementation.
+            pass
 
 
 def game_mission_metadata(missions):
@@ -316,6 +542,11 @@ def game_mission_metadata(missions):
         if quest is None:
             continue
         _quest_labels(quest, row)
+        try:
+            _common_objectives(quest, row)
+        except Exception:
+            # Labels and explicit counters survive incomplete catalog support.
+            pass
         is_bonus = getattr(quest, 'isBonus', None)
         if row.get('kind') == 'daily' and callable(is_bonus) and is_bonus():
             row['kind'] = 'daily_bonus'

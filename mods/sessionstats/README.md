@@ -140,6 +140,24 @@ partial card settings remain unchanged. For example:
 {"cards": {"battles": 580, "vehicles": 560}}
 ```
 
+The layout always has at most two columns. When two wider cards fit, it switches
+both columns to a second fixed width, rather than adding another column or
+stretching cards continuously. Each tab defaults to 800 logical pixels in this
+wide preset; `wide_cards` accepts 480–1200 independently per tab. A wide value
+smaller than the tab's ordinary card width uses the ordinary width instead.
+
+```json
+{"wide_cards": {"battles": 800, "vehicles": 800, "maps": 800, "tiers": 800}}
+```
+
+The title bar includes Maximize/Restore and a background transparency slider.
+Transparency ranges from 0 (opaque, the default) to 100 (fully transparent
+background); text and controls retain their own opacity. Window controls save
+`window.background_transparency`, `window.maximized`, `window.restored_width`
+and `window.restored_height` to the same configuration, preserving unrelated
+fields. Restored dimensions use logical pixels. A smaller viewport temporarily
+clamps the surface without discarding the saved size.
+
 Every two-column tab uses staggered cards connected to a dashed central axis.
 Several battle cards can keep More open together. Expanded battles use the
 next available column in sorted order, so consecutive battles fill the space
@@ -159,6 +177,11 @@ share a row too. Battle Pass is a compact strip above the details. A wider bonus
 table sits beside the mission cards; each mission has its name, progress and
 description inside one outline. These sections wrap when the card cannot fit
 them without crowding, including unusually large numerical rewards.
+Mission progress shows confirmed per-battle increments and known current/target
+counters with their objective labels. Explicit unchanged counters show no
+progress; missing historical counters remain unavailable. A current/target
+snapshot alone never becomes an invented battle increment. Completion and
+honors remain visible. See [mission progress source evidence](docs/MISSION_PROGRESS_SOURCE_EVIDENCE.md).
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

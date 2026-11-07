@@ -197,7 +197,7 @@ module.exports=async function ({browser,nativeHost,check}) {
   const screenshots=[],audits=[];
   const modes=[
     {name:'narrow',width:720,scale:1,gameWidth:1920,gameHeight:1300,capture:true,columns:1,stress:false},
-    {name:'wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:true,columns:2,stress:false},
+    {name:'wide',width:1800,scale:1,gameWidth:2200,gameHeight:1300,capture:true,columns:2,stress:false},
     {name:'stress-wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:false,columns:2,stress:true},
     {name:'scaled-200',width:720,scale:2,gameWidth:3840,gameHeight:2560,capture:false,columns:1,stress:true},
     {name:'floating-470',width:470,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:1,stress:true},

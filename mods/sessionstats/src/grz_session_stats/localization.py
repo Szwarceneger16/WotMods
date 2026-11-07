@@ -19,6 +19,8 @@ MAX_BYTES = 2 * 1024 * 1024
 MAX_TEXT = 4096
 LANGUAGE = re.compile(r'\A[a-z]{2,3}(?:-[A-Z]{2})?\Z')
 CLIENT_LANGUAGE = re.compile(r'\A([a-zA-Z]{2,3})(?:[-_]([a-zA-Z]{2}))?\Z')
+PRESENTATION_ONLY_TEMPLATES = frozenset(('more.progress.change', 'more.progress.range',
+                                        'more.progress.target'))
 try:
     text_type = unicode
 except NameError:
@@ -173,6 +175,11 @@ class Localizer(object):
         # are recognized without rewriting or resetting any account history.
         for source in (ENGLISH, LEGACY_POLISH):
             for key, template in source.items():
+                # Generic UI formats such as "{0}: {1}" are not durable
+                # warning grammars. They would consume arbitrary notices and
+                # translate unrelated fragments before a real legacy pattern.
+                if key in PRESENTATION_ONLY_TEMPLATES:
+                    continue
                 if not _fields(template):
                     self._known[template] = key
                     continue

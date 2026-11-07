@@ -194,9 +194,9 @@ async function footer(browser) {
             !await sameRaster(page, baselineImage, await page.locator('#grz-session-stats').screenshot({animations:'disabled'}), false));
         const changed=await page.evaluate(()=>{
             const read=selector=>getComputedStyle(document.querySelector(selector));
-            const main=read('#grz-session-stats'),row=read('.ss-metric-row');
+            const main=read('#grz-session-stats'),background=read('#ss-window-background'),row=read('.ss-metric-row');
             const line=read('.ss-metric-row + .ss-metric-row');
-            return {border:main.borderTopColor,background:main.backgroundColor,radius:main.borderTopLeftRadius,opacity:main.opacity,
+            return {border:main.borderTopColor,background:background.backgroundColor,radius:main.borderTopLeftRadius,opacity:main.opacity,
                 rowBackground:row.backgroundColor,rowRadius:row.borderTopLeftRadius,line:line.borderTopColor,
                 text:read('.ss-metric-row .ss-metric-number').color,width:main.width,height:main.height};
         });

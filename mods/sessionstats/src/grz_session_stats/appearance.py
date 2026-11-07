@@ -187,6 +187,9 @@ DEFAULT_CONFIG = {'schema_version': 1,
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45},
  'scroll': {'speed_multiplier': 1.0},
  'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
+ 'wide_cards': {'battles': 800, 'vehicles': 800, 'maps': 800, 'tiers': 800},
+ 'window': {'background_transparency': 0, 'maximized': False,
+            'restored_width': 700, 'restored_height': 620},
  'sessions': {'instance_tab': False}}
 
 PANEL_TEMPLATE = '''/* Native Gameface view. Deliberately limited to block/flex layout. */
@@ -204,15 +207,32 @@ body { color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; fon
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
 .ss-close .ss-control-label { font-size:25rem; line-height:28rem; }
 button:disabled { opacity:{{opacity.disabled_controls}}; }
-.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; }
+.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; }
+.ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; pointer-events:none; }
+/* Positioned flow children paint above the dedicated background without
+   creating new stacking contexts for their existing menus and tooltips. */
+.ss-controls, .ss-scroll, .ss-footer { position:relative; }
 .ss-window.is-native { max-width:none; max-height:none; }
-.ss-titlebar { position:relative; z-index:30; display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; min-height:47rem; padding:6rem 45rem 7rem 13rem; border-radius:{{radii.titlebar}}rem {{radii.titlebar}}rem 0 0; background:linear-gradient({{colors.titlebar_background_start}}, {{colors.titlebar_background_end}}); box-shadow:inset 0 1rem {{colors.session_tab_shadow}}, inset 0 -1rem {{colors.session_tabs_border}}; }
+.ss-titlebar { position:relative; z-index:30; display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; min-height:47rem; padding:6rem 74rem 7rem 13rem; border-radius:{{radii.titlebar}}rem {{radii.titlebar}}rem 0 0; background:linear-gradient({{colors.titlebar_background_start}}, {{colors.titlebar_background_end}}); box-shadow:inset 0 1rem {{colors.session_tab_shadow}}, inset 0 -1rem {{colors.session_tabs_border}}; }
 .ss-title-identity { display:flex; align-items:center; flex:1 0 220rem; min-width:0; max-width:100%; min-height:32rem; }
-.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 416rem; width:416rem; max-width:100%; min-width:0; margin-left:auto; }
+.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 360rem; width:360rem; max-width:100%; min-width:0; margin-left:auto; }
 .ss-titlebar h1 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:22rem; line-height:26rem; margin:0; font-weight:bold; color:{{colors.title_text}}; text-shadow:0 1rem 2rem {{colors.title_text_shadow}}; }
 .ss-game-mode { display:block; flex-shrink:0; white-space:nowrap; color:{{colors.game_mode_text}}; font-size:12rem; margin-left:12rem; }
-.ss-close { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
-.ss-close:hover, .ss-close:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
+.ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
+.ss-close:hover, .ss-close:focus, .ss-window-toggle:hover, .ss-window-toggle:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
+.ss-window-toggle { right:38rem; }
+.ss-window-toggle-symbol { display:block; position:relative; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
+.ss-window-toggle-symbol:before { content:""; display:none; position:absolute; left:-4rem; top:3rem; width:12rem; height:10rem; border:1rem solid currentColor; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol { left:2rem; top:-1rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; }
+.ss-background-control { display:flex; align-items:center; flex:0 1 auto; min-width:170rem; max-width:100%; margin:0 8rem 0 0; }
+.ss-background-caption { display:block; flex:1 1 auto; min-width:0; margin-right:4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; white-space:nowrap; }
+.ss-background-slider { display:flex; position:relative; align-items:center; flex:0 0 74rem; width:74rem; min-width:74rem; height:24rem; padding:0 4rem; cursor:pointer; touch-action:none; }
+.ss-background-track { display:block; position:relative; width:100%; height:4rem; border-radius:{{radii.control}}rem; background:{{colors.button_border}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
+.ss-background-thumb { display:block; position:absolute; left:0; top:50%; width:8rem; height:12rem; margin:-6rem 0 0 -4rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}}, {{colors.button_background_end}}); box-shadow:0 1rem 3rem {{colors.title_text_shadow}}; pointer-events:none; }
+.ss-background-slider:focus { outline:1rem solid {{colors.garage_button_focus_outline}}; outline-offset:-1rem; }
+.ss-background-slider:hover .ss-background-thumb, .ss-background-slider:focus .ss-background-thumb { border-color:{{colors.button_shadow_1}}; background:linear-gradient({{colors.button_hover_background_start}}, {{colors.button_hover_background_end}}); }
+.ss-background-value { display:block; flex:0 0 30rem; width:30rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; text-align:right; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
 .ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid {{colors.session_tabs_border}}; border-radius:{{radii.control}}rem; }
 .ss-scope { position:relative; flex:1 1 auto; min-width:0; width:auto; height:30rem; border:0; background:linear-gradient({{colors.session_tab_background_start}}, {{colors.session_tab_background_middle}} 58%, {{colors.session_tab_background_end}}); color:{{colors.session_tab_text}}; padding:4rem 6rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.session_tab_shadow}}; }
@@ -351,7 +371,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-economy { width:100%; padding:5rem 0 0; margin-top:4rem; border-left:0; border-top:1rem solid {{colors.economy_separator_border_top}}; }
 }
 @media (max-width:560px) {
-  .ss-titlebar { padding-left:9rem; padding-right:40rem; }
+  .ss-titlebar { padding-left:9rem; padding-right:70rem; }
   .ss-titlebar h1 { font-size:20rem; }
   .ss-game-mode { font-size:11rem; margin-left:8rem; }
   .ss-controls { padding:0 8rem; }
@@ -476,6 +496,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-resize-sw::before { left:3rem; right:auto; border-left:2rem solid currentColor; border-right:0; }
 .ss-resize-edge { width:0; height:0; }
 .ss-resize-edge::before { display:none; }
+.ss-window-maximized .ss-resize-grip { display:none; }
 .ss-resize-n, .ss-resize-s { height:6rem; cursor:ns-resize; }
 .ss-resize-e, .ss-resize-w { width:6rem; cursor:ew-resize; }
 .ss-more-columns { display:flex; flex-wrap:wrap; align-items:flex-start; width:100%; min-width:0; }
@@ -782,7 +803,7 @@ def validate_config(raw):
             result['language'] = value
         else:
             reporter.issue('language', 'expected_language_code')
-    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards'):
+    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards', 'wide_cards', 'window'):
         if section not in raw:
             continue
         supplied = raw[section]
@@ -799,6 +820,14 @@ def validate_config(raw):
             if section == 'sessions':
                 checked = value if isinstance(value, bool) else None
                 reason = 'expected_boolean'
+            elif section == 'window':
+                checked = _window_setting(key, value)
+                reason = ('expected_boolean' if key == 'maximized' else
+                          'expected_integer_0_to_100' if key == 'background_transparency' else
+                          'expected_integer_1_to_32768')
+            elif section == 'wide_cards':
+                checked = _number(value, 480, 1200)
+                reason = 'expected_number_480_to_1200'
             elif section == 'cards':
                 checked = _number(value, 480, 900)
                 reason = 'expected_number_480_to_900'
@@ -819,6 +848,48 @@ def validate_config(raw):
             else:
                 result[section][key] = checked
     return result
+
+
+def _window_setting(key, value):
+    if key == 'maximized':
+        return value if isinstance(value, bool) else None
+    if key == 'background_transparency':
+        checked = _number(value, 0, 100)
+    elif key in ('restored_width', 'restored_height'):
+        checked = _number(value, 1, 32768)
+    else:
+        return None
+    return int(checked) if checked is not None and int(checked) == checked else None
+
+
+def window_settings_patch(values, command=False):
+    """Validate a complete partial update; invalid leaves never become defaults."""
+    if not isinstance(values, dict) or not values or any(key not in DEFAULT_CONFIG['window'] for key in values):
+        return None
+    checked = {}
+    for key, value in values.items():
+        if command and isinstance(value, (text_type, bytes)):
+            if isinstance(value, bytes) and not isinstance(value, text_type):
+                try:
+                    value = value.decode('ascii')
+                except UnicodeError:
+                    return None
+            if key == 'maximized':
+                if value not in ('true', 'false'):
+                    return None
+                value = value == 'true'
+            else:
+                if len(value) > 32:
+                    return None
+                try:
+                    value = float(value)
+                except (ValueError, TypeError, OverflowError):
+                    return None
+        value = _window_setting(key, value)
+        if value is None:
+            return None
+        checked[key] = value
+    return checked
 
 
 class _InvalidJSON(ValueError):
@@ -912,5 +983,7 @@ def build_presentation(config):
         'footer_css': _expand(FOOTER_TEMPLATE + FOOTER_OPACITY_RULE, normalized),
         'scroll_speed': normalized['scroll']['speed_multiplier'],
         'card_widths': copy.deepcopy(normalized['cards']),
+        'wide_card_widths': copy.deepcopy(normalized['wide_cards']),
+        'window_settings': copy.deepcopy(normalized['window']),
     }
 

@@ -131,19 +131,11 @@ def _replace_file(source, destination):
         raise ctypes.WinError(ctypes.get_last_error())
 
 
-def save_language(path, language):
-    """Change only language, atomically; reject invalid or concurrently edited JSON."""
-    from .localization import SUPPORTED, text_type
+def _save_config(path, update, label):
+    """Apply a validated mutation to raw JSON, retaining all unrelated fields."""
     from .appearance import _object_pairs, _reject_constant, SCHEMA_VERSION, integer_types
     from .storage import check_json_depth
-    # Wulf command arguments can be byte str on the game's Python 2.7.
-    # Decode only ASCII locale codes, keeping the exact supported allowlist.
-    if isinstance(language, bytes) and not isinstance(language, text_type):
-        try:
-            language = language.decode('ascii')
-        except UnicodeError:
-            return False
-    if not isinstance(language, text_type) or language not in ('auto',) + SUPPORTED or not path:
+    if not path:
         return False
     temporary = None
     try:
@@ -157,23 +149,23 @@ def save_language(path, language):
                     return None
                 raise
         original = current()
-        if original is None:
-            return _publish_new(path, (json.dumps({'language': language}) + '\n').encode('utf-8'))
-        if len(original) > MAX_CONFIG_BYTES:
+        if original is not None and len(original) > MAX_CONFIG_BYTES:
             raise ValueError('config_size_limit')
-        document = json.loads(original.decode('utf-8-sig'), object_pairs_hook=_object_pairs,
-                              parse_constant=_reject_constant)
+        document = {} if original is None else json.loads(
+            original.decode('utf-8-sig'), object_pairs_hook=_object_pairs, parse_constant=_reject_constant)
         if not isinstance(document, dict):
             raise ValueError('config_object_required')
         version = document.get('schema_version', SCHEMA_VERSION)
         if isinstance(version, bool) or not isinstance(version, integer_types) or version != SCHEMA_VERSION:
             raise ValueError('unsupported_schema')
         check_json_depth(document)
-        document['language'] = language
+        update(document)
         raw = (json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
         if len(raw) > MAX_CONFIG_BYTES:
             raise ValueError('config_size_limit')
-        descriptor, temporary = tempfile.mkstemp(prefix='.grz-language-', suffix='.tmp', dir=os.path.dirname(path))
+        if original is None:
+            return _publish_new(path, raw)
+        descriptor, temporary = tempfile.mkstemp(prefix='.grz-settings-', suffix='.tmp', dir=os.path.dirname(path))
         with os.fdopen(descriptor, 'wb') as handle:
             handle.write(raw)
             handle.flush()
@@ -183,11 +175,40 @@ def save_language(path, language):
         _replace_file(temporary, path)
         return True
     except Exception as error:
-        LOG.warning('CONFIG language save failed (%s); previous configuration preserved.', type(error).__name__)
+        LOG.warning('CONFIG %s save failed (%s); previous configuration preserved.', label, type(error).__name__)
         return False
     finally:
         if temporary is not None and os.path.exists(temporary):
             try:
                 os.unlink(temporary)
             except OSError:
-                LOG.warning('CONFIG language temporary-file cleanup failed.')
+                LOG.warning('CONFIG %s temporary-file cleanup failed.', label)
+
+
+def save_language(path, language):
+    """Change only language, atomically; reject invalid or concurrently edited JSON."""
+    from .localization import SUPPORTED, text_type
+    if isinstance(language, bytes) and not isinstance(language, text_type):
+        try:
+            language = language.decode('ascii')
+        except UnicodeError:
+            return False
+    if not isinstance(language, text_type) or language not in ('auto',) + SUPPORTED:
+        return False
+    return _save_config(path, lambda document: document.update(language=language), 'language')
+
+
+def save_window_settings(path, values):
+    from .appearance import window_settings_patch
+    checked = window_settings_patch(values)
+    if checked is None:
+        return False
+
+    def update(document):
+        existing = document.get('window', {})
+        if not isinstance(existing, dict):
+            raise ValueError('window_object_required')
+        window = dict(existing)
+        window.update(checked)
+        document['window'] = window
+    return _save_config(path, update, 'window')
