@@ -193,13 +193,13 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(model.props[0][0], 'state')
         self.assertEqual(json.loads(model.props[0][1])['viewport'],
                          {'width': 1920, 'height': 1080, 'scale': 1.5})
-        self.assertEqual(native.position, (210, 552))
+        self.assertEqual(native.position, (210, 600))
         self.assertEqual(native.show_calls, 1)
 
     def test_parent_resize_refits_layout_without_using_stale_native_bounds(self):
         native, model = self.open()
         native.onSizeChanged(7, 600, 360)
-        self.assertEqual(native.position, (210, 552))
+        self.assertEqual(native.position, (210, 600))
         self.parent.size = (500, 300)
         self.screen_size = (500, 300)
         self.parent.onSizeChanged(1, 500, 300)
@@ -211,12 +211,12 @@ class WindowTests(unittest.TestCase):
         native, model = self.open(anchor=0.8)
         self.assertEqual(json.loads(model.props[0][1])['viewport'],
                          {'width': 1920, 'height': 1080, 'scale': 1.5})
-        self.assertEqual(native.position, (1266, 552))
+        self.assertEqual(native.position, (1266, 600))
 
     def test_native_global_footer_anchor_positions_popup_above_the_icon(self):
         self.assertTrue(self.controller.open(0.8, 0.94))
         native = self.controller._window
-        self.assertEqual(native.position, (1266, 583))
+        self.assertEqual(native.position, (1266, 631))
         for anchor_y in (True, -1, 2, float('nan'), float('inf'), object()):
             self.assertFalse(self.controller.open(0.8, anchor_y))
 
@@ -224,7 +224,7 @@ class WindowTests(unittest.TestCase):
         native, model = self.open()
         model.onAction({'action': 'layout', 'width': 480, 'height': 320})
         self.assertEqual(self.controller._reported_size, (480, 320))
-        self.assertEqual(native.position, (240, 652))
+        self.assertEqual(native.position, (240, 628))
         self.assertEqual(self.actions, [])
         for width, height in ((True, 320), (0, 320), (-1, 320),
                               (float('nan'), 320), (480, float('inf')),
@@ -232,7 +232,7 @@ class WindowTests(unittest.TestCase):
             model.onAction({'action': 'layout', 'width': width, 'height': height})
         self.assertEqual(self.controller._reported_size, (480, 320))
         native.onSizeChanged(7, 540, 345)
-        self.assertEqual(native.position, (240, 652))
+        self.assertEqual(native.position, (240, 628))
 
     def test_all_edges_keep_scaled_gutter_across_aspects_and_interface_scales(self):
         screens = ((1920, 1080), (1920, 1200), (2560, 1080), (3440, 1440),
@@ -260,15 +260,18 @@ class WindowTests(unittest.TestCase):
                         self.assertLessEqual(top + size[1], height - gutter)
                         self.assertGreater(size[0], 0)
                         self.assertGreater(size[1], 0)
-                        # One uniformly scaled 360x280 design, with only the
+                        # One uniformly scaled logical design, with only the
                         # requested physical-pixel rounding allowed to differ.
-                        self.assertLess(abs(size[0] / 360.0 - size[1] / 280.0), 1.0 / 280)
+                        logical_width, logical_height = views.LOGICAL_SIZE
+                        self.assertLess(abs(size[0] / float(logical_width) -
+                                            size[1] / float(logical_height)),
+                                        1.0 / min(views.LOGICAL_SIZE))
 
     def test_native_default_and_fullscreen_observations_never_override_document_size(self):
         native, unused_model = self.open(anchor=1)
         self.assertTrue(self.controller.report_layout(540, 420))
         expected = native.position
-        self.assertEqual(expected, (1356, 552))
+        self.assertEqual(expected, (1356, 528))
         for native_size in ((256, 256), (1920, 1080), (540, 420)):
             native.onSizeChanged(7, *native_size)
             self.assertEqual(native.position, expected)
@@ -291,7 +294,7 @@ class WindowTests(unittest.TestCase):
         self.screen_size = self.parent.size = (2560, 1080)
         self.loader.scale = 1.25
         self.parent.onSizeChanged(1, 2560, 1080)
-        self.assertEqual(native.position, (2090, 640))
+        self.assertEqual(native.position, (2090, 680))
 
     def test_one_pixel_client_degrades_gutter_instead_of_overflowing(self):
         self.screen_size = (1, 1)

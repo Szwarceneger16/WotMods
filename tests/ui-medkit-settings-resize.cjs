@@ -32,19 +32,24 @@ function fixture(options = {}) {
 (async()=>{
     for(const options of [{}, {throwBeforeReady:true}, {badMeasurement:true}]) {
         const f=fixture(options); await Promise.resolve();
-        assert.deepStrictEqual(f.requests, [[360,280]]);
+        assert.deepStrictEqual(f.requests, [[360,232]]);
         assert.strictEqual(f.timers.size,1,'An ignored or failed initial resize must be checked again');
         assert.strictEqual(f.actions[0].action,'layout');
-        assert.strictEqual(f.actions[0].width,360); assert.strictEqual(f.actions[0].height,280);
+        assert.strictEqual(f.actions[0].width,360); assert.strictEqual(f.actions[0].height,232);
         f.ready(); f.tick();
-        assert.deepStrictEqual(f.actual(), {width:360,height:280}, 'The 256-pixel initial surface must expand');
+        assert.deepStrictEqual(f.actual(), {width:360,height:232}, 'The 256-pixel initial surface must expand');
         for(let i=0;i<8;i++) f.tick();
         assert.strictEqual(f.timers.size,0,'Verification retries are bounded even if measurement fails');
+        f.patch({status:'Shortcut saved.'});
+        assert.deepStrictEqual(f.actual(),{width:360,height:260},'A save message receives only the space it needs');
         const previous=f.requests.length;
         f.patch({status:'Shortcut saved.'});
         assert.strictEqual(f.requests.length,previous+(options.badMeasurement?1:0),'A confirmed surface is not resized again');
         f.patch({viewport:{width:1920,height:1080,scale:1.5}});
-        assert.deepStrictEqual(f.actual(), {width:540,height:420});
+        assert.deepStrictEqual(f.actual(), {width:540,height:390});
+        f.patch({status:'',capturing:null,error:''});assert.deepStrictEqual(f.actual(),{width:540,height:348},'Idle panel removes the empty feedback area');
+        f.patch({capturing:'toggle_mod'});assert.deepStrictEqual(f.actual(),{width:540,height:402},'Capture keeps the cancel control visible');
+        f.patch({capturing:null,error:'Could not save'});assert.deepStrictEqual(f.actual(),{width:540,height:420},'An error remains visible without squeezing the controls');
         f.context.GRZStaySharpSettings.destroy();
         assert.strictEqual(f.timers.size,0); f.tick();
         for(const event of ['self.onLoaded','self.onTextureReady','clientResized','self.onScaleUpdated']) assert.strictEqual(f.events[event].size,0,'Native readiness listener must be released');
@@ -63,15 +68,15 @@ function fixture(options = {}) {
     const live=fixture(); await Promise.resolve(); live.ready();
     let client={width:320,height:200}, nativeScale=2;
     live.context.viewEnv.getClientSizePx=()=>client; live.context.viewEnv.getScale=()=>nativeScale;
-    live.emit('clientResized'); assert.deepStrictEqual(live.actual(),{width:174,height:136});
+    live.emit('clientResized'); assert.deepStrictEqual(live.actual(),{width:211,height:136});
     client={width:600,height:900}; live.emit('clientResized');
-    assert.deepStrictEqual(live.actual(),{width:536,height:416},'A second client resize must not be deduplicated');
+    assert.deepStrictEqual(live.actual(),{width:536,height:345},'A second client resize must not be deduplicated');
     nativeScale=1.25; live.emit('self.onScaleUpdated');
-    assert.deepStrictEqual(live.actual(),{width:450,height:350});
+    assert.deepStrictEqual(live.actual(),{width:450,height:290});
     nativeScale=1.5; live.emit('self.onScaleUpdated');
-    assert.deepStrictEqual(live.actual(),{width:540,height:420},'A second GUI-scale change must recalculate the physical surface');
+    assert.deepStrictEqual(live.actual(),{width:540,height:348},'A second GUI-scale change must recalculate the physical surface');
     live.patch({viewport:{width:600,height:900,scale:1.5}});
-    assert.deepStrictEqual(live.actual(),{width:540,height:420},'Delayed model geometry must converge to the same native bounds');
+    assert.deepStrictEqual(live.actual(),{width:540,height:348},'Delayed model geometry must converge to the same native bounds');
     live.context.GRZStaySharpSettings.destroy();
     const recurrent=fixture({textureEvent:true}); await Promise.resolve();
     for(let i=0;i<20;i++) { recurrent.tick(); recurrent.emit('self.onTextureReady'); }
@@ -81,7 +86,7 @@ function fixture(options = {}) {
     for(let i=0;i<10;i++) limited.tick();
     assert.strictEqual(limited.requests.length,7,'An unavailable renderer cannot cause an unbounded retry loop');
     limited.ready(); limited.emit('self.onLoaded');
-    assert.deepStrictEqual(limited.actual(),{width:360,height:280},'Native loaded notification retries a previously exhausted resize');
+    assert.deepStrictEqual(limited.actual(),{width:360,height:232},'Native loaded notification retries a previously exhausted resize');
     limited.context.GRZStaySharpSettings.destroy();
     console.log('PASS: native 256px surface, delayed/throwing resize, broken measurement, readiness retry, GUI scaling, responsive Python/DOM parity, successive resize/scale events and bounded lifecycle cleanup.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

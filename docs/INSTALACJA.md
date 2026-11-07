@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.7 - installation and test
+# Stay Sharp Medkit Reminder 1.8.8 - installation and test
 
 ## Install
 
@@ -30,7 +30,7 @@
 
 ## Garage shortcuts
 
-The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. Click it to open a small settings window above the button; click the icon again or click elsewhere in the garage to close it. The rounded, beveled panel uses the same bundled camouflage as Session Stats, with labels above shortcut fields and wider clear buttons. A 16-logical-pixel edge margin follows the game UI scale; when the complete 360×280 design cannot fit, the panel scales down uniformly within the available client area. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
+The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. The 20×19 logical-pixel icon retains its existing click area. Click it to open a compact settings window with a 24-logical-pixel gap above the button; click the icon again or click elsewhere in the garage to close it. The rounded, beveled panel uses the same bundled camouflage as Session Stats, with labels above shortcut fields and wider clear buttons. A 16-logical-pixel edge margin follows the game UI scale; the idle design is 360×232 and expands only for active capture or feedback; when the complete design cannot fit, the panel scales down uniformly within the available client area. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
 
 Select either shortcut row, hold the desired keys together, then release every key to save. The two actions toggle the whole reminder or toggle voice independently. Defaults are Ctrl+Alt+M and Ctrl+Alt+V. Use Clear to disable a shortcut; Escape or Cancel abandons a recording. Left/right modifiers are preserved when recording. The configuration also accepts generic CTRL, ALT and SHIFT names for either side.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.8
+
+- Center the close cross using symmetric CSS strokes instead of a font glyph.
+- Remove the empty idle feedback area and shorten the panel to 232 logical pixels; expand only when capture or feedback needs room.
+- Raise the panel above the garage footer with a 24-logical-pixel gap, retaining responsive edge gutters.
+- Reduce the garage medkit glyph to 20×19 logical pixels while preserving its existing click area.
+
 ## 1.8.7
 
 - Restyle garage shortcut settings with the same bundled camouflage as Session Stats, rounded corners, an inset beveled frame, raised buttons and recessed shortcut fields.

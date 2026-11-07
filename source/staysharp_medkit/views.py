@@ -12,8 +12,9 @@ import math
 
 LOG = logging.getLogger('staysharp.medkit')
 LAYOUT_PATH = ('mods', 'grz', 'staysharp_medkit', 'views', 'Settings')
-LOGICAL_SIZE = (360, 280)
+LOGICAL_SIZE = (360, 232)
 EDGE_GUTTER = 16
+POPUP_GAP = 24
 MAX_DIMENSION = 32768
 MAX_STATE_CHARS = 16384
 BLUR_POLL_DELAY = 0.02
@@ -409,8 +410,8 @@ class SettingsWindow(object):
         # Native defaults (256px or fullscreen) are observations, not the
         # intended document bounds. They must not override the fitted layout.
         left = int(round(self._anchor * width - size[0] / 2.0))
-        bottom = (self._anchor_y * height - 8 * scale if self._anchor_y is not None
-                  else height - 72 * scale)
+        bottom = (self._anchor_y * height - POPUP_GAP * scale if self._anchor_y is not None
+                  else height - (64 + POPUP_GAP) * scale)
         top = int(round(bottom - size[1]))
         target = (max(gutter, min(width - gutter - size[0], left)),
                   max(gutter, min(height - gutter - size[1], top)))

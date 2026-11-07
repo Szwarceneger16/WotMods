@@ -1,13 +1,13 @@
-/* Native 360 x 280 logical-pixel surface. Insets stay inside the Wulf texture. */
+/* Native 360 x 232 idle surface; capture/feedback height is supplied by the model. */
 html { font-size:1px; margin:0; padding:0; background:transparent; }
-body { margin:0; padding:0; width:360rem; height:280rem; overflow:hidden; background:transparent; }
+body { margin:0; padding:0; width:360rem; height:232rem; overflow:hidden; background:transparent; }
 .grz-medkit-settings,.grz-medkit-settings * { box-sizing:border-box; }
 .grz-medkit-settings {
     position:relative;
     display:flex;
     flex-direction:column;
     width:360rem;
-    height:280rem;
+    height:232rem;
     max-width:100%;
     max-height:100%;
     overflow:hidden;
@@ -134,7 +134,34 @@ body { margin:0; padding:0; width:360rem; height:280rem; overflow:hidden; backgr
 }
 .grz-medkit-settings-clear { flex:0 0 72rem; width:72rem; height:34rem; margin-left:8rem; padding:5rem 8rem; }
 .grz-medkit-settings-close { position:absolute; top:9rem; right:9rem; width:27rem; height:27rem; padding:0; color:#bcb693; }
-.grz-medkit-settings-close .grz-medkit-settings-button-label { font-size:23rem; line-height:23rem; }
+.grz-medkit-settings-close-icon {
+    position:absolute;
+    display:block;
+    left:50%;
+    top:50%;
+    width:10rem;
+    height:10rem;
+    margin-left:-5rem;
+    margin-top:-5rem;
+    overflow:visible;
+    pointer-events:none;
+}
+.grz-medkit-settings-close-icon:before,.grz-medkit-settings-close-icon:after {
+    content:"";
+    position:absolute;
+    left:4rem;
+    top:-1rem;
+    width:2rem;
+    height:12rem;
+    background:#bcb693;
+    transform-origin:50% 50%;
+}
+.grz-medkit-settings-close-icon:before { transform:rotate(45deg); }
+.grz-medkit-settings-close-icon:after { transform:rotate(-45deg); }
+.grz-medkit-settings-close:hover .grz-medkit-settings-close-icon:before,
+.grz-medkit-settings-close:hover .grz-medkit-settings-close-icon:after,
+.grz-medkit-settings-close:focus .grz-medkit-settings-close-icon:before,
+.grz-medkit-settings-close:focus .grz-medkit-settings-close-icon:after { background:#f1e3b8; }
 .grz-medkit-settings-hint {
     flex:0 0 auto;
     margin-top:8rem;
@@ -148,7 +175,7 @@ body { margin:0; padding:0; width:360rem; height:280rem; overflow:hidden; backgr
     line-height:14rem;
     text-shadow:0 1rem #080c05;
 }
-.grz-medkit-settings-bottom { display:flex; align-items:center; flex:0 0 auto; min-height:28rem; margin-top:auto; padding-top:8rem; }
+.grz-medkit-settings-bottom { display:none; align-items:center; flex:0 0 auto; min-height:28rem; margin-top:0; padding-top:8rem; }
 .grz-medkit-settings-feedback { flex:1 1 auto; min-width:0; max-height:42rem; overflow:hidden; color:#c1d5a4; font-size:11rem; line-height:14rem; white-space:normal; word-wrap:break-word; text-shadow:0 1rem #080c05; }
 .grz-medkit-settings-cancel { display:none; flex:0 0 auto; min-width:72rem; height:28rem; margin-left:8rem; padding:4rem 9rem; }
 .grz-medkit-settings-binding:hover,.grz-medkit-settings-clear:hover,.grz-medkit-settings-cancel:hover,.grz-medkit-settings-close:hover {

@@ -24,12 +24,12 @@
     cursor:pointer;
 }
 .grz-medkit-footer-button:hover { background:rgba(255,245,211,0.045); }
-.grz-medkit-footer-button:focus { outline:1rem solid #c5b78a; outline-offset:-2rem; }
-.grz-medkit-footer-icon { position:absolute; display:block; left:8rem; top:7rem; width:24rem; height:23rem; pointer-events:none; }
-.grz-medkit-footer-handle { position:absolute; display:block; left:8rem; top:0; width:8rem; height:5rem; box-sizing:border-box; border:2rem solid #a7a598; border-bottom:0; }
-.grz-medkit-footer-case { position:absolute; display:block; left:0; top:4rem; width:24rem; height:17rem; box-sizing:border-box; border:2rem solid #a7a598; border-radius:2rem; background:rgba(156,151,131,0.13); }
-.grz-medkit-footer-cross-h { position:absolute; display:block; left:7rem; top:11rem; width:10rem; height:3rem; background-color:#b6b2a2; }
-.grz-medkit-footer-cross-v { position:absolute; display:block; left:10.5rem; top:7.5rem; width:3rem; height:10rem; background-color:#b6b2a2; }
+.grz-medkit-footer-button:focus { box-shadow:inset 0 0 0 1rem #c5b78a; }
+.grz-medkit-footer-icon { position:absolute; display:block; left:10rem; top:8.5rem; width:20rem; height:19rem; pointer-events:none; }
+.grz-medkit-footer-handle { position:absolute; display:block; left:6.5rem; top:0; width:7rem; height:4rem; box-sizing:border-box; border:1.5rem solid #a7a598; border-bottom:0; }
+.grz-medkit-footer-case { position:absolute; display:block; left:0; top:3.5rem; width:20rem; height:14rem; box-sizing:border-box; border:1.5rem solid #a7a598; border-radius:2rem; background:rgba(156,151,131,0.13); }
+.grz-medkit-footer-cross-h { position:absolute; display:block; left:6rem; top:9.5rem; width:8rem; height:2rem; background-color:#b6b2a2; }
+.grz-medkit-footer-cross-v { position:absolute; display:block; left:9rem; top:6.5rem; width:2rem; height:8rem; background-color:#b6b2a2; }
 .grz-medkit-footer-button:hover .grz-medkit-footer-handle,
 .grz-medkit-footer-button:hover .grz-medkit-footer-case { border-color:#dfd8bd; }
 .grz-medkit-footer-button:hover .grz-medkit-footer-cross-h,

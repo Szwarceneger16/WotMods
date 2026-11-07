@@ -8,7 +8,7 @@
     var resizeTimer = null, resizeAttempts = 0, resizing = false, layoutReported = false;
     var layoutEvents = ['self.onLoaded', 'self.onTextureReady', 'clientResized', 'self.onScaleUpdated'];
     var layoutCallbacks = [], layoutReadySeen = {};
-    var logicalWidth = 360, logicalHeight = 280, edgeGutter = 16;
+    var logicalWidth = 360, logicalHeight = 232, edgeGutter = 16;
     var defaults = {title:'Medkit hotkeys', toggle_mod:'Toggle mod', toggle_voice:'Toggle voice', cancel:'Cancel', clear:'Clear', close:'Close', capture:'Press keys\u2026', not_assigned:'Not assigned', hint:'Select a shortcut. Hold the keys together, then release all keys to save.'};
     var ids = ['title', 'close', 'label-mod', 'label-voice', 'mod', 'voice', 'clear-mod', 'clear-voice', 'hint', 'feedback', 'cancel'], index;
     for (index = 0; index < ids.length; index += 1) { nodes[ids[index]] = document.getElementById('grz-medkit-settings-' + ids[index]); }
@@ -28,6 +28,12 @@
         return result.join(' + ');
     }
     function capturing() { return state.capturing === 'toggle_mod' || state.capturing === 'toggle_voice'; }
+    function feedback(message, isError) {
+        nodes.feedback.textContent = message;
+        nodes.feedback.className = 'grz-medkit-settings-feedback' + (isError ? ' grz-medkit-settings-error' : '');
+        var bottom = document.getElementById('grz-medkit-settings-bottom');
+        if (bottom) { bottom.style.display = message || capturing() ? 'flex' : 'none'; }
+    }
     function send(action, binding) {
         if (destroyed || !bound) { return; }
         var owner = model(), command = owner && owner.onAction, args = {action:action};
@@ -35,7 +41,7 @@
         try {
             if (typeof command === 'function') { command.call(owner, args); }
             else if (command && typeof command.value === 'function') { command.value.call(command, args); }
-        } catch (ignored) { nodes.feedback.textContent = 'Action unavailable. Close and reopen settings.'; }
+        } catch (ignored) { feedback('Action unavailable. Close and reopen settings.', true); resize(); }
     }
     function stop(event, prevent) { if (event && event.stopPropagation) { event.stopPropagation(); } if (prevent && event && event.preventDefault) { event.preventDefault(); } }
     function bindButton(node, action, binding) { node.onclick = function (event) { stop(event, true); send(action, binding); }; }
@@ -83,6 +89,7 @@
     function dimension(value) { return typeof value === 'number' && isFinite(value) && value > 0 && value <= 32768 ? Math.floor(value) : 0; }
     function resize() {
         var viewport = state.viewport || {}, scale = viewport.scale;
+        var contentHeight = logicalHeight + (nodes.feedback.className.indexOf('grz-medkit-settings-error') >= 0 ? 48 : (capturing() ? 36 : (nodes.feedback.textContent ? 28 : 0)));
         var clientWidth = dimension(viewport.width), clientHeight = dimension(viewport.height), client;
         if (typeof scale !== 'number' || !isFinite(scale) || scale <= 0 || scale > 16) { scale = 1; }
         try {
@@ -102,9 +109,9 @@
         if (minimum) { gutter = Math.min(gutter, Math.max(0, Math.floor((minimum - 1) / 2))); }
         var availableWidth = clientWidth ? Math.max(1, clientWidth - 2 * gutter) : Infinity;
         var availableHeight = clientHeight ? Math.max(1, clientHeight - 2 * gutter) : Infinity;
-        var fittedScale = Math.min(scale, availableWidth / logicalWidth, availableHeight / logicalHeight);
+        var fittedScale = Math.min(scale, availableWidth / logicalWidth, availableHeight / contentHeight);
         var width = Math.max(1, Math.min(availableWidth, Math.floor(logicalWidth * fittedScale)));
-        var height = Math.max(1, Math.min(availableHeight, Math.floor(logicalHeight * fittedScale)));
+        var height = Math.max(1, Math.min(availableHeight, Math.floor(contentHeight * fittedScale)));
         document.documentElement.style.fontSize = String(fittedScale) + 'px';
         root.style.width = document.body.style.width = String(width) + 'px';
         root.style.height = document.body.style.height = String(height) + 'px';
@@ -130,7 +137,7 @@
         renderRow('toggle_mod', 'mod'); renderRow('toggle_voice', 'voice');
         nodes.hint.textContent = label('hint'); caption('cancel', label('cancel')); nodes.cancel.style.display = capturing() ? 'flex' : 'none';
         var error = safeText(state.error, '', 2048), status = safeText(state.status, '', 2048);
-        nodes.feedback.textContent = error || status; nodes.feedback.className = 'grz-medkit-settings-feedback' + (error ? ' grz-medkit-settings-error' : '');
+        feedback(error || status, !!error);
         resize();
     }
     function registerModel() {
@@ -156,7 +163,7 @@
             value = JSON.parse(raw);
             if (!value || typeof value !== 'object' || Object.prototype.toString.call(value) === '[object Array]') { throw new Error('state object'); }
             state = value; render();
-        } catch (ignored) { nodes.feedback.textContent = 'Settings unavailable. Close and reopen this window.'; }
+        } catch (ignored) { feedback('Settings unavailable. Close and reopen this window.', true); resize(); }
         finally { updating = false; }
     }
     function onKey(event) {
