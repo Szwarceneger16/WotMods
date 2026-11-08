@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.9
+
+- Place Cancel beside the description in a permanently reserved footer row, enabling it only while recording a shortcut.
+- Keep the 360×232 panel height stable during capture, cancellation, saves and errors; feedback uses the existing description area.
+
 ## 1.8.8
 
 - Center the close cross using symmetric CSS strokes instead of a font glyph.

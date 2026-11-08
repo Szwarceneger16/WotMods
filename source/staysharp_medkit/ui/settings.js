@@ -31,8 +31,11 @@
     function feedback(message, isError) {
         nodes.feedback.textContent = message;
         nodes.feedback.className = 'grz-medkit-settings-feedback' + (isError ? ' grz-medkit-settings-error' : '');
+        nodes.feedback.style.display = message ? 'block' : 'none';
+        nodes.feedback.setAttribute('title', message);
+        nodes.hint.style.display = message ? 'none' : 'block';
         var bottom = document.getElementById('grz-medkit-settings-bottom');
-        if (bottom) { bottom.style.display = message || capturing() ? 'flex' : 'none'; }
+        if (bottom) { bottom.style.display = 'flex'; }
     }
     function send(action, binding) {
         if (destroyed || !bound) { return; }
@@ -44,7 +47,7 @@
         } catch (ignored) { feedback('Action unavailable. Close and reopen settings.', true); resize(); }
     }
     function stop(event, prevent) { if (event && event.stopPropagation) { event.stopPropagation(); } if (prevent && event && event.preventDefault) { event.preventDefault(); } }
-    function bindButton(node, action, binding) { node.onclick = function (event) { stop(event, true); send(action, binding); }; }
+    function bindButton(node, action, binding) { node.onclick = function (event) { stop(event, true); if (!node.disabled) { send(action, binding); } }; }
     bindButton(nodes.mod, 'begin_capture', 'toggle_mod'); bindButton(nodes.voice, 'begin_capture', 'toggle_voice');
     bindButton(nodes['clear-mod'], 'clear_binding', 'toggle_mod'); bindButton(nodes['clear-voice'], 'clear_binding', 'toggle_voice');
     bindButton(nodes.cancel, 'cancel_capture'); bindButton(nodes.close, 'close');
@@ -89,7 +92,6 @@
     function dimension(value) { return typeof value === 'number' && isFinite(value) && value > 0 && value <= 32768 ? Math.floor(value) : 0; }
     function resize() {
         var viewport = state.viewport || {}, scale = viewport.scale;
-        var contentHeight = logicalHeight + (nodes.feedback.className.indexOf('grz-medkit-settings-error') >= 0 ? 48 : (capturing() ? 36 : (nodes.feedback.textContent ? 28 : 0)));
         var clientWidth = dimension(viewport.width), clientHeight = dimension(viewport.height), client;
         if (typeof scale !== 'number' || !isFinite(scale) || scale <= 0 || scale > 16) { scale = 1; }
         try {
@@ -109,9 +111,9 @@
         if (minimum) { gutter = Math.min(gutter, Math.max(0, Math.floor((minimum - 1) / 2))); }
         var availableWidth = clientWidth ? Math.max(1, clientWidth - 2 * gutter) : Infinity;
         var availableHeight = clientHeight ? Math.max(1, clientHeight - 2 * gutter) : Infinity;
-        var fittedScale = Math.min(scale, availableWidth / logicalWidth, availableHeight / contentHeight);
+        var fittedScale = Math.min(scale, availableWidth / logicalWidth, availableHeight / logicalHeight);
         var width = Math.max(1, Math.min(availableWidth, Math.floor(logicalWidth * fittedScale)));
-        var height = Math.max(1, Math.min(availableHeight, Math.floor(contentHeight * fittedScale)));
+        var height = Math.max(1, Math.min(availableHeight, Math.floor(logicalHeight * fittedScale)));
         document.documentElement.style.fontSize = String(fittedScale) + 'px';
         root.style.width = document.body.style.width = String(width) + 'px';
         root.style.height = document.body.style.height = String(height) + 'px';
@@ -135,7 +137,9 @@
     function render() {
         nodes.title.textContent = label('title'); nodes.close.setAttribute('title', label('close')); nodes.close.setAttribute('aria-label', label('close'));
         renderRow('toggle_mod', 'mod'); renderRow('toggle_voice', 'voice');
-        nodes.hint.textContent = label('hint'); caption('cancel', label('cancel')); nodes.cancel.style.display = capturing() ? 'flex' : 'none';
+        nodes.hint.textContent = label('hint'); nodes.hint.setAttribute('title', label('hint'));
+        caption('cancel', label('cancel')); nodes.cancel.style.display = 'flex';
+        nodes.cancel.disabled = !capturing(); nodes.cancel.setAttribute('aria-disabled', capturing() ? 'false' : 'true');
         var error = safeText(state.error, '', 2048), status = safeText(state.status, '', 2048);
         feedback(error || status, !!error);
         resize();
