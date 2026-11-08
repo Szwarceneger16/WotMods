@@ -211,6 +211,59 @@ class MissionProgressTests(unittest.TestCase):
             self.assertEqual([item['key'] for item in row['objectives']], ['battlesCount', 'vehicleDamage'])
             self.assertEqual(row['progress_state'], 'changed')
 
+    def test_normalized_reconcile_without_resolver_preserves_known_objective_metadata(self):
+        directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, directory)
+        raw = raw_result()
+        raw['personal'][1]['questsProgress'] = {
+            'fixture:quest': ('vehicle-group', {'battlesCount': 1}, {'battlesCount': 2})}
+        def resolve(rows):
+            _common_objectives(self.quest(self.condition('battlesCount', 7)), rows['fixture:quest'])
+        first = normalize_result(raw, mission_resolver=resolve)
+        clock = Clock(first['started_at'] - 10)
+        service = StatsService(directory, 'EU:7', 'first', EXPECTED, now=clock)
+        clock.value = first['ended_at'] + 1
+        self.assertTrue(service.record_result(first))
+        expected = first['details']['missions']['fixture:quest']['objectives'][0]
+        self.assertEqual(expected['label'], 'Fixture objective')
+        self.assertEqual(expected['target'], 7)
+
+        # The result retry still knows the battle counter; only the optional
+        # mission catalog/resolver is now unavailable.
+        retry = normalize_result(raw)
+        self.assertTrue(retry['reconcile'])
+        self.assertNotIn('label', retry['details']['missions']['fixture:quest']['objectives'][0])
+        self.assertNotIn('target', retry['details']['missions']['fixture:quest']['objectives'][0])
+        service.record_result(retry)
+        stored = service.snapshot()['scopes']['manual']['battles'][0]['details']['missions']['fixture:quest']
+        self.assertEqual(stored['objectives'][0], expected)
+
+        raw['personal'][1]['questsProgress']['fixture:quest'] = (
+            'vehicle-group', {'battlesCount': 1}, {'battlesCount': 3})
+        self.assertTrue(service.record_result(normalize_result(raw)))
+        stored = service.snapshot()['scopes']['manual']['battles'][0]['details']['missions']['fixture:quest']
+        self.assertEqual(stored['objectives'][0], dict(expected, after=3, delta=2))
+
+    def test_objective_fields_enrich_without_revision_and_explicit_revision_can_replace_them(self):
+        original = dict(key='battlesCount', unit='battles', before=1, after=2, delta=1,
+                        label='Fixture objective', target=7)
+        revised = dict(key='battlesCount', unit='counter', after=0, delta=-1,
+                       label='Revised fixture objective', target=0)
+        old = {'missions': {'fixture:quest': dict(status='progress', progress_state='changed',
+                                                 objectives=[original])}}
+        incoming = {'missions': {'fixture:quest': dict(status='progress', progress_state='changed',
+                                                      objectives=[revised])}}
+        saved = copy.deepcopy(old)
+        partial = copy.deepcopy(old)
+        del partial['missions']['fixture:quest']['objectives'][0]['label']
+        del partial['missions']['fixture:quest']['objectives'][0]['target']
+        self.assertEqual(merge_details(partial, incoming, False)['missions']['fixture:quest']['objectives'],
+                         [dict(original, label=revised['label'], target=0)])
+        self.assertEqual(merge_details(old, incoming, False)['missions']['fixture:quest']['objectives'], [original])
+        self.assertEqual(merge_details(old, incoming, True)['missions']['fixture:quest']['objectives'],
+                         [dict(original, **revised)])
+        self.assertEqual(old, saved)
+
     def test_objectives_survive_journal_reopen(self):
         directory = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, directory)
