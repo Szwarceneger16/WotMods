@@ -800,6 +800,9 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-timeline-details.cjs',browser);
   await runFeatureSuite('./ui-wide-cards.cjs',browser);
   await runFeatureSuite('./ui-window-settings.cjs',browser);
+  await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
+  await runFeatureSuite('./ui-map-battles.cjs',browser);
+  await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);
   await runFeatureSuite('./ui-resize-input.cjs',browser);

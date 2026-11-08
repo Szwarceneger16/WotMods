@@ -264,12 +264,15 @@ class StatsService(object):
         self._indexes = None
         self._timeline_enabled = timeline_enabled
         self._timeline_range = ('', '')
+        self._timeline_dates = (None, None)
         self._timeline_bounds = (0, None)
         self._filtered_timeline = None
         self._timeline_job = None
         self._timeline_error = None
         self._pages = {}
         self._orders = {}
+        self._map_pages = {}
+        self._battle_focus = {}
         self._receipt = None
         self._intake = None
         self._received_context = {}
@@ -550,6 +553,7 @@ class StatsService(object):
         if period_id is not None and period_id != index.identifier:
             return False
         self._pages.setdefault(scope, {})[group] = page
+        self._battle_focus.pop(scope, None)
         return True
 
     def set_order(self, scope, group, options, period_id):
@@ -562,7 +566,52 @@ class StatsService(object):
             return False
         self._orders.setdefault(scope, {})[group] = dict(options)
         self._pages.setdefault(scope, {})[group] = 0
+        self._battle_focus.pop(scope, None)
         return True
+
+    def set_map_battles(self, scope, map_id, page, period_id):
+        if (not self.ready or self._closed or not isinstance(map_id, (text_type, bytes)) or
+                isinstance(page, bool) or not isinstance(page, int) or not 0 <= page < 10 ** 8):
+            return False
+        index = self._view_index(scope)
+        map_id = _text(map_id)
+        if index is None or period_id != index.identifier or map_id not in index.groups['maps']:
+            return False
+        current = self._map_pages.get(scope)
+        if current is None or current['period_id'] != period_id:
+            current = {'period_id': period_id, 'pages': {}}
+            self._map_pages[scope] = current
+        current['pages'][map_id] = page
+        return True
+
+    def select_battle(self, scope, identifier, period_id, request_id):
+        if (not self.ready or self._closed or
+                not isinstance(identifier, (text_type, bytes)) or
+                not isinstance(request_id, (text_type, bytes))):
+            return False
+        identifier, request_id = _text(identifier), _text(request_id)
+        if (not 1 <= len(request_id) <= 64 or any(char not in
+                'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-' for char in request_id)):
+            return False
+        index = self._view_index(scope)
+        if index is None or period_id != index.identifier:
+            return False
+        page = index.battle_page(identifier, self._orders.get(scope, {}).get('battles'))
+        if page is None:
+            return False
+        self._pages.setdefault(scope, {})['battles'] = page
+        self._battle_focus[scope] = {'period_id': period_id, 'id': identifier, 'request_id': request_id}
+        return True
+
+    def _scope_snapshot(self, name, index, label, started_at):
+        opened = self._map_pages.get(name, {})
+        map_pages = opened.get('pages') if opened.get('period_id') == index.identifier else None
+        scope = index.snapshot(label, started_at, self._pages.get(name), self._orders.get(name), map_pages)
+        focus = self._battle_focus.get(name)
+        if (focus and focus['period_id'] == index.identifier and
+                any(row['id'] == focus['id'] for row in scope['battles'])):
+            scope['battle_focus'] = dict((key, focus[key]) for key in ('id', 'request_id'))
+        return scope
 
     def _time(self):
         value = _number(self._now(), True)
@@ -921,6 +970,8 @@ class StatsService(object):
         from .projection import ScopeIndex
         self._indexes['manual'] = ScopeIndex(new_id, self.expected_table)
         self._pages.pop('manual', None)
+        self._map_pages.pop('manual', None)
+        self._battle_focus.pop('manual', None)
         return new_id
 
     def _time_points(self):
@@ -952,32 +1003,55 @@ class StatsService(object):
             candidate['time_point_names'][identifier] = name
         return self._commit(candidate, {})
 
-    def set_timeline_range(self, start, end):
+    def set_timeline_range(self, start, end, from_date=None, to_date=None):
         if not self._timeline_enabled or not self.ready or self._closed:
             return False
         if not all(isinstance(value, (text_type, bytes)) for value in (start, end)):
             return False
         start, end = _text(start), _text(end)
         points = self._time_points()
-        if (start and start not in points) or (end and end not in points):
+        custom = '__custom__'
+        if ((start and start != custom and start not in points) or
+                (end and end != custom and end not in points)):
             return False
-        if start and end and points[start] >= points[end]:
+        dates = []
+        for point, supplied in ((start, from_date), (end, to_date)):
+            value = _number(supplied, True) if point == custom else None
+            if (point == custom and value is None) or (point != custom and supplied is not None):
+                return False
+            dates.append(float(value) if value is not None else None)
+        lower = dates[0] if start == custom else points.get(start, 0)
+        upper = dates[1] if end == custom else points[end] if end else None
+        if upper is not None and lower >= upper:
             return False
         selected = (start, end)
-        if selected != self._timeline_range or self._timeline_error:
+        dates = tuple(dates)
+        if selected != self._timeline_range or dates != self._timeline_dates or self._timeline_error:
             self.cancel_timeline()
             self._timeline_range = selected
-            self._timeline_bounds = (points.get(start, 0), points[end] if end else None)
+            self._timeline_dates = dates
+            self._timeline_bounds = (lower, upper)
             self._filtered_timeline = None
             self._timeline_error = None
             self._pages.pop('timeline', None)
+            self._map_pages.pop('timeline', None)
+            self._battle_focus.pop('timeline', None)
             if start or end:
                 from .projection import ScopeIndex
                 self._timeline_job = {
-                    'index': ScopeIndex('timeline:{0}:{1}'.format(start, end), self.expected_table),
+                    'index': ScopeIndex(self._timeline_period_id(), self.expected_table),
                     'lower': self._timeline_bounds[0], 'upper': self._timeline_bounds[1],
                     'cursor': None}
         return True
+
+    def _timeline_period_id(self):
+        start, end = self._timeline_range
+        if not start and not end:
+            return 'timeline'
+        identifier = 'timeline:{0}:{1}'.format(start, end)
+        if '__custom__' in (start, end):
+            identifier += ':{0}:{1}'.format(*self._timeline_dates)
+        return identifier
 
     @property
     def timeline_loading(self):
@@ -1046,16 +1120,17 @@ class StatsService(object):
         start, end = self._timeline_range
         index = self._timeline_index() if ready else None
         if index is None:
-            identifier = 'timeline:{0}:{1}'.format(start, end) if start or end else 'timeline'
+            identifier = self._timeline_period_id()
             index = ScopeIndex(identifier, self.expected_table)
-        scope = index.snapshot(message('scope.timeline'), points.get(start),
-                               self._pages.get('timeline'), self._orders.get('timeline'))
+        scope = self._scope_snapshot('timeline', index, message('scope.timeline'),
+                                     self._timeline_dates[0] if start == '__custom__' else points.get(start))
         scope['loading'] = self.timeline_loading
         if ready and self._timeline_error:
             scope['load_error'] = self._timeline_error
         scope['time_points'] = sorted(points.items(), key=lambda point: (point[1], point[0]))
         scope['time_point_names'] = dict(self._state.get('time_point_names', {})) if ready else {}
         scope['from_point'], scope['to_point'] = start, end
+        scope['from_date'], scope['to_date'] = self._timeline_dates
         return scope
 
     def pending_arena_ids(self):
@@ -1067,7 +1142,7 @@ class StatsService(object):
 
     def _scope(self, key, identifier, label, started_at):
         name = 'launch' if key == '_launch_id' else 'manual'
-        return self._indexes[name].snapshot(label, started_at, self._pages.get(name), self._orders.get(name))
+        return self._scope_snapshot(name, self._indexes[name], label, started_at)
 
     def launch_records(self):
         """Independent records from this account and game process only."""

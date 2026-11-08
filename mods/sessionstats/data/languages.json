@@ -305,7 +305,17 @@
       "help.info": "Information",
       "more.column.xp": "XP",
       "more.column.free_xp": "Free XP",
-      "more.column.crew_xp": "Crew XP"
+      "more.column.crew_xp": "Crew XP",
+      "more.less": "Less",
+      "maps.battles": "Battles on this map",
+      "maps.open_battle": "Show battle",
+      "maps.loading": "Loading battles…",
+      "maps.empty": "No battles available",
+      "timeline.custom": "Custom date",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Apply",
+      "timeline.custom_invalid": "Enter a valid date: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "From must be earlier than To."
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -611,7 +621,17 @@
       "help.info": "Informacje",
       "more.column.xp": "PD",
       "more.column.free_xp": "Wolne PD",
-      "more.column.crew_xp": "PD załogi"
+      "more.column.crew_xp": "PD załogi",
+      "more.less": "Mniej",
+      "maps.battles": "Bitwy na tej mapie",
+      "maps.open_battle": "Pokaż bitwę",
+      "maps.loading": "Ładowanie bitew…",
+      "maps.empty": "Brak dostępnych bitew",
+      "timeline.custom": "Własna data",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Zastosuj",
+      "timeline.custom_invalid": "Wpisz poprawną datę: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "Początek musi być wcześniejszy niż koniec."
     },
     "ru": {
       "title": "Статистика сессии",
@@ -917,7 +937,17 @@
       "help.info": "Информация",
       "more.column.xp": "опыт",
       "more.column.free_xp": "свободный опыт",
-      "more.column.crew_xp": "опыт экипажа"
+      "more.column.crew_xp": "опыт экипажа",
+      "more.less": "Свернуть",
+      "maps.battles": "Бои на этой карте",
+      "maps.open_battle": "Показать бой",
+      "maps.loading": "Загрузка боёв…",
+      "maps.empty": "Нет доступных боёв",
+      "timeline.custom": "Своя дата",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Применить",
+      "timeline.custom_invalid": "Введите корректную дату: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "Начало периода должно быть раньше конца."
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1223,7 +1253,17 @@
       "help.info": "Informations",
       "more.column.xp": "EXP.",
       "more.column.free_xp": "EXP. libre",
-      "more.column.crew_xp": "EXP. équipage"
+      "more.column.crew_xp": "EXP. équipage",
+      "more.less": "Moins",
+      "maps.battles": "Batailles sur cette carte",
+      "maps.open_battle": "Afficher la bataille",
+      "maps.loading": "Chargement des batailles…",
+      "maps.empty": "Aucune bataille disponible",
+      "timeline.custom": "Date personnalisée",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Appliquer",
+      "timeline.custom_invalid": "Saisissez une date valide : YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "Le début doit précéder la fin."
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1529,7 +1569,17 @@
       "help.info": "Informationen",
       "more.column.xp": "EP",
       "more.column.free_xp": "Freie EP",
-      "more.column.crew_xp": "Besatzungs-EP"
+      "more.column.crew_xp": "Besatzungs-EP",
+      "more.less": "Weniger",
+      "maps.battles": "Gefechte auf dieser Karte",
+      "maps.open_battle": "Gefecht anzeigen",
+      "maps.loading": "Gefechte werden geladen…",
+      "maps.empty": "Keine Gefechte verfügbar",
+      "timeline.custom": "Eigenes Datum",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Anwenden",
+      "timeline.custom_invalid": "Bitte gültiges Datum eingeben: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "„Von“ muss vor „Bis“ liegen."
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1835,7 +1885,17 @@
       "help.info": "Información",
       "more.column.xp": "EXP",
       "more.column.free_xp": "EXP libre",
-      "more.column.crew_xp": "EXP de tripulación"
+      "more.column.crew_xp": "EXP de tripulación",
+      "more.less": "Menos",
+      "maps.battles": "Batallas en este mapa",
+      "maps.open_battle": "Mostrar batalla",
+      "maps.loading": "Cargando batallas…",
+      "maps.empty": "No hay batallas disponibles",
+      "timeline.custom": "Fecha personalizada",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Aplicar",
+      "timeline.custom_invalid": "Introduce una fecha válida: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "La fecha «Desde» debe ser anterior a «Hasta»."
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2141,7 +2201,17 @@
       "help.info": "Інформація",
       "more.column.xp": "досвід",
       "more.column.free_xp": "вільний досвід",
-      "more.column.crew_xp": "досвід екіпажу"
+      "more.column.crew_xp": "досвід екіпажу",
+      "more.less": "Згорнути",
+      "maps.battles": "Бої на цій мапі",
+      "maps.open_battle": "Показати бій",
+      "maps.loading": "Завантаження боїв…",
+      "maps.empty": "Немає доступних боїв",
+      "timeline.custom": "Власна дата",
+      "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
+      "timeline.custom_apply": "Застосувати",
+      "timeline.custom_invalid": "Введіть коректну дату: YYYY-MM-DD HH:mm.",
+      "timeline.custom_order": "Початок має передувати кінцю."
     }
   }
 }

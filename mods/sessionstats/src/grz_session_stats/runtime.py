@@ -1569,7 +1569,33 @@ class Runtime(object):
             if action == 'time_point':
                 self.active_service.create_time_point(getter('name'))
             else:
-                self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
+                dates = []
+                for field in ('from_date', 'to_date'):
+                    raw = getter(field)
+                    if raw is None:
+                        dates.append(None)
+                        continue
+                    if isinstance(raw, bytes) and not isinstance(raw, text_type):
+                        try:
+                            raw = raw.decode('ascii')
+                        except UnicodeError:
+                            return
+                    if isinstance(raw, text_type):
+                        if not raw:
+                            dates.append(None)
+                            continue
+                        if len(raw) > 64:
+                            return
+                        try:
+                            raw = float(raw)
+                        except (ValueError, TypeError, OverflowError):
+                            return
+                    value = _number(raw)
+                    if value is None:
+                        return
+                    dates.append(value)
+                if not self.active_service.set_timeline_range(getter('from_point'), getter('to_point'), *dates):
+                    return
                 self._schedule_loading()
             self._window_call('refresh')
         elif action == 'reset' and self.active_service is not None:
@@ -1588,7 +1614,7 @@ class Runtime(object):
             else:
                 return
             self._window_call('refresh')
-        elif action in ('page', 'sort') and self.active_service is not None:
+        elif action in ('page', 'sort', 'map_battles', 'battle_select') and self.active_service is not None:
             if getter('account_key') != self.active_key:
                 return
             scope, group = getter('scope'), getter('group')
@@ -1605,6 +1631,9 @@ class Runtime(object):
                 options = dict((key, getter(key)) for key in ('metric', 'statistic', 'direction', 'chronology'))
                 if not service.set_order(scope, group, options, period_id):
                     return
+            elif action == 'battle_select':
+                if not service.select_battle(scope, getter('id'), period_id, getter('request_id')):
+                    return
             else:
                 raw_page = getter('page')
                 if isinstance(raw_page, bytes) and not isinstance(raw_page, text_type):
@@ -1614,7 +1643,11 @@ class Runtime(object):
                         return
                 if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
                     return
-                if not service.set_page(scope, group, int(raw_page), period_id):
+                if action == 'map_battles':
+                    accepted = service.set_map_battles(scope, getter('map_id'), int(raw_page), period_id)
+                else:
+                    accepted = service.set_page(scope, group, int(raw_page), period_id)
+                if not accepted:
                     return
             self._window_call('refresh')
         elif action == 'language' and self.active_service is not None:

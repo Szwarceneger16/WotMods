@@ -215,7 +215,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-window.is-native { max-width:none; max-height:none; }
 .ss-titlebar { position:relative; z-index:30; display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; min-height:47rem; padding:6rem 74rem 7rem 13rem; border-radius:{{radii.titlebar}}rem {{radii.titlebar}}rem 0 0; background:linear-gradient({{colors.titlebar_background_start}}, {{colors.titlebar_background_end}}); box-shadow:inset 0 1rem {{colors.session_tab_shadow}}, inset 0 -1rem {{colors.session_tabs_border}}; }
 .ss-title-identity { display:flex; align-items:center; flex:1 0 220rem; min-width:0; max-width:100%; min-height:32rem; }
-.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 360rem; width:360rem; max-width:100%; min-width:0; margin-left:auto; }
+/* Let the complete action group use its intrinsic width. Wide windows keep
+   every control on the title row; smaller windows wrap the existing groups. */
+.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 auto; width:auto; max-width:100%; min-width:0; margin-left:auto; }
 .ss-titlebar h1 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:22rem; line-height:26rem; margin:0; font-weight:bold; color:{{colors.title_text}}; text-shadow:0 1rem 2rem {{colors.title_text_shadow}}; }
 .ss-game-mode { display:block; flex-shrink:0; white-space:nowrap; color:{{colors.game_mode_text}}; font-size:12rem; margin-left:12rem; }
 .ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
@@ -240,7 +242,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-scope:hover, .ss-scope:focus { color:{{colors.session_tab_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
 .ss-scope.is-active { color:{{colors.session_tab_active_text}}; background:linear-gradient({{colors.session_tab_active_background_start}}, {{colors.session_tab_active_background_middle}} 56%, {{colors.session_tab_active_background_end}}); text-shadow:0 0 7rem {{colors.session_tab_active_text_shadow}}; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:{{colors.session_tab_marker_background}}; border-right:1rem solid {{colors.session_tab_marker_border_right}}; border-bottom:1rem solid {{colors.session_tab_marker_border_bottom}}; transform:rotate(45deg); }
-.ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; min-height:37rem; padding-top:4rem; }
+.ss-toolbar { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; min-height:37rem; padding-top:4rem; }
 .ss-period { display:block; flex:0 1 184rem; min-width:0; width:184rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
 .ss-xp-picker { display:flex; flex:0 0 auto; min-width:212rem; width:auto; max-width:100%; margin-bottom:4rem; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
 .ss-small-toggle { flex:1 0 auto; min-width:98rem; width:auto; border:0; background:{{colors.xp_toggle_background}}; color:{{colors.xp_toggle_text}}; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
@@ -406,7 +408,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-pagination > .ss-button { flex:0 0 auto; min-width:64rem; width:auto; height:27rem; min-height:27rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
 #ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
-.ss-language-row { display:flex; align-items:center; flex:0 1 158rem; min-width:0; min-height:29rem; }
+.ss-language-row { display:flex; align-items:center; flex:0 1 158rem; min-width:0; width:158rem; max-width:100%; min-height:29rem; }
 .ss-language-caption { display:block; flex-shrink:1; min-width:0; margin-right:6rem; color:{{colors.list_meta_text}}; font-size:12rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ss-select.ss-language-select { flex:1 1 0rem; width:0; }
 .ss-language-select .ss-select-options { left:auto; right:0; }
@@ -459,7 +461,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-language-caption { margin-right:4rem; }
 }
 
-.ss-time-point-controls { display:flex; align-items:center; flex:1 1 250rem; min-width:0; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
+.ss-time-point-controls { display:flex; align-items:center; flex:1 1 266rem; min-width:0; width:266rem; max-width:100%; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 .ss-time-point-name { display:block; flex:1 1 0rem; width:0; min-width:0; height:29rem; padding:4rem 7rem; margin:0; border:0; border-radius:0 {{radii.control}}rem {{radii.control}}rem 0; background:{{colors.close_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
 .ss-time-point-name:focus { outline:none; box-shadow:inset 0 0 6rem {{colors.button_shadow_2}}; }
 .ss-time-point { flex:0 0 auto; min-width:122rem; width:auto; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem 0 0 {{radii.control}}rem; }
@@ -475,16 +477,47 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary .ss-detail-title { display:flex; align-items:center; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
 .ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
-.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; margin:0 4rem; color:{{colors.table_header_text}}; }
-.ss-timeline-field > span { flex-shrink:0; margin-right:6rem; }
+.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:flex-start; margin:0 4rem; color:{{colors.table_header_text}}; }
+.ss-timeline-field > span { flex-shrink:0; margin-right:6rem; line-height:29rem; }
 .ss-timeline-field .ss-select { flex:1 1 0rem; width:0; }
-.ss-timeline-field .ss-select-options { width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
+.ss-timeline-field .ss-select-options { top:29rem; width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
+.ss-custom-date-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; width:100%; min-width:0; padding-top:4rem; }
+.ss-custom-date { display:block; flex:1 1 128rem; min-width:0; width:0; max-width:100%; height:26rem; padding:3rem 5rem; margin:0 4rem 0 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:11rem; line-height:18rem; }
+.ss-custom-date:focus { outline:none; border-color:{{colors.button_shadow_1}}; box-shadow:inset 0 0 5rem {{colors.button_shadow_2}}; }
+.ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 6rem; }
+.ss-custom-date-apply .ss-control-label { font-size:11rem; line-height:16rem; }
+.ss-custom-date-error { display:block; min-width:0; width:100%; padding-top:3rem; color:{{colors.negative_text}}; font-size:11rem; line-height:15rem; overflow-wrap:break-word; }
 .ss-more-button { margin-left:7rem; }
+.ss-map-more-button { min-width:48rem; padding:3rem 7rem; margin-left:6rem; }
+.ss-narrow-cards [id^="ss-card-maps-"] .ss-group-header { flex-wrap:wrap; }
+.ss-narrow-cards [id^="ss-card-maps-"] .ss-group-name { flex:1 1 340rem; min-width:0; }
 .ss-more-panel { display:flex; flex-wrap:wrap; align-items:flex-start; padding:5rem 0 2rem; border-top:1rem solid {{colors.group_tabs_border_bottom}}; font-size:13rem; line-height:18rem; overflow-wrap:break-word; }
 .ss-more-panel > p { width:100%; margin:3rem 5rem; }
 .ss-more-title { margin:4rem 5rem; color:{{colors.session_tab_active_text}}; font-size:13rem; line-height:18rem; }
 .ss-more-mission { display:block; width:100%; margin:0 0 6rem; padding:6rem 7rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
 .ss-more-caption { color:{{colors.period_text}}; font-size:12rem; line-height:16rem; }
+/* Map history stays a small native flex list. Each owned jump action remains
+   separate from the row's name, date, rating and result text. */
+.ss-map-battles { display:block; min-width:0; width:100%; margin-top:3rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-map-battle-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:5rem 6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-map-battle-row:first-child { border-top:0; }
+.ss-map-battle-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
+.ss-map-battle-info { flex:1 1 200rem; min-width:0; margin-right:8rem; }
+.ss-map-battle-name { display:block; min-width:0; color:{{colors.group_title_text}}; font-size:13rem; line-height:18rem; font-weight:normal; overflow-wrap:break-word; }
+.ss-map-battle-row > .ss-map-battle-name { flex:1 1 120rem; margin-right:8rem; }
+.ss-map-battle-meta { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
+.ss-map-battle-date { display:block; color:{{colors.period_text}}; font-size:12rem; line-height:16rem; white-space:nowrap; }
+.ss-map-battle-row > .ss-map-battle-date { flex:0 0 106rem; margin-right:8rem; }
+.ss-map-battle-meta .ss-map-battle-date { margin-right:8rem; }
+.ss-map-battle-outcome { display:block; flex:0 1 90rem; min-width:0; margin-right:8rem; font-size:12rem; line-height:16rem; }
+.ss-map-battle-wn8 { display:block; flex:0 0 auto; min-width:68rem; margin-right:8rem; color:{{colors.kpi_wn8_text}}; font-size:12rem; line-height:16rem; text-align:right; white-space:nowrap; }
+.ss-map-battle-open { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
+.ss-map-battles-pagination, .ss-map-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-map-battles-pagination > .ss-control, .ss-map-pagination > .ss-control { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
+.ss-map-battles-page, .ss-map-page-status { display:block; flex:1 1 80rem; min-width:0; margin:0 4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:16rem; text-align:center; }
+.ss-map-battles .ss-empty { margin:0; padding:6rem; font-size:12rem; line-height:18rem; }
+.ss-map-empty { margin:0; padding:6rem; color:{{colors.period_text}}; font-size:12rem; line-height:18rem; }
+.ss-battle-target { outline:1rem solid {{colors.button_shadow_1}}; outline-offset:2rem; }
 .ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
 .ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }

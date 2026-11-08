@@ -7,9 +7,17 @@ These legacy filenames are retained for existing package and documentation links
 their contents are English.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
-to filter by battle start time. The start is inclusive and the end is exclusive.
+to filter by battle start time. Either selector also accepts **Custom date**:
+enter `YYYY-MM-DD HH:mm` in the computer's local time and choose **Apply**.
+Ranges are half-open: **From** is included and **To** is excluded. The start must
+be earlier than the end. **Beginning of history** and **Now** leave the
+corresponding end open.
 Earlier manual resets appear as time points and saved battles remain available.
 The account and region determine which history and time points are shown.
+
+An expanded **Maps** card lists battles on that map within the selected period.
+**Show battle** opens the chosen result in **Battles**. **Less** collapses an
+expanded card.
 
 In **Battles → More**, the card lists recorded daily, bonus, weekly, personal
 campaign and event missions, along with the active Crucible stage and its

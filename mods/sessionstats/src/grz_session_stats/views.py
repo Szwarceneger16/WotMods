@@ -763,7 +763,7 @@ class StatsWindow(object):
                                _positive(_read(arg, 'scale'), 16))
                 self._finish_watchdog_if_ready()
             return
-        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag',
+        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'map_battles', 'battle_select', 'language', 'viewport', 'drag',
                           'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end', 'resize_cursor', 'window_settings'):
             return
         self._log_once('command_' + action, logging.INFO, 'GRZ UI: command %s received.', action)

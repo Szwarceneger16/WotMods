@@ -295,6 +295,26 @@ class LocalizationTests(unittest.TestCase):
             self.assertEqual(translator.text('more.progress.change', 'Fixture', '+2'),
                              self.catalog[language]['more.progress.change'].format('Fixture', '+2'))
 
+    def test_nested_map_battle_names_translate_only_canonical_or_legacy_fallbacks(self):
+        names = [loc.ENGLISH['unknown.vehicle'], loc.LEGACY_POLISH['unknown.vehicle'],
+                 loc.ENGLISH['unknown.vehicle_id'].format(77), loc.LEGACY_POLISH['unknown.vehicle_id'].format(77),
+                 'Leopard 1', 'Fixture: ' + loc.ENGLISH['unknown.vehicle_id'].format(77)]
+        items = [dict(id='fixture-' + str(index), name=name, started_at=100 + index,
+                      outcome='win', wn8=0 if index == 0 else None) for index, name in enumerate(names)]
+        snapshot = {'warnings': [], 'scopes': {'manual': {'maps': [{
+            'id': 'fixture-map', 'name': 'Malinówka', 'battle_list': {
+                'items': items, 'page': 0, 'pages': 1, 'total': len(items), 'page_size': 10}}]}}}
+        original = copy.deepcopy(snapshot)
+        for language in loc.SUPPORTED:
+            actual = loc.Localizer(language).snapshot(copy.deepcopy(snapshot))['scopes']['manual']['maps'][0]
+            expected = copy.deepcopy(original['scopes']['manual']['maps'][0])
+            for index in (0, 1):
+                expected['battle_list']['items'][index]['name'] = self.catalog[language]['unknown.vehicle']
+            for index in (2, 3):
+                expected['battle_list']['items'][index]['name'] = self.catalog[language]['unknown.vehicle_id'].format(77)
+            self.assertEqual(actual, expected, language)
+        self.assertEqual(snapshot, original)
+
     def test_parameterized_legacy_warnings_keep_their_own_message_pattern(self):
         examples = (('runtime.backlog', (13,)), ('status.pending', (3,)),
                     ('health.notice', ('damage: missing', 'Fixture: read error')))
