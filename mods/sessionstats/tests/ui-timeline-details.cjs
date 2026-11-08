@@ -96,20 +96,31 @@ module.exports = async function ({browser, nativeHost, check}) {
       const frame = box('#ss-time-point-controls');
       const language = box('#ss-language .ss-select-trigger');
       const close = box('#ss-close');
-      return input.width > 50 && timePoint.right <= input.left &&
+      const root = box('#grz-session-stats'), barStyle = getComputedStyle(document.getElementById('ss-titlebar'));
+      const minimumRow = parseFloat(getComputedStyle(document.querySelector('.ss-title-identity')).flexBasis) +
+        actions.width + parseFloat(barStyle.paddingLeft) + parseFloat(barStyle.paddingRight);
+      const expectedWrapped = wrapped === undefined ? root.width < minimumRow - 1 : wrapped;
+      const pass = input.width > 50 && timePoint.right <= input.left &&
         timePoint.left >= frame.left && input.right <= frame.right &&
         Math.abs(input.top - timePoint.top) < 1 && language.right <= close.left &&
         (Math.abs(timePoint.top - language.top) < 1 ? input.right < language.left : language.top >= timePoint.bottom) &&
-        (wrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
+        (expectedWrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
+        [title,actions,frame,language,close].every(item=>item.left>=root.left-1 && item.right<=root.right+1) &&
         [...document.querySelectorAll('.ss-timeline-field')].every(field => {
           const label = field.firstElementChild.getBoundingClientRect();
           const control = field.querySelector('.ss-select-trigger').getBoundingClientRect();
           return control.width > 0 && label.right < control.left &&
             control.right <= field.getBoundingClientRect().right + 1;
         });
+      const serial=rect=>({left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height});
+      return {pass,expectedWrapped,minimumRow,root:serial(root),title:serial(title),actions:serial(actions),
+        input:serial(input),timePoint:serial(timePoint),frame:serial(frame),language:serial(language),close:serial(close),
+        fields:[...document.querySelectorAll('.ss-timeline-field')].map(field=>({field:serial(field.getBoundingClientRect()),
+          label:serial(field.firstElementChild.getBoundingClientRect()),control:serial(field.querySelector('.ss-select-trigger').getBoundingClientRect())}))};
     }, wrapped);
   }
-  check('Title actions and both timeline selectors fit at 200 percent', await controlsFit(false));
+  const controls200=await controlsFit();
+  check('Title actions and both timeline selectors fit at 200 percent'+(controls200.pass ? '' : ': '+JSON.stringify(controls200)),controls200.pass);
   check('The time-point button and name share a visible frame',await page.locator('#ss-time-point-controls').evaluate(frame =>
     frame.firstElementChild.id === 'ss-time-point' &&
     parseFloat(getComputedStyle(frame).borderTopWidth) > 0 &&
@@ -301,7 +312,8 @@ module.exports = async function ({browser, nativeHost, check}) {
     __grzEvents['viewEnv.onDataChanged']();
   });
   await page.waitForFunction(() => __nativeSize[0] === 460);
-  check('Title actions wrap together and timeline selectors fit in a narrow window', await controlsFit(true));
+  const narrowControls=await controlsFit(true);
+  check('Title actions wrap together and timeline selectors fit in a narrow window'+(narrowControls.pass ? '' : ': '+JSON.stringify(narrowControls)),narrowControls.pass);
   await page.close();
 
   for(const testCase of [{window:700,card:500,label:'500px battle card'},{window:320,label:'320px floating window'}]) {

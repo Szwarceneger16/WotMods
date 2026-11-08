@@ -51,11 +51,16 @@ module.exports=async ({browser,nativeHost,check})=>{
         request.account_key==='synthetic-map-account-'+language && request.scope==='launch' && request.period_id==='synthetic-map-period-'+language &&
         request.map_id==='synthetic-ridge' && request.page==='0' && await more.textContent()===messages['more.less']);
       await publishList(page,0);
-      check('A map page renders ten escaped battle rows and honest zero/missing WN8 in '+language,
-        await map.locator('.ss-map-battle-row').count()===10 && await map.locator('.ss-map-battle-open').count()===10 &&
-        await map.locator('.ss-map-battle-row').first().textContent().then(text=>text.includes('<b>Synthetic tank</b>') && /\b0\b/.test(text)) &&
-        await map.locator('.ss-map-battle-row').nth(1).textContent().then(text=>text.includes('—')) && await map.locator('b,img').count()===0 &&
-        await map.locator('.ss-map-battle-open').first().textContent()===messages['maps.open_battle']);
+      const firstPage=await map.evaluate(card=>({rows:card.querySelectorAll('.ss-map-battle-row').length,
+        buttons:card.querySelectorAll('.ss-map-battle-open').length,
+        names:[...card.querySelectorAll('.ss-map-battle-name')].slice(0,2).map(node=>node.textContent),
+        ratings:[...card.querySelectorAll('.ss-map-battle-wn8')].slice(0,2).map(node=>node.textContent),
+        markup:[...card.querySelectorAll('b,img')].map(node=>node.outerHTML),
+        openCaption:card.querySelector('.ss-map-battle-open').textContent}));
+      check('A map page renders ten escaped battle rows and honest zero/missing WN8 in '+language+': '+JSON.stringify(firstPage),
+        firstPage.rows===10 && firstPage.buttons===10 && firstPage.names[0]==='<b>Synthetic tank</b>' &&
+        firstPage.ratings[0]===messages['metric.wn8']+' 0' && firstPage.ratings[1]===messages['metric.wn8']+' '+messages['format.missing'] &&
+        firstPage.markup.length===0 && firstPage.openCaption===messages['maps.open_battle']);
       check('Map battle paging disables only the unavailable direction in '+language,
         await map.locator('.ss-map-page-previous').isDisabled() && await map.locator('.ss-map-page-next').isEnabled());
       for(const viewport of [{width:1900,height:1300,scale:1},{width:470,height:1100,scale:1},{width:960,height:1700,scale:2}]) {
