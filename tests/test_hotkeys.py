@@ -79,14 +79,126 @@ class HotkeyTests(unittest.TestCase):
         tracker.feed('M', False)
         self.assertEqual(tracker.feed('M', True)['actions'], ['power'])
 
-    def test_unrelated_held_key_prevents_activation_and_release_does_not_fire(self):
+    def test_unrelated_held_key_does_not_block_activation_or_rearm_latch(self):
         tracker = hotkeys.ChordTracker({'power': 'CTRL+M'})
         tracker.feed('A', True)
         tracker.feed('LCTRL', True)
-        self.assertEqual(tracker.feed('M', True)['actions'], [])
+        self.assertEqual(tracker.feed('M', True)['actions'], ['power'])
         self.assertEqual(tracker.feed('A', False)['actions'], [])
+        self.assertEqual(tracker.feed('A', True)['actions'], [])
         tracker.feed('M', False)
         self.assertEqual(tracker.feed('M', True)['actions'], ['power'])
+
+    def test_u_and_i_work_while_driving_with_ordinary_keys_held(self):
+        for driving_keys in (('W',), ('W', 'A'), ('UP',), ('UP', 'LEFT'), ('Q', 'E')):
+            with self.subTest(driving_keys=driving_keys):
+                tracker = hotkeys.ChordTracker({'toggle_mod': ['U'], 'toggle_voice': ['I']})
+                for key in driving_keys:
+                    self.assertEqual(tracker.feed(key, True)['actions'], [])
+                self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+                self.assertEqual(tracker.feed('I', True)['actions'], ['toggle_voice'])
+                self.assertEqual(tracker.feed('U', True, repeated=True)['actions'], [])
+                tracker.feed('U', False)
+                self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+                self.assertTrue(set(driving_keys).issubset(tracker.held_keys))
+
+    def test_extra_modifiers_block_plain_shortcut_until_required_key_is_pressed_again(self):
+        for modifier in ('CTRL', 'LCTRL', 'RCTRL', 'ALT', 'LALT', 'RALT',
+                         'SHIFT', 'LSHIFT', 'RSHIFT', 'LWIN', 'RWIN'):
+            with self.subTest(modifier=modifier):
+                tracker = hotkeys.ChordTracker({'toggle_mod': ['U']})
+                tracker.feed(modifier, True)
+                tracker.feed('W', True)
+                self.assertEqual(tracker.feed('U', True)['actions'], [])
+                self.assertEqual(tracker.feed(modifier, False)['actions'], [])
+                self.assertEqual(tracker.feed('A', True)['actions'], [])
+                self.assertEqual(tracker.feed('A', False)['actions'], [])
+                self.assertEqual(tracker.feed('W', False)['actions'], [])
+                tracker.feed('U', False)
+                self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+
+    def test_movement_keydown_cannot_activate_an_already_held_unlatched_shortcut(self):
+        tracker = hotkeys.ChordTracker({'toggle_mod': ['U']})
+        tracker.feed('LSHIFT', True)
+        self.assertEqual(tracker.feed('U', True)['actions'], [])
+        tracker.feed('LSHIFT', False)
+        self.assertEqual(tracker.feed('W', True)['actions'], [])
+        self.assertEqual(tracker.feed('UP', True)['actions'], [])
+        self.assertEqual(tracker.feed('W', False)['actions'], [])
+        tracker.feed('U', False)
+        self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+
+    def test_required_generic_modifier_can_complete_chord_while_driving(self):
+        tracker = hotkeys.ChordTracker({'toggle_mod': ['CTRL', 'U']})
+        tracker.feed('W', True)
+        self.assertEqual(tracker.feed('U', True)['actions'], [])
+        self.assertEqual(tracker.feed('RCTRL', True)['actions'], ['toggle_mod'])
+        self.assertEqual(tracker.feed('A', True)['actions'], [])
+        self.assertEqual(tracker.feed('RCTRL', False)['actions'], [])
+        self.assertEqual(tracker.feed('LCTRL', True)['actions'], ['toggle_mod'])
+
+    def test_generic_modifier_latch_survives_one_side_releasing_while_driving(self):
+        tracker = hotkeys.ChordTracker({'toggle_mod': ['CTRL', 'U']})
+        tracker.feed('W', True)
+        tracker.feed('LCTRL', True)
+        self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+        self.assertEqual(tracker.feed('RCTRL', True)['actions'], [])
+        self.assertEqual(tracker.feed('LCTRL', False)['actions'], [])
+        self.assertEqual(tracker.feed('A', True)['actions'], [])
+        self.assertEqual(tracker.feed('LCTRL', True)['actions'], [])
+        tracker.feed('U', False)
+        self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+
+    def test_extra_modifier_sides_and_windows_keys_remain_strict_while_driving(self):
+        for extra in ('RCTRL', 'LALT', 'LSHIFT', 'LWIN', 'RWIN'):
+            with self.subTest(extra=extra):
+                tracker = hotkeys.ChordTracker({'toggle_mod': ['LCTRL', 'U']})
+                tracker.feed('LCTRL', True)
+                tracker.feed('W', True)
+                tracker.feed(extra, True)
+                self.assertEqual(tracker.feed('U', True)['actions'], [])
+                self.assertEqual(tracker.feed(extra, False)['actions'], [])
+                self.assertEqual(tracker.feed('D', True)['actions'], [])
+                tracker.feed('U', False)
+                self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+
+    def test_explicit_movement_binding_requires_its_keys_in_either_order(self):
+        tracker = hotkeys.ChordTracker({'toggle_mod': ['W', 'U']})
+        tracker.feed('UP', True)
+        self.assertEqual(tracker.feed('U', True)['actions'], [])
+        self.assertEqual(tracker.feed('W', True)['actions'], ['toggle_mod'])
+        tracker.feed('W', False)
+        self.assertEqual(tracker.feed('A', True)['actions'], [])
+        self.assertEqual(tracker.feed('W', True)['actions'], ['toggle_mod'])
+        tracker.reset()
+        self.assertEqual(tracker.feed('W', True)['actions'], [])
+        self.assertEqual(tracker.feed('U', True)['actions'], ['toggle_mod'])
+
+    def test_explicit_four_key_binding_keeps_all_members_with_other_driving_keys(self):
+        tracker = hotkeys.ChordTracker({'toggle_voice': ['W', 'A', 'U', 'I']})
+        tracker.feed('UP', True)
+        tracker.feed('E', True)
+        for key in ('W', 'U', 'I'):
+            self.assertEqual(tracker.feed(key, True)['actions'], [])
+        self.assertEqual(tracker.feed('A', True)['actions'], ['toggle_voice'])
+        tracker.feed('I', False)
+        self.assertEqual(tracker.feed('D', True)['actions'], [])
+        self.assertEqual(tracker.feed('I', True)['actions'], ['toggle_voice'])
+
+    def test_recording_keeps_movement_and_all_other_chosen_keys(self):
+        tracker = hotkeys.ChordTracker()
+        tracker.begin_capture(side_specific=True)
+        for key in ('W', 'A', 'U', 'I'):
+            result = tracker.feed(key, True)
+            self.assertEqual(result['actions'], [])
+            self.assertIsNone(result['captured'])
+        self.assertEqual(tracker.held_keys, ('A', 'I', 'U', 'W'))
+        for key in ('W', 'A', 'U'):
+            self.assertIsNone(tracker.feed(key, False)['captured'])
+        captured = tracker.feed('I', False)['captured']
+        self.assertEqual(captured, ['A', 'I', 'U', 'W'])
+        self.assertEqual(hotkeys.normalize_chord(captured), captured)
+        self.assertTrue(hotkeys.chords_conflict(['U'], captured))
 
     def test_two_actions_and_disabled_binding_are_independent(self):
         tracker = hotkeys.ChordTracker({'toggle_mod': 'CTRL+M', 'toggle_voice': 'ALT+V', 'off': []})

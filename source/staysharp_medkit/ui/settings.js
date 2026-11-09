@@ -139,7 +139,9 @@
         renderRow('toggle_mod', 'mod'); renderRow('toggle_voice', 'voice');
         nodes.hint.textContent = label('hint'); nodes.hint.setAttribute('title', label('hint'));
         caption('cancel', label('cancel')); nodes.cancel.style.display = 'flex';
+        nodes.cancel.style.visibility = capturing() ? 'visible' : 'hidden';
         nodes.cancel.disabled = !capturing(); nodes.cancel.setAttribute('aria-disabled', capturing() ? 'false' : 'true');
+        nodes.cancel.setAttribute('aria-hidden', capturing() ? 'false' : 'true');
         var error = safeText(state.error, '', 2048), status = safeText(state.status, '', 2048);
         feedback(error || status, !!error);
         resize();

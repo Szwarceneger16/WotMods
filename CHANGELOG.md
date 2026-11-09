@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.10
+
+- Show the native clickable-hand cursor over eligible battle reminder buttons and restore the arrow when leaving or hiding the controls.
+- Allow shortcuts while other ordinary keys are held, including movement keys; retain exact modifier requirements, one-shot latches and complete multi-key recording.
+- Show Cancel only during shortcut recording while reserving its layout space, keeping the panel and description stationary.
+
 ## 1.8.9
 
 - Place Cancel beside the description in a permanently reserved footer row, enabling it only while recording a shortcut.

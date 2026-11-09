@@ -30,6 +30,9 @@ class HudControlTests(unittest.TestCase):
         self.game.world.isKeyDown = key_state
         self.cursor = types.SimpleNamespace(active=True, visible=True, position=(0.0, 0.0))
         self.game.gui.mcursor = lambda: self.cursor
+        self.pointer_calls = []
+        self.pointer_manager = types.SimpleNamespace(setCursorForced=self.pointer_calls.append)
+        self.panel.app.cursorMgr = self.pointer_manager
         original_setattr = runtime.Component.__setattr__
         def reject_native_input(component, name, value):
             if name in ('focus', 'moveFocus', 'mouseButtonFocus') and value:
@@ -175,6 +178,150 @@ class HudControlTests(unittest.TestCase):
         self.cursor.visible = True
         self.poll()
         self.assertEqual(self.game.world.jobs[self.mod._controls_poll_callback][0], 0.02)
+
+    def test_pointing_hand_follows_both_icons_without_changing_native_input(self):
+        self.sync()
+        roots = list(self.game.gui.roots)
+        self.assertEqual(self.pointer_calls, [])
+        self.cursor.position = self.mod._controls[0][0].position[:2]
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button'])
+        for unused in range(5):
+            self.poll()
+        self.cursor.position = self.mod._controls[1][0].position[:2]
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button'], 'Stable hover never forces a cursor every tick')
+        self.cursor.position = (-0.9, 0.9)
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button', 'arrow'])
+        self.assertEqual(self.game.gui.roots, roots)
+        for component, unused_owner, unused_mount, unused_state in self.mod._controls:
+            self.assertIsNone(component.script)
+            self.assertFalse(component.focus or component.mouseButtonFocus or component.moveFocus)
+
+    def test_pointer_checks_full_hud_eligibility_only_after_a_visible_icon_hit(self):
+        self.sync()
+        with patch.object(self.mod, '_controls_cursor_active', wraps=self.mod._controls_cursor_active) as eligible:
+            for unused in range(4):
+                self.poll()
+            eligible.assert_not_called()
+            self.cursor.position = self.mod._controls[0][0].position[:2]
+            self.poll()
+            eligible.assert_called_once_with()
+
+    def test_pointing_hand_releases_when_cursor_or_battle_hud_becomes_unavailable(self):
+        self.sync()
+        changes = (
+            (self.cursor, 'active', False, True),
+            (self.cursor, 'visible', False, True),
+            (self.panel.app, 'isModalViewShown', lambda: True, lambda: False),
+            (self.panel, 'native_visible', False, True),
+            (self.panel, 'camera_mode', 'sniper', 'arcade'))
+        for target, attribute, unavailable, available in changes:
+            with self.subTest(attribute=attribute):
+                self.cursor.position = self.mod._controls[0][0].position[:2]
+                self.poll()
+                self.assertEqual(self.pointer_calls[-1], 'button')
+                setattr(target, attribute, unavailable)
+                self.poll()
+                self.assertEqual(self.pointer_calls[-1], 'arrow')
+                self.assertIsNone(self.mod._controls_pointer_owner)
+                setattr(target, attribute, available)
+
+    def test_hide_and_dispose_release_the_owned_native_manager_once(self):
+        self.sync()
+        self.cursor.position = self.mod._controls[0][0].position[:2]
+        self.poll()
+        self.mod._hide_controls()
+        self.mod._hide_controls()
+        self.assertEqual(self.pointer_calls, ['button', 'arrow'])
+        self.mod._sync_controls(self.panel)
+        self.poll()
+        self.assertEqual(self.pointer_calls[-1], 'button')
+        self.game.emit_unregister()
+        self.mod._delete_controls()
+        self.assertEqual(self.pointer_calls, ['button', 'arrow', 'button', 'arrow'])
+        self.assertIsNone(self.mod._controls_pointer_owner)
+
+    def test_manager_replacement_is_not_overwritten_until_a_new_hover(self):
+        self.sync()
+        self.cursor.position = self.mod._controls[0][0].position[:2]
+        self.poll()
+        replacement_calls = []
+        self.panel.app.cursorMgr = types.SimpleNamespace(setCursorForced=replacement_calls.append)
+        self.poll()
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button'])
+        self.assertEqual(replacement_calls, [])
+        self.assertIsNone(self.mod._controls_pointer_owner)
+        self.cursor.position = (-0.9, 0.9)
+        self.poll()
+        self.cursor.position = self.mod._controls[1][0].position[:2]
+        self.poll()
+        self.assertEqual(replacement_calls, ['button'])
+        self.mod._delete_controls()
+        self.assertEqual(replacement_calls, ['button', 'arrow'])
+
+    def test_optional_cursor_api_failure_warns_once_and_keeps_clicks_working(self):
+        def unavailable(shape):
+            self.pointer_calls.append(shape)
+            raise RuntimeError('optional native cursor unavailable')
+        self.pointer_manager.setCursorForced = unavailable
+        self.sync()
+        messages = []
+        with patch.object(self.mod, '_log', side_effect=messages.append):
+            self.cursor.position = self.mod._controls[0][0].position[:2]
+            self.poll()
+            for unused in range(4):
+                self.poll()
+            self.click(0)
+            self.assertFalse(self.mod._reminder_enabled)
+            self.cursor.position = (-0.9, 0.9)
+            self.poll()
+            self.cursor.position = self.mod._controls[1][0].position[:2]
+            self.poll()
+        self.assertEqual(sum('HUD pointer unavailable' in message for message in messages), 1)
+        self.assertEqual(self.pointer_calls, ['button', 'arrow', 'button', 'arrow'])
+        self.assertFalse(self.mod._controls_disabled)
+        self.assertEqual(len(self.mod._controls), 2)
+        self.assertIn(self.mod._controls_poll_callback, self.game.world.jobs)
+
+    def test_missing_cursor_manager_does_not_disable_clicks(self):
+        self.sync()
+        for manager in (None, object()):
+            with self.subTest(manager=manager):
+                self.panel.app.cursorMgr = manager
+                self.cursor.position = (-0.9, 0.9)
+                self.poll()
+                before = self.mod._reminder_enabled
+                self.click(0)
+                self.assertEqual(self.mod._reminder_enabled, not before)
+                self.assertFalse(self.mod._controls_disabled)
+        self.assertEqual(self.pointer_calls, [])
+
+    def test_perk_loss_releases_pointer_before_control_cleanup(self):
+        self.sync()
+        self.cursor.position = self.mod._controls[0][0].position[:2]
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button'])
+        self.game.world.avatar.vehicle.crewCompactDescrs = ()
+        self.poll()
+        self.assertEqual(self.pointer_calls, ['button', 'arrow'])
+        self.mod._refresh(self.panel)
+        self.assertEqual(self.pointer_calls, ['button', 'arrow'])
+        self.assertEqual(self.mod._controls, [])
+
+    def test_poll_early_return_releases_pointer_after_panel_disappears(self):
+        self.sync()
+        self.cursor.position = self.mod._controls[0][0].position[:2]
+        self.poll()
+        self.mod._panel = None
+        try:
+            self.poll()
+            self.assertEqual(self.pointer_calls, ['button', 'arrow'])
+            self.assertIsNone(self.mod._controls_pointer_owner)
+        finally:
+            self.mod._panel = self.panel
 
     def test_release_outside_or_over_other_icon_cancels_press(self):
         self.sync()

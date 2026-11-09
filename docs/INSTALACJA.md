@@ -1,4 +1,4 @@
-# Stay Sharp Medkit Reminder 1.8.9 - installation and test
+# Stay Sharp Medkit Reminder 1.8.10 - installation and test
 
 ## Install
 
@@ -30,15 +30,15 @@
 
 ## Garage shortcuts
 
-The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. The 20×19 logical-pixel icon retains its existing click area. Click it to open a compact settings window with a 24-logical-pixel gap above the button; click the icon again or click elsewhere in the garage to close it. The rounded, beveled panel uses the same bundled camouflage as Session Stats, with labels above shortcut fields and wider clear buttons. A 16-logical-pixel edge margin follows the game UI scale; the design stays 360×232 while recording and displaying feedback; Cancel sits beside the description and is enabled during capture; when the complete design cannot fit, the panel scales down uniformly within the available client area. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
+The medkit button sits immediately to the left of the native settings gear in the garage footer. Its muted grey/beige icon matches the surrounding buttons. The 20×19 logical-pixel icon retains its existing click area. Click it to open a compact settings window with a 24-logical-pixel gap above the button; click the icon again or click elsewhere in the garage to close it. The rounded, beveled panel uses the same bundled camouflage as Session Stats, with labels above shortcut fields and wider clear buttons. A 16-logical-pixel edge margin follows the game UI scale; the design stays 360×232 while recording and displaying feedback; Cancel appears beside the description during capture and keeps its reserved space while hidden; when the complete design cannot fit, the panel scales down uniformly within the available client area. Closing discards only an unfinished key recording, while accepted shortcuts remain saved. The installer includes the unchanged, checksum-verified OpenWG Gameface dependency used by Session Stats; both mods share the same dependency path.
 
 Select either shortcut row, hold the desired keys together, then release every key to save. The two actions toggle the whole reminder or toggle voice independently. Defaults are Ctrl+Alt+M and Ctrl+Alt+V. Use Clear to disable a shortcut; Escape or Cancel abandons a recording. Left/right modifiers are preserved when recording. The configuration also accepts generic CTRL, ALT and SHIFT names for either side.
 
-Three/four-key combinations and larger simultaneous combinations are supported, including multiple ordinary keys. The client can only record keys delivered by the OS and keyboard hardware: system-reserved shortcuts such as Ctrl+Alt+Delete and keyboard rollover limits cannot be overridden by this mod. Escape is reserved for cancelling the recorder. Overlapping action bindings are rejected to avoid firing a shorter action while entering a longer one.
+Three/four-key combinations and larger simultaneous combinations are supported, including multiple ordinary keys. During battle, other held ordinary keys (such as movement keys) do not block a shortcut; extra Ctrl, Alt, Shift or Windows modifiers must match the binding. Only a newly pressed key belonging to the shortcut can activate it. Recording still retains every selected key, including movement keys when they are intentionally part of a chord. The client can only record keys delivered by the OS and keyboard hardware: system-reserved shortcuts such as Ctrl+Alt+Delete and keyboard rollover limits cannot be overridden by this mod. Escape is reserved for cancelling the recorder. Overlapping action bindings are rejected to avoid firing a shorter action while entering a longer one.
 
 Settings are saved immediately without requiring native Python extension modules to `mods/configs/staysharp.medkit.json` and are loaded again when the window opens and at the next game startup. Existing language, volume, defaults and unrelated configuration fields are preserved. Failed saves retain the previous active binding and show an error. On embedded Windows Python 2.7, complete temporary and backup files allow recovery after interruption; this fallback is recoverable rather than a single atomic replacement. The previous configuration is recovered before defaults can be created. Recording does not trigger either reminder action and stops when the window closes, loses focus or battle starts. Ordinary battle shortcuts remain inactive on a vehicle without the learned perk, and while chat or a battle modal is active.
 
-Battle power/voice icons are 16 logical pixels (previously 24) with 40 percent transparency. Their existing plain-click/Ctrl-click behavior is retained. Their battle toggles remain temporary; the next battle restores configured enabled/voice defaults.
+Battle power/voice icons are 16 logical pixels (previously 24) with 40 percent transparency. Their existing plain-click/Ctrl-click behavior is retained. Hovering an eligible icon uses the native clickable-hand cursor; leaving or hiding the controls restores the arrow. Their battle toggles remain temporary; the next battle restores configured enabled/voice defaults.
 
 ## In-game verification
 
@@ -64,7 +64,7 @@ Battle power/voice icons are 16 logical pixels (previously 24) with 40 percent t
   separately. Clicking works both with and without Ctrl when the cursor is
   visible and active; no modifier state needs to reach the mod.
   The next battle restores the configured defaults. Verify the
-  shortcut does not react while battle chat is focused.
+  shortcut does not react while battle chat is focused. With single-key U/I bindings, hold W or an arrow key while pressing each shortcut; the movement key stays held and each action fires once. Hover both visible icons and verify the clickable hand, then move away and verify the arrow.
 - Verify both icons appear in arcade and artillery views. The normal tank
   sniper view hides the icons. The speaker switch can mute the voice while
   the medkit outline keeps pulsing.

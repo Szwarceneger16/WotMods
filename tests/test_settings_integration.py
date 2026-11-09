@@ -54,6 +54,91 @@ class SettingsIntegrationTests(unittest.TestCase):
     def disk(self):
         return json.loads(self.path.read_text())
 
+    def configure_u_i_shortcuts(self):
+        self.garage()
+        self.capture('toggle_mod', (22,))
+        self.capture('toggle_voice', (23,))
+        self.assertEqual(self.disk()['hotkeys'],
+                         {'toggle_mod': ['U'], 'toggle_voice': ['I']})
+        self.action('close')
+        self.battle()
+
+    def test_persisted_u_i_shortcuts_toggle_once_while_native_w_stays_held(self):
+        import Keys
+        with patch.multiple(Keys, KEY_W=17, KEY_U=22, KEY_I=23, create=True):
+            self.configure_u_i_shortcuts()
+            with patch.object(self.mod, '_toggle_reminder', wraps=self.mod._toggle_reminder) as power, \
+                    patch.object(self.mod, '_toggle_voice', wraps=self.mod._toggle_voice) as voice:
+                self.game.key(Keys.KEY_W)
+                self.game.key(Keys.KEY_U)
+                self.game.key(Keys.KEY_U, repeated=True)
+                self.game.key(Keys.KEY_I)
+                self.game.key(Keys.KEY_I, repeated=True)
+                self.assertFalse(self.mod._reminder_enabled)
+                self.assertFalse(self.mod._voice_enabled)
+                self.assertEqual((power.call_count, voice.call_count), (1, 1))
+                self.assertTrue(self.game.world.isKeyDown(Keys.KEY_W))
+                self.game.key(Keys.KEY_I, False)
+                self.game.key(Keys.KEY_U, False)
+                self.assertEqual(self.game.physical_keys, {Keys.KEY_W})
+                self.assertEqual(self.mod._shortcut_tracker.held_keys, ('W',))
+                self.game.key(Keys.KEY_W, False)
+                self.assertEqual((power.call_count, voice.call_count), (1, 1))
+
+    def test_chat_and_modal_still_block_custom_shortcuts_while_driving(self):
+        import Keys
+        with patch.multiple(Keys, KEY_W=17, KEY_U=22, KEY_I=23, create=True):
+            self.configure_u_i_shortcuts()
+            self.game.key(Keys.KEY_W)
+            with patch.object(self.mod, '_toggle_reminder', wraps=self.mod._toggle_reminder) as power, \
+                    patch.object(self.mod, '_toggle_voice', wraps=self.mod._toggle_voice) as voice:
+                self.game.chat_focused = True
+                self.game.press_shortcut((Keys.KEY_U,))
+                self.game.chat_focused = False
+                self.panel.app.isModalViewShown = lambda: True
+                self.game.press_shortcut((Keys.KEY_I,))
+                self.assertTrue(self.mod._reminder_enabled)
+                self.assertTrue(self.mod._voice_enabled)
+                power.assert_not_called()
+                voice.assert_not_called()
+                self.assertEqual(self.game.physical_keys, {Keys.KEY_W})
+                self.panel.app.isModalViewShown = lambda: False
+                self.game.press_shortcut((Keys.KEY_U,))
+                self.game.press_shortcut((Keys.KEY_I,))
+                self.assertEqual((power.call_count, voice.call_count), (1, 1))
+                self.assertFalse(self.mod._reminder_enabled)
+                self.assertFalse(self.mod._voice_enabled)
+                self.assertEqual(self.game.physical_keys, {Keys.KEY_W})
+            self.game.key(Keys.KEY_W, False)
+
+    def test_garage_capture_keeps_w_u_i_and_the_saved_chord_requires_w(self):
+        import Keys
+        with patch.multiple(Keys, KEY_W=17, KEY_U=22, KEY_I=23, create=True):
+            self.garage()
+            before = self.path.read_bytes()
+            self.action('begin_capture', 'toggle_mod')
+            with patch.object(self.mod, '_toggle_reminder') as power, \
+                    patch.object(self.mod, '_toggle_voice') as voice:
+                for code in (Keys.KEY_W, Keys.KEY_U, Keys.KEY_I):
+                    self.game.key(code)
+                self.assertEqual(self.mod._garage_payload()['preview'], ['I', 'U', 'W'])
+                self.game.key(Keys.KEY_I, False)
+                self.game.key(Keys.KEY_U, False)
+                self.assertEqual(self.path.read_bytes(), before)
+                self.assertEqual(self.mod._capture_target, 'toggle_mod')
+                self.assertTrue(self.game.world.isKeyDown(Keys.KEY_W))
+                self.game.key(Keys.KEY_W, False)
+                power.assert_not_called()
+                voice.assert_not_called()
+            self.assertEqual(self.disk()['hotkeys']['toggle_mod'], ['I', 'U', 'W'])
+            self.action('close')
+            self.battle()
+            self.game.press_shortcut((Keys.KEY_U, Keys.KEY_I))
+            self.assertTrue(self.mod._reminder_enabled)
+            self.game.press_shortcut((Keys.KEY_W, Keys.KEY_U, Keys.KEY_I))
+            self.assertFalse(self.mod._reminder_enabled)
+            self.assertTrue(self.mod._voice_enabled)
+
     def test_three_and_four_key_capture_persists_then_toggles_in_battle(self):
         self.garage()
         before = self.path.read_bytes()

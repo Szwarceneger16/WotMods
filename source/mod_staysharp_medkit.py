@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.9 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.10 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.9'
+VERSION = '1.8.10'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -998,6 +998,9 @@ _controls_mouse_down = None
 _controls_cursor_was_active = False
 _controls_pending_actions = []
 _controls_pending_detaches = []
+_controls_pointer_owner = None
+_controls_pointer_over = False
+_controls_pointer_warned = False
 
 
 class _ControlState(object):
@@ -1029,6 +1032,71 @@ def _controls_cursor_active():
         return _control_slot(_panel) is not None
     except Exception:
         return False
+
+
+def _warn_control_pointer():
+    global _controls_pointer_warned
+    if not _controls_pointer_warned:
+        _controls_pointer_warned = True
+        _log('HUD pointer unavailable; battle controls remain active')
+
+
+def _release_control_pointer():
+    """Release only the battle manager that accepted our hand request."""
+    global _controls_pointer_owner, _controls_pointer_over
+    owner = _controls_pointer_owner
+    _controls_pointer_owner = None
+    _controls_pointer_over = False
+    if owner is None:
+        return
+    panel, manager = owner
+    try:
+        current = getattr(getattr(panel, 'app', None), 'cursorMgr', None)
+        if current is manager and (_panel is None or _panel is panel):
+            # WoT's EventRadialMenu uses the same BUTTON -> ARROW pair.
+            # The public API has no getter for other callers' cursor history.
+            manager.setCursorForced('arrow')
+    except Exception:
+        _warn_control_pointer()
+
+
+def _update_control_pointer(cursor, active):
+    """Add a cosmetic hand on hover without enabling native GUI callbacks."""
+    global _controls_pointer_owner, _controls_pointer_over
+    try:
+        # Most samples are outside the two tiny icons: avoid crew/HUD/Flash
+        # queries until a primitive hit test actually finds a visible button.
+        over = bool(active and any(component.visible and state.contains(cursor.position)
+                    for component, unused_owner, unused_mount, state in _controls))
+        if over:
+            over = _controls_cursor_active()
+        was_over = _controls_pointer_over
+        if not over:
+            _release_control_pointer()
+            return
+        manager = getattr(getattr(_panel, 'app', None), 'cursorMgr', None)
+        if _controls_pointer_owner is not None:
+            panel, previous_manager = _controls_pointer_owner
+            if panel is _panel and manager is previous_manager:
+                return
+            # A changed native manager owns the cursor now. Do not send it
+            # either an ARROW release or a new hand request while still hovered.
+            _release_control_pointer()
+            _controls_pointer_over = True
+            return
+        _controls_pointer_over = True
+        if was_over or manager is None:
+            return
+        setter = getattr(manager, 'setCursorForced', None)
+        if not callable(setter):
+            return
+        _controls_pointer_owner = (_panel, manager)
+        # BUTTON is the native pointing hand; HAND is a different cursor type.
+        setter('button')
+    except Exception:
+        _warn_control_pointer()
+        _release_control_pointer()
+        _controls_pointer_over = True
 
 
 def _control_slot(panel):
@@ -1113,6 +1181,7 @@ def _poll_controls():
     global _controls_poll_callback, _controls_mouse_down, _controls_disabled, _controls_cursor_was_active
     _controls_poll_callback = None
     if not _controls or _panel is None:
+        _release_control_pointer()
         return
     try:
         import Keys
@@ -1123,6 +1192,7 @@ def _poll_controls():
         was_active = _controls_cursor_was_active
         _controls_mouse_down = down
         _controls_cursor_was_active = active
+        _update_control_pointer(cursor, active)
         if not active:
             for entry in _controls:
                 entry[3].pressed = False
@@ -1150,6 +1220,7 @@ def _hide_controls():
     global _controls_mouse_down, _controls_cursor_was_active
     _controls_mouse_down = None
     _controls_cursor_was_active = False
+    _release_control_pointer()
     _cancel_control_actions()
     for component, unused_owner, unused_mount, state in _controls:
         component.visible = False
@@ -1173,6 +1244,7 @@ def _delete_controls():
     _controls_poll_callback = None
     _controls_mouse_down = None
     _controls_cursor_was_active = False
+    _release_control_pointer()
     if callback is not None:
         try:
             BigWorld.cancelCallback(callback)

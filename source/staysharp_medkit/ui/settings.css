@@ -183,7 +183,7 @@ body { margin:0; padding:0; width:360rem; height:232rem; overflow:hidden; backgr
 .grz-medkit-settings-help::-webkit-scrollbar-thumb { border-radius:3rem; background:#59613f; }
 .grz-medkit-settings-hint,.grz-medkit-settings-feedback { min-width:0; margin:0; white-space:normal; word-wrap:break-word; }
 .grz-medkit-settings-feedback { display:none; color:#c1d5a4; }
-.grz-medkit-settings-cancel { display:flex; flex:0 0 72rem; width:72rem; height:28rem; margin-left:8rem; padding:4rem 9rem; }
+.grz-medkit-settings-cancel { display:flex; visibility:hidden; flex:0 0 72rem; width:72rem; height:28rem; margin-left:8rem; padding:4rem 9rem; }
 .grz-medkit-settings-binding:hover,.grz-medkit-settings-clear:hover,.grz-medkit-settings-cancel:hover,.grz-medkit-settings-close:hover {
     border-color:#a7996c;
     background:linear-gradient(#555b42,#3b452e 48%,#2e3926);

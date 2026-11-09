@@ -18,6 +18,7 @@ _FAMILIES = {
 }
 _ORDER = ('CTRL', 'LCTRL', 'RCTRL', 'ALT', 'LALT', 'RALT',
           'SHIFT', 'LSHIFT', 'RSHIFT', 'LWIN', 'RWIN')
+_MODIFIER_KEYS = frozenset(_ORDER)
 _ALIASES = {
     'CONTROL': 'CTRL', 'LCONTROL': 'LCTRL', 'RCONTROL': 'RCTRL',
     'LEFTCTRL': 'LCTRL', 'RIGHTCTRL': 'RCTRL',
@@ -136,6 +137,12 @@ def key_name(key, keys_module=None):
 
 
 def _matches(chord, held, exact=True):
+    """Require every chord member and, when exact, reject extra modifiers.
+
+    Unrelated ordinary keys may remain held while driving or using another
+    control. They still stay in the tracker so capture can record them and an
+    explicitly assigned multi-key chord must include all its selected keys.
+    """
     remaining = set(held)
     for name in chord:
         if name in _FAMILIES:
@@ -147,7 +154,13 @@ def _matches(chord, held, exact=True):
             remaining.remove(name)
         else:
             return False
-    return not remaining if exact else True
+    return not remaining.intersection(_MODIFIER_KEYS) if exact else True
+
+
+def _is_chord_key(name, chord):
+    return any(name == required or
+               required in _FAMILIES and name in _FAMILIES[required]
+               for required in chord)
 
 
 def _variants(chord):
@@ -166,7 +179,7 @@ def chords_conflict(first, second):
     """Whether physical variants overlap or one chord can precede the other.
 
     A subset can fire while the user is still pressing a longer chord, even
-    though action dispatch requires an exact match at each individual edge.
+    though action dispatch rejects extra modifiers at each individual edge.
     """
     first, second = normalize_chord(first), normalize_chord(second)
     if not first or not second:
@@ -297,7 +310,8 @@ class ChordTracker(object):
                 continue
             if not _matches(chord, self._held, exact=False):
                 self._latched.discard(action)
-            elif is_down and action not in self._latched and _matches(chord, self._held):
+            elif (is_down and action not in self._latched and
+                  _is_chord_key(name, chord) and _matches(chord, self._held)):
                 self._latched.add(action)
                 result['actions'].append(action)
         return result
