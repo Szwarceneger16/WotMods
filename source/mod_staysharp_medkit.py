@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Stay Sharp Medkit Reminder v1.8.12 (WoT EU, CPython 2.7).
+"""Stay Sharp Medkit Reminder v1.8.13 (WoT EU, CPython 2.7).
 
 One optional HUD-parented GUI.Simple overlay, 21 ARGB DDS animation frames.
 This mod does not change battle SWF or WoT's own equipment logic. It keeps
@@ -28,7 +28,7 @@ except NameError:
     long = int
 
 TAG = '[StaySharpMedkit]'
-VERSION = '1.8.12'
+VERSION = '1.8.13'
 MEDKIT_TAG = 'medkit'
 TEXTURE_TEMPLATE = 'gui/maps/staysharp/medkit_pulse_%02d.dds'
 FRAME_LEVELS = 20              # frames 0..20, each step is 5% optical intensity
@@ -1680,7 +1680,7 @@ def _garage_payload():
     from staysharp_medkit.hotkeys import format_chord
     config = _settings_store.get_payload() if _settings_store is not None else {}
     hotkeys = _configured_chords(config)
-    return {'hotkeys': hotkeys,
+    return {'version': VERSION, 'hotkeys': hotkeys,
             'display': dict((key, format_chord(value).replace('+', ' + ')) for key, value in hotkeys.items()
                             if key in ('toggle_mod', 'toggle_voice')),
             'capturing': _capture_target,

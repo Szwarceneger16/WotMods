@@ -10,7 +10,7 @@
     var layoutCallbacks = [], layoutReadySeen = {};
     var logicalWidth = 360, logicalHeight = 232, edgeGutter = 16;
     var defaults = {title:'Medkit hotkeys', toggle_mod:'Toggle mod', toggle_voice:'Toggle voice', cancel:'Cancel', clear:'Clear', close:'Close', capture:'Press keys\u2026', not_assigned:'Not assigned', hint:'Select a shortcut. Hold the keys together, then release all keys to save.'};
-    var ids = ['title', 'close', 'label-mod', 'label-voice', 'mod', 'voice', 'clear-mod', 'clear-voice', 'hint', 'feedback', 'cancel'], index;
+    var ids = ['title', 'version', 'close', 'label-mod', 'label-voice', 'mod', 'voice', 'clear-mod', 'clear-voice', 'hint', 'feedback', 'cancel'], index;
     for (index = 0; index < ids.length; index += 1) { nodes[ids[index]] = document.getElementById('grz-medkit-settings-' + ids[index]); }
     function caption(suffix, value) {
         var target = document.getElementById('grz-medkit-settings-' + suffix + '-caption') || nodes[suffix];
@@ -136,6 +136,12 @@
     }
     function render() {
         nodes.title.textContent = label('title'); nodes.close.setAttribute('title', label('close')); nodes.close.setAttribute('aria-label', label('close'));
+        var version = safeText(state.version, '', 32);
+        if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) { version = ''; }
+        nodes.version.textContent = version ? 'v' + version : '';
+        nodes.version.style.display = version ? 'block' : 'none';
+        nodes.version.setAttribute('title', version ? 'Stay Sharp Medkit v' + version : '');
+        nodes.version.setAttribute('aria-label', version ? 'Stay Sharp Medkit version ' + version : '');
         renderRow('toggle_mod', 'mod'); renderRow('toggle_voice', 'voice');
         nodes.hint.textContent = label('hint'); nodes.hint.setAttribute('title', label('hint'));
         caption('cancel', label('cancel')); nodes.cancel.style.display = 'flex';

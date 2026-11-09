@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.13
+
+- Display the installed Stay Sharp Medkit version beside the close button in the garage settings header, including versions assigned by the release build.
+
 ## 1.8.12
 
 - Reconcile physically held modifiers after chat, modal and input resets, preventing plain shortcuts from firing while an extra modifier remains down.
