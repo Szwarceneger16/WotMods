@@ -75,6 +75,17 @@ class AppearanceTests(unittest.TestCase):
         for group in ('colors', 'radii', 'opacity'):
             self.assertEqual(set(style.DEFAULT_CONFIG[group]), set(key for section, key in tokens if section == group))
 
+    def test_close_strokes_use_native_safe_configurable_paint(self):
+        config = style.default_config()
+        config['colors']['close_text'] = '#123456'
+        config['colors']['close_hover_text'] = '#abcdef'
+        css = style.build_presentation(config)['panel_css']
+        self.assertIsNone(re.search(r'\bbackground(?:-color)?\s*:\s*currentcolor\s*;', css, re.I))
+        normal = re.search(r'\.ss-close \.ss-control-label:before,[^{]+\{([^}]+)\}', css).group(1)
+        active = re.search(r'\.ss-close:hover \.ss-control-label:before,[^{]+\{([^}]+)\}', css).group(1)
+        self.assertIn('background:#123456;', normal)
+        self.assertIn('background:#abcdef;', active)
+
     def test_defaults_and_results_do_not_share_mutable_state(self):
         a = style.default_config()
         a['colors']['window_background'] = '#abcdef'

@@ -5,6 +5,17 @@ accent as its frame/glow. Borders, absolute positions and 2D transforms are
 already used by the panel's native resize grips; no browser-only image tint,
 mask or filter is required. No game artwork is edited or distributed.
 
+The Close symbol uses explicit configured stroke backgrounds in its normal,
+hover and keyboard-focus states. Gameface rejects `currentColor` backgrounds
+(also covered by the footer compatibility tests), so titlebar regression tests
+remove those declarations before checking the painted symbols and alignment.
+
+Battle navigation paints its selected outline before native geometry is ready.
+Focus/scroll retries retire after two seconds or 40 attempts; later geometry,
+snapshots or resize events cannot revive that destination. Expiry preserves the
+existing outline. A genuine outside focus or click dismisses it immediately.
+The map drill-down regressions cover both retry limits and delayed geometry.
+
 The previous 16×16 client bitmap
 `coui://gui/maps/icons/buttons/icon_arrow_formation_right_double.png` was verified in
 [Kurzdor/wot.assets at 3605bd36](https://github.com/Kurzdor/wot.assets/tree/3605bd36c53d10c16be5d93f5414aa5fd129e84e).

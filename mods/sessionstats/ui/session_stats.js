@@ -1394,6 +1394,11 @@
     function finishBattleJump() {
         var jump = state.battleJump;
         if (!jump || state.group !== 'battles' || !sameContext(jump.context)) { return; }
+        // A later model refresh/resize must not revive an expired destination.
+        // Keep its already-painted frame, but retire pending focus and scroll.
+        if (Date.now() >= jump.deadline || jump.attempts >= 40) {
+            cancelBattleNavigation(); return;
+        }
         if (jump.targetPainted && (!state.highlightedBattle || state.highlightedBattle.id !== jump.id)) {
             cancelBattleNavigation(); return;
         }

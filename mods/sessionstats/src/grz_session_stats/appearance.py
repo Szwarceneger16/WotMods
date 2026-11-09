@@ -207,7 +207,9 @@ body { color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; fon
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
 /* Center actual strokes, not a font-dependent multiplication-sign baseline. */
 .ss-close .ss-control-label { position:absolute; left:50%; top:50%; width:14rem; height:14rem; margin:-7rem 0 0 -7rem; font-size:0; line-height:0; }
-.ss-close .ss-control-label:before, .ss-close .ss-control-label:after { content:""; display:block; position:absolute; left:0; top:6rem; width:14rem; height:2rem; background:currentColor; pointer-events:none; }
+/* Gameface rejects currentColor backgrounds; keep stroke paint explicit. */
+.ss-close .ss-control-label:before, .ss-close .ss-control-label:after { content:""; display:block; position:absolute; left:0; top:6rem; width:14rem; height:2rem; background:{{colors.close_text}}; pointer-events:none; }
+.ss-close:hover .ss-control-label:before, .ss-close:hover .ss-control-label:after, .ss-close:focus .ss-control-label:before, .ss-close:focus .ss-control-label:after { background:{{colors.close_hover_text}}; }
 .ss-close .ss-control-label:before { transform:rotate(45deg); }
 .ss-close .ss-control-label:after { transform:rotate(-45deg); }
 button:disabled { opacity:{{opacity.disabled_controls}}; }

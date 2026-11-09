@@ -230,6 +230,44 @@ module.exports=async ({browser,nativeHost,check})=>{
     check('Late native geometry cannot refocus or scroll a battle after its frame was dismissed',await page.evaluate(before=>
       document.activeElement===document.getElementById('ss-close') &&
       document.getElementById('ss-scroll').scrollTop===before && document.querySelectorAll('.ss-battle-target-outline').length===0,dismissedAt));
+    for(const limit of ['deadline','attempts']) {
+      await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
+      await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
+      await page.evaluate(target=>{
+        const original=HTMLElement.prototype.getBoundingClientRect,now=Date.now;
+        const started=now();Date.now=()=>started;
+        window.__expireJumpClock=()=>{Date.now=()=>started+3000;};
+        window.__restoreExpiredJump=()=>{HTMLElement.prototype.getBoundingClientRect=original;Date.now=now;};
+        HTMLElement.prototype.getBoundingClientRect=function(){
+          if(this.getAttribute('data-group-id')===target)return {left:0,right:0,top:0,bottom:0,width:0,height:0};
+          return original.call(this);
+        };
+      },request.id);
+      await focusReply(page,request);
+      await page.evaluate(async limit=>{
+        if(limit==='deadline')__expireJumpClock();
+        for(let attempt=0;attempt<45;attempt++) {
+          const retry=[...__grzTimers].find(([,timer])=>timer.delay===50);
+          if(!retry)break;
+          __grzTimers.delete(retry[0]);retry[1].callback();
+          await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        }
+      },limit);
+      const expired=await page.evaluate(target=>{
+        const card=document.querySelector('[data-group-id="'+target+'"]'),scroll=document.getElementById('ss-scroll');
+        window.__expiredJumpFocus=document.activeElement;
+        const result={top:scroll.scrollTop,painted:card.classList.contains('ss-battle-target'),
+          focused:document.activeElement===card,retries:[...__grzTimers].filter(([,timer])=>timer.delay===50).length};
+        __restoreExpiredJump();window.dispatchEvent(new Event('resize'));return result;
+      },request.id);await frames(page);
+      check('A battle jump retires its '+limit+' budget while preserving early target paint: '+JSON.stringify(expired),
+        expired.painted && !expired.focused && expired.retries===0);
+      check('Late geometry and resize cannot revive a battle jump after '+limit+' exhaustion',await page.evaluate(({target,before})=>{
+        const card=document.querySelector('[data-group-id="'+target+'"]');
+        return document.activeElement===__expiredJumpFocus && document.activeElement!==card &&
+          document.getElementById('ss-scroll').scrollTop===before && card.querySelectorAll('.ss-battle-target-outline').length===1;
+      },{target:request.id,before:expired.top}));
+    }
     await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
     await page.evaluate(()=>{window.__beforeMapCleanup=__grzCommands.length;const button=document.querySelector('.ss-map-battle-open');
       GRZSessionStats.destroy();button.onclick();});

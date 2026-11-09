@@ -19,6 +19,16 @@ module.exports=async ({browser,nativeHost,check})=>{
           payload.scopes.timeline.time_points=[];
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
         },{width,language,messages});await frames(page);
+        // Match the native background-color restriction already covered by
+        // footer QA. Chromium alone accepts this unsupported Gameface paint.
+        await page.evaluate(()=>{
+          for(const sheet of document.styleSheets)for(const rule of sheet.cssRules || []) {
+            if(!rule.style)continue;
+            for(const name of ['background','background-color']) {
+              if(rule.style.getPropertyValue(name).trim().toLowerCase()==='currentcolor')rule.style.removeProperty(name);
+            }
+          }
+        });
         const audit=await page.evaluate(scale=>{
           const box=node=>{const r=node.getBoundingClientRect();return {left:r.left/scale,right:r.right/scale,
             top:r.top/scale,bottom:r.bottom/scale,width:r.width/scale,height:r.height/scale};};
@@ -72,6 +82,16 @@ module.exports=async ({browser,nativeHost,check})=>{
           windowInk.close.decorative && windowInk.close.font===0 && centered(windowInk.close) && windowInk.close.pieces.every(piece=>piece.color===windowInk.close.color) &&
           windowInk.states.every(state=>centered(state) && Math.abs(state.center.y-windowInk.close.center.y)<=0.5 &&
             state.pieces.length===(state.state==='true'?2:1) && state.pieces.every(piece=>piece.stroke>=scale && piece.strokeColor===windowInk.toggleColor)));
+        if(language==='en') {
+          const close=page.locator('#ss-close');
+          const painted=()=>close.evaluate(button=>[':before',':after'].every(pseudo=>
+            getComputedStyle(button.querySelector('.ss-control-label'),pseudo).backgroundColor===getComputedStyle(button).color));
+          await close.hover();
+          check('Close hover strokes retain native-safe paint: '+label,await painted());
+          await page.mouse.move(0,0);await close.focus();
+          check('Close keyboard-focus strokes retain native-safe paint: '+label,await painted());
+          await close.evaluate(button=>button.blur());
+        }
         if(wide) {
           check('Wide title, point name, slider, language and window controls share one row: '+label+': '+JSON.stringify(audit.items),
             Math.min(...audit.items.map(item=>item.bottom))-Math.max(...audit.items.map(item=>item.top))>=15 && audit.bar.height<=51);
