@@ -223,18 +223,10 @@ jobs:
             exit 1
           fi
           policy="$(gh api -X GET "repos/$GITHUB_REPOSITORY/rulesets/$policy_ids")"
-          if ! jq -e --arg id "$policy_ids" \
-             --arg approved_id "$WOTMODS_REVIEWED_RULESET_ID" \
-             --arg approved_at "$WOTMODS_REVIEWED_RULESET_UPDATED_AT" '
-             (.id | tostring) == $id and .name == "wotmods-release-tags" and
-             .target == "tag" and .enforcement == "active" and
-             .conditions.ref_name.include == ["refs/tags/wotmods-v*"] and
-             (.conditions.ref_name.exclude // []) == [] and
-             ([.rules[]?.type] | index("creation") == null and
-              index("update") != null and index("deletion") != null) and
-             (if has("bypass_actors") then .bypass_actors == []
-              else $approved_id == $id and $approved_at != "" and .updated_at == $approved_at end)
-             ' <<< "$policy" >/dev/null; then
+          if ! python3 scripts/release_ruleset.py \
+             --ruleset-id "$policy_ids" \
+             --reviewed-id "$WOTMODS_REVIEWED_RULESET_ID" \
+             --reviewed-at "$WOTMODS_REVIEWED_RULESET_UPDATED_AT" <<< "$policy"; then
             echo '::error::Unreviewed tag Ruleset; owner must attest its exact revision with no bypass actors.' >&2
             exit 1
           fi

@@ -11,6 +11,7 @@ WORKFLOW = (ROOT / '.github/workflows/wotmods-release.yml').read_text()
 BUILDER = (ROOT / 'scripts/build_release_module.sh').read_text()
 MEDKIT_CI = (ROOT / '.github/workflows/ci.yml').read_text()
 STATS_CI = (ROOT / '.github/workflows/sessionstats-ci.yml').read_text()
+RULESET = (ROOT / 'scripts/release_ruleset.py').read_text()
 
 
 def job(name):
@@ -119,11 +120,14 @@ class SinglePublisherTests(unittest.TestCase):
 
     def test_verified_native_tag_protection_before_any_write(self):
         publish = job('publish')
-        for marker in ('wotmods-release-tags', 'refs/tags/wotmods-v*',
-                       'index("creation") == null', 'index("update") != null',
-                       'index("deletion") != null', 'bypass_actors',
-                       'WOTMODS_REVIEWED_RULESET_UPDATED_AT', 'targets=tag'):
+        for marker in ('wotmods-release-tags', 'WOTMODS_REVIEWED_RULESET_UPDATED_AT',
+                       'targets=tag', 'scripts/release_ruleset.py',
+                       '--reviewed-id', '--reviewed-at'):
             self.assertIn(marker, publish)
+        for marker in ('refs/tags/wotmods-v*', "'creation' in types",
+                       "{'update', 'deletion'} <= types", 'bypass_actors',
+                       'parse_timestamp(reviewed_at)', 'reviewed_id == str(ruleset_id)'):
+            self.assertIn(marker, RULESET)
         self.assertLess(publish.index('policy_ids='), publish.index('git push origin'))
         self.assertLess(publish.index('policy_ids='), publish.index('gh release create'))
 
