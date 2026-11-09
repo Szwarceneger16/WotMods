@@ -1305,6 +1305,8 @@
         state.highlightedBattle = null;
         cancelUITimer(timer);
         (state.groupCards || []).forEach(function (card) {
+            var outline = card.querySelector('.ss-battle-target-outline');
+            if (outline && outline.parentNode) { outline.parentNode.removeChild(outline); }
             ['ss-battle-target', 'ss-target-pulsing', 'ss-target-muted'].forEach(function (name) { card.classList.remove(name); });
         });
     }

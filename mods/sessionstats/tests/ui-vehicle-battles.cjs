@@ -84,8 +84,12 @@ module.exports=async ({browser,nativeHost,check})=>{
         check('After five seconds only the target outline becomes thirty percent transparent: '+JSON.stringify(muted),
           muted.muted && !muted.pulse && Math.abs(muted.outlineOpacity-0.7)<0.01 && muted.cardOpacity==='1');
       }
-      await page.locator('#ss-xp-received').click();await frames(page);
-      check('An outside control click retires the selected battle outline in '+language,await page.locator('.ss-battle-target').count()===0);
+      await targetCard.evaluate(card=>{window.__dismissedTarget=card;window.__targetDismissPayload=model.payload;});
+      await page.locator('.ss-game-mode').click();await frames(page);
+      check('An inert outside click removes the painted outline without replacing its battle in '+language,
+        await targetCard.evaluate(card=>card===__dismissedTarget && model.payload===__targetDismissPayload &&
+          !card.classList.contains('ss-battle-target') && card.querySelector('.ss-battle-target-outline')===null) &&
+        await page.locator('.ss-battle-target-outline').count()===0);
       if(language==='en') {
         await page.locator('#ss-group-vehicles').click();await frames(page);
         if(await more.getAttribute('aria-expanded')!=='true')await more.click();
@@ -93,12 +97,19 @@ module.exports=async ({browser,nativeHost,check})=>{
         const repeat=sent[sent.length-1];
         await page.evaluate(request=>{const payload=JSON.parse(model.payload);payload.scopes.launch.battle_focus={id:request.id,request_id:request.request_id};
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},repeat);await frames(page);
+        check('Selecting the battle again paints exactly one owned outline at'+(scale*100)+'%',
+          await targetCard.locator('.ss-battle-target-outline').count()===1 && await page.locator('.ss-battle-target-outline').count()===1);
+        await targetCard.evaluate(card=>{window.__dismissedTarget=card;window.__targetDismissPayload=model.payload;});
         await targetCard.focus();await page.locator('#ss-close').focus();
-        check('Keyboard focus leaving the card subtree retires its outline at'+(scale*100)+'%',await page.locator('.ss-battle-target').count()===0);
+        check('Keyboard focus leaving the card removes its painted outline without rendering at'+(scale*100)+'%',
+          await targetCard.evaluate(card=>card===__dismissedTarget && model.payload===__targetDismissPayload &&
+            !card.classList.contains('ss-battle-target') && card.querySelector('.ss-battle-target-outline')===null) &&
+          await page.locator('.ss-battle-target-outline').count()===0);
       }
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.launch.period_id+='-new';
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
-      check('A new period cannot resurrect a dismissed battle highlight in '+language,await page.locator('.ss-battle-target').count()===0);
+      check('A new period cannot resurrect a dismissed battle highlight in '+language,
+        await page.locator('.ss-battle-target').count()===0 && await page.locator('.ss-battle-target-outline').count()===0);
     }
   } finally {await page.close();}
 };
