@@ -187,6 +187,9 @@ DEFAULT_CONFIG = {'schema_version': 1,
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45},
  'scroll': {'speed_multiplier': 1.0},
  'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
+ 'wide_cards': {'battles': 800, 'vehicles': 800, 'maps': 800, 'tiers': 800},
+ 'window': {'background_transparency': 0, 'maximized': False,
+            'restored_width': 700, 'restored_height': 620},
  'sessions': {'instance_tab': False}}
 
 PANEL_TEMPLATE = '''/* Native Gameface view. Deliberately limited to block/flex layout. */
@@ -204,15 +207,34 @@ body { color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; fon
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
 .ss-close .ss-control-label { font-size:25rem; line-height:28rem; }
 button:disabled { opacity:{{opacity.disabled_controls}}; }
-.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; }
+.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; }
+.ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; pointer-events:none; }
+/* Positioned flow children paint above the dedicated background without
+   creating new stacking contexts for their existing menus and tooltips. */
+.ss-controls, .ss-scroll, .ss-footer { position:relative; }
 .ss-window.is-native { max-width:none; max-height:none; }
-.ss-titlebar { position:relative; z-index:30; display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; min-height:47rem; padding:6rem 45rem 7rem 13rem; border-radius:{{radii.titlebar}}rem {{radii.titlebar}}rem 0 0; background:linear-gradient({{colors.titlebar_background_start}}, {{colors.titlebar_background_end}}); box-shadow:inset 0 1rem {{colors.session_tab_shadow}}, inset 0 -1rem {{colors.session_tabs_border}}; }
+.ss-titlebar { position:relative; z-index:30; display:flex; flex-wrap:wrap; align-items:center; flex-shrink:0; min-height:47rem; padding:6rem 74rem 7rem 13rem; border-radius:{{radii.titlebar}}rem {{radii.titlebar}}rem 0 0; background:linear-gradient({{colors.titlebar_background_start}}, {{colors.titlebar_background_end}}); box-shadow:inset 0 1rem {{colors.session_tab_shadow}}, inset 0 -1rem {{colors.session_tabs_border}}; }
 .ss-title-identity { display:flex; align-items:center; flex:1 0 220rem; min-width:0; max-width:100%; min-height:32rem; }
-.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 416rem; width:416rem; max-width:100%; min-width:0; margin-left:auto; }
+/* Let the complete action group use its intrinsic width. Wide windows keep
+   every control on the title row; smaller windows wrap the existing groups. */
+.ss-title-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; flex:0 1 auto; width:auto; max-width:100%; min-width:0; margin-left:auto; }
 .ss-titlebar h1 { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:22rem; line-height:26rem; margin:0; font-weight:bold; color:{{colors.title_text}}; text-shadow:0 1rem 2rem {{colors.title_text_shadow}}; }
 .ss-game-mode { display:block; flex-shrink:0; white-space:nowrap; color:{{colors.game_mode_text}}; font-size:12rem; margin-left:12rem; }
-.ss-close { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
-.ss-close:hover, .ss-close:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
+.ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
+.ss-close:hover, .ss-close:focus, .ss-window-toggle:hover, .ss-window-toggle:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
+.ss-window-toggle { right:38rem; }
+.ss-window-toggle-symbol { display:block; position:relative; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
+.ss-window-toggle-symbol:before { content:""; display:none; position:absolute; left:-4rem; top:3rem; width:12rem; height:10rem; border:1rem solid currentColor; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol { left:2rem; top:-1rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; }
+.ss-background-control { display:flex; align-items:center; flex:0 1 auto; min-width:170rem; max-width:100%; margin:0 8rem 0 0; }
+.ss-background-caption { display:block; flex:1 1 auto; min-width:0; margin-right:4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; white-space:nowrap; }
+.ss-background-slider { display:flex; position:relative; align-items:center; flex:0 0 74rem; width:74rem; min-width:74rem; height:24rem; padding:0 4rem; cursor:pointer; touch-action:none; }
+.ss-background-track { display:block; position:relative; width:100%; height:4rem; border-radius:{{radii.control}}rem; background:{{colors.button_border}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
+.ss-background-thumb { display:block; position:absolute; left:0; top:50%; width:8rem; height:12rem; margin:-6rem 0 0 -4rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}}, {{colors.button_background_end}}); box-shadow:0 1rem 3rem {{colors.title_text_shadow}}; pointer-events:none; }
+.ss-background-slider:focus { outline:1rem solid {{colors.garage_button_focus_outline}}; outline-offset:-1rem; }
+.ss-background-slider:hover .ss-background-thumb, .ss-background-slider:focus .ss-background-thumb { border-color:{{colors.button_shadow_1}}; background:linear-gradient({{colors.button_hover_background_start}}, {{colors.button_hover_background_end}}); }
+.ss-background-value { display:block; flex:0 0 30rem; width:30rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; text-align:right; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
 .ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid {{colors.session_tabs_border}}; border-radius:{{radii.control}}rem; }
 .ss-scope { position:relative; flex:1 1 auto; min-width:0; width:auto; height:30rem; border:0; background:linear-gradient({{colors.session_tab_background_start}}, {{colors.session_tab_background_middle}} 58%, {{colors.session_tab_background_end}}); color:{{colors.session_tab_text}}; padding:4rem 6rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.session_tab_shadow}}; }
@@ -220,7 +242,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-scope:hover, .ss-scope:focus { color:{{colors.session_tab_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
 .ss-scope.is-active { color:{{colors.session_tab_active_text}}; background:linear-gradient({{colors.session_tab_active_background_start}}, {{colors.session_tab_active_background_middle}} 56%, {{colors.session_tab_active_background_end}}); text-shadow:0 0 7rem {{colors.session_tab_active_text_shadow}}; }
 .ss-scope.is-active:after { content:""; position:absolute; left:50%; bottom:-3rem; width:5rem; height:5rem; background:{{colors.session_tab_marker_background}}; border-right:1rem solid {{colors.session_tab_marker_border_right}}; border-bottom:1rem solid {{colors.session_tab_marker_border_bottom}}; transform:rotate(45deg); }
-.ss-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; min-height:37rem; padding-top:4rem; }
+.ss-toolbar { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; min-height:37rem; padding-top:4rem; }
 .ss-period { display:block; flex:0 1 184rem; min-width:0; width:184rem; max-width:100%; font-size:12rem; color:{{colors.period_text}}; margin:0 8rem 4rem 0; }
 .ss-xp-picker { display:flex; flex:0 0 auto; min-width:212rem; width:auto; max-width:100%; margin-bottom:4rem; border:1rem solid {{colors.xp_picker_border}}; border-radius:{{radii.control}}rem; }
 .ss-small-toggle { flex:1 0 auto; min-width:98rem; width:auto; border:0; background:{{colors.xp_toggle_background}}; color:{{colors.xp_toggle_text}}; font-size:12rem; min-height:25rem; padding:3rem 7rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
@@ -351,7 +373,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-economy { width:100%; padding:5rem 0 0; margin-top:4rem; border-left:0; border-top:1rem solid {{colors.economy_separator_border_top}}; }
 }
 @media (max-width:560px) {
-  .ss-titlebar { padding-left:9rem; padding-right:40rem; }
+  .ss-titlebar { padding-left:9rem; padding-right:70rem; }
   .ss-titlebar h1 { font-size:20rem; }
   .ss-game-mode { font-size:11rem; margin-left:8rem; }
   .ss-controls { padding:0 8rem; }
@@ -386,7 +408,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-pagination > .ss-button { flex:0 0 auto; min-width:64rem; width:auto; height:27rem; min-height:27rem; padding:3rem 7rem; }
 .ss-pagination .ss-button:disabled { cursor:default; pointer-events:none; }
 #ss-page-label { display:block; min-width:0; padding:0 2rem; text-align:center; color:{{colors.list_meta_text}}; font-size:12rem; line-height:17rem; }
-.ss-language-row { display:flex; align-items:center; flex:0 1 158rem; min-width:0; min-height:29rem; }
+.ss-language-row { display:flex; align-items:center; flex:0 1 158rem; min-width:0; width:158rem; max-width:100%; min-height:29rem; }
 .ss-language-caption { display:block; flex-shrink:1; min-width:0; margin-right:6rem; color:{{colors.list_meta_text}}; font-size:12rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ss-select.ss-language-select { flex:1 1 0rem; width:0; }
 .ss-language-select .ss-select-options { left:auto; right:0; }
@@ -439,7 +461,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-language-caption { margin-right:4rem; }
 }
 
-.ss-time-point-controls { display:flex; align-items:center; flex:1 1 250rem; min-width:0; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
+.ss-time-point-controls { display:flex; align-items:center; flex:1 1 266rem; min-width:0; width:266rem; max-width:100%; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 .ss-time-point-name { display:block; flex:1 1 0rem; width:0; min-width:0; height:29rem; padding:4rem 7rem; margin:0; border:0; border-radius:0 {{radii.control}}rem {{radii.control}}rem 0; background:{{colors.close_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
 .ss-time-point-name:focus { outline:none; box-shadow:inset 0 0 6rem {{colors.button_shadow_2}}; }
 .ss-time-point { flex:0 0 auto; min-width:122rem; width:auto; min-height:29rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem 0 0 {{radii.control}}rem; }
@@ -455,16 +477,47 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary .ss-detail-title { display:flex; align-items:center; }
 .ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
 .ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
-.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:center; margin:0 4rem; color:{{colors.table_header_text}}; }
-.ss-timeline-field > span { flex-shrink:0; margin-right:6rem; }
+.ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:flex-start; margin:0 4rem; color:{{colors.table_header_text}}; }
+.ss-timeline-field > span { flex-shrink:0; margin-right:6rem; line-height:29rem; }
 .ss-timeline-field .ss-select { flex:1 1 0rem; width:0; }
-.ss-timeline-field .ss-select-options { width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
+.ss-timeline-field .ss-select-options { top:29rem; width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
+.ss-custom-date-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; width:100%; min-width:0; padding-top:4rem; }
+.ss-custom-date { display:block; flex:1 1 128rem; min-width:0; width:0; max-width:100%; height:26rem; padding:3rem 5rem; margin:0 4rem 0 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:11rem; line-height:18rem; }
+.ss-custom-date:focus { outline:none; border-color:{{colors.button_shadow_1}}; box-shadow:inset 0 0 5rem {{colors.button_shadow_2}}; }
+.ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 6rem; }
+.ss-custom-date-apply .ss-control-label { font-size:11rem; line-height:16rem; }
+.ss-custom-date-error { display:block; min-width:0; width:100%; padding-top:3rem; color:{{colors.negative_text}}; font-size:11rem; line-height:15rem; overflow-wrap:break-word; }
 .ss-more-button { margin-left:7rem; }
+.ss-map-more-button { min-width:48rem; padding:3rem 7rem; margin-left:6rem; }
+.ss-narrow-cards [id^="ss-card-maps-"] .ss-group-header { flex-wrap:wrap; }
+.ss-narrow-cards [id^="ss-card-maps-"] .ss-group-name { flex:1 1 340rem; min-width:0; }
 .ss-more-panel { display:flex; flex-wrap:wrap; align-items:flex-start; padding:5rem 0 2rem; border-top:1rem solid {{colors.group_tabs_border_bottom}}; font-size:13rem; line-height:18rem; overflow-wrap:break-word; }
 .ss-more-panel > p { width:100%; margin:3rem 5rem; }
 .ss-more-title { margin:4rem 5rem; color:{{colors.session_tab_active_text}}; font-size:13rem; line-height:18rem; }
-.ss-more-mission { display:flex; align-items:center; width:100%; padding:5rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
-.ss-more-caption { color:{{colors.period_text}}; font-size:12rem; }
+.ss-more-mission { display:block; width:100%; margin:0 0 6rem; padding:6rem 7rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-more-caption { color:{{colors.period_text}}; font-size:12rem; line-height:16rem; }
+/* Map history stays a small native flex list. Each owned jump action remains
+   separate from the row's name, date, rating and result text. */
+.ss-map-battles { display:block; min-width:0; width:100%; margin-top:3rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-map-battle-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:5rem 6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-map-battle-row:first-child { border-top:0; }
+.ss-map-battle-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
+.ss-map-battle-info { flex:1 1 200rem; min-width:0; margin-right:8rem; }
+.ss-map-battle-name { display:block; min-width:0; color:{{colors.group_title_text}}; font-size:13rem; line-height:18rem; font-weight:normal; overflow-wrap:break-word; }
+.ss-map-battle-row > .ss-map-battle-name { flex:1 1 120rem; margin-right:8rem; }
+.ss-map-battle-meta { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
+.ss-map-battle-date { display:block; color:{{colors.period_text}}; font-size:12rem; line-height:16rem; white-space:nowrap; }
+.ss-map-battle-row > .ss-map-battle-date { flex:0 0 106rem; margin-right:8rem; }
+.ss-map-battle-meta .ss-map-battle-date { margin-right:8rem; }
+.ss-map-battle-outcome { display:block; flex:0 1 90rem; min-width:0; margin-right:8rem; font-size:12rem; line-height:16rem; }
+.ss-map-battle-wn8 { display:block; flex:0 0 auto; min-width:68rem; margin-right:8rem; color:{{colors.kpi_wn8_text}}; font-size:12rem; line-height:16rem; text-align:right; white-space:nowrap; }
+.ss-map-battle-open { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
+.ss-map-battles-pagination, .ss-map-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-map-battles-pagination > .ss-control, .ss-map-pagination > .ss-control { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
+.ss-map-battles-page, .ss-map-page-status { display:block; flex:1 1 80rem; min-width:0; margin:0 4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:16rem; text-align:center; }
+.ss-map-battles .ss-empty { margin:0; padding:6rem; font-size:12rem; line-height:18rem; }
+.ss-map-empty { margin:0; padding:6rem; color:{{colors.period_text}}; font-size:12rem; line-height:18rem; }
+.ss-battle-target { outline:1rem solid {{colors.button_shadow_1}}; outline-offset:2rem; }
 .ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
 .ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }
@@ -476,13 +529,17 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-resize-sw::before { left:3rem; right:auto; border-left:2rem solid currentColor; border-right:0; }
 .ss-resize-edge { width:0; height:0; }
 .ss-resize-edge::before { display:none; }
+.ss-window-maximized .ss-resize-grip { display:none; }
 .ss-resize-n, .ss-resize-s { height:6rem; cursor:ns-resize; }
 .ss-resize-e, .ss-resize-w { width:6rem; cursor:ew-resize; }
-.ss-more-rewards { display:flex; flex-wrap:wrap; align-items:flex-start; flex:1 1 100%; min-width:0; width:100%; }
-.ss-more-mission-block { flex:1 1 100%; min-width:0; width:100%; padding:0 4rem 4rem; }
-.ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 4rem 4rem; }
-.ss-more-pass-block { flex:0 1 auto; }
-.ss-more-pass-block .ss-more-table { width:auto; max-width:100%; }
+.ss-more-columns { display:flex; flex-wrap:wrap; align-items:flex-start; width:100%; min-width:0; }
+.ss-more-mission-block { flex:1 1 170rem; min-width:0; max-width:100%; width:auto; padding:0 0 4rem; }
+.ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 0 4rem; }
+/* The current point total stays beside its heading. Additional point sources
+   wrap as complete cells, keeping the numerical strip above both columns. */
+.ss-more-pass-block { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 100%; width:100%; margin:0 0 3rem; padding:0 0 5rem; border-bottom:1rem solid {{colors.details_separator_border_top}}; }
+.ss-more-pass-block .ss-more-title { flex:0 0 auto; margin:2rem 8rem 2rem 0; }
+.ss-more-pass-block .ss-more-table { flex:1 1 200rem; min-width:0; width:auto; max-width:100%; border:0; background:{{colors.close_background}}; }
 .ss-more-table { display:block; width:100%; margin:0; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
 .ss-more-table .ss-more-body { display:block; width:100%; }
 .ss-more-table .ss-more-label, .ss-more-table .ss-more-amount { display:block; min-width:0; padding:0; vertical-align:top; }
@@ -492,34 +549,37 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-value .ss-more-amount.ss-more-total { flex:1; text-align:left; color:{{colors.session_tab_active_text}}; font-weight:bold; }
 .ss-more-value:last-child { border-bottom:0; }
 .ss-more-pass .ss-more-body { display:flex; flex-wrap:wrap; align-items:stretch; }
-.ss-more-pass .ss-more-value { align-items:center; flex:0 1 auto; min-width:0; max-width:100%; width:auto; padding:2rem 5rem; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; }
+.ss-more-pass .ss-more-value { align-items:center; flex:0 1 auto; min-width:0; max-width:100%; width:auto; padding:2rem 5rem; border-right:1rem solid {{colors.details_separator_border_top}}; border-bottom:0; overflow-wrap:normal; }
 .ss-more-pass .ss-more-value:last-child { border-right:0; }
 .ss-more-pass .ss-more-value .ss-more-label { flex:0 1 auto; width:auto; padding-right:5rem; }
-.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:auto; margin-top:0; text-align:right; }
-.ss-more-pass .ss-more-value .ss-more-total { text-align:left; }
+.ss-more-pass .ss-more-value .ss-more-amount { flex:0 0 auto; width:auto; margin-top:0; text-align:right; white-space:nowrap; }
+.ss-more-pass .ss-more-value .ss-more-total { padding:2rem 6rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.table_header_background_start}}; text-align:left; white-space:normal; }
 .ss-more-value:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-more-mission:first-child { border-top:0; }
+.ss-more-pass .ss-more-value { background:{{colors.close_background}}; }
+.ss-more-mission:last-child { margin-bottom:0; }
 .ss-more-mission:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-more-table .ss-more-mission-name { flex:1 1 0rem; min-width:0; padding-right:12rem; }
-.ss-more-table .ss-more-mission-status { flex:0 0 36%; min-width:0; padding-left:8rem; color:{{colors.metric_value_text}}; }
-.ss-more-mission-description { width:100%; margin-top:3rem; }
-.ss-more-reward-block.ss-more-bonus-block { flex:1 1 350rem; }
+.ss-more-table.ss-more-missions { border:0; background:{{colors.close_background}}; }
+.ss-more-table .ss-more-mission-name { display:block; min-width:0; width:100%; padding:0; }
+.ss-more-mission-name strong { display:block; }
+.ss-more-table .ss-more-mission-status { display:block; min-width:0; width:100%; margin-top:4rem; padding:4rem 0 0; border-top:1rem solid {{colors.details_separator_border_top}}; color:{{colors.metric_value_text}}; font-size:12rem; line-height:16rem; }
+.ss-more-mission-description { width:100%; margin-top:4rem; }
+/* 308 + 8 + 170 fits the 486rem content of a default 500rem battle card. */
+.ss-more-reward-block.ss-more-bonus-block { flex:1 1 308rem; margin-right:8rem; }
+.ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:100%; width:100%; margin-right:0; }
 .ss-bonus-matrix { width:100%; }
-.ss-bonus-row { display:flex; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
 .ss-bonus-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-bonus-label { display:block; flex:0 0 30%; min-width:0; padding-right:8rem; color:{{colors.metric_label_text}}; }
-.ss-bonus-number { display:block; flex:1 1 0rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
+.ss-bonus-label { display:block; flex:0 0 100%; min-width:0; width:100%; padding:0 0 1rem; color:{{colors.metric_label_text}}; font-size:12rem; line-height:16rem; }
+.ss-bonus-number { display:block; flex:1 0 60rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
+.ss-bonus-column-0 { flex-basis:66rem; }
+.ss-bonus-column-1 { flex-basis:39rem; }
+.ss-bonus-column-3 { flex-basis:66rem; }
 .ss-bonus-head { min-height:23rem; background:{{colors.table_header_background_start}}; }
-.ss-bonus-head .ss-bonus-label, .ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; }
-.ss-bonus-head .ss-bonus-number { white-space:normal; }
-.ss-narrow-cards .ss-bonus-row { flex-wrap:wrap; }
-.ss-narrow-cards .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
-.ss-narrow-cards .ss-bonus-head .ss-bonus-label { display:none; }
-.ss-long-bonus-values .ss-bonus-row { flex-wrap:wrap; }
-.ss-long-bonus-values .ss-bonus-label { flex-basis:100%; width:100%; padding:0 0 2rem; }
-.ss-long-bonus-values .ss-bonus-head .ss-bonus-label { display:none; }
-.ss-long-bonus-values .ss-bonus-number { flex:1 1 84rem; }
+.ss-bonus-head .ss-bonus-label { display:none; }
+.ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; white-space:normal; overflow-wrap:normal; }
+.ss-long-bonus-values .ss-bonus-number { flex:1 0 84rem; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
@@ -543,8 +603,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-narrow-cards .ss-group .ss-metric-head .ss-metric-count, .ss-narrow-cards .ss-group .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
 .ss-narrow-cards .ss-group .ss-metric-row .ss-metric-name, .ss-narrow-cards .ss-group .ss-money-row .ss-money-label { width:100%; padding-bottom:0; }
 .ss-narrow-cards .ss-group .ss-metric-number, .ss-narrow-cards .ss-group .ss-money-value { width:33.333%; }
-/* Fixed-width cards use two independent flow columns. Layout never depends on
-   reading a just-created card's height from Gameface. */
+/* Fixed-width cards stay in native column flow. Expanded battle heights are
+   sampled after layout to choose chronological lanes, never absolute offsets. */
 .ss-card-layout { display:flex; align-items:flex-start; justify-content:center; width:100%; }
 .ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
 .ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }
@@ -579,7 +639,7 @@ FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow t
     max-width:44rem;
     height:36rem;
     padding:0;
-    margin:0 3rem;
+    margin:0;
     border:0;
     background:{{colors.garage_button_background}};
     box-shadow:none;
@@ -776,7 +836,7 @@ def validate_config(raw):
             result['language'] = value
         else:
             reporter.issue('language', 'expected_language_code')
-    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards'):
+    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards', 'wide_cards', 'window'):
         if section not in raw:
             continue
         supplied = raw[section]
@@ -793,6 +853,14 @@ def validate_config(raw):
             if section == 'sessions':
                 checked = value if isinstance(value, bool) else None
                 reason = 'expected_boolean'
+            elif section == 'window':
+                checked = _window_setting(key, value)
+                reason = ('expected_boolean' if key == 'maximized' else
+                          'expected_integer_0_to_100' if key == 'background_transparency' else
+                          'expected_integer_1_to_32768')
+            elif section == 'wide_cards':
+                checked = _number(value, 480, 1200)
+                reason = 'expected_number_480_to_1200'
             elif section == 'cards':
                 checked = _number(value, 480, 900)
                 reason = 'expected_number_480_to_900'
@@ -813,6 +881,48 @@ def validate_config(raw):
             else:
                 result[section][key] = checked
     return result
+
+
+def _window_setting(key, value):
+    if key == 'maximized':
+        return value if isinstance(value, bool) else None
+    if key == 'background_transparency':
+        checked = _number(value, 0, 100)
+    elif key in ('restored_width', 'restored_height'):
+        checked = _number(value, 1, 32768)
+    else:
+        return None
+    return int(checked) if checked is not None and int(checked) == checked else None
+
+
+def window_settings_patch(values, command=False):
+    """Validate a complete partial update; invalid leaves never become defaults."""
+    if not isinstance(values, dict) or not values or any(key not in DEFAULT_CONFIG['window'] for key in values):
+        return None
+    checked = {}
+    for key, value in values.items():
+        if command and isinstance(value, (text_type, bytes)):
+            if isinstance(value, bytes) and not isinstance(value, text_type):
+                try:
+                    value = value.decode('ascii')
+                except UnicodeError:
+                    return None
+            if key == 'maximized':
+                if value not in ('true', 'false'):
+                    return None
+                value = value == 'true'
+            else:
+                if len(value) > 32:
+                    return None
+                try:
+                    value = float(value)
+                except (ValueError, TypeError, OverflowError):
+                    return None
+        value = _window_setting(key, value)
+        if value is None:
+            return None
+        checked[key] = value
+    return checked
 
 
 class _InvalidJSON(ValueError):
@@ -906,5 +1016,7 @@ def build_presentation(config):
         'footer_css': _expand(FOOTER_TEMPLATE + FOOTER_OPACITY_RULE, normalized),
         'scroll_speed': normalized['scroll']['speed_multiplier'],
         'card_widths': copy.deepcopy(normalized['cards']),
+        'wide_card_widths': copy.deepcopy(normalized['wide_cards']),
+        'window_settings': copy.deepcopy(normalized['window']),
     }
 

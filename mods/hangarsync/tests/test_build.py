@@ -18,7 +18,7 @@ class BuildTests(unittest.TestCase):
         first = builder.build(client_version='2.4.1.1')
         second = builder.build(client_version='2.4.1.1')
         self.assertEqual(first['sha256'], second['sha256'])
-        self.assertTrue(first['installer'].endswith('GRZ_Hangar_Sync-v0.11.0.zip'))
+        self.assertTrue(first['installer'].endswith('GRZ_Hangar_Sync-v' + builder.BASE_VERSION + '.zip'))
         with ZipFile(first['wotmod']) as package:
             self.assertEqual(set(package.namelist()), {'meta.xml', builder.PYC_PATH} | {
                 'res/scripts/client/gui/mods/' + name + '.pyc' for name in builder.HELPERS})

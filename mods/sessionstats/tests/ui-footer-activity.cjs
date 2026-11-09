@@ -14,10 +14,10 @@ async function fixture(browser, retained = false) {
   await page.setContent(`<html style="font-size:1px"><head><style>
     body {margin:0;background:#121413;font:14px Arial,sans-serif;color:#aaa;}
     .App_footer_verified {display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px;background:linear-gradient(#262823,#171916);}
-    .Footer_controls {display:flex;align-items:center;}
-    .SessionStats_base_original {display:flex;align-items:center;width:54rem;height:36rem;}
+    .Footer_section_test {display:flex;align-items:center;}
+    .SessionStatistic_original {display:flex;align-items:center;width:54rem;height:36rem;}
     #native-button {border:0;background:transparent;color:#aaa;font:13px Arial,sans-serif;height:36px;}
-  </style></head><body><div class="App_footer_verified"><div class="Footer_controls"><div class="SessionStats_base_original">19</div><button id="native-button">EU III</button></div></div></body></html>`);
+  </style></head><body><div class="App_footer_verified"><div class="Footer_section_test"><div class="SessionStatistic_original">19</div><button id="native-button">EU III</button></div></div></body></html>`);
   await page.evaluate(retained => {
     window.testActions = [];
     window.testEvents = {};
@@ -156,7 +156,7 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await spinner.isVisible() && (await button.getAttribute('title')).includes('Waiting for results: 1') &&
       await page.evaluate(()=>JSON.stringify(testCallbacks)===JSON.stringify([['add',41],['remove',41],['add',57]])));
     check('Native footer content is preserved throughout activity transitions',
-      await page.locator('.SessionStats_base_original').textContent()==='19' && await page.locator('#native-button').count()===1);
+      await page.locator('.SessionStatistic_original').textContent()==='19' && await page.locator('#native-button').count()===1);
     const languages=JSON.parse(fs.readFileSync(path.join(root,'data/languages.json'),'utf8')).languages;
     for(const [language,messages] of Object.entries(languages)) {
       await page.evaluate(messages=>{

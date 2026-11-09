@@ -11,7 +11,7 @@ function check(name, ok) { assert(ok, name); checks.push(name); }
 async function fixture(browser, options = {}) {
   const page = await browser.newPage();
   page.on('pageerror', error => errors.push(error.message));
-  await page.setContent('<html><body><div class="App_footer_verified"><div class="SessionStats_base_original">19</div><button id="native-button">Native</button></div></body></html>');
+  await page.setContent('<html><body><div class="App_footer_verified"><div class="Footer_section_test"><div class="SessionStatistic_original">19</div><button id="native-button">Native</button></div></div></body></html>');
   await page.evaluate(options => {
     window.testActions = [];
     window.testEvents = {};
@@ -96,7 +96,7 @@ async function fixture(browser, options = {}) {
       await normal.evaluate(() => nativeCalls === 4));
     check('A broken optional subview removes only our button and logs once',
       await normal.locator('#grz-session-stats-footer-button').count() === 0 &&
-      await normal.locator('.SessionStats_base_original').textContent() === '19' &&
+      await normal.locator('.SessionStatistic_original').textContent() === '19' &&
       await normal.evaluate(() => testWarnings.length === 1));
     await normal.evaluate(() => { subViews.get = savedGet; emitChange(); });
     check('A temporary subview failure recovers on the next valid host update',
@@ -107,6 +107,25 @@ async function fixture(browser, options = {}) {
     check('A rejected mod command leaves native footer controls callable',
       await normal.evaluate(() => nativeCalls === 6 && testActions.length === 1));
     await normal.close();
+
+    const changedLayout = await fixture(browser);
+    await changedLayout.evaluate(() => {
+      document.querySelector('.Footer_section_test').className='Unknown_native_section';
+      emitChange();flushFrames();
+    });
+    check('An unrecognized native section removes only our icon instead of adding a fourth outer footer child',
+      await changedLayout.evaluate(() => !document.getElementById('grz-session-stats-footer-button') &&
+        document.querySelector('.App_footer_verified').children.length===1 &&
+        document.querySelector('.SessionStatistic_original').textContent==='19' &&
+        document.getElementById('native-button').parentNode.className==='Unknown_native_section'));
+    await changedLayout.evaluate(() => {
+      document.querySelector('.Unknown_native_section').className='Footer_section_test';
+      emitChange();flushFrames();
+    });
+    check('A restored native section recovers the owned icon after the native statistics control',
+      await changedLayout.evaluate(() => document.querySelector('.SessionStatistic_original').nextElementSibling===
+        document.getElementById('grz-session-stats-footer-button') && testRegistrationAttempts[41]===1));
+    await changedLayout.close();
 
     for(const mode of ['rejectModel','emptyModel']) {
       const retry=await fixture(browser,{[mode]:true});
@@ -168,7 +187,7 @@ async function fixture(browser, options = {}) {
       check('Later footer models and native controls remain usable with one cleanup warning (sync removal: '+synchronousRemoval+')',
         await switched.evaluate(()=>testRegistrationAttempts[43]===1 && testActions[1].id===43 &&
           testWarnings.length===1 && testWarnings[0].includes('model cleanup') &&
-          document.querySelector('.SessionStats_base_original').textContent==='19'));
+          document.querySelector('.SessionStatistic_original').textContent==='19'));
       await switched.evaluate(()=>{GRZSessionFooter.destroy();emitChange();flushFrames();GRZSessionFooter.destroy();});
       check('Destroy cleans only the current callback once after failed earlier removals (sync removal: '+synchronousRemoval+')',
         await switched.evaluate(()=>[41,42,43].every(id=>testModelCallbacks.filter(x=>x[0]==='remove' && x[1]===id).length===1) &&

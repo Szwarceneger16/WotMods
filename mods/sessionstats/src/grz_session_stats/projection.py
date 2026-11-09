@@ -12,6 +12,7 @@ from .localization import message
 from .loading import complete
 
 PAGE_SIZE = 40
+MAP_BATTLE_PAGE_SIZE = 10
 GROUP_FIELDS = (('vehicles', 'vehicle_id'), ('maps', 'map_id'), ('tiers', 'vehicle_tier'))
 
 
@@ -205,6 +206,7 @@ class Group(object):
         self.name_field = 'vehicle_name' if kind == 'vehicles' else 'map_name'
         self.records = {}
         self.order = []
+        self.battle_order = [] if kind == 'maps' else None
         self.totals = Totals()
         self.starts = Series()
 
@@ -213,13 +215,19 @@ class Group(object):
 
     def build_steps(self, items):
         self.records, self.order = {}, []
+        if self.battle_order is not None:
+            self.battle_order = []
         for position, item in enumerate(items):
             row = item[0]
             self.records[row['arena_id']] = row
             self.order.append((bool(row.get(self.name_field)), row.get('_updated_at', 0), row['arena_id']))
+            if self.battle_order is not None:
+                self.battle_order.append((row.get('started_at') or 0, row['arena_id']))
             if position % 128 == 0:
                 yield None
         self.order.sort()
+        if self.battle_order is not None:
+            self.battle_order.sort()
         for step in self.starts.build_steps(item[0].get('started_at') for item in items):
             yield step
         yield None
@@ -235,6 +243,12 @@ class Group(object):
         else:
             del self.records[identifier]
             _remove(self.order, key)
+        if self.battle_order is not None:
+            battle_key = (record.get('started_at') or 0, identifier)
+            if direction > 0:
+                bisect.insort(self.battle_order, battle_key)
+            else:
+                _remove(self.battle_order, battle_key)
         self.totals.change(item, direction)
         self.starts.change(record.get('started_at'), direction)
 
@@ -371,7 +385,38 @@ class ScopeIndex(object):
         self._sort_cache[kind] = (signature, ordered)
         return ordered
 
-    def snapshot(self, label, started_at, pages=None, orders=None):
+    def battle_page(self, identifier, options=None):
+        options = options if valid_order(options) else DEFAULT_ORDER
+        pair = self.records.get(identifier)
+        if pair is None:
+            return None
+        if options['metric'] == 'off':
+            key = (pair[0].get('started_at') or 0, identifier)
+            position = bisect.bisect_left(self.order, key)
+            if options['chronology'] == 'newest':
+                position = len(self.order) - 1 - position
+        else:
+            ordered = self._ordered('battles', options)
+            position = next(index for index, key in enumerate(ordered) if key[1] == identifier)
+        return position // PAGE_SIZE
+
+    def map_battles(self, identifier, page):
+        group = self.groups['maps'].get(identifier)
+        if group is None:
+            return None
+        total = len(group.battle_order)
+        pages = max(1, (total + MAP_BATTLE_PAGE_SIZE - 1) // MAP_BATTLE_PAGE_SIZE)
+        page = max(0, min(page, pages - 1))
+        start = page * MAP_BATTLE_PAGE_SIZE
+        rows = []
+        for key in reversed(group.battle_order[max(0, total - start - MAP_BATTLE_PAGE_SIZE):total - start]):
+            record, item = self.records[key[1]]
+            rows.append({'id': record['arena_id'],
+                         'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],
+                         'started_at': record.get('started_at'), 'outcome': record.get('outcome'), 'wn8': item[1]})
+        return {'items': rows, 'page': page, 'pages': pages, 'total': total, 'page_size': MAP_BATTLE_PAGE_SIZE}
+
+    def snapshot(self, label, started_at, pages=None, orders=None, map_pages=None):
         pages, orders = pages or {}, orders or {}
         result = {'label': label, 'started_at': started_at, 'pending': self.pending,
                   'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {}, 'period_id': self.identifier}
@@ -409,6 +454,10 @@ class ScopeIndex(object):
                     rows.append(row)
             else:
                 rows = [group.snapshot() for group in ordered[start:start + PAGE_SIZE]]
+                if kind == 'maps' and map_pages:
+                    for row in rows:
+                        if row['id'] in map_pages:
+                            row['battle_list'] = self.map_battles(row['id'], map_pages[row['id']])
             result[kind] = rows
             result['pagination'][kind] = {'page': page, 'page_size': PAGE_SIZE, 'total': total,
                                           'pages': max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)}

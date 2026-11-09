@@ -203,6 +203,8 @@ class StatsWindow(object):
         self._resize_anchor = None
         self._resize_callback_id = None
         self._resize_cursor_manager = None
+        self._window_settings_signature = None
+        self._maximized = False
         self._diagnostic_once = set()
         self._renderer_stages = set()
         self._size_logs = 0
@@ -252,6 +254,20 @@ class StatsWindow(object):
         payload = dict(self._snapshot())
         viewport = self._viewport(parent)
         payload['viewport'] = viewport
+        appearance = payload.get('appearance')
+        settings = appearance.get('window_settings') if isinstance(appearance, dict) else None
+        if isinstance(settings, dict):
+            restored = _dimensions((settings.get('restored_width'), settings.get('restored_height')))
+            signature = (settings.get('maximized') is True, restored)
+            if signature != self._window_settings_signature and restored is not None:
+                placement_changed = (self._window_settings_signature is None or self._maximized != signature[0])
+                self._window_settings_signature = signature
+                self._maximized = signature[0]
+                self._preferred_size = restored
+                if placement_changed:
+                    self._user_position = False
+                    self._center_signature = None
+                    self._resize_anchor = None
         if self._preferred_size is not None:
             payload['window_size'] = self._preferred_size
         self._published_viewport = viewport
@@ -339,6 +355,8 @@ class StatsWindow(object):
     def _invalidate(self):
         # Invalidate before native cancellation/unsubscription can reenter us.
         self._generation += 1
+        self._window_settings_signature = None
+        self._maximized = False
         self._set_resize_cursor(False)
         self._cancel_callback(self._resize_callback_id)
         self._resize_callback_id = None
@@ -369,6 +387,8 @@ class StatsWindow(object):
 
     def _fallback_size(self, viewport):
         scale = viewport['scale']
+        if self._maximized:
+            return tuple(max(1, viewport[key] - 20) for key in ('width', 'height'))
         requested = self._reported_size or tuple(int(math.ceil(value * scale)) for value in (self._preferred_size or LOGICAL_SIZE))
         # HTML is responsible for sizing its texture. Before its first report,
         # use our known design size instead of the native full-screen default.
@@ -442,7 +462,12 @@ class StatsWindow(object):
             self._move(target)
 
     def _place(self, reason, force=False):
-        if self._user_position:
+        if self._maximized and self.is_open() and not self._drag_active:
+            viewport = self._viewport()
+            if min(viewport['width'], viewport['height']) > 0:
+                self._move((min(10, max(0, viewport['width'] // 2)),
+                            min(10, max(0, viewport['height'] // 2))))
+        elif self._user_position:
             self._keep_visible()
         else:
             self._center(reason, force)
@@ -738,8 +763,8 @@ class StatsWindow(object):
                                _positive(_read(arg, 'scale'), 16))
                 self._finish_watchdog_if_ready()
             return
-        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'language', 'viewport', 'drag',
-                          'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end', 'resize_cursor'):
+        if action not in ('close', 'resize', 'refresh', 'reset', 'page', 'sort', 'map_battles', 'battle_select', 'language', 'viewport', 'drag',
+                          'size_preference', 'time_point', 'timeline_range', 'resize_begin', 'resize_end', 'resize_cursor', 'window_settings'):
             return
         self._log_once('command_' + action, logging.INFO, 'GRZ UI: command %s received.', action)
         if action == 'close':

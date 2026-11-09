@@ -18,7 +18,8 @@ MODULE = ROOT / 'source' / 'mod_grz_hangar_sync.py'
 spec = importlib.util.spec_from_file_location('mod_grz_hangar_sync', MODULE)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
-for name, filename in (('grz_hangar_stats', 'hangar_stats.py'),
+for name, filename in (('grz_hangar_battle_pass', 'hangar_battle_pass.py'),
+                       ('grz_hangar_stats', 'hangar_stats.py'),
                        ('grz_hangar_crew', 'hangar_crew.py'),
                        ('grz_hangar_mission_metadata', 'hangar_mission_metadata.py')):
     helper_spec = importlib.util.spec_from_file_location('gui.mods.' + name, ROOT / 'source' / filename)
@@ -361,7 +362,8 @@ class SnapshotTests(unittest.TestCase):
                    'skeletons': skeletons, 'skeletons.gui': gui_pkg,
                    'skeletons.gui.shared': shared, 'skeletons.gui.game_control': game_control}
         with mock.patch.dict(sys.modules, modules), \
-             mock.patch.object(mod, 'collect_missions', return_value={}) as read_missions:
+             mock.patch.object(mod, 'collect_missions', return_value={}) as read_missions, \
+             mock.patch.object(mod, 'collect_battle_pass', return_value={'status': 'pending'}) as read_pass:
             config = dict(valid_config(), allowed_players=['OtherCommander', player.name.lower()],
                           include_crew=False, include_missions=True)
             snapshot = mod.collect_game_snapshot(config)
@@ -370,6 +372,8 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(read_vehicle.call_args_list, [mock.call(5), mock.call(10)])
             read_filtered.assert_not_called()
             read_missions.assert_called_once_with()
+            read_pass.assert_called_once_with()
+            self.assertEqual(snapshot['battlePass'], {'status': 'pending'})
             read_playlists.assert_called_once_with()
             self.assertEqual(snapshot['vehicles'][0]['crew'], [])
             self.assertEqual(snapshot['vehicles'][0]['statsCreatedAt'], 1600000000)
@@ -386,6 +390,10 @@ class SnapshotTests(unittest.TestCase):
                           [config['endpoint_url'], config['device_token'],
                            config['sites_access_token']]):
                 self.assertNotIn(value.encode(), payload)
+            read_pass.reset_mock()
+            without_missions = mod.collect_game_snapshot(dict(config, include_missions=False))
+            self.assertNotIn('battlePass', without_missions)
+            read_pass.assert_not_called()
             read_inventory.reset_mock()
             read_missions.reset_mock()
             read_playlists.reset_mock()

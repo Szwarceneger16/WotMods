@@ -572,6 +572,7 @@ async function runFeatureSuite(file,browser) {
     await degraded.close();
   }
   await runFeatureSuite('./ui-connection.cjs',browser);
+  await runFeatureSuite('./ui-postbattle.cjs',browser);
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
@@ -797,6 +798,12 @@ async function runFeatureSuite(file,browser) {
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
   await runFeatureSuite('./ui-timeline-details.cjs',browser);
+  await runFeatureSuite('./ui-wide-cards.cjs',browser);
+  await runFeatureSuite('./ui-window-settings.cjs',browser);
+  await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
+  await runFeatureSuite('./ui-map-battles.cjs',browser);
+  await runFeatureSuite('./ui-custom-dates.cjs',browser);
+  await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);
   await runFeatureSuite('./ui-resize-input.cjs',browser);
   check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);

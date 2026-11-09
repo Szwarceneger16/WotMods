@@ -96,20 +96,31 @@ module.exports = async function ({browser, nativeHost, check}) {
       const frame = box('#ss-time-point-controls');
       const language = box('#ss-language .ss-select-trigger');
       const close = box('#ss-close');
-      return input.width > 50 && timePoint.right <= input.left &&
+      const root = box('#grz-session-stats'), barStyle = getComputedStyle(document.getElementById('ss-titlebar'));
+      const minimumRow = parseFloat(getComputedStyle(document.querySelector('.ss-title-identity')).flexBasis) +
+        actions.width + parseFloat(barStyle.paddingLeft) + parseFloat(barStyle.paddingRight);
+      const expectedWrapped = wrapped === undefined ? root.width < minimumRow - 1 : wrapped;
+      const pass = input.width > 50 && timePoint.right <= input.left &&
         timePoint.left >= frame.left && input.right <= frame.right &&
         Math.abs(input.top - timePoint.top) < 1 && language.right <= close.left &&
         (Math.abs(timePoint.top - language.top) < 1 ? input.right < language.left : language.top >= timePoint.bottom) &&
-        (wrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
+        (expectedWrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
+        [title,actions,frame,language,close].every(item=>item.left>=root.left-1 && item.right<=root.right+1) &&
         [...document.querySelectorAll('.ss-timeline-field')].every(field => {
           const label = field.firstElementChild.getBoundingClientRect();
           const control = field.querySelector('.ss-select-trigger').getBoundingClientRect();
           return control.width > 0 && label.right < control.left &&
             control.right <= field.getBoundingClientRect().right + 1;
         });
+      const serial=rect=>({left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height});
+      return {pass,expectedWrapped,minimumRow,root:serial(root),title:serial(title),actions:serial(actions),
+        input:serial(input),timePoint:serial(timePoint),frame:serial(frame),language:serial(language),close:serial(close),
+        fields:[...document.querySelectorAll('.ss-timeline-field')].map(field=>({field:serial(field.getBoundingClientRect()),
+          label:serial(field.firstElementChild.getBoundingClientRect()),control:serial(field.querySelector('.ss-select-trigger').getBoundingClientRect())}))};
     }, wrapped);
   }
-  check('Title actions and both timeline selectors fit at 200 percent', await controlsFit(false));
+  const controls200=await controlsFit();
+  check('Title actions and both timeline selectors fit at 200 percent'+(controls200.pass ? '' : ': '+JSON.stringify(controls200)),controls200.pass);
   check('The time-point button and name share a visible frame',await page.locator('#ss-time-point-controls').evaluate(frame =>
     frame.firstElementChild.id === 'ss-time-point' &&
     parseFloat(getComputedStyle(frame).borderTopWidth) > 0 &&
@@ -139,8 +150,14 @@ module.exports = async function ({browser, nativeHost, check}) {
     __grzCommands.some(x => x.action === 'timeline_range' && x.account_key === 'fixture-account' &&
       x.from_point === 'first' && x.to_point === '')));
   await page.locator('#ss-group-battles').click();
-  await page.locator('.ss-more-button').first().click();
   const details = page.locator('.ss-more-panel').first();
+  async function ensureMoreOpen(context) {
+    const button=page.locator('.ss-more-button').first();
+    if(await button.getAttribute('aria-expanded')!=='true') await button.click();
+    check('More is expanded and visible for '+context,
+      await button.getAttribute('aria-expanded')==='true' && await details.isVisible());
+  }
+  await ensureMoreOpen('the initial reward fixture');
   const text = await details.textContent();
   check('More renders confirmed mission, points and bonus as plain text',
     text.includes('33 points earned') && text.includes('shield used') &&
@@ -167,11 +184,20 @@ module.exports = async function ({browser, nativeHost, check}) {
     await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>row.children.length===6)) &&
     await details.locator('.ss-more-bonuses .ss-more-value').count()===0 &&
     await details.locator('.ss-more-factors').count()===0);
-  check('All numerical rewards precede the separate, fully visible mission rows',await details.evaluate(panel=>{
-    const rewards=panel.querySelector('.ss-more-rewards'),missions=panel.querySelector('.ss-more-mission-block');
-    return rewards.contains(panel.querySelector('.ss-more-pass-block')) && rewards.contains(panel.querySelector('.ss-more-bonus-block')) &&
-      !rewards.contains(missions) && rewards.getBoundingClientRect().bottom<=missions.getBoundingClientRect().top+1 &&
-      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
+  check('The full-width point strip precedes separate bonus and mission columns',await details.evaluate(panel=>{
+    const points=panel.querySelector('.ss-more-pass-block'),columns=panel.querySelector('.ss-more-columns'),
+      bonus=panel.querySelector('.ss-more-bonus-block'),missions=panel.querySelector('.ss-more-mission-block');
+    const tolerance=parseFloat(document.documentElement.style.fontSize);
+    return points.parentNode===panel && columns.parentNode===panel && columns.firstElementChild===bonus &&
+      bonus.parentNode===columns && missions.parentNode===columns &&
+      Math.abs(points.getBoundingClientRect().width-panel.getBoundingClientRect().width)<=tolerance &&
+      points.getBoundingClientRect().bottom<=columns.getBoundingClientRect().top+tolerance &&
+      Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>{
+        const box=row.getBoundingClientRect(),name=row.querySelector('.ss-more-mission-name').getBoundingClientRect(),
+          status=row.querySelector('.ss-more-mission-status').getBoundingClientRect(),style=getComputedStyle(row);
+        return box.height>0 && status.top>=name.bottom-tolerance && status.bottom<=box.bottom+tolerance &&
+          ['Top','Right','Bottom','Left'].every(edge=>parseFloat(style['border'+edge+'Width'])>0);
+      });
   }));
   check('More groups rewards and paired mission outcomes into compact tables',
     await details.locator('.ss-more-table[role="table"]').count() >= 3 &&
@@ -195,7 +221,7 @@ module.exports = async function ({browser, nativeHost, check}) {
       appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150};
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
+  await ensureMoreOpen('the ordinary zero-point fixture');
   const ordinaryRows=await details.locator('.ss-bonus-row').evaluateAll(rows=>rows.map(row=>({
     label:row.querySelector('.ss-bonus-label').textContent,
     values:Array.from(row.querySelectorAll('.ss-bonus-number')).map(cell=>cell.textContent.replace(/\s/g,'')),
@@ -208,23 +234,55 @@ module.exports = async function ({browser, nativeHost, check}) {
     await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
     await details.locator('.ss-more-pass').textContent()==='0 points earned' &&
     await details.locator('.ss-more-factors').count()===0);
-  check('Zero points use intrinsic space beside bonuses while missions remain separate',await details.evaluate(panel=>{
+  check('Zero points stay inline with the heading above bonus and mission columns',await details.evaluate(panel=>{
     const scale=parseFloat(document.documentElement.style.fontSize),card=panel.closest('.ss-group').getBoundingClientRect();
     const pass=panel.querySelector('.ss-more-pass-block'),bonus=panel.querySelector('.ss-more-bonus-block'),
       missions=panel.querySelector('.ss-more-mission-block');
-    const point=pass.getBoundingClientRect(),rewards=panel.querySelector('.ss-more-rewards').getBoundingClientRect();
-    const label=pass.querySelector('.ss-more-total'),range=document.createRange();range.selectNodeContents(label);
-    const bonusBox=bonus.getBoundingClientRect();
-    return Math.abs(card.width/scale-500)<=1 && point.width/scale<=range.getBoundingClientRect().width/scale+40 &&
-      Math.abs(point.top-bonusBox.top)<=scale && point.right<=bonusBox.left+scale &&
-      rewards.bottom<=missions.getBoundingClientRect().top+scale &&
+    const point=pass.getBoundingClientRect(),columns=panel.querySelector('.ss-more-columns').getBoundingClientRect(),
+      title=pass.querySelector('.ss-more-title').getBoundingClientRect(),table=pass.querySelector('.ss-more-pass').getBoundingClientRect(),
+      bonusBox=bonus.getBoundingClientRect(),missionBox=missions.getBoundingClientRect();
+    return Math.abs(card.width/scale-500)<=1 && Math.abs(point.width-panel.getBoundingClientRect().width)<=scale &&
+      title.right<=table.left+scale && Math.min(title.bottom,table.bottom)>Math.max(title.top,table.top) &&
+      point.bottom<=columns.top+scale && Math.abs(bonusBox.top-missionBox.top)<=scale && bonusBox.right<=missionBox.left+scale &&
       Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
   }));
+  await page.evaluate(()=>{
+    const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.bonuses.wotPlusXP=1234;
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await ensureMoreOpen('the four-digit XP fixture');
+  const xpLayout=await details.evaluate(panel=>{
+    const scale=parseFloat(document.documentElement.style.fontSize),block=panel.querySelector('.ss-more-bonus-block'),
+      table=block.querySelector('.ss-more-bonuses'),columns=panel.querySelector('.ss-more-columns').getBoundingClientRect(),
+      missions=panel.querySelector('.ss-more-mission-block').getBoundingClientRect(),box=block.getBoundingClientRect();
+    const row=Array.from(table.querySelectorAll('.ss-bonus-row')).find(item=>item.querySelector('.ss-bonus-label').textContent==='WoT Plus'),
+      cell=row.querySelector('.ss-bonus-column-1'),bounds=cell.getBoundingClientRect(),css=getComputedStyle(cell),range=document.createRange();
+    range.selectNodeContents(cell);const text=range.getBoundingClientRect();
+    const passed=block.classList.contains('ss-long-bonus-values') && table.classList.contains('ss-long-bonus-values') &&
+      Math.abs(box.width-columns.width)<=scale && missions.top>=box.bottom-scale && cell.textContent==='+1\u00a0234' &&
+      text.left>=bounds.left+parseFloat(css.paddingLeft)-scale && text.right<=bounds.right-parseFloat(css.paddingRight)+scale;
+    return {passed,scale,display:getComputedStyle(panel).display,blockClass:block.className,tableClass:table.className,
+      value:cell.textContent,block:{top:box.top,bottom:box.bottom,width:box.width},columnsWidth:columns.width,
+      missionTop:missions.top,cell:{left:bounds.left,right:bounds.right,width:bounds.width},
+      text:{left:text.left,right:text.right,width:text.width},padding:{left:css.paddingLeft,right:css.paddingRight}};
+  });
+  check('A four-digit XP bonus uses full-width fallback and preserves its full formatted value'+
+    (xpLayout.passed ? '' : ' '+JSON.stringify(xpLayout)),xpLayout.passed);
+  await page.evaluate(()=>{
+    const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].details.pass_points={battle:0};
+    model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+  });
+  await ensureMoreOpen('the partial zero-point fixture');
+  check('A confirmed zero component remains visible without inventing an unknown total',
+    await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
+    await details.locator('.ss-more-pass .ss-more-label').textContent()==='Battle result:' &&
+    await details.locator('.ss-more-pass .ss-more-amount').textContent().then(text=>text.trim()==='+0') &&
+    await details.locator('.ss-more-pass .ss-more-total').count()===0);
   await page.evaluate(()=>{
     const payload=JSON.parse(model.payload);payload.scopes.timeline.battles[0].xp_bonus_applied=true;
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
   });
-  await page.locator('.ss-more-button').first().click();
+  await ensureMoreOpen('the unknown applied-bonus fixture');
   check('An applied bonus with unknown amount remains a notice without inventing a multiplier',
     await details.locator('.ss-more-factors .ss-more-value').count()===1 &&
     await details.locator('.ss-more-factors').textContent()==='Post-battle XP bonus applied' &&
@@ -254,7 +312,8 @@ module.exports = async function ({browser, nativeHost, check}) {
     __grzEvents['viewEnv.onDataChanged']();
   });
   await page.waitForFunction(() => __nativeSize[0] === 460);
-  check('Title actions wrap together and timeline selectors fit in a narrow window', await controlsFit(true));
+  const narrowControls=await controlsFit(true);
+  check('Title actions wrap together and timeline selectors fit in a narrow window'+(narrowControls.pass ? '' : ': '+JSON.stringify(narrowControls)),narrowControls.pass);
   await page.close();
 
   for(const testCase of [{window:700,card:500,label:'500px battle card'},{window:320,label:'320px floating window'}]) {
@@ -269,7 +328,10 @@ module.exports = async function ({browser, nativeHost, check}) {
         timeline.from_point=timeline.to_point='';timeline.time_points=[];
         timeline.battles=[timeline.battles[0]];
         timeline.battles[0].name='IS-4';timeline.battles[0].xp_bonus_applied=false;
-        timeline.battles[0].details={pass_points:{credited:0},missions:{},
+        timeline.battles[0].details={pass_points:{credited:25,battle:5,missions:20},missions:{
+          'daily:fixture':{kind:'daily',name:'Synthetic daily mission',status:'completed',description:'Finish the objective.'},
+          'weekly:fixture':{kind:'weekly',name:'Synthetic weekly mission',status:'progress',description:'Finish the objective.'},
+          'personal:fixture':{kind:'personal',name:'Synthetic personal mission',status:'observed',description:'Finish the objective.'}},
           bonuses:{eventCredits:12345678,eventCrystal:43,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96}};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },testCase.window);
@@ -286,9 +348,13 @@ module.exports = async function ({browser, nativeHost, check}) {
             text.right>box.right-parseFloat(css.paddingRight)+1) bad.push(cell.textContent);
         }
         const event=[...table.querySelectorAll('.ss-bonus-row')].find(row=>row.querySelector('.ss-bonus-label').textContent==='Event');
+        const bonus=table.closest('.ss-more-bonus-block').getBoundingClientRect(),
+          missions=table.closest('.ss-more-panel').querySelector('.ss-more-mission-block').getBoundingClientRect();
         return {long:table.classList.contains('ss-long-bonus-values'),bad,
           panelWidth:document.getElementById('grz-session-stats').getBoundingClientRect().width,
           cardWidth:table.closest('.ss-group').getBoundingClientRect().width,
+          paired:Math.abs(bonus.top-missions.top)<=1 && bonus.right<=missions.left+1,
+          wrapped:missions.top>=bonus.bottom-1,
           headings:[...table.querySelectorAll('.ss-bonus-head .ss-bonus-number')].map(cell=>compact(cell.textContent)),
           event:[...event.querySelectorAll('.ss-bonus-number')].map(cell=>compact(cell.textContent))};
       });
@@ -296,6 +362,7 @@ module.exports = async function ({browser, nativeHost, check}) {
         (bonusAudit.bad.length ? ' '+JSON.stringify(bonusAudit.bad) : ''),
         bonusAudit.long && bonusAudit.bad.length===0 &&
         Math.abs(bonusAudit.panelWidth-testCase.window)<=1 && (!testCase.card || Math.abs(bonusAudit.cardWidth-testCase.card)<=1) &&
+        bonusAudit.wrapped &&
         bonusAudit.headings.join('|')==='Credits|XP|FreeXP|CrewXP|Bonds' &&
         bonusAudit.event.join('|')==='+12345678|—|—|—|+43');
     } finally {await narrowMore.close();}
@@ -319,6 +386,9 @@ module.exports = async function ({browser, nativeHost, check}) {
     };
     const payload=JSON.parse(model.payload);
     payload.window_size=[2200,1160];
+    // Keep this pre-existing base-width/stale-measurement matrix independent
+    // of the separate two-column wide-preset threshold regression.
+    payload.appearance={wide_card_widths:{vehicles:560,maps:560,tiers:520,battles:500}};
     const timeline=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));
     timeline.from_point=timeline.to_point='';timeline.time_points=[];
     for (const group of ['vehicles','maps','tiers','battles']) {
@@ -397,11 +467,15 @@ module.exports = async function ({browser, nativeHost, check}) {
       layout.branches && layout.cards[1].top>layout.cards[0].top+1);
     if(group==='battles') {
       await wide.locator('[data-list-index="0"] .ss-more-button').click();
+      await wide.evaluate(()=>new Promise(resolve=>{
+        let remaining=10;function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+      }));
       const expanded=await readLayout();
       check('More uses native column flow while card height readings remain stale',
-        expanded.cards[2].top>=expanded.cards[0].bottom+15 &&
-        Math.abs(expanded.cards[1].top-layout.cards[1].top)<1 &&
-        Math.abs(expanded.cards[3].top-layout.cards[3].top)<1);
+        expanded.cards.every((card,index)=>card.position!=='absolute' && (!index || card.top>=expanded.cards[index-1].top-1)) &&
+        expanded.cards.every((card,index)=>expanded.cards.slice(index+1).every(other=>
+          Math.min(card.right,other.right)-Math.max(card.left,other.left)<=1 ||
+          Math.min(card.bottom,other.bottom)-Math.max(card.top,other.top)<=1)));
     }
     await setAvailableWidth(2*expectedWidth+64+20);
     layout=await readLayout();
@@ -427,6 +501,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   check('All eight window corners and edges have reachable resize grips',
     await wide.locator('.ss-resize-grip').count()===8);
   await wide.close();
+  await require('./ui-timeline-expansion.cjs')({browser,nativeHost,check});
 
   for(const edge of ['nw','ne','sw','se','n','e','s','w']) {
     const resize=await nativeHost(browser, {

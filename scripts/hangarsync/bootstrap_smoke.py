@@ -12,7 +12,7 @@ import zipfile
 
 MAGIC = b'\x03\xf3\r\n'
 PREFIX = 'res/scripts/client/gui/mods/'
-MODULES = ('grz_hangar_crew', 'grz_hangar_stats',
+MODULES = ('grz_hangar_battle_pass', 'grz_hangar_crew', 'grz_hangar_stats',
            'grz_hangar_mission_metadata', 'mod_grz_hangar_sync')
 BOOTSTRAP_CODE = b'd\x00\x00d\x01\x00d\x01\x00Ud\x01\x00S'
 
@@ -180,7 +180,7 @@ def smoke(package_path):
             setattr(owner, name, previous)
         for name in reversed(installed):
             sys.modules.pop(name, None)
-    print('Bootstrap smoke OK: four packaged Python 2.7 modules, disabled init and helper integration; no external effects')
+    print('Bootstrap smoke OK: five packaged Python 2.7 modules, disabled init and helper integration; no external effects')
 
 
 def main():

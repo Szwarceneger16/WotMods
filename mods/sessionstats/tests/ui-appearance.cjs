@@ -125,19 +125,24 @@ async function pushPanel(page,value){await page.evaluate(value=>pushAppearance(v
 async function wheel(page, deltaY, speed, mode=0, extra={}) {
     await page.evaluate(({speed,defaults})=>pushAppearance({...defaults,scroll_speed:speed}),{speed,defaults:presentation.defaults});
     await page.locator('#ss-group-battles').click();
+    // Finish the render's deferred scroll restoration before establishing a
+    // new programmatic wheel baseline. A real native wheel intentionally uses
+    // any still-pending navigation offset instead of the DOM's previous frame.
+    await frames(page);
     return page.locator('#ss-scroll').evaluate((node,{deltaY,mode,extra})=>{
         node.scrollTop=800;
         const before=node.scrollTop;
         const event=new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY,deltaMode:mode,...extra});
         node.dispatchEvent(event);
-        return {before,after:node.scrollTop,page:node.clientHeight,prevented:event.defaultPrevented};
+        return {before,after:node.scrollTop,page:node.clientHeight,maximum:node.scrollHeight-node.clientHeight,
+            deltaY,mode,prevented:event.defaultPrevented};
     },{deltaY,mode,extra});
 }
 
 async function footer(browser) {
     const page=await browser.newPage({viewport:{width:640,height:120}});
     page.on('pageerror',error=>errors.push(error.message));
-    await page.setContent('<html style="font-size:1px"><head><style>body{margin:0;background:#121413}.App_footer_test{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px}.SessionStats_base_test{width:54px;color:#abcdef}#native-button{color:#123456}</style></head><body><div class="App_footer_test"><div class="SessionStats_base_test">19</div><button id="native-button">EU III</button></div></body></html>');
+    await page.setContent('<html style="font-size:1px"><head><style>body{margin:0;background:#121413}.App_footer_test{display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px}.Footer_section_test{display:flex;align-items:center}.SessionStatistic_test{width:54px;color:#abcdef}#native-button{color:#123456}</style></head><body><div class="App_footer_test"><div class="Footer_section_test"><div class="SessionStatistic_test">19</div><button id="native-button">EU III</button></div></div></body></html>');
     await page.evaluate(()=>{
         window.testWarnings=[];
         window.console.warn=message=>testWarnings.push(message);
@@ -189,9 +194,9 @@ async function footer(browser) {
             !await sameRaster(page, baselineImage, await page.locator('#grz-session-stats').screenshot({animations:'disabled'}), false));
         const changed=await page.evaluate(()=>{
             const read=selector=>getComputedStyle(document.querySelector(selector));
-            const main=read('#grz-session-stats'),row=read('.ss-metric-row');
+            const main=read('#grz-session-stats'),background=read('#ss-window-background'),row=read('.ss-metric-row');
             const line=read('.ss-metric-row + .ss-metric-row');
-            return {border:main.borderTopColor,background:main.backgroundColor,radius:main.borderTopLeftRadius,opacity:main.opacity,
+            return {border:main.borderTopColor,background:background.backgroundColor,radius:main.borderTopLeftRadius,opacity:main.opacity,
                 rowBackground:row.backgroundColor,rowRadius:row.borderTopLeftRadius,line:line.borderTopColor,
                 text:read('.ss-metric-row .ss-metric-number').color,width:main.width,height:main.height};
         });
@@ -204,9 +209,10 @@ async function footer(browser) {
 
         for(const speed of [0.5,1,2]){
             const down=await wheel(page,-120,speed),up=await wheel(page,120,speed);
-            check('Native scroll multiplier '+speed+' scales both directions without changing their sign',
-                Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
-                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented);
+            const matches=Math.abs(down.after-down.before-down.page*speed/4)<=1 &&
+                Math.abs(up.before-up.after-up.page*speed/4)<=1 && down.prevented && up.prevented;
+            check('Native scroll multiplier '+speed+' scales both directions without changing their sign'+
+                (matches ? '' : ' '+JSON.stringify({speed,down,up})),matches);
         }
         const pageMode=await wheel(page,-1,2,2);
         check('The configured speed also scales native page-mode scrolling',pageMode.after-pageMode.before===pageMode.page*2 && pageMode.prevented);
@@ -287,7 +293,7 @@ async function footer(browser) {
             return {bar:read('.grz-session-footer-bar').backgroundColor,rating:read('.grz-session-footer-rating').color,
                 spinner:spinner.borderTopColor,track:spinner.borderRightColor,radius:spinner.borderTopLeftRadius,
                 animation:spinner.animationName,opacity:button.opacity,width:button.width,height:button.height,
-                native:read('#native-button').color,counter:document.querySelector('.SessionStats_base_test').textContent};
+                native:read('#native-button').color,counter:document.querySelector('.SessionStatistic_test').textContent};
         });
         check('Wrapped footer appearance customizes the bar glyph and WN8 text',footerValues.bar==='rgb(69, 103, 137)' && footerValues.rating==='rgb(254, 220, 186)');
         check('Configured spinner colour, track alpha and radius retain its pending animation',

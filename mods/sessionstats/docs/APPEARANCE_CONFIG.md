@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.4.1
+# Appearance and scrolling configuration — 0.5.0
 
 ## File placement and applying changes
 
@@ -28,7 +28,8 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-13 corner radii, three opacity settings, a scrolling multiplier and four card widths. An unavailable file,
+13 corner radii, three opacity settings, a scrolling multiplier, two card-width
+presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
 
@@ -73,6 +74,11 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `cards.vehicles` | `560` | Vehicle card width in logical pixels |
 | `cards.maps` | `560` | Map card width in logical pixels |
 | `cards.tiers` | `520` | Tier card width in logical pixels |
+| `wide_cards.battles` / `vehicles` / `maps` / `tiers` | `800` each | Wider fixed size, still two columns |
+| `window.background_transparency` | `0` | Background-only transparency, integer 0–100 percent |
+| `window.maximized` | `false` | Open maximized; strict boolean |
+| `window.restored_width` | `700` | Restored logical width, integer 1–32768 |
+| `window.restored_height` | `620` | Restored logical height, integer 1–32768 |
 
 Other full-JSON keys cover document backgrounds, title bars, period tabs, XP
 switches, metric headings/values, separators, cards, battle results, messages,
@@ -122,6 +128,17 @@ and `0` is invisible. Do not use percentages or numeric strings: `0.8` is valid,
 `"80%"` is not.
 
 ### Card widths
+
+The `wide_cards` preset accepts 480–1200 logical pixels per tab. It activates
+only when two cards of that width and the 64-pixel central gap fit. There are
+always at most two columns. A wide value below the ordinary width uses the
+ordinary width. All cards in the selected tab change size together.
+
+Maximize/Restore, the title-bar background slider and completed resize gestures
+save only their changed `window` fields. Other JSON values remain intact. The
+slider defaults to 0 (opaque); 100 hides the owned background layer while
+preserving text and control opacity. A temporarily smaller viewport clamps
+the surface without replacing its saved restored dimensions.
 
 Each `cards` value accepts a finite number from **480 to 900**, without a unit
 suffix. Widths follow the game's UI scale. Missing fields keep their own default;

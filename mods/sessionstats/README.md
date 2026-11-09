@@ -1,15 +1,23 @@
 # Session Stats for World of Tanks
 
-Version 0.4.1 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.5.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
 their contents are English.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
-to filter by battle start time. The start is inclusive and the end is exclusive.
+to filter by battle start time. Either selector also accepts **Custom date**:
+enter `YYYY-MM-DD HH:mm` in the computer's local time and choose **Apply**.
+Ranges are half-open: **From** is included and **To** is excluded. The start must
+be earlier than the end. **Beginning of history** and **Now** leave the
+corresponding end open.
 Earlier manual resets appear as time points and saved battles remain available.
 The account and region determine which history and time points are shown.
+
+An expanded **Maps** card lists battles on that map within the selected period.
+**Show battle** opens the chosen result in **Battles**. **Less** collapses an
+expanded card.
 
 In **Battles → More**, the card lists recorded daily, bonus, weekly, personal
 campaign and event missions, along with the active Crucible stage and its
@@ -20,6 +28,13 @@ vehicle and account-level bonds reported for each recorded Random Battle.
 Older saved battles may have no mission or bonus details. All four corners and all four edges
 resize the window and keep its size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.
+
+The native Random Battle overview also shows **WN8** in its bottom personal
+statistics strip. The label stays visible while a spinner occupies the value
+slot during processing. It then shows the displayed battle's rating, including
+zero, or a dash when the required data is unavailable. The garage button sits
+immediately to the right of the built-in session statistics in the existing
+control row, preserving the native notification spacing.
 
 `"sessions": {"instance_tab": true}` displays the optional installation tab.
 Its shared history and independent manual reset persist across game restarts;
@@ -40,8 +55,8 @@ Preserve your custom JSON when updating. OpenWG
 Gameface 1.2.2 is included under MIT; install only one copy even if another mod
 uses it. Remove the old Session Stats package without deleting AppData history.
 The Session Stats `.wotmod` itself works without OpenWG: collection and the native
-panel opened with **Ctrl+F10** remain available; only the garage footer button needs
-OpenWG. Its shared Gameface resource still needs compatibility testing with the
+panel opened with **Ctrl+F10** remain available; the garage footer button and the
+post-battle WN8 display need OpenWG. Its shared Gameface resource still needs compatibility testing with the
 other UI frameworks in a mod pack.
 
 Session Stats uses its own `mod_grz_session_stats` entrypoint, `grz_session_stats`
@@ -51,7 +66,7 @@ resource paths; coexistence in the actual client still requires an in-game test.
 
 ### Read-only Hangar integration
 
-Version 0.4.1 exposes `gui.mods.grz_session_stats.runtime.read_hangar_stats(vehicle_ids)`
+Version 0.5.0 exposes `gui.mods.grz_session_stats.runtime.read_hangar_stats(vehicle_ids)`
 on the already loaded module. Consumers must not import or start Session Stats
 when it is absent. API schema 1 returns only requested vehicle summaries from
 the current account's full recorded Random Battle history, independent of UI
@@ -145,7 +160,30 @@ partial card settings remain unchanged. For example:
 {"cards": {"battles": 580, "vehicles": 560}}
 ```
 
+The layout always has at most two columns. When two wider cards fit, it switches
+both columns to a second fixed width, rather than adding another column or
+stretching cards continuously. Each tab defaults to 800 logical pixels in this
+wide preset; `wide_cards` accepts 480–1200 independently per tab. A wide value
+smaller than the tab's ordinary card width uses the ordinary width instead.
+
+```json
+{"wide_cards": {"battles": 800, "vehicles": 800, "maps": 800, "tiers": 800}}
+```
+
+The title bar includes Maximize/Restore and a background transparency slider.
+Transparency ranges from 0 (opaque, the default) to 100 (fully transparent
+background); text and controls retain their own opacity. Window controls save
+`window.background_transparency`, `window.maximized`, `window.restored_width`
+and `window.restored_height` to the same configuration, preserving unrelated
+fields. Restored dimensions use logical pixels. A smaller viewport temporarily
+clamps the surface without discarding the saved size.
+
 Every two-column tab uses staggered cards connected to a dashed central axis.
+Several battle cards can keep More open together. Expanded battles use the
+next available column in sorted order, so consecutive battles fill the space
+beside a tall card and their axis markers retain chronology. With all details
+closed, cards use their usual alternating layout. Refreshing or resizing preserves open cards;
+switching accounts clears their open state.
 The three main statistics stay horizontal; the compact performance and finance
 tables wrap together as one centered group. Summary rows remain centered when
 the window cannot fit them together. Changing the period returns to the top;
@@ -155,7 +193,15 @@ the table header; differing coverage remains beside its own row or value.
 Information icons show explanations after one second over the icon. Moving
 across a statistics section does not open a tooltip. Battle bonuses share one
 row per source with separate resource columns; premium credit/XP multipliers
-share a row too. Battle Pass values use compact cells above the mission rows.
+share a row too. Battle Pass is a compact strip above the details. A wider bonus
+table sits beside the mission cards; each mission has its name, progress and
+description inside one outline. These sections wrap when the card cannot fit
+them without crowding, including unusually large numerical rewards.
+Mission progress shows confirmed per-battle increments and known current/target
+counters with their objective labels. Explicit unchanged counters show no
+progress; missing historical counters remain unavailable. A current/target
+snapshot alone never becomes an invented battle increment. Completion and
+honors remain visible. See [mission progress source evidence](docs/MISSION_PROGRESS_SOURCE_EVIDENCE.md).
 
 Save in `mods/configs/grz.sessionstats.json`, then reopen the panel or click Refresh.
 The mod creates a missing main file using defaults, or copies the legacy JSON beside

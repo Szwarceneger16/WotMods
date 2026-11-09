@@ -168,7 +168,7 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertEqual(len(missions), 6)
         self.assertEqual(missions['personal:123'], {
             'kind': 'personal', 'name': 'Fixture Fossa mission', 'operation': 'Operation Fossa',
-            'description': 'Fixture objective', 'status': 'honors'})
+            'description': 'Fixture objective', 'status': 'honors', 'progress_state': 'unavailable'})
         self.assertEqual(missions['personal:456']['status'], 'completed')
         self.assertEqual(missions['dq:fixture']['kind'], 'daily_bonus')
         self.assertEqual(missions['dq:fixture']['status'], 'reset')

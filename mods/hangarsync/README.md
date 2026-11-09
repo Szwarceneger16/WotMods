@@ -7,6 +7,19 @@ the ChatGPT Site you explicitly configure on your computer. It does not read
 battle opponents, automate inputs, mutate account data, install a background
 process, or track activity after WoT exits.
 
+## Battle Pass across seasons
+
+With `include_missions: true`, version 0.12.0 also reads the client's current
+Battle Pass season and configured chapters, including additional chapters.
+Season/chapter IDs, localized names, dates, stage counts, variable point costs,
+point totals, completion and Improved Pass state come from the native controller
+and server configuration. No season name, chapter count, stage cost or deadline
+is embedded in the mod. A later client API change may still require an adapter
+update; missing data is reported as unavailable/partial, never invented as zero.
+The snapshot replaces previous season data on each capture; it is not an archive
+of historical seasons. No purchases, rewards claims or chapter selection occur.
+The existing validated configuration is unchanged.
+
 ## Data included
 
 - All vehicles in the account's garage inventory, independent of the in-game

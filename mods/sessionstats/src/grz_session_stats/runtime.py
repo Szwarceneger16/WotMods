@@ -33,6 +33,7 @@ LOG = logging.getLogger('grz.sessionstats')
 LAUNCH_ID = uuid.uuid4().hex
 LAUNCH_STARTED_AT = time.time()
 TICK_SECONDS = 5.0
+RESULT_RATING_WAIT_SECONDS = 30.0
 MAX_EXPECTED_BYTES = 8 * 1024 * 1024
 DEFAULT_LOCAL_CONFIG = {'hotkey': 'CTRL+F10', 'footer_button': True}
 
@@ -315,7 +316,8 @@ class GameAPI(object):
 class Runtime(object):
     def __init__(self, api=None, service_factory=None, data_dir=None,
                  expected_table=None, now=None, window=None, footer_installer=None,
-                 appearance_path=None, installation_dir=None, deferred_loading=True):
+                 appearance_path=None, installation_dir=None, deferred_loading=True,
+                 postbattle_installer=None):
         self.api = api
         self.service_factory = service_factory
         self._deferred_loading = deferred_loading
@@ -327,9 +329,14 @@ class Runtime(object):
         self.window = window
         self.footer_installer = footer_installer
         self.footer_handle = None
+        self.postbattle_installer = postbattle_installer
+        self.postbattle_handle = None
+        self._postbattle_refreshing = False
+        self._postbattle_queries = {}
         self._appearance_override_path = appearance_path
         self.appearance_path = None
         self._presentation = {'panel_css': '', 'footer_css': '', 'scroll_speed': 1.0}
+        self._window_settings_result = None
         self.services = {}
         self.active_service = None
         self.active_key = None
@@ -441,6 +448,7 @@ class Runtime(object):
 
     def _publish_activity(self):
         self._publish_appearance()
+        self._publish_postbattle()
         try:
             state = self.activity_status()
             handle = self.footer_handle
@@ -457,6 +465,107 @@ class Runtime(object):
         except Exception:
             self._warn_once('footer:activity', 'Pending-result indicator is unavailable.',
                             exception=True, visible=False)
+
+    def _publish_postbattle(self):
+        if self.postbattle_handle is None or self._postbattle_refreshing:
+            return
+        self._postbattle_refreshing = True
+        try:
+            language_setter = getattr(self.postbattle_handle, 'set_language', None)
+            if callable(language_setter):
+                keys = ('metric.wn8', 'format.thousands', 'format.missing',
+                        'footer.processing', 'coverage.wn8.battle')
+                language_setter(dict((key, self._localizer.messages[key]) for key in keys))
+            self.postbattle_handle.refresh()
+        except Exception:
+            self._warn_once('postbattle:refresh', 'Battle-result WN8 display is unavailable.', visible=False)
+        finally:
+            self._postbattle_refreshing = False
+
+    def result_rating(self, arena_id, account_key=None):
+        """Resolve the displayed result, never the newest or aggregate rating.
+
+        Account identifiers stay inside the Python adapter. The child model
+        publishes only the display state and rating. A missing result gets a
+        bounded grace period; later successful deliveries can still replace it.
+        """
+        answer = {'account_key': account_key, 'state': 'unavailable', 'value': None}
+        if isinstance(arena_id, (text_type, bytes)) and len(arena_id) > 24:
+            return answer
+        number = _integer(arena_id)
+        if number is None or number > 18446744073709551615 or not self.running:
+            return answer
+        identifier = str(number)
+        try:
+            if self.api.is_replay():
+                return answer
+            context = self._capture_cache_request()
+        except Exception:
+            self._warn_once('postbattle:account', 'Battle-result account context is unavailable.', visible=False)
+            return answer
+        if context is None:
+            if account_key is not None:
+                return answer
+            key = (None, identifier)
+            service = None
+        else:
+            unused_lifecycle, active_key, service = context
+            if account_key is not None and account_key != active_key:
+                return answer
+            answer['account_key'] = active_key
+            key = (active_key, identifier)
+        lookup = getattr(service, 'battle_rating', None)
+        if service is not None and not callable(lookup):
+            return answer
+        try:
+            rating = lookup(identifier) if callable(lookup) else {'status': 'pending'}
+            value = _number(rating.get('wn8'))
+            if rating.get('status') == 'ready' and value is not None:
+                self._postbattle_queries.pop(key, None)
+                answer.update(state='ready', value=value)
+                return answer
+            if service is not None and not getattr(service, 'loading', False):
+                if not getattr(service, 'ready', True) or not getattr(service.expected_table, 'values', None):
+                    return answer
+                known = service.result_context(identifier)
+                if rating.get('status') == 'unavailable' and known:
+                    return answer
+            now = self.now()
+            if key not in self._postbattle_queries:
+                if len(self._postbattle_queries) >= 128:
+                    oldest = min(self._postbattle_queries, key=lambda item: self._postbattle_queries[item]['started'])
+                    self._postbattle_queries.pop(oldest, None)
+                self._postbattle_queries[key] = {'started': now, 'attempted': False}
+            query = self._postbattle_queries[key]
+            if now < query['started']:
+                query['started'] = now
+            # Opening an already-posted historical result may not trigger a
+            # cache event again. Reuse its native controller once; this issues
+            # no network request and cannot interfere with the stock reader.
+            if (service is not None and not query['attempted'] and
+                    not getattr(service, 'loading', False) and not self._processing.get(key[0], 0)):
+                bundle = self.api.posted_bundle(identifier)
+                raw = getattr(bundle, 'results', None)
+                if isinstance(raw, dict) and str(raw.get('arenaUniqueID')) == identifier:
+                    query['attempted'] = True
+                    if self._capture_cache_request() != context:
+                        return answer
+                    self._process(raw, key[0], service, getattr(bundle, 'reusable', None), source='postbattle')
+                    if self._capture_cache_request() != context:
+                        return answer
+                    rating = lookup(identifier)
+                    value = _number(rating.get('wn8'))
+                    if rating.get('status') == 'ready' and value is not None:
+                        self._postbattle_queries.pop(key, None)
+                        answer.update(state='ready', value=value)
+                        return answer
+                    if rating.get('status') == 'unavailable':
+                        return answer
+            if now - query['started'] < RESULT_RATING_WAIT_SECONDS:
+                answer['state'] = 'pending'
+        except Exception:
+            self._warn_once('postbattle:lookup', 'Battle-result WN8 lookup is unavailable.', visible=False)
+        return answer
 
     def _client_language(self):
         try:
@@ -499,6 +608,8 @@ class Runtime(object):
             LOG.exception('CONFIG appearance unavailable; built-in styles and scrolling remain active.')
         if not self._instance_tab_enabled:
             self.compatibility_warnings.pop('installation:identity', None)
+        if self._window_settings_result is not None:
+            self._presentation['window_settings_result'] = dict(self._window_settings_result)
         if self.running and self.active_service is not None:
             self._ensure_installation_session()
         self._publish_appearance()
@@ -590,6 +701,18 @@ class Runtime(object):
         self.footer_handle = None
         return True
 
+    def _retire_postbattle(self):
+        if self.postbattle_handle is None:
+            return True
+        try:
+            if self.postbattle_handle.uninstall() is False:
+                return False
+        except Exception:
+            self._warn_once('postbattle:stop', 'Could not remove the optional result WN8 display.', visible=False)
+            return False
+        self.postbattle_handle = None
+        return True
+
     def _schedule_tick(self):
         if self.running and self._tick_id is None:
             callback = self._guard(self._tick, 'tick')
@@ -665,6 +788,7 @@ class Runtime(object):
         self._hotkey_held = False
         self._processing.clear()
         self._footer_activity = None
+        self._postbattle_queries.clear()
         self._bonus_account_key = None
         self._log_notice_sent = False
         self._log_notice_after = 0
@@ -736,6 +860,21 @@ class Runtime(object):
                     LOG.warning('Footer button unavailable; configured keyboard shortcut remains active.')
             except Exception:
                 LOG.exception('Footer button unavailable; configured keyboard shortcut remains active.')
+        if self._retire_postbattle():
+            try:
+                if self.postbattle_installer is None:
+                    from .postbattle import install
+                    self.postbattle_installer = install
+                lifecycle = self._lifecycle
+
+                def result_provider(arena_id, account_key=None):
+                    if not self.running or self._lifecycle is not lifecycle:
+                        return {'account_key': account_key, 'state': 'unavailable', 'value': None}
+                    return self.result_rating(arena_id, account_key)
+
+                self.postbattle_handle = self.postbattle_installer(result_provider)
+            except Exception:
+                self._warn_once('postbattle:install', 'Optional battle-result WN8 display is unavailable.', visible=False)
         self._on_account()
         self._guard(self._on_avatar, 'initial_arena')()
         self._publish_activity()
@@ -798,6 +937,8 @@ class Runtime(object):
                 LOG.warning('Could not remove XP event subscription.')
         self._window_call('close')
         self._retire_footer()
+        self._retire_postbattle()
+        self._postbattle_queries.clear()
         self.inflight.clear()
         if self._log_handle is not None:
             handle = self._log_handle
@@ -809,7 +950,7 @@ class Runtime(object):
                 LOG.warning('Could not close the dedicated mod log.')
 
     def cleanup_complete(self):
-        if self.footer_handle is not None:
+        if self.footer_handle is not None or self.postbattle_handle is not None:
             return False
         try:
             return self.window is None or not self.window.is_open()
@@ -1428,7 +1569,33 @@ class Runtime(object):
             if action == 'time_point':
                 self.active_service.create_time_point(getter('name'))
             else:
-                self.active_service.set_timeline_range(getter('from_point'), getter('to_point'))
+                dates = []
+                for field in ('from_date', 'to_date'):
+                    raw = getter(field)
+                    if raw is None:
+                        dates.append(None)
+                        continue
+                    if isinstance(raw, bytes) and not isinstance(raw, text_type):
+                        try:
+                            raw = raw.decode('ascii')
+                        except UnicodeError:
+                            return
+                    if isinstance(raw, text_type):
+                        if not raw:
+                            dates.append(None)
+                            continue
+                        if len(raw) > 64:
+                            return
+                        try:
+                            raw = float(raw)
+                        except (ValueError, TypeError, OverflowError):
+                            return
+                    value = _number(raw)
+                    if value is None:
+                        return
+                    dates.append(value)
+                if not self.active_service.set_timeline_range(getter('from_point'), getter('to_point'), *dates):
+                    return
                 self._schedule_loading()
             self._window_call('refresh')
         elif action == 'reset' and self.active_service is not None:
@@ -1447,7 +1614,7 @@ class Runtime(object):
             else:
                 return
             self._window_call('refresh')
-        elif action in ('page', 'sort') and self.active_service is not None:
+        elif action in ('page', 'sort', 'map_battles', 'battle_select') and self.active_service is not None:
             if getter('account_key') != self.active_key:
                 return
             scope, group = getter('scope'), getter('group')
@@ -1464,6 +1631,9 @@ class Runtime(object):
                 options = dict((key, getter(key)) for key in ('metric', 'statistic', 'direction', 'chronology'))
                 if not service.set_order(scope, group, options, period_id):
                     return
+            elif action == 'battle_select':
+                if not service.select_battle(scope, getter('id'), period_id, getter('request_id')):
+                    return
             else:
                 raw_page = getter('page')
                 if isinstance(raw_page, bytes) and not isinstance(raw_page, text_type):
@@ -1473,7 +1643,11 @@ class Runtime(object):
                         return
                 if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
                     return
-                if not service.set_page(scope, group, int(raw_page), period_id):
+                if action == 'map_battles':
+                    accepted = service.set_map_battles(scope, getter('map_id'), int(raw_page), period_id)
+                else:
+                    accepted = service.set_page(scope, group, int(raw_page), period_id)
+                if not accepted:
                     return
             self._window_call('refresh')
         elif action == 'language' and self.active_service is not None:
@@ -1485,6 +1659,33 @@ class Runtime(object):
                 self._window_call('refresh')
             else:
                 self._notify(message('language.save_error'))
+        elif action == 'window_settings' and self.active_service is not None:
+            if getter('account_key') != self.active_key:
+                return
+            request = getter('request_id')
+            if isinstance(request, bytes) and not isinstance(request, text_type):
+                try:
+                    request = request.decode('ascii')
+                except UnicodeError:
+                    return
+            if (not isinstance(request, text_type) or not 1 <= len(request) <= 64 or
+                    any(char not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-' for char in request)):
+                return
+            from .appearance import window_settings_patch
+            from .config_files import save_window_settings
+            fields = ('background_transparency', 'maximized', 'restored_width', 'restored_height')
+            values = dict((key, getter(key)) for key in fields if getter(key) is not None)
+            checked = window_settings_patch(values, command=True)
+            allowed = set(fields + ('action', 'account_key', 'request_id'))
+            keys = getattr(arg, 'keys', None)
+            if callable(keys) and any(key not in allowed for key in keys()):
+                checked = None
+            saved = checked is not None and save_window_settings(self.appearance_path, checked)
+            self._window_settings_result = {'request_id': request, 'saved': bool(saved)}
+            # Re-read the actual file even after a rejected concurrent edit or
+            # failed publication. The UI rolls back to persisted settings.
+            self._load_appearance()
+            self._window_call('refresh')
         elif action == 'refresh':
             self._load_appearance()
             self._refresh_posted()

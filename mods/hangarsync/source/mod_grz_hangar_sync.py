@@ -31,7 +31,7 @@ except NameError:
 
 LOG = logging.getLogger('grz.hangarsync')
 MISSION_LOG = logging.getLogger('grz.hangarsync.missions')
-VERSION = '0.11.0'
+VERSION = '0.12.0'
 CONFIG_FILE = 'GRZ_Hangar_Sync.json'
 LOG_DIR = 'GRZ_Hangar_Sync'
 LOG_FILE = 'hangar_sync.log'
@@ -1078,12 +1078,22 @@ def collect_game_snapshot(config, artwork=None):
         LOG.warning('event=playlists_read_failed error_type=%s', _safe_exception_type(error))
     if config['include_missions']:
         try:
+            snapshot['battlePass'] = collect_battle_pass()
+        except Exception as error:
+            LOG.warning('event=battle_pass_capture_failed error_type=%s', _safe_exception_type(error))
+        try:
             missions = collect_missions()
             if missions is not None:
                 snapshot['missions'] = missions
         except Exception as error:
             LOG.warning('event=mission_capture_failed error_type=%s', _safe_exception_type(error))
     return snapshot
+
+
+def collect_battle_pass():
+    """Use the same explicit mission opt-in; never inspect account credentials."""
+    from gui.mods.grz_hangar_battle_pass import collect_battle_pass as read
+    return read()
 
 
 def _mission_text(value):
@@ -1601,6 +1611,11 @@ def encode_snapshot(snapshot, artwork=None):
         LOG.warning('event=playlists_upload_skipped reason=payload_limit')
         snapshot = dict(snapshot)
         del snapshot['playlists']
+        return encode_snapshot(snapshot)
+    if len(payload) > MAX_PAYLOAD_BYTES and 'battlePass' in snapshot:
+        LOG.warning('event=battle_pass_upload_skipped reason=payload_limit')
+        snapshot = dict(snapshot)
+        del snapshot['battlePass']
         return encode_snapshot(snapshot)
     if len(payload) > MAX_PAYLOAD_BYTES:
         raise ValueError('Garage exceeds the private Site payload limit')

@@ -20,22 +20,32 @@ function gamefaceBackgrounds(css) {
     page.on('pageerror', e => errors.push(e.message));
     await page.setContent(`<html style="font-size:1px"><head><style>
       body {margin:0;background:#121413;font:14px Arial,sans-serif;color:#999;}
-      .App_footer_verified {display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px;background:linear-gradient(#262823,#171916);}
-      .Footer_controls {display:flex;align-items:center;gap:4px;}
-      .SessionStats_base_test {display:flex;align-items:center;width:54rem;height:36rem;gap:6rem;}
+      .App_footer_verified {display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 20px;background:linear-gradient(#262823,#171916);}
+      .Footer_section_test {display:flex;align-items:center;}
+      .SessionStatistic_test {display:flex;align-items:center;width:54rem;height:36rem;gap:6rem;}
+      .Footer_divider_test {width:1rem;height:24rem;margin:0 8rem;background:#404440;}
+      #native-left,#native-chat {width:80rem;}
       .native-test-icon {position:relative;display:block;width:18rem;height:22rem;}
       .native-test-icon i {position:absolute;bottom:0;width:4rem;background:#929797;}
       .native-test-icon i:nth-child(1) {left:0;height:10rem;}
       .native-test-icon i:nth-child(2) {left:6rem;height:15rem;}
       .native-test-icon i:nth-child(3) {left:12rem;height:22rem;}
       #native-count {font-size:14rem;}
-      #original-other {border:0;border-left:1px solid #404440;background:transparent;color:#aaa;font:13px Arial,sans-serif;height:36px;padding:0 18px;}
-      </style></head><body><div class="App_footer_verified"><div class="Footer_controls"><div class="SessionStats_base_test"><span class="native-test-icon"><i></i><i></i><i></i></span><span id="native-count">19</span></div><button id="original-other">EU III</button></div></div></body></html>`);
+      #original-other {width:62rem;border:0;background:transparent;color:#aaa;font:13px Arial,sans-serif;height:36px;padding:0;}
+      #native-settings,#native-notifications {width:24rem;height:24rem;}
+      #native-notifications {margin-right:-5rem;}
+      </style></head><body><div class="App_footer_verified"><div id="native-left">Contacts</div><div id="native-chat">Chat</div><div id="native-right" class="Footer_section_test"><div class="SessionStatistic_test"><span class="native-test-icon"><i></i><i></i><i></i></span><span id="native-count">19</span></div><div class="Footer_divider_test"></div><button id="original-other">EU III</button><button id="native-settings" data-test-id="menu">⚙</button><div class="Footer_divider_test"></div><button id="native-notifications" data-test-id="notificationCenter">7</button></div></div></body></html>`);
     await page.evaluate(() => {
       window.testActions = [];
       window.testCallbacks = [];
       window.nativeClicks = 0;
-      document.querySelector('.SessionStats_base_test').onclick = () => { window.nativeClicks += 1; };
+      document.querySelector('.SessionStatistic_test').onclick = () => { window.nativeClicks += 1; };
+      window.nativeFooterMarkup = document.querySelector('.App_footer_verified').innerHTML;
+      window.nativeRightPrototype = document.getElementById('native-right').cloneNode(true);
+      window.nativeGeometry = ['original-other','native-settings','native-notifications'].map(id => {
+        const node=document.getElementById(id),box=node.getBoundingClientRect(),style=getComputedStyle(node);
+        return {id,x:box.x,width:box.width,paddingLeft:style.paddingLeft,marginLeft:style.marginLeft,marginRight:style.marginRight};
+      });
       window.testSubviewID = 41;
       window.nativeHandlers = {};
       window.isDomBuilt = true;
@@ -64,6 +74,18 @@ function gamefaceBackgrounds(css) {
     assert.strictEqual(await button.locator('.grz-session-footer-icon[aria-hidden="true"]').count(), 1);
     assert.strictEqual(await button.locator('.grz-session-footer-rating[aria-hidden="true"]').count(), 1);
     assert.strictEqual(await button.locator('.grz-session-footer-bar').count(), 3);
+    assert.ok(await button.evaluate(owned => {
+      const native=document.querySelector('.SessionStatistic_test'),right=document.getElementById('native-right');
+      return native.parentNode===right && owned.parentNode===right && native.nextElementSibling===owned &&
+        owned.nextElementSibling.className==='Footer_divider_test' &&
+        Math.abs(owned.getBoundingClientRect().left-native.getBoundingClientRect().right)<=1 &&
+        getComputedStyle(owned).marginLeft==='0px' && getComputedStyle(owned).marginRight==='0px';
+    }), 'our button must sit immediately to the right of native statistics inside its existing section');
+    assert.ok(await page.evaluate(() => nativeGeometry.every(expected => {
+      const node=document.getElementById(expected.id),box=node.getBoundingClientRect(),style=getComputedStyle(node);
+      return Math.abs(box.x-expected.x)<=1 && box.width===expected.width && style.paddingLeft===expected.paddingLeft &&
+        style.marginLeft===expected.marginLeft && style.marginRight===expected.marginRight;
+    })), 'server, settings and notification positions and spacing must remain unchanged');
     const geometry = await button.evaluate(element => {
       const box = node => { const r=node.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}; };
       return {button:box(element),icon:box(element.querySelector('.grz-session-footer-icon')),
@@ -95,7 +117,7 @@ function gamefaceBackgrounds(css) {
     await page.keyboard.press('Space');
     assert.deepStrictEqual(await page.evaluate(() => window.testActions), [{action:'open'},{action:'open'},{action:'open'}]);
     assert.strictEqual(await page.evaluate(() => window.nativeClicks), 0);
-    await page.click('.SessionStats_base_test');
+    await page.click('.SessionStatistic_test');
     assert.strictEqual(await page.evaluate(() => window.nativeClicks), 1);
     assert.strictEqual(await page.locator('#original-other').count(), 1);
     assert.strictEqual(await page.locator('#native-count').textContent(), '19');
@@ -110,12 +132,35 @@ function gamefaceBackgrounds(css) {
       window.GRZSessionFooter.refresh();
     });
     assert.strictEqual(await page.locator('#grz-session-stats-footer-button').count(), 0);
+    assert.strictEqual(await page.locator('.App_footer_verified').innerHTML(), await page.evaluate(() => nativeFooterMarkup),
+      'removing our subview must restore the exact native footer markup');
     await page.evaluate(() => {
-      document.querySelector('.SessionStats_base_test').remove();
+      window.nativeSessionNode=document.querySelector('.SessionStatistic_test');
+      nativeSessionNode.remove();
       window.testSubviewID = 57;
       window.GRZSessionFooter.refresh();
     });
-    assert.strictEqual(await page.locator('.App_footer_verified > #grz-session-stats-footer-button').count(), 1);
+    assert.strictEqual(await page.locator('#native-right > #grz-session-stats-footer-button').count(), 1);
+    assert.ok(await button.evaluate(owned => owned.nextElementSibling.className==='Footer_divider_test'),
+      'a mode without native statistics must use its vacated slot before server/menu, not append after notifications');
+    await page.evaluate(() => {
+      const right=document.getElementById('native-right');
+      window.retainedButton=document.getElementById('grz-session-stats-footer-button');
+      right.insertBefore(nativeSessionNode,right.querySelector('.Footer_divider_test'));
+      GRZSessionFooter.refresh();
+    });
+    assert.ok(await button.evaluate(owned => owned===retainedButton && nativeSessionNode.nextElementSibling===owned),
+      'a late native control must reposition the existing owned button without replacing its activity/model state');
+    await page.evaluate(() => {
+      window.detachedRow=document.getElementById('native-right');
+      window.detachedButton=document.getElementById('grz-session-stats-footer-button');
+      detachedRow.parentNode.replaceChild(nativeRightPrototype.cloneNode(true),detachedRow);
+      GRZSessionFooter.refresh();
+    });
+    assert.ok(await button.evaluate(owned => owned.parentNode.id==='native-right' &&
+      document.querySelector('.SessionStatistic_test').nextElementSibling===owned &&
+      detachedButton.parentNode===null && !detachedRow.querySelector('#grz-session-stats-footer-button')),
+      'rebuilding native sections must remove our detached node and attach only within the recreated right section');
     assert.strictEqual(await page.locator('#original-other').count(), 1);
     assert.deepStrictEqual(await page.evaluate(() => window.testCallbacks), [['add',41],['remove',41],['add',57]]);
     await page.evaluate(() => {
@@ -135,6 +180,6 @@ function gamefaceBackgrounds(css) {
     assert.strictEqual(await staticButton.locator('.grz-session-footer-bar').count(), 3);
     assert.strictEqual((await staticButton.boundingBox()).width, 44);
     assert.deepStrictEqual(errors, []);
-    console.log('PASS: 44px icon with three painted bars when currentColor backgrounds are unsupported, superscript WN8, accessible label and keyboard activation, rem scaling, isolated command bridge, native counter/handlers retained, duplicate guard, fallback, disappearance, subview resubscription, cleanup and standalone static preview.');
+    console.log('PASS: 44px icon, verified singular SessionStatistic placement in the existing right footer section, unchanged server/menu/notification geometry and spacing, late-control/recreated-row recovery, native counter/handlers, appearance/activity lifecycle, subview ownership, cleanup and standalone static preview.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

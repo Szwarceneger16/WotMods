@@ -18,6 +18,7 @@ MODULE = ROOT / 'source' / 'mod_grz_hangar_sync.py'
 CONFIG = ROOT / 'GRZ_Hangar_Sync.json.example'
 PYC_PATH = 'res/scripts/client/gui/mods/mod_grz_hangar_sync.pyc'
 HELPERS = {
+    'grz_hangar_battle_pass': ROOT / 'source' / 'hangar_battle_pass.py',
     'grz_hangar_crew': ROOT / 'source' / 'hangar_crew.py',
     'grz_hangar_stats': ROOT / 'source' / 'hangar_stats.py',
     'grz_hangar_mission_metadata': ROOT / 'source' / 'hangar_mission_metadata.py',
