@@ -1,0 +1,313 @@
+name: Publish WotMods snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'source/**'
+      - 'assets/**'
+      - 'VERSION'
+      - 'mods/**'
+      - 'scripts/**'
+      - 'staysharp.medkit.example.json'
+      - 'CHANGELOG.md'
+      - 'docs/AUDIO.md'
+      - 'docs/INSTALACJA.md'
+      - '.github/workflows/wotmods-release.yml'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/sessionstats-release.yml'
+      - '.github/workflows/wot-updates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize the COMPLETE planning/build/publish transaction. The next run plans
+# against the new Latest, not an artifact/snapshot read before the preceding merge.
+# Independent modules still build in parallel WITHIN one run. Rapid main merges
+# may coalesce when a later commit starts first. Never cancel a queued merge.
+# Retain the old publishers' group during migration to avoid racing in-flight runs.
+concurrency:
+  group: wotmod-release-${{ github.repository }}
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
+
+  plan:
+    name: Plan one release from accepted merge commit
+    needs: updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      source_sha: ${{ steps.plan.outputs.source_sha }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      previous_tag: ${{ steps.plan.outputs.previous_tag }}
+      publish: ${{ steps.plan.outputs.publish }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_builds: ${{ steps.plan.outputs.has_builds }}
+    steps:
+      - name: Checkout exact triggering commit and its accepted workflow sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Plan from the last immutable published snapshot
+        id: plan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+        run: |
+          set -euo pipefail
+          releases="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 2000 \
+            --json tagName,isDraft,isPrerelease,isLatest,isImmutable)"
+          published="$(jq '[.[] | select(.isDraft == false and .isPrerelease == false)] | length' <<< "$releases")"
+          latest="$(jq -r '[.[] | select(.isLatest == true and .isDraft == false and .isPrerelease == false)] |
+            if length == 0 then "" elif length == 1 then .[0].tagName else "DUPLICATE" end' <<< "$releases")"
+          [[ "$latest" != DUPLICATE ]] || { echo 'Ambiguous Latest Release' >&2; exit 1; }
+          if [[ -z "$latest" ]]; then
+            [[ "$published" == 0 ]] || { echo 'Published releases exist but Latest is missing' >&2; exit 1; }
+            python3 scripts/release_coordinator.py plan \
+              --head HEAD --client-version "$WOT_CLIENT_VERSION" --output plan.json
+          else
+            immutable="$(jq -r --arg tag "$latest" '.[] | select(.tagName == $tag) | .isImmutable' <<< "$releases")"
+            [[ "$immutable" == true ]] || { echo 'Latest is not immutable' >&2; exit 1; }
+            mkdir -p previous
+            gh release download "$latest" --repo "$GITHUB_REPOSITORY" --dir previous
+            git rev-parse --verify "refs/tags/$latest^{commit}" >/dev/null
+            python3 scripts/release_coordinator.py plan \
+              --previous-tag "$latest" --previous-dir previous \
+              --head HEAD --client-version "$WOT_CLIENT_VERSION" --output plan.json
+          fi
+          echo "source_sha=$(jq -r '.source_sha' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$(jq -r '.release_tag' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=$(jq -r '.previous_tag // ""' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "publish=$(jq -r '.publish' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "matrix=$(jq -c '.matrix' plan.json)" >> "$GITHUB_OUTPUT"
+          echo "has_builds=$(jq -r '(.changed | length) > 0' plan.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Retain the read-only plan for the publisher
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wotmods-plan
+          path: plan.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+
+  build:
+    name: Build only ${{ matrix.mod }} (${{ matrix.version }})
+    if: needs.plan.outputs.publish == 'true'
+    needs: [plan, updates]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Checkout precisely the planned source commit
+        if: matrix.mod != 'noop'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Test and build one independently versioned installer
+        if: matrix.mod != 'noop'
+        shell: bash
+        env:
+          MODULE: ${{ matrix.mod }}
+          VERSION: ${{ matrix.version }}
+          WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+        run: bash scripts/build_release_module.sh "$MODULE" "$VERSION" "$WOT_CLIENT_VERSION"
+
+      - name: Retain only this module's verified ZIP
+        if: matrix.mod != 'noop'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wotmods-installer-${{ matrix.mod }}
+          path: release-module/*.zip
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+
+  publish:
+    name: Publish and verify one protected immutable Release
+    if: needs.plan.outputs.publish == 'true'
+    needs: [plan, updates, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    environment: wotmods-release
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}
+      WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
+      RELEASE_TAG: ${{ needs.plan.outputs.release_tag }}
+      PREVIOUS_TAG: ${{ needs.plan.outputs.previous_tag }}
+      SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+      WOTMODS_REVIEWED_RULESET_ID: ${{ vars.WOTMODS_REVIEWED_RULESET_ID }}
+      WOTMODS_REVIEWED_RULESET_UPDATED_AT: ${{ vars.WOTMODS_REVIEWED_RULESET_UPDATED_AT }}
+    steps:
+      - name: Checkout immutable planned source for the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Download the exact verified plan
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wotmods-plan
+
+      - name: Download changed modules from this workflow run only
+        if: needs.plan.outputs.has_builds == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: wotmods-installer-*
+          path: built
+          merge-multiple: true
+
+      - name: Revalidate snapshot and assemble both installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(jq -r '.source_sha' plan.json)" = "$SOURCE_SHA"
+          test "$(jq -r '.release_tag' plan.json)" = "$RELEASE_TAG"
+          test "$(jq -r '.previous_tag // ""' plan.json)" = "$PREVIOUS_TAG"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main || {
+            echo 'main was rewritten after planning; refusing release' >&2; exit 1;
+          }
+          python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
+          releases="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 2000 \
+            --json tagName,isDraft,isPrerelease,isLatest,isImmutable)"
+          current="$(jq -r '[.[] | select(.isLatest == true and .isDraft == false and .isPrerelease == false)] |
+            if length == 0 then "" elif length == 1 then .[0].tagName else "DUPLICATE" end' <<< "$releases")"
+          [[ "$current" == "$PREVIOUS_TAG" || "$current" == "$RELEASE_TAG" ]] || {
+            echo 'Latest changed since planning; refusing a stale snapshot' >&2; exit 1;
+          }
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            test "$(jq -r --arg tag "$PREVIOUS_TAG" '.[] | select(.tagName == $tag) | .isImmutable' <<< "$releases")" = true
+            mkdir -p previous
+            gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --dir previous
+            python3 scripts/release_coordinator.py assemble \
+              --plan plan.json --previous-dir previous --built-dir built \
+              --output release --notes release-notes.md --repository "$GITHUB_REPOSITORY"
+          else
+            python3 scripts/release_coordinator.py assemble \
+              --plan plan.json --built-dir built \
+              --output release --notes release-notes.md --repository "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Verify native tag protection, publish and check remote bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          policy_ids="$(gh api --paginate -X GET "repos/$GITHUB_REPOSITORY/rulesets?includes_parents=true&targets=tag&per_page=100" \
+            --jq '.[] | select(.name == "wotmods-release-tags" and .enforcement == "active") | .id')"
+          if [[ ! "$policy_ids" =~ ^[1-9][0-9]*$ ]]; then
+            echo '::error::Missing or ambiguous active wotmods-release-tags Ruleset. Refusing to publish.' >&2
+            exit 1
+          fi
+          policy="$(gh api -X GET "repos/$GITHUB_REPOSITORY/rulesets/$policy_ids")"
+          if ! jq -e --arg id "$policy_ids" \
+             --arg approved_id "$WOTMODS_REVIEWED_RULESET_ID" \
+             --arg approved_at "$WOTMODS_REVIEWED_RULESET_UPDATED_AT" '
+             (.id | tostring) == $id and .name == "wotmods-release-tags" and
+             .target == "tag" and .enforcement == "active" and
+             .conditions.ref_name.include == ["refs/tags/wotmods-v*"] and
+             (.conditions.ref_name.exclude // []) == [] and
+             ([.rules[]?.type] | index("creation") == null and
+              index("update") != null and index("deletion") != null) and
+             (if has("bypass_actors") then .bypass_actors == []
+              else $approved_id == $id and $approved_at != "" and .updated_at == $approved_at end)
+             ' <<< "$policy" >/dev/null; then
+            echo '::error::Unreviewed tag Ruleset; owner must attest its exact revision with no bypass actors.' >&2
+            exit 1
+          fi
+
+          # Native Rulesets protect the tag throughout gh release create's
+          # draft -> upload -> publish operations. Never retarget an existing tag.
+          check_remote_tag() {
+            local peeled direct sha
+            peeled="$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG^{}")"
+            if [[ -n "$peeled" ]]; then
+              sha="${peeled%%$'\t'*}"
+            else
+              direct="$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG")"
+              sha="${direct%%$'\t'*}"
+            fi
+            [[ "$sha" == "$SOURCE_SHA" ]] || {
+              echo 'Protected release tag is missing or points to a different commit' >&2
+              return 1
+            }
+          }
+
+          state="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 2000 --json tagName,isDraft |
+            jq -r --arg tag "$RELEASE_TAG" '[.[] | select(.tagName == $tag)] |
+              if length == 0 then "absent" elif length == 1 then
+              (if .[0].isDraft then "draft" else "published" end) else "duplicate" end')"
+          case "$state" in
+            absent|published) ;;
+            draft) echo '::error::Incomplete immutable-release draft. Resolve manually, then rerun.' >&2; exit 1 ;;
+            *) echo '::error::Ambiguous GitHub Release state' >&2; exit 1 ;;
+          esac
+          refs="$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}")"
+          python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"
+          if [[ -z "$refs" ]]; then
+            git tag "$RELEASE_TAG" "$SOURCE_SHA"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+          git fetch --force --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$SOURCE_SHA"
+          check_remote_tag
+
+          if [[ "$state" == absent ]]; then
+            if [[ -n "$PREVIOUS_TAG" ]]; then
+              gh release create "$RELEASE_TAG" release/*.zip --repo "$GITHUB_REPOSITORY" \
+                --verify-tag --latest --title "WotMods ${RELEASE_TAG#wotmods-}" \
+                --notes-file release-notes.md --generate-notes --notes-start-tag "$PREVIOUS_TAG"
+            else
+              gh release create "$RELEASE_TAG" release/*.zip --repo "$GITHUB_REPOSITORY" \
+                --verify-tag --latest --title "WotMods ${RELEASE_TAG#wotmods-}" \
+                --notes-file release-notes.md --generate-notes
+            fi
+          else
+            echo 'Existing published immutable release: verifying without mutation.'
+          fi
+          check_remote_tag
+          metadata="$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isDraft,isPrerelease,isImmutable,assets)"
+          jq -e --arg tag "$RELEASE_TAG" \
+            '(.tagName == $tag and .isDraft == false and .isPrerelease == false and
+              .isImmutable == true)' <<< "$metadata" >/dev/null
+          latest_now="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 2000 \
+            --json tagName,isLatest --jq '.[] | select(.isLatest == true) | .tagName')"
+          [[ "$latest_now" == "$RELEASE_TAG" ]] || { echo 'Release is not uniquely Latest' >&2; exit 1; }
+          expected="$(find release -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          listed="$(jq -r '.assets[].name' <<< "$metadata" | LC_ALL=C sort)"
+          [[ "$expected" == "$listed" ]] || { echo 'Published asset list mismatch' >&2; exit 1; }
+          remote="$(mktemp -d)"
+          trap 'rm -rf -- "$remote"' EXIT
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$remote"
+          received="$(find "$remote" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          [[ "$expected" == "$received" ]] || { echo 'Downloaded asset list mismatch' >&2; exit 1; }
+          while IFS= read -r name; do
+            cmp -- "release/$name" "$remote/$name" || exit 1
+          done <<< "$expected"
+          python3 scripts/release_installers.py verify "$remote"
+          check_remote_tag
+          echo "Published and verified: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"

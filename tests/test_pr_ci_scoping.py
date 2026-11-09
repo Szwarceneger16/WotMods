@@ -42,9 +42,8 @@ class PrBuildScopingTests(unittest.TestCase):
         for path in ('source/mod_staysharp_medkit.py', 'source/build_audio_bank.py',
                      'assets/voices/pl.wav.b85', 'assets/voices/manifest.json',
                      'VERSION', 'staysharp.medkit.example.json', 'CHANGELOG.md',
-                     'docs/AUDIO.md', 'tests/test_packaging.py',
-                     'tests/test_staysharp_ci_artifact.py', '.github/workflows/ci.yml',
-                     '.github/workflows/release.yml'):
+                     'docs/AUDIO.md', 'docs/INSTALACJA.md', 'tests/test_packaging.py',
+                     'tests/test_staysharp_ci_artifact.py', '.github/workflows/ci.yml'):
             with self.subTest(path=path):
                 self.assertEqual(selected([path]), {'medkit'})
 
@@ -55,9 +54,8 @@ class PrBuildScopingTests(unittest.TestCase):
                      'mods/sessionstats/languages/pl.json',
                      'mods/sessionstats/tools/build.py', 'scripts/sessionstats/python27.sh',
                      'scripts/sessionstats/source_state.py',
-                     'tests/test_sessionstats_release_scoping.py',
-                     '.github/workflows/sessionstats-ci.yml',
-                     '.github/workflows/sessionstats-release.yml'):
+                     'tests/test_sessionstats_pipeline.py',
+                     '.github/workflows/sessionstats-ci.yml'):
             with self.subTest(path=path):
                 self.assertEqual(selected([path]), {'sessionstats'})
 
@@ -94,6 +92,10 @@ class PrBuildScopingTests(unittest.TestCase):
     def test_shared_inputs_validate_both_mods(self):
         for path in ('scripts/release_installers.py', 'scripts/release_snapshot.sh',
                      'scripts/release_version.py', 'scripts/privacy_audit.py',
+                     'scripts/release_coordinator.py', 'scripts/release_modules.json',
+                     'scripts/build_release_module.sh', '.github/workflows/wotmods-release.yml',
+                     '.github/workflows/wot-update-watch.yml',
+                     'tests/test_release_coordinator.py', 'tests/test_unified_release_workflow.py',
                      'tests/test_release_installers.py', 'tests/test_release_pipeline.py',
                      'tests/test_release_snapshot.py', 'tests/test_pr_ci_scoping.py'):
             with self.subTest(path=path):
@@ -126,7 +128,7 @@ class PrBuildScopingTests(unittest.TestCase):
         medkit = WORKFLOWS['medkit'].read_text().split('uses: actions/upload-artifact@', 1)[1]
         stats = WORKFLOWS['sessionstats'].read_text().split('uses: actions/upload-artifact@', 1)[1]
         self.assertIn('path: pr-artifact/StaySharp-Medkit-v*.zip', medkit)
-        self.assertIn('path: mods/sessionstats/dist/wot-statystyki-sesji-v*.zip', stats)
+        self.assertIn('path: pr-artifact-sessionstats/Session-Stats-v*.zip', stats)
         self.assertNotIn('sessionstats', medkit)
         self.assertNotIn('StaySharp-Medkit', stats)
 

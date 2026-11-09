@@ -52,21 +52,22 @@ class SessionStatsPipelineTests(unittest.TestCase):
         workflow = (ROOT/'.github/workflows/sessionstats-ci.yml').read_text()
         upload = workflow.split('uses: actions/upload-artifact@', 1)[1]
         path = re.search(r'^          path: (.+)$', upload, re.MULTILINE).group(1)
-        prefix = 'mods/sessionstats/dist/'
-        self.assertTrue(path.startswith(prefix))
-        selected = sorted(self.folder.glob(path[len(prefix):]))
-        assets = release.inputs(self.folder, self.version)
-        self.assertEqual(selected, [assets['wot-statystyki-sesji-v0.2.9.zip']])
+        self.assertEqual(path, 'pr-artifact-sessionstats/Session-Stats-v*.zip')
         self.assertRegex(upload, r'(?m)^          archive: false$')
         self.assertRegex(upload, r'(?m)^          if-no-files-found: error$')
         self.assertLess(workflow.index('run: bash scripts/sessionstats/validate.sh'),
+                        workflow.index('scripts/release_installers.py package pr-artifact-sessionstats'))
+        self.assertLess(workflow.index('scripts/release_installers.py package pr-artifact-sessionstats'),
                         workflow.index('uses: actions/upload-artifact@'))
-        # The publisher still receives the complete verified set, not only the ZIP.
-        publisher = (ROOT/'.github/workflows/sessionstats-release.yml').read_text()
-        handoff = publisher.split('uses: actions/upload-artifact@', 1)[1].split('\n  publish:', 1)[0]
-        release_path = re.search(r'^          path: (.+)$', handoff, re.MULTILINE).group(1)
-        self.assertEqual(set(self.folder.glob(release_path[len(prefix):])), set(assets.values()))
-        self.assertNotIn('archive: false', handoff)
+        self.assertIn('--source mods/sessionstats/dist --mod sessionstats', workflow)
+        # PR and production package the identical installer format, but only
+        # production allocates versions and publishes protected Releases.
+        builder = (ROOT/'scripts/build_release_module.sh').read_text()
+        publisher = (ROOT/'.github/workflows/wotmods-release.yml').read_text()
+        self.assertIn('scripts/sessionstats/release.py --verify-directory', builder)
+        self.assertIn('scripts/release_installers.py package release-module', builder)
+        self.assertIn('path: release-module/*.zip', publisher)
+        self.assertNotIn('archive: false', publisher)
 
     def test_second_installer_blocks_validation_even_with_valid_checksums(self):
         (self.folder/'wot-statystyki-sesji-v0.2.8.zip').write_bytes(b'stale')

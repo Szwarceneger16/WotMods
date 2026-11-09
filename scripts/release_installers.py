@@ -395,13 +395,16 @@ def normalize(directory, client=CLIENT):
     manifest(directory)
 
 
-def verify_directory(directory):
+def verify_directory(directory, expected_kinds=None):
+    expected = set(KINDS) if expected_kinds is None else set(expected_kinds)
+    if not expected or not expected <= set(KINDS):
+        raise ValueError('Invalid expected installer module set')
     paths = list(Path(directory).iterdir())
-    if len(paths) != 2 or any(not p.is_file() or p.is_symlink() for p in paths):
-        raise ValueError('Release must contain exactly two installer ZIPs')
+    if len(paths) != len(expected) or any(not p.is_file() or p.is_symlink() for p in paths):
+        raise ValueError('Release must contain exactly the expected installer ZIPs')
     reports = [verify(p) for p in paths]
-    if {r[0] for r in reports} != set(KINDS):
-        raise ValueError('Release needs one installer for each mod')
+    if {r[0] for r in reports} != expected:
+        raise ValueError('Release needs one installer for each expected mod')
     if len({r[2] for r in reports}) != 1:
         raise ValueError('Installers target different game clients')
     # Compare IDs and resource paths without compiling/rebuilding either mod.

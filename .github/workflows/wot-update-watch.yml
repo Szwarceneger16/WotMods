@@ -27,7 +27,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Compare verified immutable installers and dispatch existing publishers
+          fetch-depth: 0
+      - name: Compare immutable installers and dispatch the snapshot coordinator
         env:
           GH_TOKEN: ${{ github.token }}
           WOT_CLIENT_VERSION: ${{ needs.updates.outputs.client_version }}
