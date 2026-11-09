@@ -272,6 +272,7 @@ class StatsService(object):
         self._pages = {}
         self._orders = {}
         self._map_pages = {}
+        self._vehicle_pages = {}
         self._battle_focus = {}
         self._receipt = None
         self._intake = None
@@ -570,18 +571,24 @@ class StatsService(object):
         return True
 
     def set_map_battles(self, scope, map_id, page, period_id):
-        if (not self.ready or self._closed or not isinstance(map_id, (text_type, bytes)) or
+        return self._set_group_battles(scope, 'maps', map_id, page, period_id, self._map_pages)
+
+    def set_vehicle_battles(self, scope, vehicle_id, page, period_id):
+        return self._set_group_battles(scope, 'vehicles', vehicle_id, page, period_id, self._vehicle_pages)
+
+    def _set_group_battles(self, scope, kind, group_id, page, period_id, opened):
+        if (not self.ready or self._closed or not isinstance(group_id, (text_type, bytes)) or
                 isinstance(page, bool) or not isinstance(page, int) or not 0 <= page < 10 ** 8):
             return False
         index = self._view_index(scope)
-        map_id = _text(map_id)
-        if index is None or period_id != index.identifier or map_id not in index.groups['maps']:
+        group_id = _text(group_id)
+        if index is None or period_id != index.identifier or group_id not in index.groups[kind]:
             return False
-        current = self._map_pages.get(scope)
+        current = opened.get(scope)
         if current is None or current['period_id'] != period_id:
             current = {'period_id': period_id, 'pages': {}}
-            self._map_pages[scope] = current
-        current['pages'][map_id] = page
+            opened[scope] = current
+        current['pages'][group_id] = page
         return True
 
     def select_battle(self, scope, identifier, period_id, request_id):
@@ -606,7 +613,9 @@ class StatsService(object):
     def _scope_snapshot(self, name, index, label, started_at):
         opened = self._map_pages.get(name, {})
         map_pages = opened.get('pages') if opened.get('period_id') == index.identifier else None
-        scope = index.snapshot(label, started_at, self._pages.get(name), self._orders.get(name), map_pages)
+        vehicles = self._vehicle_pages.get(name, {})
+        vehicle_pages = vehicles.get('pages') if vehicles.get('period_id') == index.identifier else None
+        scope = index.snapshot(label, started_at, self._pages.get(name), self._orders.get(name), map_pages, vehicle_pages)
         focus = self._battle_focus.get(name)
         if (focus and focus['period_id'] == index.identifier and
                 any(row['id'] == focus['id'] for row in scope['battles'])):
@@ -971,6 +980,7 @@ class StatsService(object):
         self._indexes['manual'] = ScopeIndex(new_id, self.expected_table)
         self._pages.pop('manual', None)
         self._map_pages.pop('manual', None)
+        self._vehicle_pages.pop('manual', None)
         self._battle_focus.pop('manual', None)
         return new_id
 
@@ -1035,6 +1045,7 @@ class StatsService(object):
             self._timeline_error = None
             self._pages.pop('timeline', None)
             self._map_pages.pop('timeline', None)
+            self._vehicle_pages.pop('timeline', None)
             self._battle_focus.pop('timeline', None)
             if start or end:
                 from .projection import ScopeIndex

@@ -68,6 +68,14 @@ module.exports=async ({browser,nativeHost,check})=>{
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});
       await viewport(900,-2);await verify('battles',base.battles,'below a configured900px threshold');
       await viewport(900,2);await verify('battles',900,'above a configured900px threshold');
+      await page.evaluate(()=>{const payload=JSON.parse(model.payload);delete payload.appearance.wide_card_widths;
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});
+      for(const group of Object.keys(base)) {
+        await page.locator('#ss-group-'+group).click();await frames(page);
+        await viewport(720,-2);await verify(group,base[group],'below the default720px threshold');
+        await viewport(720,2);await verify(group,720,'above the default720px threshold');
+        await viewport(720,140);await verify(group,720,'without stretching beyond the default720px threshold');
+      }
     } finally {await page.close();}
   }
 };

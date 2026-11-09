@@ -97,10 +97,12 @@ function gamefaceBackgrounds(css) {
     assert.strictEqual(geometry.button.width, 44);
     assert.strictEqual(geometry.button.height, 36);
     assert.strictEqual(geometry.background, 'none');
-    assert.ok(geometry.badge.y < geometry.icon.y, 'WN8 must sit above the bars');
-    assert.ok(geometry.badge.x > geometry.icon.x, 'WN8 must sit toward the upper right');
-    assert.ok(geometry.badge.bottom <= geometry.icon.y, 'badge must not cover the tallest bar');
-    assert.ok(geometry.badge.right <= geometry.button.right, 'badge must fit inside the compact button');
+    assert.ok(geometry.badge.x < geometry.icon.x && geometry.badge.y > geometry.button.y,
+      'WN8 must move left and down into the short-bar space');
+    assert.ok(geometry.badge.bottom < geometry.bars[0].y && geometry.badge.right < geometry.bars[1].x,
+      'WN8 must stay above the first bar and left of the taller bars');
+    assert.ok(geometry.badge.x >= geometry.button.x && geometry.badge.right <= geometry.button.right &&
+      geometry.badge.bottom <= geometry.button.bottom, 'WN8 must fit inside the compact button');
     assert.deepStrictEqual(geometry.bars.map(bar => bar.height), [9,13,18]);
     assert.deepStrictEqual(geometry.barColors, ['rgb(150, 154, 157)','rgb(150, 154, 157)','rgb(150, 154, 157)'],
       'bars must remain painted when Gameface rejects currentColor backgrounds');

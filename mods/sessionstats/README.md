@@ -150,12 +150,14 @@ partial card settings remain unchanged. For example:
 
 The layout always has at most two columns. When two wider cards fit, it switches
 both columns to a second fixed width, rather than adding another column or
-stretching cards continuously. Each tab defaults to 800 logical pixels in this
+stretching cards continuously. Each tab defaults to 720 logical pixels in this
 wide preset; `wide_cards` accepts 480–1200 independently per tab. A wide value
 smaller than the tab's ordinary card width uses the ordinary width instead.
+The untouched previous 800-pixel preset follows the new 720-pixel default on
+load; partial and customized presets remain unchanged, and the file is preserved.
 
 ```json
-{"wide_cards": {"battles": 800, "vehicles": 800, "maps": 800, "tiers": 800}}
+{"wide_cards": {"battles": 720, "vehicles": 720, "maps": 720, "tiers": 720}}
 ```
 
 The title bar includes Maximize/Restore and a background transparency slider.
@@ -208,3 +210,9 @@ Use the date dropdown between Previous and Next for newest/oldest ordering. The 
 Sorting covers the complete selected period before pages of 40 rows are sent to the UI, and changes return to page one. Vehicles, Maps, Battles and the new Tiers tab have independent choices in each session scope, including Installation. Tiers includes XI and preserves an unknown-tier group for incomplete metadata. WN8 Min/Avg/Max uses individual battle WN8, and credits use per-battle net earnings, including losses.
 
 The selectors use local Gameface-compatible dropdowns with keyboard navigation. See [sorting and tier behavior](docs/SORTING_AND_TIERS.md).
+
+Vehicle cards provide the same paginated battle history and Show battle links as
+map cards. The selected battle keeps a visible orange frame across snapshot
+refreshes in the same period. Active net-credit sorting displays the exact
+per-battle Min/Average/Max value beside the vehicle metadata; the finance table
+still reports period totals.

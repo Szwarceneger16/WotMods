@@ -5,7 +5,13 @@ module.exports=async ({browser,nativeHost,check})=>{
  check('The panel ships all seven supported locale catalogs',
   ['en','pl','de','fr','es','ru','uk'].every(code=>catalogs[code] && typeof catalogs[code].title==='string'));
  const page=await nativeHost(browser,{});
- await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',selected:'auto',messages:{}};model.payload=JSON.stringify(s);GRZSessionStats.update(model.payload);});
+ await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',selected:'auto',messages:{}};
+  const timeline=s.scopes.timeline=JSON.parse(JSON.stringify(s.scopes.manual));
+  timeline.from_point=timeline.to_point='';timeline.time_points=[['synthetic-clock',1793709300]];timeline.time_point_names={};
+  // Native Gameface can expose a stale reflected property after setAttribute.
+  Object.defineProperty(document.documentElement,'lang',{configurable:true,get(){return 'en';}});
+  model.payload=JSON.stringify(s);GRZSessionStats.update(model.payload);});
+ await page.locator('#ss-scope-manual').click();
  check('Language picker defaults to Automatic',await page.locator('#ss-language .ss-select-trigger .ss-control-label').textContent()==='Automatic');
  for(const code of ['pl','fr','de','es','uk','ru','en','auto']){
   await page.locator('#ss-language [role=combobox]').click();
@@ -17,7 +23,19 @@ module.exports=async ({browser,nativeHost,check})=>{
   const resolved=code==='auto'?'pl':code;
   await page.evaluate(({code,resolved,messages})=>{const s=JSON.parse(model.payload);s.localization={selected:code,language:resolved,messages};model.payload=JSON.stringify(s);GRZSessionStats.update(model.payload);},{code,resolved,messages:catalogs[resolved]});
   check('Native language update changes visible captions immediately: '+code,await page.locator('#ss-refresh .ss-control-label').textContent()===catalogs[resolved].refresh);
+  const clock=await page.evaluate(()=>({property:document.documentElement.lang,attribute:document.documentElement.getAttribute('lang'),
+   from:document.querySelector('#ss-timeline-from .ss-select-trigger .ss-control-label').textContent,
+   to:document.querySelector('#ss-timeline-to .ss-select-trigger .ss-control-label').textContent,
+   custom:document.querySelector('#ss-timeline-from [data-value="__custom__"] .ss-control-label').textContent,
+   chronology:document.querySelector('#ss-sort-chronology .ss-select-trigger .ss-control-label').textContent,
+   newest:document.querySelector('#ss-sort-chronology [data-value="newest"] .ss-control-label').textContent,
+   oldest:document.querySelector('#ss-sort-chronology [data-value="oldest"] .ss-control-label').textContent}));
+  check('Native timeline and time-order wrappers translate immediately despite a stale lang property: '+code+': '+JSON.stringify(clock),
+   clock.property==='en' && clock.attribute===resolved && clock.from===catalogs[resolved]['timeline.beginning'] &&
+   clock.to===catalogs[resolved]['timeline.now'] && clock.custom===catalogs[resolved]['timeline.custom'] &&
+   clock.chronology===catalogs[resolved]['sort.newest'] && clock.newest===catalogs[resolved]['sort.newest'] && clock.oldest===catalogs[resolved]['sort.oldest']);
  }
+ await page.evaluate(()=>{delete document.documentElement.lang;});
  for(const width of [320,744]){
   await page.setViewportSize({width,height:820});
   for(const [code,messages] of Object.entries(catalogs)){

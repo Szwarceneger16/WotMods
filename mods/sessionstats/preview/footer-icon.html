@@ -19,6 +19,8 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
     min-width:44rem;
     max-width:44rem;
     height:36rem;
+    min-height:36rem;
+    max-height:36rem;
     padding:0;
     margin:0;
     border:0;
@@ -36,7 +38,7 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
 .grz-session-footer-button .grz-session-footer-icon {
     position:absolute;
     display:block;
-    left:8rem;
+    left:17rem;
     bottom:5rem;
     width:18rem;
     height:18rem;
@@ -56,10 +58,11 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
 .grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
 .grz-session-footer-button .grz-session-footer-rating {
     position:absolute;
-    top:1rem;
-    right:1rem;
+    top:10rem;
+    left:0;
     display:block;
     width:22rem;
+    height:11rem;
     margin:0;
     color:#bdc0c2;
     font-family:Warhelios, Arial, sans-serif;
@@ -69,23 +72,24 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
     letter-spacing:0;
     text-align:center;
     white-space:nowrap;
+    overflow:hidden;
     text-shadow:0 1rem 1rem #000;
     pointer-events:none;
 }
 .grz-session-footer-button:hover .grz-session-footer-rating { color:#eee6c9; }
 
 /* CSS animation stays inside the renderer; no Python/JS frame callbacks.
-   Fits above the bars and left of WN8 inside the existing 44 x 36 button. */
+   Fits above the tallest bar, clear of WN8, inside the fixed 44 x 36 slot. */
 .grz-session-footer-button .grz-session-footer-spinner {
     position:absolute;
     display:none;
     box-sizing:border-box;
-    left:10rem;
+    left:27rem;
     top:2rem;
-    width:10rem;
-    height:10rem;
-    border:2rem solid rgba(207,190,140,0.25);
-    border-top-color:#dfd3a4;
+    width:8rem;
+    height:8rem;
+    border:2rem solid rgba(150,154,157,0.25);
+    border-top-color:#969a9d;
     border-radius:5rem;
     pointer-events:none;
     animation:none;
@@ -111,6 +115,8 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
     min-width:44rem;
     max-width:44rem;
     height:36rem;
+    min-height:36rem;
+    max-height:36rem;
     padding:0;
     margin:0;
     border:0;
@@ -128,7 +134,7 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
 .grz-session-footer-button .grz-session-footer-icon {
     position:absolute;
     display:block;
-    left:8rem;
+    left:17rem;
     bottom:5rem;
     width:18rem;
     height:18rem;
@@ -148,10 +154,11 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
 .grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
 .grz-session-footer-button .grz-session-footer-rating {
     position:absolute;
-    top:1rem;
-    right:1rem;
+    top:10rem;
+    left:0;
     display:block;
     width:22rem;
+    height:11rem;
     margin:0;
     color:#bdc0c2;
     font-family:Warhelios, Arial, sans-serif;
@@ -161,23 +168,24 @@ body { margin:0; min-height:96px; display:flex; align-items:center; justify-cont
     letter-spacing:0;
     text-align:center;
     white-space:nowrap;
+    overflow:hidden;
     text-shadow:0 1rem 1rem #000;
     pointer-events:none;
 }
 .grz-session-footer-button:hover .grz-session-footer-rating { color:#eee6c9; }
 
 /* CSS animation stays inside the renderer; no Python/JS frame callbacks.
-   Fits above the bars and left of WN8 inside the existing 44 x 36 button. */
+   Fits above the tallest bar, clear of WN8, inside the fixed 44 x 36 slot. */
 .grz-session-footer-button .grz-session-footer-spinner {
     position:absolute;
     display:none;
     box-sizing:border-box;
-    left:10rem;
+    left:27rem;
     top:2rem;
-    width:10rem;
-    height:10rem;
-    border:2rem solid rgba(207,190,140,0.25);
-    border-top-color:#dfd3a4;
+    width:8rem;
+    height:8rem;
+    border:2rem solid rgba(150,154,157,0.25);
+    border-top-color:#969a9d;
     border-radius:5rem;
     pointer-events:none;
     animation:none;

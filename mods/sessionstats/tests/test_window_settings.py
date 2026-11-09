@@ -92,12 +92,12 @@ class WindowConfigTests(unittest.TestCase):
         self.assertEqual(value['window'], {'background_transparency': 100, 'maximized': True,
             'restored_width': 860, 'restored_height': 620})
         self.assertEqual(value['wide_cards']['battles'], 1200)
-        self.assertEqual(value['wide_cards']['maps'], 800)
+        self.assertEqual(value['wide_cards']['maps'], 720)
         result = appearance.build_presentation(value)
         result['window_settings']['maximized'] = False
         result['wide_card_widths']['maps'] = 999
         self.assertTrue(value['window']['maximized'])
-        self.assertEqual(value['wide_cards']['maps'], 800)
+        self.assertEqual(value['wide_cards']['maps'], 720)
         self.assertEqual(appearance.window_settings_patch({'maximized': b'true', 'restored_width': b'900'}, True),
                          {'maximized': True, 'restored_width': 900})
         self.assertIsNone(appearance.window_settings_patch({'maximized': '1'}, True))

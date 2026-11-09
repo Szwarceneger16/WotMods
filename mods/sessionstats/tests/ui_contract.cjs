@@ -575,6 +575,8 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-postbattle.cjs',browser);
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
+  await runFeatureSuite('./ui-sort-details.cjs',browser);
+  await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
   await runFeatureSuite('./ui-pagination.cjs',browser);
   await runFeatureSuite('./ui-outcomes.cjs',browser);
@@ -802,6 +804,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-window-settings.cjs',browser);
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
+  await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);

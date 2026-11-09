@@ -1614,7 +1614,7 @@ class Runtime(object):
             else:
                 return
             self._window_call('refresh')
-        elif action in ('page', 'sort', 'map_battles', 'battle_select') and self.active_service is not None:
+        elif action in ('page', 'sort', 'map_battles', 'vehicle_battles', 'battle_select') and self.active_service is not None:
             if getter('account_key') != self.active_key:
                 return
             scope, group = getter('scope'), getter('group')
@@ -1645,6 +1645,8 @@ class Runtime(object):
                     return
                 if action == 'map_battles':
                     accepted = service.set_map_battles(scope, getter('map_id'), int(raw_page), period_id)
+                elif action == 'vehicle_battles':
+                    accepted = service.set_vehicle_battles(scope, getter('vehicle_id'), int(raw_page), period_id)
                 else:
                     accepted = service.set_page(scope, group, int(raw_page), period_id)
                 if not accepted:

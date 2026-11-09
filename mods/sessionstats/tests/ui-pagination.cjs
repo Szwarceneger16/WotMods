@@ -29,7 +29,7 @@ module.exports = async ({browser,nativeHost,check}) => {
     ['ss-page-previous','ss-page-next'].every(id=>{
       const button=document.getElementById(id),box=button.getBoundingClientRect();
       const style=getComputedStyle(button),label=getComputedStyle(button.querySelector('.ss-control-label'));
-      return box.width>=64 && box.width<=100 && box.height<=27 && label.fontSize==='12px' &&
+      return box.width>=64 && box.width<=100 && Math.abs(box.height-30)<=1 && label.fontSize==='12px' &&
         style.backgroundImage!=='none';
     })));
   for(const width of [320,744]) {

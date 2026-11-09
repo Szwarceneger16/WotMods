@@ -96,20 +96,60 @@ async function setActivity(page, pending, processing, wrapped = false) {
       return {button:box(el),spinner:box(el.querySelector('.grz-session-footer-spinner')),
         icon:box(el.querySelector('.grz-session-footer-icon')),badge:box(el.querySelector('.grz-session-footer-rating')),
         bars:el.querySelectorAll('.grz-session-footer-bar').length,text:el.textContent.trim(),
-        pointer:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).pointerEvents};
+        pointer:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).pointerEvents,
+        spinnerColor:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopColor};
     });
-    check('Busy button retains its 44 x 36 footprint, all bars and superscript WN8',
+    check('Busy button retains its 44 x 36 footprint, all bars and WN8 in the short-bar space',
       geometry.button.width===44 && geometry.button.height===36 && geometry.bars===3 && geometry.text==='WN8');
-    check('Spinner fits above the bar glyph and left of WN8 without overlap or native clipping',
+    check('Muted gray spinner fits above the tall bar and right of WN8 without overlap or native clipping',
       geometry.spinner.x>=geometry.button.x && geometry.spinner.y>=geometry.button.y &&
-      geometry.spinner.bottom<=geometry.icon.y && geometry.spinner.right<geometry.badge.x &&
-      geometry.spinner.right<=geometry.button.right && geometry.spinner.bottom<=geometry.button.bottom);
+      geometry.spinner.bottom<=geometry.icon.y && geometry.badge.right<geometry.spinner.x &&
+      geometry.spinner.right<=geometry.button.right && geometry.spinner.bottom<=geometry.button.bottom &&
+      geometry.spinnerColor==='rgb(150, 154, 157)');
     check('Spinner cannot intercept native button input',geometry.pointer==='none');
+    for (const scale of [1,1.5,2]) {
+      await page.evaluate(scale => {document.documentElement.style.fontSize=scale+'px';},scale);
+      await setActivity(page,0,false);
+      const baseline=await button.evaluate(el => {
+        const box=node=>{const r=node.getBoundingClientRect();return [r.x,r.y,r.width,r.height];};
+        return {slot:box(el),native:box(document.getElementById('native-button'))};
+      });
+      for (const [pending,processing] of [[1,false],[9999,false],[2,true],[0,true],[0,false]]) {
+        await setActivity(page,pending,processing);
+        await button.hover();
+        const fixed=await button.evaluate(el => {
+          const box=node=>{const r=node.getBoundingClientRect();return [r.x,r.y,r.width,r.height];};
+          return {slot:box(el),native:box(document.getElementById('native-button'))};
+        });
+        check('Fixed footer slot and native neighbor at '+scale+'x, pending='+pending+', processing='+processing,
+          JSON.stringify(fixed)===JSON.stringify(baseline) && fixed.slot[2]===44*scale && fixed.slot[3]===36*scale);
+        if (pending || processing) {
+          for (const time of [0,125,250,375,500,625,750,875]) {
+            check('Spinner stays inside its slot and above the bars throughout rotation at '+scale+'x/'+time+'ms',
+              await spinner.evaluate((el,time) => {
+                el.getAnimations().forEach(animation=>{animation.pause();animation.currentTime=time;});
+                const box=el.getBoundingClientRect(),slot=el.parentNode.getBoundingClientRect();
+                const badge=el.parentNode.querySelector('.grz-session-footer-rating').getBoundingClientRect();
+                const icon=el.parentNode.querySelector('.grz-session-footer-icon').getBoundingClientRect();
+                return box.left>=slot.left && box.right<=slot.right && box.top>=slot.top &&
+                  box.bottom<=icon.top && badge.right<box.left;
+              },time));
+          }
+        }
+      }
+      await button.evaluate(el=>{el.disabled=true;});
+      const disabled=await button.boundingBox();
+      check('Disabled footer button keeps the fixed slot at '+scale+'x',
+        disabled.width===44*scale && disabled.height===36*scale);
+      await button.evaluate(el=>{el.disabled=false;});
+    }
+    await page.evaluate(()=>{document.documentElement.style.fontSize='1px';});
+    await setActivity(page,3,false);
     if (process.env.GRZ_ACTIVITY_SCREENSHOT) {
       await page.locator('.App_footer_verified').screenshot({path:process.env.GRZ_ACTIVITY_SCREENSHOT});
     }
     await spinner.evaluate(el => {el.getAnimations().forEach(a=>a.play());});
-    await button.click({position:{x:15,y:7}});
+    await button.click({position:{x:31,y:6}});
     await button.focus();
     await page.keyboard.press('Enter');
     check('Mouse over the spinner and keyboard still open statistics exactly once each',
@@ -125,7 +165,7 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'px';},scale);
       check('Spinner and button scale with native rem at '+scale+'x',
         (await button.boundingBox()).width===44*scale &&
-        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===10*scale,scale));
+        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===8*scale,scale));
     }
     await page.evaluate(()=>{document.documentElement.style.fontSize='1px';});
     await setActivity(page,0,false);

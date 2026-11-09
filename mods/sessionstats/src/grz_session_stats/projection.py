@@ -206,7 +206,7 @@ class Group(object):
         self.name_field = 'vehicle_name' if kind == 'vehicles' else 'map_name'
         self.records = {}
         self.order = []
-        self.battle_order = [] if kind == 'maps' else None
+        self.battle_order = [] if kind in ('maps', 'vehicles') else None
         self.totals = Totals()
         self.starts = Series()
 
@@ -353,12 +353,19 @@ class ScopeIndex(object):
             if not group.records:
                 del groups[group_id]
 
+    @staticmethod
+    def _group_sort_value(group, options):
+        metric = options['metric']
+        series = (group.totals.money['credits']['net'] if metric == 'credits_net' else
+                  group.totals.series.get(metric))
+        return series.snapshot().get(options['statistic']) if series else None
+
     def _ordered(self, kind, options):
         signature = tuple(options[key] for key in sorted(DEFAULT_ORDER))
         cached = self._sort_cache.get(kind)
         if cached and cached[0] == signature:
             return cached[1]
-        metric, statistic = options['metric'], options['statistic']
+        metric = options['metric']
         ascending_time = options['chronology'] == 'oldest'
         def key(entry):
             if kind == 'battles':
@@ -374,9 +381,7 @@ class ScopeIndex(object):
                 identifier = entry.identifier
                 times = entry.starts.ordered
                 time = (times[0] if ascending_time else times[-1]) if times else None
-                series = (entry.totals.money['credits']['net'] if metric == 'credits_net' else
-                          entry.totals.series.get(metric))
-                value = series.snapshot().get(statistic) if series else None
+                value = self._group_sort_value(entry, options)
             chronology = (time is None, (time or 0) if ascending_time else -(time or 0), identifier)
             if metric == 'off':
                 return chronology
@@ -401,7 +406,13 @@ class ScopeIndex(object):
         return position // PAGE_SIZE
 
     def map_battles(self, identifier, page):
-        group = self.groups['maps'].get(identifier)
+        return self._group_battles('maps', identifier, page)
+
+    def vehicle_battles(self, identifier, page):
+        return self._group_battles('vehicles', identifier, page)
+
+    def _group_battles(self, kind, identifier, page):
+        group = self.groups[kind].get(identifier)
         if group is None:
             return None
         total = len(group.battle_order)
@@ -413,10 +424,11 @@ class ScopeIndex(object):
             record, item = self.records[key[1]]
             rows.append({'id': record['arena_id'],
                          'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],
+                         'map': (record.get('map_name') or message('unknown.map'))[:256],
                          'started_at': record.get('started_at'), 'outcome': record.get('outcome'), 'wn8': item[1]})
         return {'items': rows, 'page': page, 'pages': pages, 'total': total, 'page_size': MAP_BATTLE_PAGE_SIZE}
 
-    def snapshot(self, label, started_at, pages=None, orders=None, map_pages=None):
+    def snapshot(self, label, started_at, pages=None, orders=None, map_pages=None, vehicle_pages=None):
         pages, orders = pages or {}, orders or {}
         result = {'label': label, 'started_at': started_at, 'pending': self.pending,
                   'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {}, 'period_id': self.identifier}
@@ -453,11 +465,16 @@ class ScopeIndex(object):
                         row['xp_bonus_applied'] = True
                     rows.append(row)
             else:
-                rows = [group.snapshot() for group in ordered[start:start + PAGE_SIZE]]
-                if kind == 'maps' and map_pages:
+                visible = ordered[start:start + PAGE_SIZE]
+                rows = [group.snapshot() for group in visible]
+                if options['metric'] != 'off':
+                    for row, group in zip(rows, visible):
+                        row['sort_value'] = self._group_sort_value(group, options)
+                expanded_pages = map_pages if kind == 'maps' else vehicle_pages if kind == 'vehicles' else None
+                if expanded_pages:
                     for row in rows:
-                        if row['id'] in map_pages:
-                            row['battle_list'] = self.map_battles(row['id'], map_pages[row['id']])
+                        if row['id'] in expanded_pages:
+                            row['battle_list'] = self._group_battles(kind, row['id'], expanded_pages[row['id']])
             result[kind] = rows
             result['pagination'][kind] = {'page': page, 'page_size': PAGE_SIZE, 'total': total,
                                           'pages': max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)}

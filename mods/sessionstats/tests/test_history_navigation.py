@@ -117,7 +117,7 @@ class HistoryNavigationTests(unittest.TestCase):
         page = row['battle_list']
         self.assertEqual((page['page'], page['pages'], page['total'], page['page_size']), (1, 7, 63, 10))
         self.assertEqual([item['started_at'] for item in page['items']], list(range(214, 195, -2)))
-        self.assertTrue(all(set(item) == {'id', 'name', 'started_at', 'outcome', 'wn8'} for item in page['items']))
+        self.assertTrue(all(set(item) == {'id', 'name', 'map', 'started_at', 'outcome', 'wn8'} for item in page['items']))
         self.assertTrue(all(item['wn8'] is not None for item in page['items']))
         self.assertNotIn('battle_list', self.service.snapshot()['scopes']['launch']['maps'][0])
         self.assertEqual(self.service._state, before)
@@ -257,6 +257,139 @@ class NativeHistoryNavigationTests(unittest.TestCase):
                         {'from_date': b'\xff'}, {'to_date': '90'}, {'from_point': ''}, {'account_key': 'EU:other'}):
             self.window._model.onAction(dict(command, **changes))
             self.assertEqual(service._timeline_period_id(), period)
+
+    def test_vehicle_to_battle_navigation_crosses_native_bridge_for_every_scope(self):
+        for scope in ('launch', 'manual', 'instance'):
+            before = self.payload()['scopes'][scope]
+            command = {'scope': scope, 'period_id': before['period_id'], 'account_key': 'EU:7',
+                       'action': 'vehicle_battles', 'vehicle_id': '1', 'page': '0'}
+            self.window._model.onAction(command)
+            opened = next(row for row in self.payload()['scopes'][scope]['vehicles'] if row['id'] == '1')
+            target = opened['battle_list']['items'][0]['id']
+            command.update(action='battle_select', id=target, request_id='fixture-vehicle-jump')
+            self.window._model.onAction(command)
+            after = self.payload()['scopes'][scope]
+            self.assertEqual(after['battle_focus'], {'id': target, 'request_id': 'fixture-vehicle-jump'})
+            self.assertIn(target, [row['id'] for row in after['battles']])
+            self.assertEqual(after['summary'], before['summary'])
+
+    def test_vehicle_list_bridge_rejects_stale_account_period_and_malformed_page(self):
+        period = self.payload()['scopes']['manual']['period_id']
+        base = {'scope': 'manual', 'period_id': period, 'account_key': 'EU:7',
+                'action': 'vehicle_battles', 'vehicle_id': '1', 'page': '0'}
+        for changes in ({'account_key': 'EU:other'}, {'period_id': 'expired'}, {'page': '-1'},
+                        {'page': b'\xff'}, {'vehicle_id': 'missing'}):
+            self.window._model.onAction(dict(base, **changes))
+        self.assertEqual(self.mod.active_service._vehicle_pages, {})
+        old = self.window._model
+        self.window.close()
+        self.assertTrue(self.window.open())
+        old.onAction(base)
+        self.assertEqual(self.mod.active_service._vehicle_pages, {})
+        self.window._model.onAction(base)
+        self.assertIn('manual', self.mod.active_service._vehicle_pages)
+
+
+class VehicleHistoryAndSortTests(unittest.TestCase):
+    setUp = HistoryNavigationTests.__dict__['setUp']
+    tearDown = HistoryNavigationTests.__dict__['tearDown']
+    seed = HistoryNavigationTests.__dict__['seed']
+    finish = HistoryNavigationTests.__dict__['finish']
+
+    def test_vehicle_history_is_bounded_and_independent_of_map_and_other_scope_pages(self):
+        before, sequence = copy.deepcopy(self.service._state), self.service.store.sequence
+        scope = self.service.snapshot()['scopes']['manual']
+        period = scope['period_id']
+        self.assertNotIn('battle_list', scope['vehicles'][0])
+        self.assertTrue(self.service.set_vehicle_battles('manual', '1', 1, period))
+        self.assertTrue(self.service.set_map_battles('manual', 'map-a', 0, period))
+        updated = self.service.snapshot()['scopes']['manual']
+        page = updated['vehicles'][0]['battle_list']
+        self.assertEqual((page['page'], page['pages'], page['total'], page['page_size']), (1, 13, 125, 10))
+        self.assertEqual([item['started_at'] for item in page['items']], list(range(224, 214, -1)))
+        self.assertTrue(all(item['map'] == 'Mapa A' for item in page['items']))
+        self.assertEqual(updated['maps'][0]['battle_list']['page'], 0)
+        self.assertNotIn('battle_list', self.service.snapshot()['scopes']['launch']['vehicles'][0])
+        self.assertEqual(self.service._state, before)
+        self.assertEqual(self.service.store.sequence, sequence)
+
+    def test_vehicle_pages_reject_nonmembers_and_retire_on_range_or_manual_reset(self):
+        period = self.service.snapshot()['scopes']['manual']['period_id']
+        for identifier, page, token in [('missing', 0, period), ('1', 0, 'expired'),
+                                       ('1', -1, period), ('1', True, period), ('1', 1.5, period)]:
+            self.assertFalse(self.service.set_vehicle_battles('manual', identifier, page, token))
+        self.assertTrue(self.service.set_vehicle_battles('manual', '1', 999, period))
+        page = self.service.snapshot()['scopes']['manual']['vehicles'][0]['battle_list']
+        self.assertEqual((page['page'], len(page['items'])), (12, 5))
+        self.assertTrue(self.service.set_timeline_range('__custom__', '__custom__', 120, 130))
+        selected = self.service.timeline_snapshot()['period_id']
+        self.assertFalse(self.service.set_vehicle_battles('timeline', '1', 0, selected))
+        self.finish()
+        self.assertTrue(self.service.set_vehicle_battles('timeline', '1', 0, selected))
+        self.assertTrue(self.service.set_timeline_range('__custom__', '__custom__', 130, 140))
+        self.assertNotIn('timeline', self.service._vehicle_pages)
+        self.assertTrue(self.service.reset_manual())
+        self.assertNotIn('manual', self.service._vehicle_pages)
+        self.assertFalse(self.service.set_vehicle_battles('manual', '1', 0, period))
+
+    def test_vehicle_chronology_updates_incrementally_on_vehicle_and_start_corrections(self):
+        index = self.service._indexes['manual']
+        order = index.groups['vehicles']['1'].battle_order
+        self.assertTrue(self.service.record_result(result('row-00000', 999, vehicle_id=2, reconcile=True)))
+        self.assertIs(index.groups['vehicles']['1'].battle_order, order)
+        self.assertEqual(len(order), 124)
+        page = index.vehicle_battles('2', 0)
+        self.assertEqual([row['id'] for row in page['items']], ['row-00000'])
+        self.assertNotIn('row-00000', [key[1] for key in order])
+
+    def test_ten_thousand_vehicle_records_are_sliced_without_rescanning(self):
+        self.seed(10000)
+        index = self.service._indexes['manual']
+        class NoScan(dict):
+            def __iter__(self):
+                raise AssertionError('Snapshot scanned vehicle history')
+            def values(self):
+                raise AssertionError('Snapshot scanned vehicle history')
+            def items(self):
+                raise AssertionError('Snapshot scanned vehicle history')
+            itervalues = values
+            iteritems = items
+        index.records = NoScan(index.records)
+        index.groups['vehicles']['1'].records = NoScan(index.groups['vehicles']['1'].records)
+        self.assertTrue(self.service.set_vehicle_battles('manual', '1', 100, index.identifier))
+        for unused in range(3):
+            scope = self.service._scope_snapshot('manual', index, 'Fixture', 100)
+            self.assertEqual(len(scope['vehicles'][0]['battle_list']['items']), 10)
+
+    def test_active_net_credit_sort_value_is_per_battle_statistic_not_visible_period_sum(self):
+        rows = {}
+        # Vehicle1 has a larger maximum but a smaller total than vehicle2.
+        for identifier, vehicle, timestamp, net in [('a', 1, 120, 1000), ('b', 1, 121, -900),
+                                                     ('c', 2, 122, 600), ('d', 2, 123, 600)]:
+            row = result(identifier, timestamp, vehicle_id=vehicle)
+            row['currencies']['credits'] = {'income': net + 1000, 'costs': 1000, 'net': net}
+            row.update(_manual_id=self.service._state['current_manual_id'], _launch_id=self.service.launch_id,
+                       _updated_at=1000, _result_seen=True, revision=1)
+            rows[identifier] = row
+        unknown = result('unknown', 124, vehicle_id=3, outcome=None, complete=False)
+        unknown.update(_manual_id=self.service._state['current_manual_id'], _launch_id=self.service.launch_id,
+                       _updated_at=1000, _result_seen=True, revision=1)
+        rows['unknown'] = unknown
+        self.service._state['battles'] = rows
+        self.service._rebuild_indexes()
+        period = self.service.snapshot()['scopes']['manual']['period_id']
+        for statistic, expected, values in [('max', ['1', '2', '3'], [1000, 600, None]),
+                                             ('avg', ['2', '1', '3'], [600, 50, None]),
+                                             ('min', ['2', '1', '3'], [600, -900, None])]:
+            self.assertTrue(self.service.set_order('manual', 'vehicles',
+                dict(DEFAULT_ORDER, metric='credits_net', statistic=statistic, direction='desc'), period))
+            vehicles = self.service.snapshot()['scopes']['manual']['vehicles']
+            self.assertEqual([row['id'] for row in vehicles], expected)
+            self.assertEqual([row['sort_value'] for row in vehicles], values)
+            totals = dict((row['id'], row['stats']['currencies']['credits']['net']) for row in vehicles)
+            self.assertEqual(totals, {'1': 100, '2': 1200, '3': None})
+        self.assertTrue(self.service.set_order('manual', 'vehicles', DEFAULT_ORDER, period))
+        self.assertNotIn('sort_value', self.service.snapshot()['scopes']['manual']['vehicles'][0])
 
 
 if __name__ == '__main__':

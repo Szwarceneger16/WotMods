@@ -1,10 +1,16 @@
 SESSION STATS — CHANGELOG
 
 0.5.0 • 2026-11-08
-• Add map battle-history drill-down and direct navigation to sorted battle cards.
+• Add map and vehicle battle-history lists with direct navigation and persistent
+  orange highlighting of the selected battle.
 • Support custom local dates in both timeline bounds and localized More/Less labels.
 • Add persistent maximize/restore, background transparency and wider two-column cards.
 • Preserve known mission-objective metadata when partial result retries omit fields.
+• Refresh all time-range captions immediately when the language changes.
+• Normalize filter heights, gray unavailable statistics and display the exact
+  per-battle value used by net-credit sorting.
+• Group the Transparency slider and fit the gray WN8 loader inside the stock
+  garage icon bounds. Adopt a second 720-pixel card preset at attainable widths.
 
 0.4.0 • 2026-11-04
 • Add daily, weekly, campaign and event mission results alongside Crucible outcomes,
