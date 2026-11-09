@@ -160,9 +160,9 @@ module.exports=async ({browser,nativeHost,check})=>{
       HTMLElement.prototype.getBoundingClientRect=function() {
         if(this.getAttribute('data-group-id')===target) {
           __jumpGeometry.targetReads++;
-          if(__jumpGeometry.targetReads===1) {record(this,'zero-target');return {left:0,right:0,top:0,bottom:0,width:0,height:0};}
+          if(__jumpGeometry.targetReads<=4) {record(this,'zero-target');return {left:0,right:0,top:0,bottom:0,width:0,height:0};}
         }
-        if(this.id==='ss-scroll' && __jumpGeometry.targetReads===2 && !__jumpGeometry.containerPlaceholders) {
+        if(this.id==='ss-scroll' && __jumpGeometry.targetReads===5 && !__jumpGeometry.containerPlaceholders) {
           __jumpGeometry.containerPlaceholders++;record(document.querySelector('[data-group-id="'+target+'"]'),'placeholder-container');
           return {left:0,right:1,top:0,bottom:1,width:1,height:1};
         }
@@ -170,14 +170,25 @@ module.exports=async ({browser,nativeHost,check})=>{
       };
     },request.id);
     await focusReply(page,request);
+    await page.evaluate(async target=>{
+      // Drive owned short geometry retries, never a wheel/input event. Keep
+      // the long pulse/page/tooltip timers under the host's existing control.
+      for(let attempt=0;attempt<12;attempt++) {
+        const card=document.querySelector('[data-group-id="'+target+'"]');
+        if(__jumpGeometry.targetReads>=6 && document.activeElement===card)return;
+        const retry=[...__grzTimers].find(([,timer])=>timer.delay>0 && timer.delay<=100);
+        if(retry){__grzTimers.delete(retry[0]);retry[1].callback();}
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      }
+    },request.id);
     const deferred=await page.evaluate(target=>{
       __restoreJumpRect();const card=document.querySelector('[data-group-id="'+target+'"]'),box=card.getBoundingClientRect(),
         container=document.getElementById('ss-scroll').getBoundingClientRect();
       return {...__jumpGeometry,focused:document.activeElement===card,targeted:card.classList.contains('ss-battle-target'),
         top:box.top,viewportTop:Math.max(container.top,document.getElementById('ss-filter-panel').getBoundingClientRect().bottom),viewportBottom:container.bottom};
     },request.id);
-    check('Battle navigation waits through zero target and placeholder container geometry before focusing and scrolling: '+JSON.stringify(deferred),
-      deferred.samples.length===2 && deferred.samples.every(sample=>!sample.focused && !sample.targeted && sample.before===sample.after) &&
+    check('Battle navigation paints its target and recovers after more than three empty native measurements without input: '+JSON.stringify(deferred),
+      deferred.samples.length===5 && deferred.samples.every(sample=>!sample.focused && sample.targeted && sample.before===sample.after) &&
       deferred.focused && deferred.targeted && deferred.top>=deferred.viewportTop-1 && deferred.top<deferred.viewportBottom-1);
     await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
     await page.evaluate(()=>{window.__beforeMapCleanup=__grzCommands.length;const button=document.querySelector('.ss-map-battle-open');

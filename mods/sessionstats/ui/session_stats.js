@@ -10,7 +10,8 @@
         scrollSpeed: 1, appearanceNode: null, appearanceCSS: '', destroyed: false,
         orders: {}, openSelect: null, list: [], loadedCount: 40, renderedCount: 0,
         timelineSignature: null, customRangeKey: null, customDates: {}, openMaps: {}, mapContext: null,
-        pendingBattle: null, battleJump: null, highlightedBattle: null, navigationSequence: 0,
+        pendingBattle: null, battleJump: null, battleJumpTimer: null, highlightedBattle: null, navigationSequence: 0,
+        targetFocusTransfer: false,
         targetTimer: null, targetSequence: 0, feed: null, renderedFeed: null,
         feedSequence: 0, feedForceStart: null, pageJump: null, filterShift: 0, orderIntent: null,
         openBattles: {}, resize: null, logicalSize: null,
@@ -1330,18 +1331,40 @@
         });
         if (!target || !target.contains(event.target)) { clearBattleTarget(); }
     }
+    function confirmTargetFocus(card) {
+        var sequence = state.targetSequence;
+        function confirm() {
+            if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle ||
+                    state.rendering || state.targetFocusTransfer || !root.contains(card)) { return; }
+            if (!card.contains(document.activeElement)) { clearBattleTarget(); }
+        }
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () { window.requestAnimationFrame(confirm); });
+        } else { window.setTimeout(confirm, 0); }
+    }
     function targetFocusOut(event) {
-        if (!state.highlightedBattle || state.rendering) { return; }
+        if (!state.highlightedBattle || state.rendering || state.targetFocusTransfer) { return; }
         var card = event.target;
         while (card && card !== root && !card.classList.contains('ss-battle-target')) { card = card.parentNode; }
-        if (card && card !== root && (!event.relatedTarget || !card.contains(event.relatedTarget))) { clearBattleTarget(); }
+        if (!card || card === root) { return; }
+        if (!event.relatedTarget) { confirmTargetFocus(card); }
+        else if (!card.contains(event.relatedTarget)) { clearBattleTarget(); }
     }
-    function targetFocusIn(event) { if (!state.rendering) { targetClick(event); } }
+    function targetFocusIn(event) {
+        if (state.rendering || state.targetFocusTransfer) { return; }
+        if (state.highlightedBattle && (event.target === document.body || event.target === document.documentElement || event.target === root)) {
+            var card = root.querySelector('.ss-battle-target');
+            if (card) { confirmTargetFocus(card); }
+        } else { targetClick(event); }
+    }
     document.addEventListener('click', targetClick, true);
     root.addEventListener('focusout', targetFocusOut);
     root.addEventListener('focusin', targetFocusIn);
     window.addEventListener('blur', clearBattleTarget);
-    function cancelBattleNavigation() { state.pendingBattle = null; state.battleJump = null; }
+    function cancelBattleNavigation() {
+        state.pendingBattle = null; state.battleJump = null;
+        var timer = state.battleJumpTimer; state.battleJumpTimer = null; cancelUITimer(timer);
+    }
     function selectMapBattle(id, context) {
         if (!sameContext(context)) { return; }
         var request = 'battle-' + Date.now().toString(36) + '-' + (++state.navigationSequence);
@@ -1353,10 +1376,10 @@
         var pending = state.pendingBattle, focus = scope.battle_focus;
         if (pending && !sameContext(pending.context)) { cancelBattleNavigation(); return; }
         if (!pending || !focus || focus.request_id !== pending.request_id || String(focus.id) !== pending.id) { return; }
-        state.pendingBattle = null;
+        cancelBattleNavigation();
         state.group = 'battles'; state.loadedCount = 40;
         state.feedForceStart = scope.pagination && scope.pagination.battles ? scope.pagination.battles.page : 0;
-        state.battleJump = {id:pending.id, context:pending.context, attempts:0};
+        state.battleJump = {id:pending.id, context:pending.context, attempts:0, deadline:Date.now() + 2000};
     }
     function finishBattleJump() {
         var jump = state.battleJump;
@@ -1367,28 +1390,38 @@
             if (card.getAttribute('data-group-id') === jump.id) { target = card; return true; }
             return false;
         });
+        // Publish the owned frame before native geometry is ready. Delayed
+        // measurements must postpone scrolling, not hide the selected battle.
+        if (target && !jump.targetPainted) {
+            jump.targetPainted = true;
+            clearBattleTarget();
+            state.highlightedBattle = {id:jump.id, context:jump.context, until:Date.now() + 5000};
+            paintBattleTarget(target);
+            var sequence = ++state.targetSequence;
+            state.targetTimer = window.setTimeout(function () {
+                if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle) { return; }
+                state.targetTimer = null; state.highlightedBattle.until = 0;
+                (state.groupCards || []).forEach(paintBattleTarget);
+            }, 5000);
+        }
         var scroll = nodes.scroll, box = target && target.getBoundingClientRect(), container = scroll.getBoundingClientRect();
         function validRect(rect) {
             return rect && hasNumber(rect.top) && hasNumber(rect.width) && hasNumber(rect.height) && rect.width > 1 && rect.height > 1;
         }
         if (!validRect(box) || !validRect(container)) {
-            // Reuse the owned, generation-guarded layout measurement. Native
-            // placeholders must not consume a jump before its card is measurable.
-            if (!state.resizeQueued && jump.attempts < 3) { jump.attempts += 1; queueResize(); }
+            if (state.battleJumpTimer === null && jump.attempts < 40 && Date.now() < jump.deadline) {
+                jump.attempts += 1;
+                var timer = window.setTimeout(function () {
+                    if (state.battleJumpTimer === timer) { state.battleJumpTimer = null; }
+                    if (state.battleJump === jump && !state.destroyed && sameContext(jump.context)) { queueResize(); }
+                }, 50);
+                state.battleJumpTimer = timer;
+            }
             return;
         }
         var offset = Math.max(0, scroll.scrollTop + box.top - container.top - pinnedFilterHeight() - 8 * (state.nativeScale || 1));
         state.battleJump = null;
-        clearBattleTarget();
-        state.highlightedBattle = {id:jump.id, context:jump.context, until:Date.now() + 5000};
-        paintBattleTarget(target);
-        var sequence = ++state.targetSequence;
-        state.targetTimer = window.setTimeout(function () {
-            if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle) { return; }
-            state.targetTimer = null;
-            state.highlightedBattle.until = 0;
-            (state.groupCards || []).forEach(paintBattleTarget);
-        }, 5000);
+        var retryTimer = state.battleJumpTimer; state.battleJumpTimer = null; cancelUITimer(retryTimer);
         focusControl(target);
         state.scrollTarget = offset;
         scroll.scrollTop = state.scrollTarget;
@@ -1579,15 +1612,18 @@
     }
     function arrangeCardLanes(desired, page) {
         var focused = document.activeElement, scrollTop = nodes.scroll.scrollTop, moved = false;
-        desired.forEach(function (cards, index) {
-            var lane = page.lanes[index], cursor = lane.firstElementChild;
-            cards.forEach(function (card) {
-                if (card !== cursor) { lane.insertBefore(card, cursor); moved = true; }
-                cursor = card.nextElementSibling;
+        var wasTransferring = state.targetFocusTransfer; state.targetFocusTransfer = true;
+        try {
+            desired.forEach(function (cards, index) {
+                var lane = page.lanes[index], cursor = lane.firstElementChild;
+                cards.forEach(function (card) {
+                    if (card !== cursor) { lane.insertBefore(card, cursor); moved = true; }
+                    cursor = card.nextElementSibling;
+                });
             });
-        });
+            if (moved && focused && document.activeElement !== focused && typeof focused.focus === 'function') { focused.focus(); }
+        } finally { state.targetFocusTransfer = wasTransferring; }
         if (!moved) { return; }
-        if (focused && document.activeElement !== focused && typeof focused.focus === 'function') { focused.focus(); }
         nodes.scroll.scrollTop = scrollTop;
     }
     function hasExpandedBattle(page) {

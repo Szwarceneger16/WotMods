@@ -70,6 +70,18 @@ module.exports=async ({browser,nativeHost,check})=>{
         await page.locator('#ss-group-battles').getAttribute('aria-pressed')==='true' && await targetCard.evaluate(card=>
           document.activeElement===card && card.classList.contains('ss-battle-target') &&
           parseFloat(getComputedStyle(card.querySelector('.ss-battle-target-outline')).borderTopWidth)>=3));
+      await targetCard.evaluate(card=>{
+        window.__nativeTargetReflow={card,payload:model.payload};
+        const parent=card.parentNode,next=card.nextSibling;
+        // Native reparenting may report a temporary focusout without a related
+        // target before its programmatic focus restoration has completed.
+        card.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:null}));
+        parent.appendChild(card);parent.insertBefore(card,next);card.focus();
+      });await frames(page);
+      check('A temporary native focus loss during reflow preserves the restored battle target in '+language,
+        await targetCard.evaluate(card=>card===__nativeTargetReflow.card && model.payload===__nativeTargetReflow.payload &&
+          document.activeElement===card && card.classList.contains('ss-battle-target') &&
+          card.querySelectorAll('.ss-battle-target-outline').length===1));
       for(const refresh of ['payload','more']) {
         if(refresh==='payload')await page.evaluate(()=>__grzEvents['viewEnv.onDataChanged']());
         if(refresh==='more')await targetCard.locator('.ss-more-button').click();
