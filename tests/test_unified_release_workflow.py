@@ -1,5 +1,7 @@
 """Offline security and sequencing contracts for the sole WotMods publisher."""
 from pathlib import Path
+import fnmatch
+import json
 import re
 import subprocess
 import unittest
@@ -38,6 +40,16 @@ class SinglePublisherTests(unittest.TestCase):
             self.assertNotIn('gh release create', pr)
         self.assertIn('path: pr-artifact/StaySharp-Medkit-v*.zip', MEDKIT_CI)
         self.assertIn('path: pr-artifact-sessionstats/Session-Stats-v*.zip', STATS_CI)
+
+    def test_main_push_filter_covers_each_registered_build_input(self):
+        definition = json.loads((ROOT / 'scripts/release_modules.json').read_text())
+        scope = WORKFLOW.split('  push:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
+        triggers = re.findall(r"(?m)^      - '([^']+)'$", scope)
+        patterns = definition['shared_build_paths'] + [
+            pattern for module in definition['modules'] for pattern in module['source_paths']]
+        for pattern in patterns:
+            with self.subTest(pattern=pattern):
+                self.assertTrue(any(fnmatch.fnmatchcase(pattern, trigger) for trigger in triggers))
 
     def test_legacy_publishers_mutex_shared_across_entire_transaction(self):
         before_jobs = WORKFLOW.split('\njobs:', 1)[0]

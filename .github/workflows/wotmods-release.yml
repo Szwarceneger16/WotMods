@@ -12,6 +12,7 @@ on:
       - 'staysharp.medkit.example.json'
       - 'CHANGELOG.md'
       - 'docs/AUDIO.md'
+      - 'docs/INSTALACJA.md'
       - '.github/workflows/wotmods-release.yml'
       - '.github/workflows/release.yml'
       - '.github/workflows/sessionstats-release.yml'
