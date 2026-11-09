@@ -67,26 +67,15 @@ See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](
 
 ## Changes, reviews and releases
 
-1. Submit a PR to `main`. GitHub Actions runs unit tests, privacy checks and a deterministic build with **read-only** repository permissions.
-2. After review and merge, GitHub Actions builds and validates the `.wotmod`, transfers the verified files to a separate **write-scoped publishing job** using official `actions/upload-artifact` / `download-artifact`, and creates a GitHub Release with official `gh release create`.
-3. Only a push to `main` that changes Stay Sharp files (or its release/build machinery) triggers a Stay Sharp build and an incremented patch version. Session Stats language/configuration changes do not trigger this workflow. The new Release contains the rebuilt Stay Sharp and unchanged verified mod assets from the previous immutable Latest Release. Retrying a successful run verifies immutable assets without overwriting them; a failed run can leave a gap in release numbers.
+1. Submit a PR to `main`. Each mod has its own **read-only, path-filtered PR workflow** and a downloadable, directly installable ZIP artifact. A PR for Stay Sharp does not build Session Stats and vice versa, except when truly shared build infrastructure changes.
+2. After review and merge, `wotmods-release.yml` serializes the release transaction. It compares the exact merged source commit with the last immutable Latest Release and builds only changed modules in independent matrix jobs. Unchanged installers are copied byte-for-byte unless the WoT client directory must be retargeted.
+3. A single write-scoped publisher assembles and verifies the entire snapshot, creates **one protected `wotmods-v1.0.<release-sequence>` Release**, and independently downloads and checks every published ZIP. Module versions remain separate and increment only when their own module is rebuilt. A client-only update can advance the shared release sequence even without a source commit.
 
-No custom HTTP client, third-party publication service or Java is involved; GitHub's own CLI and built-in `GITHUB_TOKEN` handle the release. Neither the workflow nor a separate recovery script deletes an existing Release. If publication is interrupted, check the draft manually; the pipeline fails safely instead of guessing what to remove.
+Rapid merges and retries are safe: a later commit includes earlier unshipped changes, obsolete queued runs are skipped, failed builds never publish, and tags/assets are never overwritten. Only the official GitHub CLI and short-lived `GITHUB_TOKEN` are used; PRs cannot publish. Interrupted drafts require manual inspection, not automatic deletion.
 
-The historical first run created an empty **draft `v1.6.1`**. It is not public as a downloadable release and does not prevent the next distinct build (now using the `staysharp-v<version>` namespace). Before merging the simplified release workflow, enable **Settings → Releases → Enable release immutability** for future published assets and tags. Multiple mods are built separately. Shared GitHub Releases keep unchanged mod
-packages byte-for-byte when the game directory is unchanged: publish jobs use GitHub Actions `queue: max` to avoid
-simultaneous-merge races and skip obsolete same-mod builds. See
-[mod independence and concurrent merges](docs/MULTIMOD_RELEASES.md).
+See [release architecture and race conditions](docs/MULTIMOD_RELEASES.md), [operator/agent guide](docs/RELEASE_AGENT_GUIDE.md), and [build instructions](docs/BUILD_RELEASE.md).
 
-See [build and release documentation](docs/BUILD_RELEASE.md).
-
-**Mandatory protection before merge:** configure the active GitHub tag
-ruleset `staysharp-release-tags` for `staysharp-v*`, with **Restrict updates**, **Restrict
-deletions** and **no bypass actors**. The owner must also approve its exact
-revision using the two non-secret variables of the `staysharp-release` GitHub
-Environment, because Actions cannot reliably read the hidden bypass list.
-Without this verified configuration, publishing stops before creating a tag
-or Release. Details: [required release-tag protection](docs/BUILD_RELEASE.md#required-github-tag-protection-before-merging).
+**Required before the migration is merged:** the owner must create an active `wotmods-release-tags` ruleset protecting exactly `refs/tags/wotmods-v*` against updates/deletions without bypass actors, plus the reviewed `wotmods-release` Environment. Until then, production publishing deliberately fails closed. Historical releases and their tag protections remain untouched.
 
 ## Privacy and safety
 
@@ -96,7 +85,4 @@ As the repository is **public**, the **GitHub account that owns it, commits, PRs
 
 This project is not affiliated with Wargaming. World of Tanks and related marks are the property of their respective owners. No license for redistribution/modification of the source beyond GitHub's platform terms has been chosen yet; the owner can add a `LICENSE` file in a separate reviewed PR.
 
-New Stay Sharp releases use `staysharp-v<version>`. The former `v*` publisher
-configuration is retired after the switch; no compatibility aliases are required. See the
-[namespace migration](docs/BUILD_RELEASE.md#migration-from-the-historical-stay-sharp-namespace)
-for the owner-managed settings required before this workflow is merged.
+The former `staysharp-v*` and `sessionstats-v*` release tags remain in the immutable historical archive. New shared releases use the global `wotmods-v*` namespace; filenames and independent mod versions remain unchanged.
