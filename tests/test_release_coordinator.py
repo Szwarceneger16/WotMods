@@ -57,6 +57,7 @@ class PlanTests(unittest.TestCase):
     def test_unchanged_state_does_not_create_a_new_release(self):
         result = self.make([], tag='wotmods-v1.0.300')
         self.assertFalse(result['publish'])
+        self.assertEqual(result['release_tag'], 'wotmods-v1.0.301')
         self.assertEqual(result['changed'], [])
         self.assertEqual(result['matrix'], [{'mod': 'noop', 'version': '0.0.0'}])
 
@@ -67,6 +68,27 @@ class PlanTests(unittest.TestCase):
         updated = self.make([], tag='wotmods-v1.0.300', client='2.5.0.0')
         self.assertTrue(updated['publish'])
         self.assertEqual(updated['changed'], [])
+        self.assertEqual(updated['release_tag'], 'wotmods-v1.0.301')
+
+    def test_multiple_client_updates_on_one_source_sha_get_distinct_tags(self):
+        first = self.make([], tag='wotmods-v1.0.300', client='2.5.0.0')
+        second = self.make([], tag=first['release_tag'], client='2.6.0.0',
+                           previous_client='2.5.0.0')
+        self.assertTrue(first['publish'] and second['publish'])
+        self.assertEqual((first['release_tag'], second['release_tag']),
+                         ('wotmods-v1.0.301', 'wotmods-v1.0.302'))
+        self.assertEqual((first['source_sha'], second['source_sha']), (SHA, SHA))
+        self.assertEqual(first['changed'], second['changed'])
+
+    def test_global_release_number_is_independent_of_commit_count(self):
+        result = coordinator.make_plan(self.registry, ['source/mod_staysharp_medkit.py'],
+                                       PREVIOUS, 'wotmods-v1.0.300', SHA, 900,
+                                       installers.CLIENT, installers.CLIENT)
+        self.assertEqual(result['release_tag'], 'wotmods-v1.0.301')
+
+    def test_unknown_latest_tag_fails_instead_of_silent_migration(self):
+        with self.assertRaisesRegex(ValueError, 'Unrecognized'):
+            self.make([], tag='some-other-v9.0.0')
 
     def test_rapid_merges_preserve_both_updates_in_either_order(self):
         first = self.make(['source/mod_staysharp_medkit.py'])

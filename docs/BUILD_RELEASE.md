@@ -58,8 +58,10 @@ is here, and the generated changelog compares the new global tag with the
 **previous repository-wide Latest tag** using `--notes-start-tag`. A mod-only
 PR must not pull the other module's unrelated commits into its changelog.
 
-The release tag format is `wotmods-v1.0.<commit-count>`. This is separate
-from the two installers' own SemVer. Legacy `staysharp-v*`, `sessionstats-v*`,
+The release tag format is `wotmods-v1.0.<release-sequence>`. The first value
+is seeded from the migration commit count; after that it increments **per
+successful published Release**, even if a WoT client update reuses the same
+source commit. This is separate from the two installers' own SemVer. Legacy `staysharp-v*`, `sessionstats-v*`,
 and older `v*` tags remain preserved in history; published artifacts are not
 mutated or deleted.
 

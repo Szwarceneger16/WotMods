@@ -5,7 +5,9 @@ repository-wide published snapshot. The current Release contains one
 installable ZIP per supported mod; unchanged ZIPs are carried **byte-for-byte**
 unless the game's installation directory changed. Each mod has its own SemVer
 and source-specific build trigger. The overall Release has a separate global
-`wotmods-v1.0.<source-commit-count>` tag.
+`wotmods-v1.0.<release-sequence>` tag. The first release seeds the sequence
+from the migration commit count; each later publication increments it, even
+when only the target World of Tanks client changes without a Git commit.
 
 ## Responsibilities
 

@@ -69,7 +69,7 @@ See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](
 
 1. Submit a PR to `main`. Each mod has its own **read-only, path-filtered PR workflow** and a downloadable, directly installable ZIP artifact. A PR for Stay Sharp does not build Session Stats and vice versa, except when truly shared build infrastructure changes.
 2. After review and merge, `wotmods-release.yml` serializes the release transaction. It compares the exact merged source commit with the last immutable Latest Release and builds only changed modules in independent matrix jobs. Unchanged installers are copied byte-for-byte unless the WoT client directory must be retargeted.
-3. A single write-scoped publisher assembles and verifies the entire snapshot, creates **one protected `wotmods-v1.0.<commit-count>` Release**, and independently downloads and checks every published ZIP. Module versions remain separate and increment only when their own module is rebuilt.
+3. A single write-scoped publisher assembles and verifies the entire snapshot, creates **one protected `wotmods-v1.0.<release-sequence>` Release**, and independently downloads and checks every published ZIP. Module versions remain separate and increment only when their own module is rebuilt. A client-only update can advance the shared release sequence even without a source commit.
 
 Rapid merges and retries are safe: a later commit includes earlier unshipped changes, obsolete queued runs are skipped, failed builds never publish, and tags/assets are never overwritten. Only the official GitHub CLI and short-lived `GITHUB_TOKEN` are used; PRs cannot publish. Interrupted drafts require manual inspection, not automatic deletion.
 

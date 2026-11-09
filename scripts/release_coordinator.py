@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / 'scripts/release_modules.json'
 SEMVER = re.compile(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\Z')
 TAG_PREFIX = 'wotmods-v1.0.'
+LEGACY_TAG = re.compile(r'(?:staysharp|sessionstats)-v[0-9]+\.[0-9]+\.[0-9]+\Z')
 
 
 def run_git(*args):
@@ -40,6 +41,22 @@ def next_version(baseline, previous):
         major, minor, patch = version_parts(previous)
         chosen = max(base, (major, minor, patch + 1))
     return '.'.join(map(str, chosen))
+
+
+def next_release_tag(previous_tag, commit_count):
+    # A client-only update can publish a new installer snapshot without any
+    # source commit. The global tag must therefore advance per PUBLICATION,
+    # not per Git commit; never reuse or move an immutable tag.
+    if previous_tag is None:
+        return TAG_PREFIX + str(commit_count)
+    if previous_tag.startswith(TAG_PREFIX):
+        suffix = previous_tag[len(TAG_PREFIX):]
+        if not re.fullmatch(r'(?:0|[1-9][0-9]*)', suffix):
+            raise ValueError('Invalid previous unified release tag: ' + previous_tag)
+        return TAG_PREFIX + str(int(suffix) + 1)
+    if not LEGACY_TAG.fullmatch(previous_tag):
+        raise ValueError('Unrecognized previous Latest Release tag: ' + previous_tag)
+    return TAG_PREFIX + str(commit_count)
 
 
 def registry(path=REGISTRY):
@@ -128,7 +145,7 @@ def make_plan(config, changes, previous_versions, previous_tag, source_sha,
     return {
         'schema_version': 1,
         'source_sha': source_sha,
-        'release_tag': TAG_PREFIX + str(commit_count),
+        'release_tag': next_release_tag(previous_tag, commit_count),
         'previous_tag': previous_tag,
         'client_version': client_version,
         'modules': [m['id'] for m in modules],

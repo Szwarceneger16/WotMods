@@ -63,7 +63,9 @@ workflow version: it could run a different CI harness against newer source.
    replaces only rebuilt modules, retargets installation paths only if the WoT
    client version changed, and verifies the whole final set.
 8. Verify exact tag Ruleset revision **before** creating a tag. Use
-   `wotmods-v1.0.<commit-count>` pointing to the pinned source commit. Reject
+   `wotmods-v1.0.<release-sequence>` pointing to the pinned source commit. Seed
+   the first global number from the migration commit count and then increment
+   per published Release, even when a WoT client update uses the same SHA. Reject
    any existing conflicting tag or draft. Use native `gh release create
    --verify-tag --latest` and explicitly start generated notes at the previous
    shared Release tag, never at an arbitrary other-mod tag.
@@ -87,6 +89,7 @@ contains one ZIP per registered mod, even when only one mod changed.
 | One changed mod fails in a two-mod run | Publish job does not start; successful artifact cannot be published alone. |
 | Unrelated docs or CI-only change | No new Release unless this is the one-time migration from old tag namespace. |
 | No module binaries changed but WoT client folder changes | Repack verified installers for the new target, preserving binary bytes; explicitly warn that compatibility is untested. |
+| Two WoT client updates without an intervening merge | Produce two distinct global release tags, both on the same source commit, and never mutate the first immutable Release. |
 | Re-run of a published source commit | Plan is a no-op; immutable Releases and tags are not overwritten. |
 | Release draft interrupted after upload | Fail closed. Inspect manually; do not delete or finish it automatically. A rerun cannot mutate an immutable published Release. |
 | Tag was pushed, but release creation failed before a draft appeared | Re-running the same accepted commit may reuse the already correctly pinned tag. A later commit can supersede it, leaving a protected orphan tag for owner inspection; never retarget it. |
