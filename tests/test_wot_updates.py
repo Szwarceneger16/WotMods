@@ -91,16 +91,14 @@ class PublicationFreshnessTests(unittest.TestCase):
                 w.main()
             refresh.assert_not_called()
 
-    def test_both_publishers_check_freshness_before_remote_writes(self):
+    def test_unified_publisher_checks_freshness_before_remote_writes(self):
         root = Path(w.__file__).resolve().parents[1]
-        for workflow in ('release.yml', 'sessionstats-release.yml'):
-            with self.subTest(workflow=workflow):
-                publish = (root / '.github/workflows' / workflow).read_text().split('  publish:', 1)[1]
-                guard = 'python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"'
-                self.assertIn('WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}', publish)
-                before_tag, before_create = (m.start() for m in re.finditer(re.escape(guard), publish))
-                self.assertLess(before_tag, publish.index('git push origin "refs/tags/$tag"'))
-                self.assertLess(before_create, publish.index('gh release create "$tag"'))
+        publish = (root / '.github/workflows/wotmods-release.yml').read_text().split('  publish:', 1)[1]
+        guard = 'python3 scripts/wot_updates.py --require-fresh "$WOT_EVIDENCE_FETCHED_AT"'
+        self.assertIn('WOT_EVIDENCE_FETCHED_AT: ${{ needs.updates.outputs.fetched_at }}', publish)
+        before_tag, before_create = (m.start() for m in re.finditer(re.escape(guard), publish))
+        self.assertLess(before_tag, publish.index('git push origin "refs/tags/$RELEASE_TAG"'))
+        self.assertLess(before_create, publish.index('gh release create "$RELEASE_TAG"'))
 
 
 class EvidenceTests(unittest.TestCase):
@@ -237,10 +235,10 @@ class DispatchTests(unittest.TestCase):
             self.dispatched.append(args[2]);return ''
         raise AssertionError(args)
 
-    def test_dispatches_both_existing_main_publishers(self):
+    def test_dispatches_one_snapshot_publisher(self):
         import wot_dispatch as d
         with patch.object(d, 'gh', side_effect=self.gh): d.main()
-        self.assertEqual(self.dispatched, ['release.yml', 'sessionstats-release.yml'])
+        self.assertEqual(self.dispatched, ['wotmods-release.yml'])
 
     def test_pending_publishers_are_not_duplicated(self):
         import wot_dispatch as d

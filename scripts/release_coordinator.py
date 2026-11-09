@@ -6,13 +6,14 @@ read-only Release downloads and a separate protected publisher creates the tag.
 """
 import argparse
 import fnmatch
+import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
 import subprocess
 
-from release_installers import (KINDS, installer_name, notes, normalize,
+from release_installers import (KINDS, installer_name, normalize,
                                 verify, verify_directory)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,6 +156,21 @@ def plan(args):
             raise ValueError('Previous release clients do not match')
         previous_client = previous_clients.pop()
         base_sha = run_git('rev-parse', args.previous_tag + '^{commit}')
+        if (base_sha != source_sha and subprocess.run(
+                ['git', 'merge-base', '--is-ancestor', source_sha, base_sha],
+                cwd=ROOT, check=False).returncode == 0):
+            # GitHub may start a newer merge's queued workflow before an older
+            # one. That release already contains all older source changes.
+            # Never publish a stale commit or retarget the Latest backwards.
+            result = make_plan(config, [], previous, args.previous_tag,
+                               source_sha, commit_count, args.client_version, previous_client)
+            result['publish'] = False
+            result['changed'] = []
+            result['matrix'] = [{'mod': 'noop', 'version': '0.0.0'}]
+            result['versions'] = previous
+            Path(args.output).write_text(json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+            print('Source commit already superseded by Latest; no release')
+            return
         subprocess.check_call(['git', 'merge-base', '--is-ancestor', base_sha, source_sha], cwd=ROOT)
         changes = subprocess.check_output(['git', 'diff', '-z', '--name-only',
                                            base_sha, source_sha], cwd=ROOT).decode('utf-8').split('\0')
@@ -167,6 +183,37 @@ def plan(args):
     Path(args.output).write_text(json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print('Planned mods:', ', '.join(result['changed']) or '(carry forward only)')
     print('Publish:', result['publish'], 'tag:', result['release_tag'])
+
+
+def write_release_notes(reports, result, repository, output, release_directory):
+    tag = result['release_tag']
+    lines = ['## Downloads', '', '| Mod | Version | Installer |',
+             '| --- | --- | --- |']
+    for kind, version, _, _, _ in sorted(reports):
+        mod = next(m for m in registry()['modules'] if m['id'] == kind)
+        filename = installer_name(kind, version)
+        link = 'https://github.com/%s/releases/download/%s/%s' % (repository, tag, filename)
+        lines.append('| %s | %s | [%s](%s) |' %
+                     (mod['display_name'], version, filename, link))
+    changes = result['changed']
+    display = {mod['id']: mod['display_name'] for mod in registry()['modules']}
+    summary = ', '.join(display[m] for m in changes) if changes else 'No mod binary changes'
+    lines.extend(['', '**Updated in this release:** ' + summary + '.', '',
+                  '**WoT EU client:** `' + result['client_version'] + '`.',
+                  'Close the game and extract the selected ZIP into the folder containing '
+                  '`WorldOfTanks.exe`, preserving the `mods/` directories.', '',
+                  '[Full installation and configuration guide](https://github.com/' + repository +
+                  '/blob/main/docs/BUILD_RELEASE.md). '
+                  'A carried-forward binary is not automatically verified as compatible '
+                  'with a newer game client.', '',
+                  '<details>', '<summary>SHA-256 installer checksums</summary>', '', '```text'])
+    for kind, version, _, _, _ in sorted(reports):
+        filename = installer_name(kind, version)
+        # These are release assets, not the GitHub-generated source archives.
+        data = (Path(release_directory) / filename).read_bytes()
+        lines.append(hashlib.sha256(data).hexdigest() + '  ' + filename)
+    lines.extend(['```', '', '</details>', ''])
+    Path(output).write_text('\n'.join(lines), encoding='utf-8')
 
 
 def assemble(args):
@@ -214,7 +261,7 @@ def assemble(args):
         raise ValueError('Final assembled release versions differ from plan')
     if {client for _, _, client, _, _ in reports} != {result['client_version']}:
         raise ValueError('Final assembled release targets an unexpected client')
-    notes(output, args.notes, args.repository, result['release_tag'])
+    write_release_notes(reports, result, args.repository, args.notes, output)
 
 
 def main():

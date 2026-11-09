@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dispatch existing protected publishers only when immutable installers lag EU."""
+"""Dispatch the one protected snapshot coordinator when installers lag EU."""
 import hashlib
 import json
 import os
@@ -21,8 +21,8 @@ def needs_rebuild(target, installed):
         raise ValueError('Missing exact EU mods directory')
     wanted = tuple(map(int, target.split('.')))
     versions = [tuple(map(int, value.split('.'))) for value in installed]
-    if len(versions) != 2:
-        raise ValueError('Expected both installers')
+    if len(versions) != len(release_installers.KINDS):
+        raise ValueError('Expected one installer for every registered mod')
     if any(v > wanted for v in versions):
         raise ValueError('Refusing to downgrade an installer')
     return any(v != wanted for v in versions)
@@ -30,7 +30,7 @@ def needs_rebuild(target, installed):
 
 def main():
     if os.environ.get('GITHUB_REF') != 'refs/heads/main':
-        raise ValueError('Only accepted main may dispatch production publishers')
+        raise ValueError('Only accepted main may dispatch the production coordinator')
     repo = os.environ['GITHUB_REPOSITORY']
     target = os.environ['WOT_CLIENT_VERSION']
     release = json.loads(gh('api', 'repos/' + repo + '/releases/latest'))
@@ -39,12 +39,13 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         gh('release', 'download', release['tag_name'], '--repo', repo, '--dir', tmp)
         assets = release['assets']
-        if len(assets) != 2:
-            raise ValueError('Expected exactly two installer assets')
+        if len(assets) != len(release_installers.KINDS):
+            raise ValueError('Missing or duplicate installer assets')
         for asset in assets:
             name = asset['name']
-            if Path(name).name != name or not re.fullmatch(r'(Session-Stats|StaySharp-Medkit)-v[0-9.]+\.zip', name):
+            if Path(name).name != name:
                 raise ValueError('Unexpected asset name')
+            release_installers.identity(name)
             digest = 'sha256:' + hashlib.sha256((Path(tmp) / name).read_bytes()).hexdigest()
             if digest != asset.get('digest'):
                 raise ValueError('Downloaded immutable asset digest mismatch')
@@ -52,16 +53,16 @@ def main():
         # verify_directory validates both installers and cross-mod paths/resources.
         versions = [report[2] for report in reports]
         if not needs_rebuild(target, versions):
-            print('Both verified installers already target ' + target)
+            print('All verified installers already target ' + target)
             return
-    for workflow in ('release.yml', 'sessionstats-release.yml'):
-        runs = json.loads(gh('run', 'list', '--repo', repo, '--workflow', workflow, '--branch', 'main',
-                             '--limit', '100', '--json', 'status,databaseId'))
-        if any(r['status'] in ('queued', 'in_progress', 'waiting', 'requested', 'pending') for r in runs):
-            print('An existing publisher run is pending: ' + workflow)
-            continue
-        gh('workflow', 'run', workflow, '--repo', repo, '--ref', 'main')
-        print('Dispatched accepted publisher: ' + workflow + ' for ' + target)
+    workflow = 'wotmods-release.yml'
+    runs = json.loads(gh('run', 'list', '--repo', repo, '--workflow', workflow, '--branch', 'main',
+                         '--limit', '100', '--json', 'status,databaseId'))
+    if any(r['status'] in ('queued', 'in_progress', 'waiting', 'requested', 'pending') for r in runs):
+        print('A unified snapshot run is already pending: ' + workflow)
+        return
+    gh('workflow', 'run', workflow, '--repo', repo, '--ref', 'main')
+    print('Dispatched one snapshot coordinator for ' + target)
 
 
 if __name__ == '__main__':

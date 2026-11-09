@@ -12,7 +12,8 @@
         "VERSION",
         "staysharp.medkit.example.json",
         "CHANGELOG.md",
-        "docs/AUDIO.md"
+        "docs/AUDIO.md",
+        "docs/INSTALACJA.md"
       ]
     },
     {
@@ -29,6 +30,7 @@
   "shared_build_paths": [
     "scripts/release_installers.py",
     "scripts/release_version.py",
+    "scripts/build_release_module.sh",
     "scripts/privacy_audit.py",
     "scripts/release_modules.json",
     "scripts/wot_updates.py",

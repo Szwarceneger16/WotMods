@@ -15,9 +15,13 @@ on:
       - 'staysharp.medkit.example.json'
       - 'CHANGELOG.md'
       - 'docs/AUDIO.md'
+      - 'docs/INSTALACJA.md'
       - 'scripts/release_version.py'
       - 'scripts/release_snapshot.sh'
       - 'scripts/release_installers.py'
+      - 'scripts/release_coordinator.py'
+      - 'scripts/release_modules.json'
+      - 'scripts/build_release_module.sh'
       - 'tests/test_release_installers.py'
       - 'tests/test_staysharp_ci_artifact.py'
       - 'tests/test_pr_ci_scoping.py'
@@ -26,11 +30,11 @@ on:
       - 'tests/test_packaging.py'
       - 'tests/test_log_rotation.py'
       - 'tests/test_release_pipeline.py'
-      - 'tests/test_release_workflow.py'
       - 'tests/test_release_snapshot.py'
-      - 'tests/test_release_scoping.py'
+      - 'tests/test_release_coordinator.py'
+      - 'tests/test_unified_release_workflow.py'
       - '.github/workflows/ci.yml'
-      - '.github/workflows/release.yml'
+      - '.github/workflows/wotmods-release.yml'
   workflow_dispatch:
 
 permissions:

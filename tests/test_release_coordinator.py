@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -47,6 +48,11 @@ class PlanTests(unittest.TestCase):
     def test_shared_build_inputs_select_all_without_pairwise_conditions(self):
         self.assertEqual(self.make(['scripts/release_installers.py'])['changed'],
                          ['staysharp', 'sessionstats'])
+        self.assertEqual(self.make(['scripts/build_release_module.sh'])['changed'],
+                         ['staysharp', 'sessionstats'])
+
+    def test_medkit_installer_docs_change_only_medkit(self):
+        self.assertEqual(self.make(['docs/INSTALACJA.md'])['changed'], ['staysharp'])
 
     def test_unchanged_state_does_not_create_a_new_release(self):
         result = self.make([], tag='wotmods-v1.0.300')
@@ -101,6 +107,43 @@ class PlanTests(unittest.TestCase):
             path.write_text(json.dumps(rogue))
             with self.assertRaisesRegex(ValueError, 'not registered'):
                 coordinator.registry(path)
+
+    def test_late_older_merge_skips_when_a_descendant_is_latest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prior = Path(directory)
+            target = prior / 'plan.json'
+            mock_reports = [(kind, version, installers.CLIENT, {}, '')
+                            for kind, version in PREVIOUS.items()]
+            args = SimpleNamespace(previous_tag='wotmods-v1.0.313', previous_dir=prior,
+                                   head='HEAD', client_version=installers.CLIENT, output=target)
+            with patch.object(coordinator, 'run_git', side_effect=[SHA, '312', 'b' * 40]), \
+                 patch.object(coordinator, 'verify_directory', return_value=mock_reports), \
+                 patch.object(coordinator.subprocess, 'run',
+                              return_value=SimpleNamespace(returncode=0)), \
+                 patch.object(coordinator.subprocess, 'check_call') as guard:
+                coordinator.plan(args)
+            result = json.loads(target.read_text())
+            self.assertFalse(result['publish'])
+            self.assertEqual(result['changed'], [])
+            guard.assert_not_called()
+
+    def test_diverged_history_fails_instead_of_publishing_stale_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prior = Path(directory)
+            mock_reports = [(kind, version, installers.CLIENT, {}, '')
+                            for kind, version in PREVIOUS.items()]
+            args = SimpleNamespace(previous_tag='wotmods-v1.0.313', previous_dir=prior,
+                                   head='HEAD', client_version=installers.CLIENT,
+                                   output=prior/'plan.json')
+            with patch.object(coordinator, 'run_git', side_effect=[SHA, '312', 'b' * 40]), \
+                 patch.object(coordinator, 'verify_directory', return_value=mock_reports), \
+                 patch.object(coordinator.subprocess, 'run',
+                              return_value=SimpleNamespace(returncode=1)), \
+                 patch.object(coordinator.subprocess, 'check_call',
+                              side_effect=ValueError('Not an ancestor')):
+                with self.assertRaisesRegex(ValueError, 'Not an ancestor'):
+                    coordinator.plan(args)
+            self.assertFalse(args.output.exists())
 
 
 class AssemblyTests(unittest.TestCase):
@@ -161,6 +204,12 @@ class AssemblyTests(unittest.TestCase):
         (self.built / 'unexpected.zip').write_bytes(b'bad')
         with self.assertRaisesRegex(ValueError, 'mismatch'):
             self.assemble(['source/mod_staysharp_medkit.py'])
+
+    def test_modified_previous_zip_is_never_carried_without_verification(self):
+        (self.previous / 'Session-Stats-v0.3.15.zip').write_bytes(b'corrupted')
+        with self.assertRaises(Exception):
+            self.assemble([])
+        self.assertFalse(self.notes.exists())
 
 
 if __name__ == '__main__':
