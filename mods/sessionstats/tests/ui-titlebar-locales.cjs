@@ -64,12 +64,12 @@ module.exports=async ({browser,nativeHost,check})=>{
             states.push({state,pieces,center:center(pieces),button:buttonCenter(toggle)});}
           toggle.setAttribute('aria-pressed',pressed);
           return {close:{pieces:closePieces,center:center(closePieces),button:buttonCenter(close),
-            font:parseFloat(getComputedStyle(label).fontSize),color:getComputedStyle(close).color},
+            font:parseFloat(getComputedStyle(label).fontSize),color:getComputedStyle(close).color,decorative:label.getAttribute('aria-hidden')==='true'},
             states,toggleColor:getComputedStyle(toggle).color};
         });
         const centered=ink=>Math.abs(ink.center.x-ink.button.x)<=0.5 && Math.abs(ink.center.y-ink.button.y)<=0.5;
         check('Close, maximize and restore ink share the centered window-control row: '+label+': '+JSON.stringify(windowInk),
-          windowInk.close.font===0 && centered(windowInk.close) && windowInk.close.pieces.every(piece=>piece.color===windowInk.close.color) &&
+          windowInk.close.decorative && windowInk.close.font===0 && centered(windowInk.close) && windowInk.close.pieces.every(piece=>piece.color===windowInk.close.color) &&
           windowInk.states.every(state=>centered(state) && Math.abs(state.center.y-windowInk.close.center.y)<=0.5 &&
             state.pieces.length===(state.state==='true'?2:1) && state.pieces.every(piece=>piece.stroke>=scale && piece.strokeColor===windowInk.toggleColor)));
         if(wide) {
@@ -77,7 +77,14 @@ module.exports=async ({browser,nativeHost,check})=>{
             Math.min(...audit.items.map(item=>item.bottom))-Math.max(...audit.items.map(item=>item.top))>=15 && audit.bar.height<=51);
           check('Wide localized header text remains readable without clipping: '+label+': '+JSON.stringify(audit.clipped),audit.clipped.length===0);
         }
+        await page.locator('#ss-group-battles').click();await frames(page);
         if(language==='en') {
+          const beforeArrow=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
+          await page.locator('#ss-scroll').evaluate((node,scale)=>{
+            node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,240*scale);node.dispatchEvent(new Event('scroll'));
+          },scale);await frames(page);
+          check('Top chevron paint is measured on its visible scrolled action: '+label,
+            await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)>60*scale && await page.locator('#ss-scroll-top').isVisible());
           const arrow=await page.locator('.ss-scroll-top-icon').evaluate(icon=>({
             image:getComputedStyle(icon).backgroundImage,
             color:getComputedStyle(icon).color,
@@ -91,8 +98,11 @@ module.exports=async ({browser,nativeHost,check})=>{
             arrow.chevrons.every(piece=>piece.content==='""' && piece.display==='block' && piece.width>=12*scale &&
               piece.height>=12*scale && piece.stroke>=3*scale && piece.left===arrow.color && piece.topColor===arrow.color && piece.transform!=='none') &&
             arrow.chevrons[1].top-arrow.chevrons[0].top===10*scale);
+          await page.locator('#ss-scroll').evaluate((node,offset)=>{node.scrollTop=offset;node.dispatchEvent(new Event('scroll'));},beforeArrow);
+          await frames(page);
+          check('Measuring Top paint restores the titlebar fixture offset: '+label,
+            Math.abs(await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)-beforeArrow)<=1);
         }
-        await page.locator('#ss-group-battles').click();await frames(page);
         const buttons=page.locator('.ss-more-button');
         for(let index=0;index<Math.min(2,await buttons.count());index++) {
           const button=buttons.nth(index);
