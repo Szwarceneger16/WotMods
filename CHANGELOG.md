@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.11
+
+- Replace the garage medkit button's persistent focus frame with subtle neutral gray hover and press backgrounds; retained footer focus no longer leaves a selected outline.
+
 ## 1.8.10
 
 - Show the native clickable-hand cursor over eligible battle reminder buttons and restore the arrow when leaving or hiding the controls.
