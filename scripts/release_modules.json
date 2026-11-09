@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {
+      "id": "staysharp",
+      "display_name": "Stay Sharp Medkit",
+      "base_version_file": "VERSION",
+      "installer_prefix": "StaySharp-Medkit-v",
+      "source_paths": [
+        "source/**",
+        "assets/**",
+        "VERSION",
+        "staysharp.medkit.example.json",
+        "CHANGELOG.md",
+        "docs/AUDIO.md",
+        "docs/INSTALACJA.md"
+      ]
+    },
+    {
+      "id": "sessionstats",
+      "display_name": "Session Statistics",
+      "base_version_file": "mods/sessionstats/VERSION",
+      "installer_prefix": "Session-Stats-v",
+      "source_paths": [
+        "mods/sessionstats/**",
+        "scripts/sessionstats/**"
+      ]
+    }
+  ],
+  "shared_build_paths": [
+    "scripts/release_installers.py",
+    "scripts/release_version.py",
+    "scripts/build_release_module.sh",
+    "scripts/privacy_audit.py",
+    "scripts/release_modules.json",
+    "scripts/wot_updates.py",
+    ".github/workflows/wot-updates.yml"
+  ]
+}

@@ -1,5 +1,6 @@
 """The PR download must preserve the reviewed medkit, not the version probe."""
 import importlib.util
+import io
 import os
 from pathlib import Path
 import shutil
@@ -76,10 +77,18 @@ class StaySharpArtifactTests(unittest.TestCase):
                 'artifact_installer', root / 'scripts/release_installers.py')
             packager = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(packager)
-            kind, version, _, files, mod_path = packager.verify(installer)
+            kind, version, client, files, mod_path = packager.verify(installer)
             self.assertEqual((kind, version), ('staysharp', baseline))
             self.assertEqual(files[mod_path], reviewed)
-            self.assertEqual([n for n in files if n.endswith('.wotmod')], [mod_path])
+            expected_packages={mod_path}
+            with zipfile.ZipFile(installer) as outer:
+                with zipfile.ZipFile(io.BytesIO(outer.read(mod_path))) as inner:
+                    if packager.MEDKIT_GARAGE_RESOURCE in inner.namelist():
+                        vendor='mods/'+client+'/net.openwg/'+packager.OPENWG_PACKAGE
+                        expected_packages.add(vendor)
+                        self.assertEqual(packager.digest(files[vendor]),packager.OPENWG_SHA256)
+                        self.assertIn('docs/staysharp/OPENWG_LICENSE',files)
+            self.assertEqual({n for n in files if n.endswith('.wotmod')}, expected_packages)
             self.assertIn('mods/configs/staysharp.medkit.json.example', files)
             self.assertFalse(any('sessionstats' in n for n in files))
             self.assertFalse(any(n.endswith('.json') and n.startswith('mods/configs/')
