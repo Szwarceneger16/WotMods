@@ -103,7 +103,7 @@ module.exports = async function ({browser, nativeHost, check}) {
       const pass = input.width > 50 && timePoint.right <= input.left &&
         timePoint.left >= frame.left && input.right <= frame.right &&
         Math.abs(input.top - timePoint.top) < 1 && language.right <= close.left &&
-        (Math.abs(timePoint.top - language.top) < 1 ? input.right < language.left : language.top >= timePoint.bottom) &&
+        (Math.abs(frame.top - language.top) < 1 ? input.right < language.left : language.top >= frame.bottom) &&
         (expectedWrapped ? actions.top >= title.bottom : actions.top < title.bottom) &&
         [title,actions,frame,language,close].every(item=>item.left>=root.left-1 && item.right<=root.right+1) &&
         [...document.querySelectorAll('.ss-timeline-field')].every(field => {

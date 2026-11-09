@@ -25,7 +25,7 @@ module.exports=async ({browser,nativeHost,check})=>{
         await page.evaluate(pageNumber=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
           scope.vehicles[0].battle_list={page:pageNumber,pages:2,total:13,page_size:10,
             items:Array.from({length:pageNumber ? 3 : 10},(_,index)=>({id:'synthetic-vehicle-battle-'+(pageNumber*10+index),
-              name:'Synthetic Heavy',started_at:1794000000-index*600,outcome:index%2 ? 'loss' : 'win',wn8:index===0 ? 0 : 1750}))};
+              name:'Synthetic Heavy',map:'Synthetic Map '+(pageNumber*10+index),started_at:1794000000-index*600,outcome:index%2 ? 'loss' : 'win',wn8:index===0 ? 0 : 1750}))};
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},pageNumber);await frames(page);
       }
       await list(0);
@@ -33,6 +33,12 @@ module.exports=async ({browser,nativeHost,check})=>{
         await vehicle.locator('.ss-vehicle-battles').getAttribute('aria-label')===messages['vehicles.battles'] &&
         await vehicle.locator('.ss-map-battle-row').count()===10 && await vehicle.locator('.ss-map-page-previous').isDisabled() &&
         await vehicle.locator('.ss-map-battle-open').first().textContent()===messages['maps.open_battle']);
+      const mapLabels=await vehicle.locator('.ss-map-battle-name').evaluateAll(nodes=>nodes.map(node=>{
+        const box=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
+        return {text:node.textContent,fits:box.width>0 && [...range.getClientRects()].every(text=>text.left>=box.left-1 && text.right<=box.right+1)};
+      }));
+      check('Vehicle history identifies each battle by its readable map name in '+language+': '+JSON.stringify(mapLabels),
+        mapLabels.length===10 && mapLabels.every((item,index)=>item.text==='Synthetic Map '+index && item.fits));
       await vehicle.locator('.ss-map-page-next').click();sent=await commands(page,'vehicle_battles');request=sent[sent.length-1];
       check('Vehicle Next retains vehicle and period ownership in '+language,
         request.vehicle_id==='synthetic-heavy' && request.page==='1' && request.period_id==='synthetic-vehicle-period-'+language);

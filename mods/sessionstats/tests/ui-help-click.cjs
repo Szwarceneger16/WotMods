@@ -4,6 +4,9 @@ module.exports=async ({browser,nativeHost,check})=>{
   try {
     const info=page.locator('#ss-summary .ss-performance .ss-info-button'),tooltip=page.locator('#ss-help-tooltip');
     await page.locator('#ss-close').focus();await info.hover({position:{x:4,y:5}});
+    check('Info hover paints its orange outline before opening help',await tooltip.isHidden() &&
+      await info.evaluate(node=>{const style=getComputedStyle(node);return style.outlineStyle==='solid' &&
+        parseFloat(style.outlineWidth)>=1 && style.outlineColor==='rgb(231, 162, 59)';}));
     await page.waitForTimeout(250);
     check('Info hover remains delayed before an intentional pointer click',await tooltip.isHidden());
     await info.click({position:{x:4,y:5}});

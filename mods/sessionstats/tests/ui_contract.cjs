@@ -279,7 +279,15 @@ async function runFeatureSuite(file,browser) {
         group:label.closest('.ss-group')?label.closest('.ss-group').getAttribute('data-group-id'):'summary'};
     }).filter(label=>label.height>label.lineHeight+1));
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
-  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]:not(.ss-info-button)').count()===0);
+  const aggregateHistory=await page.locator('#ss-groups .ss-group').evaluateAll(cards=>cards.map(card=>({
+    id:card.dataset.groupId,buttons:card.querySelectorAll('.ss-vehicle-more-button').length,
+    expanded:card.querySelector('.ss-vehicle-more-button') && card.querySelector('.ss-vehicle-more-button').getAttribute('aria-expanded'),
+    hidden:card.querySelector('.ss-vehicle-battles') && getComputedStyle(card.querySelector('.ss-vehicle-battles')).display==='none',
+    missionDetails:card.querySelectorAll('.ss-more-panel,.ss-more-mission,details').length,
+    otherAccordions:card.querySelectorAll('[aria-expanded]:not(.ss-info-button):not(.ss-vehicle-more-button)').length})));
+  check('Vehicle aggregates expose only a closed battle-history control without inline mission accordions: '+JSON.stringify(aggregateHistory),
+    aggregateHistory.length>0 && aggregateHistory.every(card=>card.buttons===1 && card.expanded==='false' && card.hidden &&
+      card.missionDetails===0 && card.otherAccordions===0) && await page.locator('details').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
   const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
