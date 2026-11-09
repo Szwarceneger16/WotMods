@@ -1949,13 +1949,31 @@
         if (!panel || state.destroyed) { return; }
         var viewport = nodes.scroll.getBoundingClientRect(), box = panel.getBoundingClientRect();
         if (!(box.height > 0) || !(viewport.height > 0)) { return; }
-        if (recalculate || !hasNumber(state.filterBase)) { state.filterBase = box.top - viewport.top + nodes.scroll.scrollTop - state.filterShift; }
+        var rawTop = nodes.scroll.scrollTop;
+        var logicalTop = state.scrollTarget === null ? rawTop : state.scrollTarget;
+        if (recalculate || !hasNumber(state.filterBase)) { state.filterBase = Math.max(0, box.top - viewport.top + rawTop - state.filterShift); }
+        var content = nodes.groups.getBoundingClientRect();
+        // The translated filter is scrollable overflow, not additional data.
+        // Derive real bounds from normal-flow content using the same sampled
+        // offset as its rectangle; a native scroll setter can lag one frame.
+        if (content.width > 0 && hasNumber(content.bottom) &&
+                (content.height > 1 || !state.groupCards || !state.groupCards.length)) {
+            var padding = 10 * state.nativeScale;
+            try {
+                var measuredPadding = parseFloat(window.getComputedStyle(nodes.scroll).paddingBottom);
+                if (hasNumber(measuredPadding)) { padding = measuredPadding; }
+            } catch (ignored) { /* Keep the shipped padding while native styles mount. */ }
+            var maximum = Math.max(0, content.bottom - viewport.top + rawTop + padding - nodes.scroll.clientHeight);
+            logicalTop = Math.max(0, Math.min(logicalTop, maximum));
+            if (state.scrollTarget !== null) { state.scrollTarget = logicalTop; }
+            if (rawTop !== logicalTop) { nodes.scroll.scrollTop = logicalTop; }
+        }
         var base = state.filterBase;
-        var shift = box.height < viewport.height - 30 * state.nativeScale ? Math.max(0, nodes.scroll.scrollTop - base) : 0;
+        var shift = box.height < viewport.height - 30 * state.nativeScale ? Math.max(0, logicalTop - base) : 0;
         state.filterShift = shift; panel.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
         panel.classList[shift > 0 ? 'add' : 'remove']('is-pinned');
         if (nodes['scroll-top']) {
-            nodes['scroll-top'].style.display = nodes.scroll.scrollTop > 60 * state.nativeScale ? 'flex' : 'none';
+            nodes['scroll-top'].style.display = logicalTop > 60 * state.nativeScale ? 'flex' : 'none';
             nodes['scroll-top'].style.bottom = Math.max(48 * state.nativeScale,
                 root.getBoundingClientRect().bottom - viewport.bottom + 12 * state.nativeScale) + 'px';
         }
@@ -2883,7 +2901,11 @@
             layoutSummary();
             layoutBattleCards();
             resizeNative();
-            if (state.groupMinHeight) { nodes.groups.style.minHeight = ''; state.groupMinHeight = false; }
+            if (state.groupMinHeight) {
+                nodes.groups.style.minHeight = ''; state.groupMinHeight = false;
+                // Native flow/clamping may settle after this measurement.
+                queueResize();
+            }
             restoreViewScroll();
             finishBattleJump();
             finishPageJump();

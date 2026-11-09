@@ -113,6 +113,38 @@ module.exports=async({browser,nativeHost,check})=>{
     await page.evaluate(()=>document.querySelector('#ss-groups .ss-more-button').onclick());await frames();
     check('Opening battle details preserves the visible battle position',Math.abs(await top()-moreAt)<=1);
 
+    await page.evaluate(()=>{
+      const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+      scope.tiers=scope.tiers.slice(0,6);
+      scope.pagination.tiers={page:0,page_size:40,total:6,pages:1};
+      model.payload=JSON.stringify(payload);GRZSessionStats.update(model.payload);
+    });await frames();
+    check('The shrink regression starts well down the long battle list',await position(2500)>2000);
+    await page.evaluate(()=>{
+      const scroll=document.getElementById('ss-scroll');
+      // Gameface can apply a shorter content range without publishing its
+      // automatic clamp as a scroll event; the next wheel then repairs it.
+      window.__silentNativeClamp=event=>event.stopImmediatePropagation();
+      scroll.addEventListener('scroll',__silentNativeClamp,true);
+      document.getElementById('ss-group-tiers').onclick();
+    });await frames();await frames();
+    const shrink=await page.evaluate(()=>{
+      const scroll=document.getElementById('ss-scroll'),viewport=scroll.getBoundingClientRect();
+      const panel=document.getElementById('ss-filter-panel').getBoundingClientRect();
+      const groups=document.getElementById('ss-groups').getBoundingClientRect();
+      const naturalHeight=groups.bottom-viewport.top+scroll.scrollTop+parseFloat(getComputedStyle(scroll).paddingBottom);
+      const visible=[...document.querySelectorAll('#ss-groups .ss-group')].filter(card=>{
+        const box=card.getBoundingClientRect();return box.bottom>Math.max(viewport.top,panel.bottom) && box.top<viewport.bottom;
+      }).length;
+      scroll.removeEventListener('scroll',__silentNativeClamp,true);
+      return {top:scroll.scrollTop,height:scroll.scrollHeight,client:scroll.clientHeight,naturalHeight,
+        panelTop:panel.top,panelBottom:panel.bottom,viewportTop:viewport.top,viewportBottom:viewport.bottom,visible};
+    });
+    check('Switching long Battles to six Tiers settles real bounds and visible cards without any wheel event: '+JSON.stringify(shrink),
+      shrink.top<=Math.max(0,shrink.naturalHeight-shrink.client)+2 &&
+      shrink.height<=Math.max(shrink.client,shrink.naturalHeight)+2 && shrink.visible>0 &&
+      shrink.panelTop>=shrink.viewportTop-1 && shrink.panelBottom<=shrink.viewportBottom+1);
+
     await position(400);
     await page.evaluate(()=>{
       const payload=JSON.parse(model.payload);payload.account_key='synthetic-other-account';
