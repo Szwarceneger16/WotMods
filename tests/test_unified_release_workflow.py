@@ -52,6 +52,23 @@ class SinglePublisherTests(unittest.TestCase):
             with self.subTest(pattern=pattern):
                 self.assertTrue(any(fnmatch.fnmatchcase(pattern, trigger) for trigger in triggers))
 
+    def test_non_build_maintenance_does_not_start_release_runners(self):
+        scope = WORKFLOW.split('  push:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
+        triggers = re.findall(r"(?m)^      - '([^']+)'$", scope)
+        for path in ('.github/workflows/wotmods-release.yml',
+                     '.github/workflows/release.yml',
+                     '.github/workflows/sessionstats-release.yml',
+                     '.github/workflows/ci.yml',
+                     '.github/workflows/sessionstats-ci.yml',
+                     'scripts/release_coordinator.py',
+                     'scripts/release_ruleset.py',
+                     'scripts/wot_dispatch.py',
+                     'docs/BUILD_RELEASE.md',
+                     'docs/RELEASE_AGENT_GUIDE.md'):
+            with self.subTest(path=path):
+                self.assertFalse(any(fnmatch.fnmatchcase(path, trigger)
+                                     for trigger in triggers))
+
     def test_legacy_publishers_mutex_shared_across_entire_transaction(self):
         before_jobs = WORKFLOW.split('\njobs:', 1)[0]
         self.assertIn('group: wotmod-release-${{ github.repository }}', before_jobs)

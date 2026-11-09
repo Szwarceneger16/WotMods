@@ -37,6 +37,16 @@ verification. Builds for selected modules within a single run can execute
 concurrently; builds from different release runs wait in the queue. This is a
 deliberate throughput trade-off for a straightforward, serializable transaction.
 
+The `main` push filter covers only the registered module build inputs and
+shared sources that can affect distribution packages. Workflow-only maintenance,
+release coordinator/ruleset logic, update-dispatch logic and unrelated docs do
+not start a no-op production workflow. Their changes are tested by the relevant
+PR CI jobs; a maintainer can explicitly use `workflow_dispatch` for a live
+planning check (publication still requires unreleased changes). When adding
+build inputs or a new module, update **both** `scripts/release_modules.json`
+and the production `push.paths` filter. The registry coverage test ensures
+none of the registered sources can silently miss a production run.
+
 The source commit is the immutable `github.sha` associated with the accepted
 workflow invocation. Do **not** check out a moving `main` after selecting a
 workflow version: it could run a different CI harness against newer source.
@@ -133,9 +143,12 @@ The queue and verification do not certify compatibility inside World of Tanks.
    authorization. The publisher does not need any per-pair compatibility rule:
    its matrix and file selection derive from the registry.
 
-## 5. One-time owner setup for new global tags
+## 5. Existing owner protection and re-attestation
 
-Before merging this workflow into `main`, the repository owner must configure:
+The one-time setup was completed on 2026-11-09 and the first unified immutable
+Release, `wotmods-v1.0.158`, was published successfully. Keep the following
+owner-reviewed settings; repeat the inspection and update the attestation
+variables after any Ruleset change:
 
 - **Settings → Rules → Rulesets → New tag ruleset**: name
   `wotmods-release-tags`, enforcement **Active**, one target

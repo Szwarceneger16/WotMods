@@ -28,7 +28,7 @@ file to the corresponding `.json` filename. Existing settings are preserved.
 and 2.7 logic tests, browser/UI suites, privacy tests and reproducibility
 checks. It uploads the **existing installer ZIP** with `archive: false`:
 
-`wot-statystyki-sesji-v<version>.zip`
+`Session-Stats-v<version>.zip`
 
 The download is not double-zipped and does not create a public Release. The
 production packaging step independently verifies all built source assets,
@@ -38,7 +38,16 @@ then produces `Session-Stats-v<version>.zip` with the installed file
 
 ## Production flow
 
-The only publisher is `.github/workflows/wotmods-release.yml`:
+The only publisher is `.github/workflows/wotmods-release.yml`. It runs on
+`main` pushes that change registered mod build inputs, an explicit manual
+dispatch, or a WoT client-update dispatch. Changes limited to release workflow
+maintenance, unrelated scripts, or this documentation do **not** start release
+runner jobs. Relevant PR workflows still validate release infrastructure before
+merge. A maintainer may explicitly invoke `workflow_dispatch` to exercise
+production planning; it publishes only when there are actual unreleased build
+inputs or a change in the WoT client directory.
+
+The publishing transaction is:
 
 1. Accepted `main` push or explicit dispatch; exact `github.sha` pinned.
 2. Global queue acquired **before** reading the old Latest.
@@ -65,19 +74,20 @@ source commit. This is separate from the two installers' own SemVer. Legacy `sta
 and older `v*` tags remain preserved in history; published artifacts are not
 mutated or deleted.
 
-## Owner prerequisite before merging the workflow migration
+## Existing release protection and owner re-attestation
 
-The repository already uses Immutable Releases and legacy protected tags.
-Before the unified workflow is accepted, the owner must create a **new**
-native tag Ruleset:
+The one-time migration setup was completed before the first shared immutable
+[WotMods v1.0.158 Release](https://github.com/Szwarceneger16/WotMods/releases/tag/wotmods-v1.0.158)
+on 2026-11-09. The owner-configured protection must stay in place:
 
 - Name `wotmods-release-tags`, Active, target exactly
   `refs/tags/wotmods-v*`, no exclusions or bypass actors.
 - Restrict tag **updates** and **deletions**; do not restrict creations.
-- Create GitHub Environment `wotmods-release`, allow only branch `main`.
-- Verify the Ruleset with owner privileges and set its exact ID and `updated_at`
-  in the non-secret Environment variables `WOTMODS_REVIEWED_RULESET_ID` and
-  `WOTMODS_REVIEWED_RULESET_UPDATED_AT`.
+- GitHub Environment `wotmods-release` is limited to branch `main`.
+- The Ruleset's owner-reviewed ID and `updated_at` are recorded in non-secret
+  Environment variables `WOTMODS_REVIEWED_RULESET_ID` and
+  `WOTMODS_REVIEWED_RULESET_UPDATED_AT`. Re-review and refresh these values
+  after **any** Ruleset change; otherwise publication must fail closed.
 
 The workflow fails closed if the Ruleset is absent, was modified since
 review, allows bypasses, or has the wrong tag pattern. Do not create a PAT,
