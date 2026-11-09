@@ -836,6 +836,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
   await runFeatureSuite('./ui-history-inplace.cjs',browser);
   await runFeatureSuite('./ui-detail-widths.cjs',browser);
+  await runFeatureSuite('./ui-version.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);

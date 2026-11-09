@@ -59,7 +59,7 @@
         if (state.dialog) { resetText(); }
     }
     var nodes = {};
-    var ids = ['started', 'summary', 'groups', 'scroll', 'status', 'reset',
+    var ids = ['started', 'summary', 'groups', 'scroll', 'status', 'version', 'reset',
         'reset-overlay', 'reset-cancel', 'reset-confirm', 'close', 'refresh',
         'group-tabs', 'list-meta', 'titlebar', 'title-actions', 'timeline', 'time-point',
         'time-point-controls', 'time-point-name', 'resize-grip', 'maximize', 'window-background',
@@ -2113,6 +2113,11 @@
     function renderView() {
         var payload = state.payload;
         if (!payload || !payload.scopes) { return; }
+        var version = typeof payload.version === 'string' && payload.version.length <= 64 &&
+            /^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/.test(payload.version) ? payload.version : '';
+        nodes.version.textContent = version ? 'v' + version : '';
+        nodes.version.style.display = version ? 'block' : 'none';
+        nodes.version.setAttribute('title', version ? 'Session Stats ' + version : '');
         hideHelp();
         clearHelp(nodes.summary);
         clearHelp(nodes.status);

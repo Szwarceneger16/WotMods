@@ -171,6 +171,7 @@ button:disabled { opacity:0.45; }
 .ss-empty { color:#b5b095; font-size:14rem; padding:16rem 4rem; margin:0; line-height:20rem; }
 .ss-footer { flex-shrink:0; display:flex; align-items:center; min-height:36rem; border-top:1rem solid #3b3c24; border-radius:0 0 7rem 7rem; padding:5rem 25rem 7rem 10rem; background:linear-gradient(#171b0d,#1f2213); box-shadow:inset 0 -2rem #050601; }
 .ss-status { display:block; flex:1; min-width:0; color:#a5a286; font-size:11rem; line-height:14rem; padding-right:8rem; }
+.ss-version { display:block; flex:0 0 auto; color:#a5a286; font-size:11rem; line-height:14rem; padding-right:8rem; white-space:nowrap; }
 .ss-button { flex-shrink:0; min-width:82rem; min-height:28rem; padding:4rem 10rem; font-size:12rem; border:1rem solid #555944; border-radius:5rem; color:#dfd4ae; background:linear-gradient(#45483a,#34392a 48%,#2d3325); box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 1rem 0 rgba(213,191,132,0.12), inset -1rem 0 rgba(213,191,132,0.12); text-shadow:0 1rem 1rem #000; transition:color 120ms, border-color 120ms, box-shadow 120ms; }
 .ss-button:hover, .ss-button:focus { color:#f1e3b8; border-color:rgba(236,220,174,0.3); background:linear-gradient(#5b5b45,#45483a 48%,#3a412e); box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 0 0 7rem rgba(213,191,132,0.12), 0 0 4rem rgba(213,191,132,0.12); }
 .ss-button:active, .ss-scope:active, .ss-small-toggle:active { background:linear-gradient(#2d3325,#34392a); box-shadow:inset 0 2rem 4rem #000, inset 0 -1rem rgba(213,191,132,0.12); text-shadow:none; }
