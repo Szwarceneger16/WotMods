@@ -3,19 +3,24 @@ name: Publish WotMods snapshot
 on:
   push:
     branches: [main]
+    # Keep this limited to distributed-mod build inputs. CI/publisher-only
+    # maintenance is validated on PRs; it needs no no-op release runner jobs.
     paths:
       - 'source/**'
       - 'assets/**'
       - 'VERSION'
       - 'mods/**'
-      - 'scripts/**'
+      - 'scripts/sessionstats/**'
+      - 'scripts/release_installers.py'
+      - 'scripts/release_version.py'
+      - 'scripts/build_release_module.sh'
+      - 'scripts/privacy_audit.py'
+      - 'scripts/release_modules.json'
+      - 'scripts/wot_updates.py'
       - 'staysharp.medkit.example.json'
       - 'CHANGELOG.md'
       - 'docs/AUDIO.md'
       - 'docs/INSTALACJA.md'
-      - '.github/workflows/wotmods-release.yml'
-      - '.github/workflows/release.yml'
-      - '.github/workflows/sessionstats-release.yml'
       - '.github/workflows/wot-updates.yml'
   workflow_dispatch:
 
