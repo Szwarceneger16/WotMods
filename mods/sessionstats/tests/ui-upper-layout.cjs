@@ -211,8 +211,10 @@ module.exports=async function ({browser,nativeHost,check}) {
           await page.locator('#ss-sorting').evaluate(bar=>{
             const box=bar.getBoundingClientRect(),fields=[...bar.querySelectorAll('.ss-sort-field')];
             const scale=parseFloat(getComputedStyle(document.documentElement).fontSize);
+            const limits={'ss-sort-statistic':66,'ss-sort-metric':121,'ss-sort-direction':110};
             if(box.width<=0 || box.width/scale>295 || fields.length!==3 ||
-              fields.some((field,index)=>field.getBoundingClientRect().width/scale>[71,121,105][index])) return false;
+              fields.some(field=>{const id=field.querySelector('.ss-select').id;
+                return !limits[id] || field.getBoundingClientRect().width/scale>limits[id];})) return false;
             return fields.every(field=>{
               const label=field.querySelector('.ss-select-trigger .ss-control-label'),original=label.textContent;
               const available=label.getBoundingClientRect().width,range=document.createRange();
