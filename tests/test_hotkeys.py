@@ -316,15 +316,160 @@ class HotkeyTests(unittest.TestCase):
         self.assertFalse(tracker.reconcile(lambda code: False, current_key=29))
         self.assertEqual(tracker.feed(29, False)['captured'], ['CTRL', 'M'])
 
-    def test_reconcile_query_failure_fails_closed_without_idle_queries(self):
+    def modifier_keys(self):
+        return types.SimpleNamespace(KEY_LCONTROL=29, KEY_RCONTROL=157,
+                                     KEY_LALT=56, KEY_RALT=184,
+                                     KEY_LSHIFT=42, KEY_RSHIFT=54,
+                                     KEY_LWIN=219, KEY_RWIN=220,
+                                     KEY_M=50, KEY_A=30, KEY_W=17)
+
+    def test_reconcile_recovers_unobserved_modifiers_after_blocked_reset(self):
+        keys = self.modifier_keys()
+        for code, name in ((29, 'LCTRL'), (157, 'RCTRL'), (56, 'LALT'), (184, 'RALT'),
+                           (42, 'LSHIFT'), (54, 'RSHIFT'), (219, 'LWIN'), (220, 'RWIN')):
+            with self.subTest(modifier=name):
+                tracker = hotkeys.ChordTracker({'power': ['M']}, keys)
+                tracker.feed(code, True, blocked=True)
+                self.assertEqual(tracker.held_keys, ())
+                self.assertFalse(tracker.reconcile(lambda native: native == code, current_key=50))
+                self.assertEqual(tracker.held_keys, (name,))
+                self.assertEqual(tracker.feed(50, True)['actions'], [])
+                # Native state may already report this incoming release; the
+                # event owns removing the current modifier from held state.
+                self.assertFalse(tracker.reconcile(lambda native: native == 50, current_key=code))
+                self.assertEqual(tracker.feed(code, False)['actions'], [])
+                tracker.feed(50, False)
+                tracker.reconcile(lambda native: False, current_key=50)
+                self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+                self.assertEqual(tracker.feed(50, True, repeated=True)['actions'], [])
+
+    def test_reconcile_recovers_required_generic_and_side_specific_modifiers(self):
+        keys = self.modifier_keys()
+        for chord in (['CTRL', 'M'], ['LCTRL', 'M']):
+            with self.subTest(chord=chord):
+                tracker = hotkeys.ChordTracker({'power': chord}, keys)
+                tracker.feed(29, True, blocked=True)
+                self.assertFalse(tracker.reconcile(lambda code: code == 29, current_key=50))
+                self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+                tracker.reset()
+                self.assertFalse(tracker.reconcile(lambda code: code in (29, 157), current_key=50))
+                expected = ['power'] if chord[0] == 'CTRL' else []
+                self.assertEqual(tracker.feed(50, True)['actions'], expected)
+
+    def test_reconcile_stale_ordinary_key_retains_fresh_unobserved_ctrl(self):
+        keys = self.modifier_keys()
+        tracker = hotkeys.ChordTracker({'power': ['M']}, keys)
+        tracker.feed(30, True)
+        self.assertTrue(tracker.reconcile(lambda code: code == 29, current_key=50))
+        self.assertEqual(tracker.held_keys, ('LCTRL',))
+        self.assertEqual(tracker.feed(50, True)['actions'], [])
+        tracker = hotkeys.ChordTracker({'power': ['CTRL', 'M']}, keys)
+        tracker.feed(30, True)
+        self.assertTrue(tracker.reconcile(lambda code: code == 29, current_key=50))
+        self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+
+    def test_reconcile_excludes_current_modifier_edge_and_preserves_latches(self):
+        keys = self.modifier_keys()
+        tracker = hotkeys.ChordTracker({'power': ['CTRL', 'M']}, keys)
+        tracker.feed(50, True)
+        queries = []
+        def state(code):
+            queries.append(code)
+            if code == 29:
+                raise AssertionError('incoming modifier must not be queried')
+            return code == 50
+        self.assertFalse(tracker.reconcile(state, current_key=29))
+        self.assertNotIn(29, queries)
+        self.assertEqual(tracker.feed(29, True)['actions'], ['power'])
+        queries[:] = []
+        self.assertFalse(tracker.reconcile(state, current_key=29))
+        self.assertEqual(tracker.held_keys, ('LCTRL', 'M'))
+        self.assertEqual(tracker.feed(29, False)['actions'], [])
+        self.assertNotIn(29, queries)
+        self.assertEqual(tracker.held_keys, ('M',))
+        self.assertFalse(tracker.reconcile(state, current_key=29))
+        self.assertEqual(tracker.feed(29, True)['actions'], ['power'])
+
+    def test_reconcile_omits_aggregate_alias_when_physical_sides_exist(self):
+        keys = types.SimpleNamespace(KEY_CONTROL=17, KEY_LCONTROL=29,
+                                     KEY_RCONTROL=157, KEY_M=50)
+        tracker = hotkeys.ChordTracker({'power': ['LCTRL', 'M']}, keys)
+        queries = []
+        def state(code):
+            queries.append(code)
+            if code == 17:
+                raise AssertionError('aggregate alias must not be queried')
+            return code == 29
+        self.assertFalse(tracker.reconcile(state, current_key=50))
+        self.assertEqual(set(queries), {29, 157})
+        self.assertEqual(tracker.held_keys, ('LCTRL',))
+        self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+        # An incoming aggregate edge must not indirectly query its physical
+        # sides either; that edge is not yet reflected in tracked state.
+        tracker = hotkeys.ChordTracker({'power': ['CTRL', 'M']}, keys)
+        tracker.feed(50, True)
+        queries[:] = []
+        def current_state(code):
+            queries.append(code)
+            if code in (17, 29, 157):
+                raise AssertionError('incoming family must not be queried')
+            return code == 50
+        self.assertFalse(tracker.reconcile(current_state, current_key=17))
+        self.assertEqual(queries, [50])
+        self.assertEqual(tracker.feed(17, True)['actions'], ['power'])
+
+    def test_reconcile_does_not_hydrate_unrecorded_modifiers_during_capture(self):
         keys = types.SimpleNamespace(KEY_LCONTROL=29, KEY_M=50)
-        tracker = hotkeys.ChordTracker({'power': 'CTRL+M'}, keys)
+        tracker = hotkeys.ChordTracker(keys_module=keys)
+        tracker.begin_capture(side_specific=True)
+        queries = []
+        def state(code):
+            queries.append(code)
+            return code == 29
+        self.assertFalse(tracker.reconcile(state, current_key=50))
+        tracker.feed(50, True)
+        self.assertFalse(tracker.reconcile(state, current_key=50))
+        self.assertEqual(tracker.feed(50, False)['captured'], ['M'])
+        self.assertEqual(queries, [])
+
+    def test_reconcile_movement_remains_held_while_modifiers_are_refreshed(self):
+        keys = self.modifier_keys()
+        tracker = hotkeys.ChordTracker({'power': ['W', 'M']}, keys)
+        tracker.feed(17, True)
+        self.assertFalse(tracker.reconcile(lambda code: code == 17, current_key=50))
+        self.assertEqual(tracker.held_keys, ('W',))
+        self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+
+    def test_reconcile_query_failure_aborts_normal_dispatch_even_when_empty(self):
+        keys = types.SimpleNamespace(KEY_LCONTROL=29, KEY_M=50)
+        tracker = hotkeys.ChordTracker({'power': ['M']}, keys)
         def broken(code):
             raise RuntimeError('Native state query failed')
-        self.assertFalse(tracker.reconcile(broken))
-        tracker.feed(29, True)
-        self.assertTrue(tracker.reconcile(broken, current_key=50))
-        self.assertEqual(tracker.held_keys, ())
+        for state in (None, broken):
+            with self.subTest(state=state):
+                with self.assertRaises(RuntimeError):
+                    tracker.reconcile(state, current_key=50)
+                self.assertEqual(tracker.held_keys, ())
+                tracker.feed(29, True)
+                with self.assertRaises(RuntimeError):
+                    tracker.reconcile(state, current_key=50)
+                self.assertEqual(tracker.held_keys, ())
+        self.assertFalse(tracker.reconcile(lambda code: False, current_key=50))
+        self.assertEqual(tracker.feed(50, True)['actions'], ['power'])
+
+    def test_reconcile_capture_query_failure_returns_cancelled_reset(self):
+        keys = types.SimpleNamespace(KEY_LCONTROL=29, KEY_M=50)
+        tracker = hotkeys.ChordTracker(keys_module=keys)
+        def broken(code):
+            raise RuntimeError('Native state query failed')
+        for state in (None, broken):
+            with self.subTest(state=state):
+                tracker.begin_capture()
+                tracker.feed(29, True)
+                self.assertTrue(tracker.reconcile(state, current_key=50))
+                self.assertFalse(tracker.capture_active)
+                self.assertEqual(tracker.held_keys, ())
+                self.assertIsNone(tracker.feed(29, False)['captured'])
 
 
 if __name__ == '__main__':

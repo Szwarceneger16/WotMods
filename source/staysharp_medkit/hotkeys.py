@@ -240,34 +240,79 @@ class ChordTracker(object):
         self.reset()
 
     def reconcile(self, key_state, current_key=None):
-        """Discard stale held state after lost key-up events or focus changes.
+        """Refresh dispatch modifiers and discard state after lost key-up events.
 
-        Only keys already held by this tracker are queried. The incoming event's
-        key is excluded because its native state can change before dispatch.
-        Lookup/query failures clear the state too; no background polling occurs.
+        Ordinary dispatch samples every available physical modifier even after a
+        blocked event emptied the tracker. Capture keeps its recorded-key-only
+        contract. The incoming edge owns its current key; native state may lead
+        or lag that event. No background polling or synthetic actions occur.
         """
-        if not self._held:
-            return False
         unused_names, by_code = _registry(self._keys_module)
         current = key_name(current_key, self._keys_module)
-        pending = self._held.difference((current,))
-        if not pending:
-            return False
         by_name = {}
         for code, name in by_code.items():
             by_name.setdefault(name, []).append(code)
+        pending = self._held.difference((current,))
+        capturing = self._capturing
+        if capturing and not pending:
+            return False
+        queried = {}
+        def is_down(name):
+            codes = by_name.get(name)
+            if not codes:
+                return False
+            for code in codes:
+                if code not in queried:
+                    queried[code] = bool(key_state(code))
+                if queried[code]:
+                    return True
+            return False
         try:
             if not callable(key_state):
                 raise ValueError('Native key state is unavailable')
-            for name in pending:
-                codes = by_name.get(name)
-                if not codes or not any(bool(key_state(code)) for code in codes):
+            if capturing:
+                if any(not is_down(name) for name in pending):
                     self.reset()
                     return True
+                return False
+            modifiers = set(by_name).intersection(_MODIFIER_KEYS)
+            for generic, family in _FAMILIES.items():
+                if modifiers.intersection(family.difference((generic,))):
+                    # Aggregate codes can mirror either physical side. Using
+                    # both would reject valid side-specific shortcuts.
+                    modifiers.discard(generic)
+            def current_edge(name):
+                return (name == current or
+                        name in _FAMILIES and current in _FAMILIES[name] or
+                        current in _FAMILIES and name in _FAMILIES[current])
+            snapshot = set(name for name in self._held.intersection(_MODIFIER_KEYS)
+                           if current_edge(name))
+            for name in sorted(modifiers, key=_sort_key):
+                if not current_edge(name) and is_down(name):
+                    snapshot.add(name)
+            stale = False
+            for name in pending:
+                if name in _MODIFIER_KEYS:
+                    if not current_edge(name) and not _matches([name], snapshot, exact=False):
+                        stale = True
+                elif not is_down(name):
+                    stale = True
+            if stale:
+                self.reset()
+            else:
+                self._held.difference_update(_MODIFIER_KEYS)
+            # A stale ordinary key must never clear a freshly observed Ctrl,
+            # Alt, Shift or Win and accidentally permit a bare shortcut.
+            self._held.update(snapshot)
+            return stale
         except Exception:
             self.reset()
-            return True
-        return False
+            if capturing:
+                # The owner explicitly publishes capture cancellation on True.
+                return True
+            # Clearing alone is insufficient: ordinary callers still feed the
+            # incoming key after a True reset result. Abort that event instead.
+            raise RuntimeError('Native keyboard state is unavailable')
 
     def feed(self, key, is_down, repeated=False, blocked=False):
         result = {'actions': [], 'captured': None, 'cancelled': False}

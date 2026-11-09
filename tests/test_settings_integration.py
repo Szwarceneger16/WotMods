@@ -111,6 +111,109 @@ class SettingsIntegrationTests(unittest.TestCase):
                 self.assertEqual(self.game.physical_keys, {Keys.KEY_W})
             self.game.key(Keys.KEY_W, False)
 
+    def test_modifiers_held_across_blocked_ui_cannot_become_a_bare_m_shortcut(self):
+        import Keys
+        with patch.multiple(Keys, KEY_LWIN=219, KEY_RWIN=220, create=True):
+            self.garage()
+            self.assertTrue(self.mod._settings_store.update_hotkeys({'toggle_mod': ['M']}))
+            self.action('close')
+            self.battle()
+            modifiers = (Keys.KEY_LCONTROL, Keys.KEY_RCONTROL, Keys.KEY_LALT, Keys.KEY_RALT,
+                         Keys.KEY_LSHIFT, Keys.KEY_RSHIFT, Keys.KEY_LWIN, Keys.KEY_RWIN)
+            for blocker in ('chat', 'modal'):
+                for modifier in modifiers:
+                    with self.subTest(blocker=blocker, modifier=modifier), \
+                            patch.object(self.mod, '_toggle_reminder', wraps=self.mod._toggle_reminder) as power:
+                        before = self.mod._reminder_enabled
+                        self.game.chat_focused = blocker == 'chat'
+                        self.panel.app.isModalViewShown = lambda: blocker == 'modal'
+                        self.game.key(modifier)
+                        self.assertEqual(self.mod._shortcut_tracker.held_keys, ())
+                        self.game.chat_focused = False
+                        self.panel.app.isModalViewShown = lambda: False
+                        try:
+                            self.game.key(Keys.KEY_M)
+                            self.game.key(Keys.KEY_M, repeated=True)
+                            self.game.key(Keys.KEY_M, False)
+                            power.assert_not_called()
+                            self.assertEqual(self.mod._reminder_enabled, before)
+                            self.assertTrue(self.game.world.isKeyDown(modifier))
+                            self.game.key(modifier, False)
+                            self.game.key(Keys.KEY_M)
+                            self.game.key(Keys.KEY_M, repeated=True)
+                            self.game.key(Keys.KEY_M, False)
+                            self.assertEqual(power.call_count, 1)
+                            self.assertEqual(self.mod._reminder_enabled, not before)
+                        finally:
+                            for code in tuple(self.game.physical_keys):
+                                self.game.key(code, False)
+
+    def test_configured_alt_p_recovers_held_alt_after_modal_but_rejects_extra_ctrl(self):
+        import Keys
+        with patch.object(Keys, 'KEY_P', 25, create=True):
+            self.garage()
+            self.assertTrue(self.mod._settings_store.update_hotkeys({'toggle_mod': ['ALT', 'P']}))
+            self.action('close')
+            self.battle()
+            for alt in (Keys.KEY_LALT, Keys.KEY_RALT):
+                with self.subTest(alt=alt), \
+                        patch.object(self.mod, '_toggle_reminder', wraps=self.mod._toggle_reminder) as power:
+                    self.panel.app.isModalViewShown = lambda: True
+                    self.game.key(alt)
+                    self.panel.app.isModalViewShown = lambda: False
+                    try:
+                        self.game.key(Keys.KEY_P)
+                        self.game.key(Keys.KEY_P, repeated=True)
+                        self.game.key(Keys.KEY_P, False)
+                        self.assertEqual(power.call_count, 1)
+                        self.assertTrue(self.game.world.isKeyDown(alt))
+                        self.game.key(alt, False)
+                        self.game.press_shortcut((Keys.KEY_P,))
+                        self.assertEqual(power.call_count, 1)
+                        self.panel.app.isModalViewShown = lambda: True
+                        self.game.key(alt)
+                        self.game.key(Keys.KEY_RCONTROL)
+                        self.panel.app.isModalViewShown = lambda: False
+                        self.game.key(Keys.KEY_P)
+                        self.assertEqual(power.call_count, 1)
+                        self.game.key(Keys.KEY_RCONTROL, False)
+                        self.game.key(Keys.KEY_P, repeated=True)
+                        self.assertEqual(power.call_count, 1)
+                        self.game.key(Keys.KEY_P, False)
+                        self.game.key(Keys.KEY_P)
+                        self.game.key(Keys.KEY_P, False)
+                        self.assertEqual(power.call_count, 2)
+                    finally:
+                        self.panel.app.isModalViewShown = lambda: False
+                        for code in tuple(self.game.physical_keys):
+                            self.game.key(code, False)
+
+    def test_unavailable_native_modifier_snapshot_suppresses_bare_binding_until_recovery(self):
+        import Keys
+        self.garage()
+        self.assertTrue(self.mod._settings_store.update_hotkeys({'toggle_mod': ['M']}))
+        self.action('close')
+        self.battle()
+        for failure in ('missing', 'raising'):
+            with self.subTest(failure=failure), \
+                    patch.object(self.mod, '_toggle_reminder', wraps=self.mod._toggle_reminder) as power:
+                before = self.mod._reminder_enabled
+                self.assertEqual(self.mod._shortcut_tracker.held_keys, ())
+                with patch.object(self.game.world, 'isKeyDown',
+                                  side_effect=RuntimeError('native snapshot unavailable')):
+                    if failure == 'missing':
+                        del self.game.world.isKeyDown
+                    self.game.key(Keys.KEY_M)
+                    self.game.key(Keys.KEY_M, repeated=True)
+                    self.game.key(Keys.KEY_M, False)
+                    power.assert_not_called()
+                    self.assertEqual(self.mod._reminder_enabled, before)
+                self.game.key(Keys.KEY_M)
+                self.game.key(Keys.KEY_M, repeated=True)
+                self.game.key(Keys.KEY_M, False)
+                self.assertEqual(power.call_count, 1)
+                self.assertEqual(self.mod._reminder_enabled, not before)
+
     def test_garage_capture_keeps_w_u_i_and_the_saved_chord_requires_w(self):
         import Keys
         with patch.multiple(Keys, KEY_W=17, KEY_U=22, KEY_I=23, create=True):

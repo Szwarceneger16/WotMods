@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.12
+
+- Reconcile physically held modifiers after chat, modal and input resets, preventing plain shortcuts from firing while an extra modifier remains down.
+- Suppress shortcut dispatch when native key-state queries are unavailable or fail, while preserving shortcut-recording cancellation and saved bindings.
+
 ## 1.8.11
 
 - Replace the garage medkit button's persistent focus frame with subtle neutral gray hover and press backgrounds; retained footer focus no longer leaves a selected outline.
