@@ -8,6 +8,7 @@ on:
       - 'scripts/hangarsync/**'
       - 'tests/test_hangarsync_*.py'
       - '.github/workflows/hangarsync-ci.yml'
+      - '.github/workflows/hangarsync-build.yml'
       - 'scripts/sessionstats/python27.sh'
       - 'scripts/privacy_audit.py'
       - '.github/workflows/wot-updates.yml'
@@ -33,9 +34,10 @@ jobs:
       group: hangarsync-ci-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     steps:
-      - name: Checkout reviewed source
+      - name: Checkout candidate source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Compile verified CPython 2.7.18
         # This shared compiler helper does not build or run Session Stats.
@@ -43,13 +45,5 @@ jobs:
       - name: Check Hangar Sync workflow and privacy boundaries
         run: python3 -m unittest discover -s tests -p 'test_hangarsync_*.py' -v
       - name: Test, build, audit and reproduce Hangar Sync
-        # PR artifacts use the builder's declared supported client version.
-        # Update evidence does not authorize a production publication here.
+        # Candidate packages are checked locally and never uploaded for installation.
         run: bash scripts/hangarsync/validate.sh
-      - name: Upload installable Hangar Sync ZIP without repackaging
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          path: mods/hangarsync/dist/GRZ_Hangar_Sync-v*.zip
-          archive: false
-          if-no-files-found: error
-          retention-days: 14

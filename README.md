@@ -4,9 +4,9 @@
 |---|---|---|
 | Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `Session-Stats-v<version>.zip`, including OpenWG and configuration examples |
 | Stay Sharp — Medkit Reminder | [source](source), description below | `StaySharp-Medkit-v<version>.zip`, including installation paths and a configuration example |
-| Hangar Sync — opt-in garage, crew and mission snapshots | [mods/hangarsync](mods/hangarsync) | PR build artifact: `GRZ_Hangar_Sync-v<version>.zip`, including installation paths and a disabled configuration example |
+| Hangar Sync — opt-in garage, crew and mission snapshots | [mods/hangarsync](mods/hangarsync) | Accepted `main` build: `GRZ_Hangar_Sync-v<version>.zip`, including installation paths and a disabled configuration example |
 
-Each mod can be installed independently. Medkit and Session Stats use the [latest shared release snapshot](../../releases/latest), carrying unchanged installers forward byte-for-byte unless the target game directory changes. See [release flow](docs/MULTIMOD_RELEASES.md). Hangar Sync has a separate PR build with tests, deterministic packaging, Python 2.7 bootstrap checks and a recursive privacy audit. Download its installation ZIP from the successful **Validate Hangar Sync PR** run linked in the pull request's checks.
+Each mod can be installed independently. Medkit and Session Stats use the [latest shared release snapshot](../../releases/latest), carrying unchanged installers forward byte-for-byte unless the target game directory changes. See [release flow](docs/MULTIMOD_RELEASES.md). Hangar Sync validates PR candidates without uploading executable packages. After changes are reviewed and merged into `main`, **Build Hangar Sync installer** rebuilds the exact accepted commit, runs tests, deterministic packaging, Python 2.7 bootstrap checks and a recursive privacy audit, then uploads the installation ZIP. Download only from that workflow in this repository on `main` (a `push` or manual run). Green PR checks do not establish trust in an installer; older installer-named PR artifacts are review evidence, not installation downloads.
 Sources and tests are separate; the Session Stats license applies only to its module.
 Integration rules: [mods/sessionstats/README.md](mods/sessionstats/README.md).
 
