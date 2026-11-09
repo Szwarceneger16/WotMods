@@ -816,11 +816,16 @@
         state.openSelect = null;
         if (restoreFocus) { focusControl(control.trigger); }
     }
+    function orderingUnavailable(scope, payload) {
+        payload = payload || state.payload;
+        return !scope || !!scope.loading || !!scope.load_error ||
+            (state.scope !== 'instance' && (!!payload.loading || !!payload.load_error));
+    }
     function changeOrder(field, value) {
         if (state.destroyed || !state.payload || !state.payload.scopes) { return; }
-        cancelBattleNavigation();
         var scope = currentScope();
-        if (!scope) { return; }
+        if (orderingUnavailable(scope)) { return; }
+        cancelBattleNavigation();
         var current = getOrder(scope), options = {}, key;
         for (key in defaultOrder) { options[key] = current[key]; }
         options[field] = value;
@@ -910,7 +915,8 @@
         for (field in selects) {
             if (field === 'language') { continue; }
             var control = selects[field], labelKey = field === 'chronology' ? 'sort.chronology' : 'sort.' + field;
-            var disabled = options.metric === 'off' && (field === 'statistic' || field === 'direction');
+            var disabled = orderingUnavailable(scope) ||
+                (options.metric === 'off' && (field === 'statistic' || field === 'direction'));
             // Time ordering remains available as the tie-breaker for equal metric values.
             control.trigger.disabled = disabled;
             control.trigger.setAttribute('aria-disabled', String(disabled));
@@ -2267,7 +2273,7 @@
                 var intended = value.scopes[intent.context.scope];
                 if (value.account_key === intent.context.account_key && intended && intended.period_id === intent.context.period_id) {
                     var actual = intended.ordering && intended.ordering[intent.group];
-                    if (actual && ['metric', 'statistic', 'direction', 'chronology'].some(function (key) {
+                    if (actual && !orderingUnavailable(intended, value) && ['metric', 'statistic', 'direction', 'chronology'].some(function (key) {
                         return actual[key] !== intent.options[key];
                     })) { return true; }
                 }

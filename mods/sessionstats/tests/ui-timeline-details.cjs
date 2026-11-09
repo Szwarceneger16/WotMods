@@ -93,6 +93,48 @@ module.exports = async function ({browser, nativeHost, check}) {
           command.from_point === 'first' && command.to_point === (scopedState === 'error' ? 'last' : '');
       }, scopedState));
   }
+  async function publishOrderingState(loading, name) {
+    await page.evaluate(({loading,name})=>{
+      const payload=JSON.parse(JSON.stringify(__timelineReadySnapshot)),timeline=payload.scopes.timeline;
+      payload.loading=false;payload.load_error='';timeline.loading=loading;timeline.load_error='';
+      if(name)timeline.vehicles[0].name=name;
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    },{loading,name});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  }
+  await publishOrderingState(false);
+  await publishOrderingState(true);
+  const busyOrder=await page.evaluate(()=>{
+    const fields=['chronology','metric','direction','statistic'],before=__grzCommands.filter(command=>command.action==='sort').length;
+    const disabled=fields.every(field=>{
+      const button=document.querySelector('#ss-sort-'+field+' .ss-select-trigger');
+      return button.disabled && button.getAttribute('aria-disabled')==='true';
+    });
+    // Retained native option callbacks must obey the same unavailable-index gate.
+    for(const [field,value]of [['metric','xp_base'],['chronology','oldest'],['direction','asc'],['statistic','max']])
+      document.querySelector('#ss-sort-'+field+' [data-value="'+value+'"]').onclick();
+    return {disabled,before,after:__grzCommands.filter(command=>command.action==='sort').length};
+  });
+  check('A rebuilding projection disables all ordering controls and retained option callbacks cannot issue rejected sorts: '+JSON.stringify(busyOrder),
+    busyOrder.disabled && busyOrder.after===busyOrder.before);
+  await publishOrderingState(false,'Synthetic completed projection after blocked sorting');
+  check('Completing a projection after attempted busy sorting renders its new data without tab or group changes',
+    await page.locator('#ss-groups').textContent().then(text=>text.includes('Synthetic completed projection after blocked sorting')) &&
+    await page.locator('#ss-sort-metric .ss-select-trigger').isEnabled() && await page.locator('#ss-sort-chronology .ss-select-trigger').isEnabled());
+  const beforeOrderingRace=await page.evaluate(()=>__grzCommands.filter(command=>command.action==='sort').length);
+  await page.evaluate(()=>document.querySelector('#ss-sort-metric [data-value="xp_base"]').onclick());
+  check('The readiness race begins with a real pending ordering request',await page.evaluate(before=>{
+    const commands=__grzCommands.filter(command=>command.action==='sort');
+    return commands.length===before+1 && commands[commands.length-1].metric==='xp_base';
+  },beforeOrderingRace));
+  await publishOrderingState(true);
+  check('An unavailable-index snapshot retires a pre-existing sort intent instead of being discarded',
+    await page.locator('#ss-sort-metric .ss-select-trigger').isDisabled() &&
+    await page.locator('#ss-status').textContent()==='Loading history. New battle results are being saved.');
+  await publishOrderingState(false,'Synthetic completed projection after rejected intent');
+  check('A completed projection can render after a ready-to-loading rejected-sort race',
+    await page.locator('#ss-groups').textContent().then(text=>text.includes('Synthetic completed projection after rejected intent')) &&
+    await page.locator('#ss-sort-metric .ss-select-trigger').isEnabled());
   await page.evaluate(() => {
     const payload = JSON.parse(JSON.stringify(__timelineReadySnapshot));
     payload.loading = true; payload.load_error = '';
