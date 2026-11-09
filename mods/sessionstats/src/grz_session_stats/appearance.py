@@ -640,7 +640,12 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 }
 .ss-scroll-top { position:absolute; z-index:25; right:24rem; bottom:48rem; width:42rem; min-width:42rem; height:42rem; margin:0; padding:4rem; border:1rem solid {{colors.session_tab_marker_background}}; border-radius:{{radii.control}}rem; color:{{colors.session_tab_marker_background}}; background:linear-gradient({{colors.button_background_start}}, {{colors.button_background_end}}); box-shadow:0 0 8rem {{colors.session_tab_marker_background}}, inset 0 1rem {{colors.button_shadow_1}}; }
 .ss-scroll-top:hover, .ss-scroll-top:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:2rem; box-shadow:0 0 14rem {{colors.session_tab_marker_background}}, inset 0 1rem {{colors.button_shadow_1}}; }
-.ss-scroll-top-icon { display:block; width:32rem; height:32rem; background-image:url("coui://gui/maps/icons/buttons/icon_arrow_formation_right_double.png"); background-position:center; background-repeat:no-repeat; background-size:contain; transform:rotate(-90deg); pointer-events:none; }
+/* Paint the chevrons themselves with the control's accent. Native bitmap
+   pixels do not inherit color, so an orange frame cannot tint a gray texture. */
+.ss-scroll-top-icon { display:block; position:relative; width:32rem; height:32rem; color:inherit; pointer-events:none; }
+.ss-scroll-top-icon:before, .ss-scroll-top-icon:after { content:""; display:block; box-sizing:border-box; position:absolute; left:10rem; width:12rem; height:12rem; border-top:3rem solid currentColor; border-left:3rem solid currentColor; transform:rotate(45deg); pointer-events:none; }
+.ss-scroll-top-icon:before { top:8rem; }
+.ss-scroll-top-icon:after { top:18rem; }
 .ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
 .ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }
 .ss-card-column-right { display:none; }

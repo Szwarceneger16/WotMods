@@ -44,6 +44,21 @@ module.exports=async ({browser,nativeHost,check})=>{
             Math.min(...audit.items.map(item=>item.bottom))-Math.max(...audit.items.map(item=>item.top))>=15 && audit.bar.height<=51);
           check('Wide localized header text remains readable without clipping: '+label+': '+JSON.stringify(audit.clipped),audit.clipped.length===0);
         }
+        if(language==='en') {
+          const arrow=await page.locator('.ss-scroll-top-icon').evaluate(icon=>({
+            image:getComputedStyle(icon).backgroundImage,
+            color:getComputedStyle(icon).color,
+            chevrons:[':before',':after'].map(pseudo=>{const style=getComputedStyle(icon,pseudo);
+              return {content:style.content,display:style.display,width:parseFloat(style.width),height:parseFloat(style.height),
+                top:parseFloat(style.top),left:style.borderLeftColor,topColor:style.borderTopColor,
+                stroke:parseFloat(style.borderTopWidth),transform:style.transform};})
+          }));
+          check('Both Top chevrons paint their orange strokes rather than a gray bitmap: '+label+': '+JSON.stringify(arrow),
+            arrow.image==='none' && arrow.color==='rgb(231, 162, 59)' &&
+            arrow.chevrons.every(piece=>piece.content==='""' && piece.display==='block' && piece.width>=12*scale &&
+              piece.height>=12*scale && piece.stroke>=3*scale && piece.left===arrow.color && piece.topColor===arrow.color && piece.transform!=='none') &&
+            arrow.chevrons[1].top-arrow.chevrons[0].top===10*scale);
+        }
         await page.locator('#ss-group-battles').click();await frames(page);
         const buttons=page.locator('.ss-more-button');
         for(let index=0;index<Math.min(2,await buttons.count());index++) {

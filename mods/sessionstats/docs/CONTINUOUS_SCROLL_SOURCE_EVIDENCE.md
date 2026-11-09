@@ -1,13 +1,15 @@
 # Continuous scrolling and native top action
 
-The top action references the existing client texture
-`coui://gui/maps/icons/buttons/icon_arrow_formation_right_double.png`.
-The 16×16 native double-chevron points right; the stylesheet rotates it by
-−90 degrees and adds the panel's configurable orange frame/glow. No game
-artwork is edited or distributed in this package.
+The top action draws two upward chevrons with the same configurable orange
+accent as its frame/glow. Borders, absolute positions and 2D transforms are
+already used by the panel's native resize grips; no browser-only image tint,
+mask or filter is required. No game artwork is edited or distributed.
 
-The texture was verified in the native asset reference
+The previous 16×16 client bitmap
+`coui://gui/maps/icons/buttons/icon_arrow_formation_right_double.png` was verified in
 [Kurzdor/wot.assets at 3605bd36](https://github.com/Kurzdor/wot.assets/tree/3605bd36c53d10c16be5d93f5414aa5fd129e84e).
+Its gray pixels do not inherit the button's CSS color, so it is no longer used
+for the orange top action.
 The Flash-only `GlowArrowAsset` linkage is not a browser texture URL and is
 therefore not used as an invented PNG resource.
 
