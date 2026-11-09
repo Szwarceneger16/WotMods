@@ -1338,7 +1338,8 @@
                     state.rendering || state.targetFocusTransfer || !root.contains(card)) { return; }
             // Early paint precedes native focus while card geometry mounts.
             // Explicit outside controls/clicks still dismiss synchronously.
-            if (state.battleJump && state.battleJump.id === state.highlightedBattle.id) { return; }
+            if (state.battleJump && state.battleJump.id === state.highlightedBattle.id &&
+                    sameContext(state.battleJump.context) && Date.now() < state.battleJump.deadline) { return; }
             if (!card.contains(document.activeElement)) { clearBattleTarget(); }
         }
         if (typeof window.requestAnimationFrame === 'function') {
@@ -1387,6 +1388,9 @@
     function finishBattleJump() {
         var jump = state.battleJump;
         if (!jump || state.group !== 'battles' || !sameContext(jump.context)) { return; }
+        if (jump.targetPainted && (!state.highlightedBattle || state.highlightedBattle.id !== jump.id)) {
+            cancelBattleNavigation(); return;
+        }
         if (state.cardFlowQueued) { return; }
         var target = null;
         (state.groupCards || []).some(function (card) {

@@ -205,6 +205,32 @@ module.exports=async ({browser,nativeHost,check})=>{
       deferred.samples.length===5 && deferred.samples.every(sample=>!sample.focused && sample.targeted && sample.before===sample.after) &&
       deferred.focused && deferred.targeted && deferred.top>=deferred.viewportTop-1 && deferred.top<deferred.viewportBottom-1);
     await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
+    await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
+    await page.evaluate(target=>{
+      const original=HTMLElement.prototype.getBoundingClientRect;
+      window.__restoreDismissRect=()=>{HTMLElement.prototype.getBoundingClientRect=original;};
+      HTMLElement.prototype.getBoundingClientRect=function(){
+        if(this.getAttribute('data-group-id')===target)return {left:0,right:0,top:0,bottom:0,width:0,height:0};
+        return original.call(this);
+      };
+    },request.id);
+    await focusReply(page,request);
+    check('The dismissal regression begins with an early painted frame and a pending native retry',await page.evaluate(target=>{
+      const card=document.querySelector('[data-group-id="'+target+'"]');
+      return card.classList.contains('ss-battle-target') && document.activeElement!==card &&
+        [...__grzTimers].some(([,timer])=>timer.delay===50);
+    },request.id));
+    await page.locator('#ss-close').focus();
+    const dismissedAt=await page.evaluate(()=>{
+      const before=document.getElementById('ss-scroll').scrollTop;__restoreDismissRect();
+      const retry=[...__grzTimers].find(([,timer])=>timer.delay===50);
+      if(retry){__grzTimers.delete(retry[0]);retry[1].callback();}
+      return before;
+    });await frames(page);
+    check('Late native geometry cannot refocus or scroll a battle after its frame was dismissed',await page.evaluate(before=>
+      document.activeElement===document.getElementById('ss-close') &&
+      document.getElementById('ss-scroll').scrollTop===before && document.querySelectorAll('.ss-battle-target-outline').length===0,dismissedAt));
+    await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
     await page.evaluate(()=>{window.__beforeMapCleanup=__grzCommands.length;const button=document.querySelector('.ss-map-battle-open');
       GRZSessionStats.destroy();button.onclick();});
     check('Retained map battle controls cannot dispatch after teardown',await page.evaluate(()=>__grzCommands.length===__beforeMapCleanup));
