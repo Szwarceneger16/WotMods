@@ -265,6 +265,11 @@ async function footer(browser) {
         await page.evaluate(()=>{document.createElement=realCreateElement;});
         await pushPanel(page,presentation.custom);
         check('A later valid refresh recovers the panel appearance after a DOM failure',await page.locator('#grz-session-stats-appearance').count()===1);
+        await page.locator('#grz-session-stats-appearance').evaluate(node=>node.remove());
+        await pushPanel(page,presentation.custom);
+        check('An identical valid refresh recreates an externally detached appearance node',
+            await page.locator('#grz-session-stats-appearance').count()===1 &&
+            await page.locator('#grz-session-stats').evaluate(node=>getComputedStyle(node).borderTopColor==='rgb(18, 52, 86)'));
         await page.evaluate(()=>{GRZSessionStats.destroy();testEvents['viewEnv.onDataChanged']();});
         check('Panel cleanup removes its style and retained model events cannot reapply it',await page.locator('#grz-session-stats-appearance').count()===0);
         await page.close();

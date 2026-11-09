@@ -91,6 +91,28 @@ module.exports=async ({browser,nativeHost,check})=>{
       });await frames(page);
       check('A retired '+group+' history setter rejects a replacement account',await page.evaluate(()=>
         __retiredHistoryUpdate({id:'history-0',battle_list:{page:0,pages:1,items:[]}})===false));
+      for(const failure of ['action','snapshot','bridge']) {
+        const status=await page.evaluate(failure=>{
+          window.__historyRecoveryStatus=document.getElementById('ss-status').textContent;
+          window.__historyRecoveryPayload=model.payload;
+          const command=model.onAction,fallback=GRZSessionStats.onAction;
+          try {
+            if(failure==='snapshot')GRZSessionStats.update('{synthetic invalid JSON');
+            else {
+              model.onAction=failure==='action' ? function(){throw Error('Synthetic action failure');} : undefined;
+              GRZSessionStats.onAction=undefined;document.getElementById('ss-refresh').onclick();
+            }
+          } finally {model.onAction=command;GRZSessionStats.onAction=fallback;}
+          return {before:__historyRecoveryStatus,error:document.getElementById('ss-status').textContent,
+            samePayload:model.payload===__historyRecoveryPayload};
+        },failure);
+        const errors={action:'Could not complete the action. Try again.',snapshot:'Could not read statistics data.',bridge:'No connection to the game.'};
+        check('The '+group+' '+failure+' recovery scenario displays its real error without replacing data: '+JSON.stringify(status),
+          status.samePayload && status.error===errors[failure] && status.error!==status.before);
+        await page.evaluate(()=>{model.payload=__historyRecoveryPayload;__grzEvents['viewEnv.onDataChanged']();});await frames(page);
+        check('An identical healthy '+group+' payload clears the recovered '+failure+' error',
+          await page.locator('#ss-status').textContent()===status.before && await page.locator('#ss-groups .ss-group').count()===8);
+      }
     }
   } finally {await page.close();}
 };

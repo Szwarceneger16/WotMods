@@ -2228,13 +2228,25 @@
             if (state.bound) { queueResize(); }
             return true;
         } catch (error) {
-            setStatus(t('error.snapshot'));
+            state.actionError = t('error.snapshot');
+            setStatus(state.actionError);
             return false;
         }
     }
     function historyOnlyUpdate(value) {
         if (!state.payload || !state.groupCards || !state.groupCards.length ||
-                (state.group !== 'maps' && state.group !== 'vehicles') || state.feed !== state.renderedFeed) { return false; }
+                state.actionError || (state.group !== 'maps' && state.group !== 'vehicles') || state.feed !== state.renderedFeed) { return false; }
+        try {
+            var appearance = unwrap(value.appearance), css = appearance && unwrap(appearance.panel_css);
+            if (typeof css === 'string' && css && (css !== state.appearanceCSS || !state.appearanceNode || !state.appearanceNode.parentNode)) {
+                // A failed or externally removed cosmetic node needs the normal
+                // update path to retry before an unchanged history payload can win.
+                return false;
+            }
+        } catch (error) {
+            // Keep native wrapper failures inside applyAppearance's fallback.
+            return false;
+        }
         function signature(snapshot) {
             return JSON.stringify(snapshot, function (key, item) {
                 return key === 'battle_list' || key === 'battle_history' || (this === snapshot && key === 'generated_at') ? undefined : item;
@@ -2283,7 +2295,10 @@
             }
             return false;
         }
-        if (action !== 'resize' && action !== 'diagnostic' && action !== 'viewport') { setStatus(t('error.connection')); }
+        if (action !== 'resize' && action !== 'diagnostic' && action !== 'viewport') {
+            state.actionError = t('error.connection');
+            setStatus(state.actionError);
+        }
         return false;
     }
     function focusControl(node) {
