@@ -2387,7 +2387,13 @@
     document.getElementById('ss-page-previous').onclick = function () { changePage(-1); };
     document.getElementById('ss-page-next').onclick = function () { changePage(1); };
     if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {
-        cancelBattleNavigation(); state.pageJump = null; resetViewScroll(); updatePinnedFilters();
+        cancelBattleNavigation(); state.pageJump = null;
+        if (state.feed) {
+            // Keep the requested data, but let Top supersede its old destination.
+            state.feed.navigationPage = null; state.feed.errorNavigate = false;
+            if (state.feed.pending) { state.feed.pending.navigate = false; }
+        }
+        resetViewScroll(); updatePinnedFilters();
         queueResize();
     }; }
     function switchXP(xp) { state.xp = xp; render(); }

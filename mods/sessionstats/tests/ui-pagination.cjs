@@ -34,6 +34,9 @@ module.exports=async({browser,nativeHost,check})=>{
         const style=getComputedStyle(node,':before');return style.backgroundImage.includes('linear-gradient') &&
           style.backgroundRepeat==='repeat-x' && parseFloat(style.height)>0;
       }));
+      await page.locator('#ss-scroll').evaluate((node,scale)=>{node.scrollTop=240*scale;node.dispatchEvent(new Event('scroll'));},scale);await frames(page);
+      check('The top action is available before fetching an unloaded page: '+label,
+        await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)>100*scale && await page.locator('#ss-scroll-top').isVisible());
       const before=(await requests(page)).length;await page.locator('#ss-page-next').click();await frames(page);
       let sent=await requests(page),request=sent[sent.length-1];
       check('Next requests one missing page with complete reply ownership: '+label+': '+JSON.stringify(request),
@@ -44,12 +47,20 @@ module.exports=async({browser,nativeHost,check})=>{
         await page.locator('.ss-page-spinner:visible').getAttribute('aria-label')===messages['page.loading']);
       await page.evaluate(()=>{for(let index=0;index<3;index++)document.getElementById('ss-scroll').dispatchEvent(new Event('scroll'));});
       check('Repeated scroll notifications coalesce an outstanding request: '+label,(await requests(page)).length===before+1);
+      await page.locator('#ss-scroll-top').click();await frames(page);
+      check('Top supersedes a pending Next jump without cancelling its page fetch: '+label,
+        await page.locator('#ss-scroll').evaluate(node=>Math.abs(node.scrollTop)<=1) &&
+        (await requests(page)).length===before+1 && await page.locator('.ss-page-spinner:visible').count()===1);
       await emit(page,1,request);
+      check('A delayed Next reply appends its page without overriding the newer Top action: '+label,
+        await page.locator('#ss-scroll').evaluate(node=>Math.abs(node.scrollTop)<=1) &&
+        (await requests(page)).length===before+1);
       const ids=await page.locator('#ss-groups .ss-group').evaluateAll(cards=>cards.map(card=>card.dataset.groupId));
       check('Matching page reply appends40 unique rows while retaining page one: '+label+': '+JSON.stringify(ids),
         ids.length===80 && new Set(ids).size===80 && Array.from({length:80},(_,index)=>'synthetic-feed-'+index).every(id=>ids.includes(id)) &&
         await page.locator('.ss-continuous-page').count()===2 && await page.locator('.ss-page-spinner:visible').count()===0);
       check('Loaded dividers retain localized numbering: '+label,(await page.locator('.ss-page-divider-label').allTextContents()).join('|')===[pageLabel(1),pageLabel(2)].join('|'));
+      await page.locator('#ss-page-next').click();await frames(page);
       const loaded=(await requests(page)).length;await page.locator('#ss-page-previous').click();await frames(page);
       const previous=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
       await page.locator('#ss-page-next').click();await frames(page);const next=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
