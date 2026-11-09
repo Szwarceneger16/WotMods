@@ -94,6 +94,7 @@ class PrBuildScopingTests(unittest.TestCase):
                      'scripts/release_version.py', 'scripts/privacy_audit.py',
                      'scripts/release_coordinator.py', 'scripts/release_modules.json',
                      'scripts/build_release_module.sh', '.github/workflows/wotmods-release.yml',
+                     '.github/workflows/wot-update-watch.yml',
                      'tests/test_release_coordinator.py', 'tests/test_unified_release_workflow.py',
                      'tests/test_release_installers.py', 'tests/test_release_pipeline.py',
                      'tests/test_release_snapshot.py', 'tests/test_pr_ci_scoping.py'):

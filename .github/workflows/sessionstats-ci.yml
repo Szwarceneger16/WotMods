@@ -6,6 +6,7 @@ on:
     # Native PR filters use the full branch diff, not just the newest commit.
     paths:
       - '.github/workflows/wot-updates.yml'
+      - '.github/workflows/wot-update-watch.yml'
       - 'scripts/wot_updates.py'
       - 'scripts/wot_dispatch.py'
       - 'tests/test_wot_updates.py'

@@ -22,6 +22,10 @@ when only the target World of Tanks client changes without a Git commit.
 - **Builds:** `.github/workflows/wotmods-release.yml` generates a dynamic
   matrix; `scripts/build_release_module.sh` runs a builder for one module in
   a read-only job. Both builders run concurrently when both are needed.
+- **Adding a module:** the coordinator reads the previous Release's historical
+  registry, so a legitimate older two-installer snapshot can be migrated to
+  a newer three-installer snapshot. The final new Release must still contain
+  exactly one verified ZIP for every currently registered mod.
 - **Publishing:** the sole write-enabled `publish` job assembles a complete
   immutable snapshot, creates exactly one protected Release, and verifies the
   full remote file set and checksum contents before reporting success.

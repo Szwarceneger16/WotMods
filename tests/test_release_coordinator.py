@@ -1,6 +1,7 @@
 """Release orchestration: path scoping, merge races and immutable carry-forward."""
 import json
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -130,6 +131,31 @@ class PlanTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'not registered'):
                 coordinator.registry(path)
 
+    def test_new_third_module_is_built_while_two_prior_zips_are_carried(self):
+        extended = json.loads(json.dumps(self.registry))
+        extended['modules'].append({'id': 'thirdmod', 'display_name': 'Third',
+                                    'base_version_file': 'VERSION',
+                                    'installer_prefix': 'Third-v',
+                                    'source_paths': ['mods/thirdmod/**']})
+        result = coordinator.make_plan(extended, ['mods/thirdmod/src/main.py'],
+                                       PREVIOUS, 'wotmods-v1.0.300', SHA, 312,
+                                       installers.CLIENT, installers.CLIENT)
+        self.assertEqual(result['previous_modules'], ['sessionstats', 'staysharp'])
+        self.assertEqual(result['changed'], ['thirdmod'])
+        self.assertEqual([entry['mod'] for entry in result['matrix']], ['thirdmod'])
+        self.assertEqual(result['versions']['staysharp'], PREVIOUS['staysharp'])
+        self.assertEqual(result['versions']['sessionstats'], PREVIOUS['sessionstats'])
+
+    def test_previous_registry_is_resolved_from_the_tagged_revision(self):
+        self.assertEqual(coordinator.previous_module_ids('sessionstats-v0.3.15'),
+                         {'staysharp', 'sessionstats'})
+        payload = json.dumps({'schema_version': 1,
+                              'modules': [{'id': 'staysharp'}]}).encode()
+        with patch.object(coordinator.subprocess, 'check_output', return_value=payload) as git:
+            self.assertEqual(coordinator.previous_module_ids('wotmods-v1.0.300'),
+                             {'staysharp'})
+        self.assertIn('wotmods-v1.0.300:scripts/release_modules.json', git.call_args.args[0])
+
     def test_late_older_merge_skips_when_a_descendant_is_latest(self):
         with tempfile.TemporaryDirectory() as directory:
             prior = Path(directory)
@@ -139,6 +165,7 @@ class PlanTests(unittest.TestCase):
             args = SimpleNamespace(previous_tag='wotmods-v1.0.313', previous_dir=prior,
                                    head='HEAD', client_version=installers.CLIENT, output=target)
             with patch.object(coordinator, 'run_git', side_effect=[SHA, '312', 'b' * 40]), \
+                 patch.object(coordinator, 'previous_module_ids', return_value=set(PREVIOUS)), \
                  patch.object(coordinator, 'verify_directory', return_value=mock_reports), \
                  patch.object(coordinator.subprocess, 'run',
                               return_value=SimpleNamespace(returncode=0)), \
@@ -158,6 +185,7 @@ class PlanTests(unittest.TestCase):
                                    head='HEAD', client_version=installers.CLIENT,
                                    output=prior/'plan.json')
             with patch.object(coordinator, 'run_git', side_effect=[SHA, '312', 'b' * 40]), \
+                 patch.object(coordinator, 'previous_module_ids', return_value=set(PREVIOUS)), \
                  patch.object(coordinator, 'verify_directory', return_value=mock_reports), \
                  patch.object(coordinator.subprocess, 'run',
                               return_value=SimpleNamespace(returncode=1)), \
@@ -232,6 +260,15 @@ class AssemblyTests(unittest.TestCase):
         with self.assertRaises(Exception):
             self.assemble([])
         self.assertFalse(self.notes.exists())
+
+    def test_history_subset_is_verifiable_without_weakening_final_snapshots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            only_old = Path(directory)
+            shutil.copy2(self.previous / 'StaySharp-Medkit-v1.8.22.zip', only_old)
+            reports = installers.verify_directory(only_old, expected_kinds={'staysharp'})
+            self.assertEqual([report[0] for report in reports], ['staysharp'])
+            with self.assertRaises(ValueError):
+                installers.verify_directory(only_old)
 
 
 if __name__ == '__main__':

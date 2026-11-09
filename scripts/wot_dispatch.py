@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 
 import release_installers
+import release_coordinator
 from wot_updates import VERSION
 
 
@@ -21,11 +22,11 @@ def needs_rebuild(target, installed):
         raise ValueError('Missing exact EU mods directory')
     wanted = tuple(map(int, target.split('.')))
     versions = [tuple(map(int, value.split('.'))) for value in installed]
-    if len(versions) != len(release_installers.KINDS):
-        raise ValueError('Expected one installer for every registered mod')
+    if not versions or len(versions) > len(release_installers.KINDS):
+        raise ValueError('Invalid previous module count')
     if any(v > wanted for v in versions):
         raise ValueError('Refusing to downgrade an installer')
-    return any(v != wanted for v in versions)
+    return len(versions) < len(release_installers.KINDS) or any(v != wanted for v in versions)
 
 
 def main():
@@ -39,7 +40,8 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         gh('release', 'download', release['tag_name'], '--repo', repo, '--dir', tmp)
         assets = release['assets']
-        if len(assets) != len(release_installers.KINDS):
+        previous_mods = release_coordinator.previous_module_ids(release['tag_name'])
+        if len(assets) != len(previous_mods):
             raise ValueError('Missing or duplicate installer assets')
         for asset in assets:
             name = asset['name']
@@ -49,7 +51,7 @@ def main():
             digest = 'sha256:' + hashlib.sha256((Path(tmp) / name).read_bytes()).hexdigest()
             if digest != asset.get('digest'):
                 raise ValueError('Downloaded immutable asset digest mismatch')
-        reports = release_installers.verify_directory(Path(tmp))
+        reports = release_installers.verify_directory(Path(tmp), expected_kinds=previous_mods)
         # verify_directory validates both installers and cross-mod paths/resources.
         versions = [report[2] for report in reports]
         if not needs_rebuild(target, versions):

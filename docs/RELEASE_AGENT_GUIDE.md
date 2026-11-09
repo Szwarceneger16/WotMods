@@ -44,7 +44,10 @@ workflow version: it could run a different CI harness against newer source.
 1. Read the current repository-wide Latest published full Release and verify
    `isImmutable`; fail if Releases exist but none is marked Latest.
 2. Download its assets and verify every current installer and cross-mod package
-   ID/resource collision. Resolve the tag to its exact Git commit.
+   ID/resource collision. Resolve the tag to its exact Git commit. For a
+   newly added mod, verify the previous snapshot against the module registry
+   stored **at that older tag**, so a valid two-mod snapshot is not mistaken
+   for a broken three-mod snapshot.
 3. Compare the tag commit to the source commit. Require ancestry, or skip if
    Latest already contains a strictly newer descendant commit. Divergence or
    history rewrites fail closed.
@@ -96,6 +99,7 @@ contains one ZIP per registered mod, even when only one mod changed.
 | Tag exists at a different SHA, Ruleset changed, or approval missing | Fail before Release publication; no bypass/rewrite. |
 | `main` force-pushed or diverged from Latest | Fail closed until an owner reviews history and decides a safe recovery. |
 | New module path is not registered | Fail rather than silently omit a mod from an otherwise complete snapshot. |
+| First merge introducing mod C after a complete A+B Release | Verify A+B against the tagged historical registry; build C (and any affected shared inputs), then require A+B+C in the new full snapshot. Never accept an unexplained missing older mod. |
 | An administrator publishes outside the coordinator | Revalidate Latest immediately before publication; fail if it changed. The job-level mutex cannot constrain external administrators. |
 | WoT update evidence is stale | Do not publish; explicit fresh evidence is required before any tag creation or Release upload. |
 
@@ -112,7 +116,9 @@ The queue and verification do not certify compatibility inside World of Tanks.
 3. Add its exact safe packager/verification contract to `KINDS` and the
    corresponding handlers in `scripts/release_installers.py`, and add an
    isolated build case in `scripts/build_release_module.sh`. A new module
-   cannot be released until the complete set can be verified together.
+   cannot be released until the complete set can be verified together. Keep
+   `verify_directory` default verification strict for the **current** full
+   module set. Only historical snapshots may specify their tagged older set.
 4. Add a **separate** read-only PR workflow with native `pull_request.paths`,
    its own tests and `archive: false` installable ZIP artifact. Do not add
    `contents: write` or public release commands to any PR workflow.

@@ -200,7 +200,12 @@ class EvidenceTests(unittest.TestCase):
         self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0'] * 2))
         with self.assertRaises(ValueError): needs_rebuild('2.4.1.0', ['2.4.1.1'] * 2)
         with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * 2)
-        with self.assertRaises(ValueError): needs_rebuild('2.4.1.1', ['2.4.1.0'])
+        self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0']))
+
+    def test_newly_registered_mod_requires_a_complete_new_snapshot(self):
+        import release_installers
+        with patch.dict(release_installers.KINDS, {'thirdmod': ('Third-v', 'third.', 'Third')}):
+            self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.1', '2.4.1.1']))
 
 class DispatchTests(unittest.TestCase):
     def setUp(self):
@@ -215,7 +220,7 @@ class DispatchTests(unittest.TestCase):
             source = self.root / kind
             build(source, kind, version)
             r.package(source, self.out, kind)
-        self.metadata = {'immutable':True, 'draft':False, 'prerelease':False, 'tag_name':'fixture',
+        self.metadata = {'immutable':True, 'draft':False, 'prerelease':False, 'tag_name':'sessionstats-v0.3.4',
                          'assets':[{'name':p.name, 'digest':'sha256:'+hashlib.sha256(p.read_bytes()).hexdigest()} for p in self.out.iterdir()]}
         self.dispatched = []
         self.pending = False

@@ -59,6 +59,30 @@ def next_release_tag(previous_tag, commit_count):
     return TAG_PREFIX + str(commit_count)
 
 
+def previous_module_ids(tag):
+    """Read the registry FROM the last released commit, not today's registry.
+
+    This permits 2 -> 3 (and later) mod migrations without pretending that an
+    existing, immutable two-installer Release is missing a published asset.
+    """
+    if LEGACY_TAG.fullmatch(tag):
+        return {'staysharp', 'sessionstats'}
+    if not tag.startswith(TAG_PREFIX):
+        raise ValueError('Unrecognized previous Latest Release tag: ' + tag)
+    try:
+        raw = subprocess.check_output(['git', 'show', tag + ':scripts/release_modules.json'],
+                                      cwd=ROOT, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as exc:
+        raise ValueError('Previous unified Release has no module registry') from exc
+    data = json.loads(raw.decode('utf-8'))
+    if data.get('schema_version') != 1 or not isinstance(data.get('modules'), list):
+        raise ValueError('Previous unified Release registry is invalid')
+    ids = [entry['id'] for entry in data['modules']]
+    if not ids or len(ids) != len(set(ids)) or not set(ids) <= set(KINDS):
+        raise ValueError('Previous Release modules cannot be safely migrated')
+    return set(ids)
+
+
 def registry(path=REGISTRY):
     data = json.loads(Path(path).read_text(encoding='utf-8'))
     if set(data) != {'schema_version', 'modules', 'shared_build_paths'} or data['schema_version'] != 1:
@@ -120,6 +144,8 @@ def make_plan(config, changes, previous_versions, previous_tag, source_sha,
     if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){3}', client_version):
         raise ValueError('Invalid World of Tanks client version')
     modules = config['modules']
+    if not set(previous_versions) <= {m['id'] for m in modules}:
+        raise ValueError('Previous Release contains a removed or unknown mod')
     selected = selected_modules(changes, config)
     for module in modules:
         if module['id'] not in previous_versions and module['id'] not in selected:
@@ -147,6 +173,8 @@ def make_plan(config, changes, previous_versions, previous_tag, source_sha,
         'source_sha': source_sha,
         'release_tag': next_release_tag(previous_tag, commit_count),
         'previous_tag': previous_tag,
+        'previous_modules': sorted(previous_versions),
+        'previous_versions': previous_versions,
         'client_version': client_version,
         'modules': [m['id'] for m in modules],
         'changed': selected,
@@ -166,7 +194,8 @@ def plan(args):
     if args.previous_tag:
         if not args.previous_dir:
             raise ValueError('Previous release directory required with previous tag')
-        reports = verify_directory(args.previous_dir)
+        reports = verify_directory(args.previous_dir,
+                                   expected_kinds=previous_module_ids(args.previous_tag))
         previous = {kind: version for kind, version, _, _, _ in reports}
         previous_clients = {client for _, _, client, _, _ in reports}
         if len(previous_clients) != 1:
@@ -238,9 +267,15 @@ def assemble(args):
     result = json.loads(Path(args.plan).read_text(encoding='utf-8'))
     valid = {m['id'] for m in config['modules']}
     changed = result['changed']
+    expected_previous = result['previous_modules']
     if (result['schema_version'] != 1 or set(result['modules']) != valid or
             not isinstance(changed, list) or len(changed) != len(set(changed)) or
             not set(changed) <= valid or set(result['versions']) != valid or
+            not isinstance(expected_previous, list) or
+            len(expected_previous) != len(set(expected_previous)) or
+            not set(expected_previous) <= valid or
+            set(result['previous_versions']) != set(expected_previous) or
+            bool(result['previous_tag']) != bool(expected_previous) or
             not result['publish']):
         raise ValueError('Invalid release plan')
     output = Path(args.output)
@@ -250,7 +285,10 @@ def assemble(args):
     if result['previous_tag']:
         if not args.previous_dir:
             raise ValueError('Previous Release missing')
-        verify_directory(args.previous_dir)
+        previous_reports = verify_directory(args.previous_dir,
+                                             expected_kinds=expected_previous)
+        if {kind: version for kind, version, _, _, _ in previous_reports} != result['previous_versions']:
+            raise ValueError('Previous Release modules/versions changed since planning')
         for entry in Path(args.previous_dir).iterdir():
             shutil.copy2(entry, output / entry.name)
         normalize(output, result['client_version'])
