@@ -58,8 +58,8 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.negative_text` | `"#e4ad84"` | Negative balance |
 | `colors.garage_bars_background` | `"#969a9d"` | Garage-icon bars |
 | `colors.garage_wn8_text` | `"#bdc0c2"` | Small WN8 label |
-| `colors.garage_spinner_border` | `"rgba(207,190,140,0.25)"` | Translucent spinner segment |
-| `colors.garage_spinner_border_top_color` | `"#dfd3a4"` | Bright spinner segment |
+| `colors.garage_spinner_border` | `"rgba(150,154,157,0.25)"` | Translucent spinner segment |
+| `colors.garage_spinner_border_top_color` | `"#969a9d"` | Bright spinner segment |
 | `radii.window` | `8` | Window corners |
 | `radii.control` | `5` | Button and dropdown corners |
 | `radii.table_header` | `5` | Table-header corners |
@@ -74,7 +74,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `cards.vehicles` | `560` | Vehicle card width in logical pixels |
 | `cards.maps` | `560` | Map card width in logical pixels |
 | `cards.tiers` | `520` | Tier card width in logical pixels |
-| `wide_cards.battles` / `vehicles` / `maps` / `tiers` | `800` each | Wider fixed size, still two columns |
+| `wide_cards.battles` / `vehicles` / `maps` / `tiers` | `720` each | Wider fixed size, still two columns |
 | `window.background_transparency` | `0` | Background-only transparency, integer 0–100 percent |
 | `window.maximized` | `false` | Open maximized; strict boolean |
 | `window.restored_width` | `700` | Restored logical width, integer 1–32768 |

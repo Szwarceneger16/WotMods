@@ -235,12 +235,13 @@ class Localizer(object):
                         value = row.get(field)
                         if is_fallback(value):
                             row[field] = self.translate(row[field])
-                    battle_list = row.get('battle_list') if grouping == 'maps' else None
+                    battle_list = row.get('battle_list') if grouping in ('maps', 'vehicles') else None
                     if isinstance(battle_list, dict):
                         for battle in battle_list.get('items', []):
-                            value = battle.get('name')
-                            if is_fallback(value):
-                                battle['name'] = self.translate(value)
+                            for field in ('name', 'map'):
+                                value = battle.get(field)
+                                if is_fallback(value):
+                                    battle[field] = self.translate(value)
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
                     if isinstance(outcome_visual, dict) and row.get('outcome') in ('win', 'loss', 'draw'):

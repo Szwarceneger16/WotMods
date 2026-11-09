@@ -232,7 +232,7 @@
       "timeline.beginning": "Beginning of history",
       "timeline.now": "Now",
       "window.resize": "Resize window (drag or use arrow keys)",
-      "window.background": "Background",
+      "window.background": "Transparency",
       "window.background_transparency": "Background transparency",
       "window.maximize": "Maximize window",
       "window.restore": "Restore window",
@@ -315,7 +315,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Apply",
       "timeline.custom_invalid": "Enter a valid date: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "From must be earlier than To."
+      "timeline.custom_order": "From must be earlier than To.",
+      "vehicles.battles": "Battles in this vehicle",
+      "sort.value_per_battle": "{0} {1} / battle: {2}"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -548,7 +550,7 @@
       "timeline.beginning": "Początek historii",
       "timeline.now": "Teraz",
       "window.resize": "Zmień rozmiar okna (przeciągnij lub użyj strzałek)",
-      "window.background": "Tło",
+      "window.background": "Przezroczystość",
       "window.background_transparency": "Przezroczystość tła",
       "window.maximize": "Maksymalizuj okno",
       "window.restore": "Przywróć rozmiar okna",
@@ -631,7 +633,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Zastosuj",
       "timeline.custom_invalid": "Wpisz poprawną datę: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "Początek musi być wcześniejszy niż koniec."
+      "timeline.custom_order": "Początek musi być wcześniejszy niż koniec.",
+      "vehicles.battles": "Bitwy tym pojazdem",
+      "sort.value_per_battle": "{0} {1} / bitwę: {2}"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -864,7 +868,7 @@
       "timeline.beginning": "Начало истории",
       "timeline.now": "Сейчас",
       "window.resize": "Изменить размер окна (перетащите угол или используйте стрелки)",
-      "window.background": "Фон",
+      "window.background": "Прозрачность",
       "window.background_transparency": "Прозрачность фона",
       "window.maximize": "Развернуть окно",
       "window.restore": "Восстановить размер окна",
@@ -947,7 +951,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Применить",
       "timeline.custom_invalid": "Введите корректную дату: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "Начало периода должно быть раньше конца."
+      "timeline.custom_order": "Начало периода должно быть раньше конца.",
+      "vehicles.battles": "Бои на этой машине",
+      "sort.value_per_battle": "{0} {1} / бой: {2}"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1180,7 +1186,7 @@
       "timeline.beginning": "Début de l’historique",
       "timeline.now": "Maintenant",
       "window.resize": "Redimensionner la fenêtre (glisser ou utiliser les flèches)",
-      "window.background": "Fond",
+      "window.background": "Transparence",
       "window.background_transparency": "Transparence du fond",
       "window.maximize": "Agrandir la fenêtre",
       "window.restore": "Restaurer la fenêtre",
@@ -1263,7 +1269,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Appliquer",
       "timeline.custom_invalid": "Saisissez une date valide : YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "Le début doit précéder la fin."
+      "timeline.custom_order": "Le début doit précéder la fin.",
+      "vehicles.battles": "Batailles avec ce véhicule",
+      "sort.value_per_battle": "{0} {1} / bataille : {2}"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1496,7 +1504,7 @@
       "timeline.beginning": "Beginn des Verlaufs",
       "timeline.now": "Jetzt",
       "window.resize": "Fenstergröße ändern (ziehen oder Pfeiltasten drücken)",
-      "window.background": "Hintergrund",
+      "window.background": "Transparenz",
       "window.background_transparency": "Hintergrundtransparenz",
       "window.maximize": "Fenster maximieren",
       "window.restore": "Fenster wiederherstellen",
@@ -1579,7 +1587,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Anwenden",
       "timeline.custom_invalid": "Bitte gültiges Datum eingeben: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "„Von“ muss vor „Bis“ liegen."
+      "timeline.custom_order": "„Von“ muss vor „Bis“ liegen.",
+      "vehicles.battles": "Gefechte mit diesem Fahrzeug",
+      "sort.value_per_battle": "{0} {1} / Gefecht: {2}"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1812,7 +1822,7 @@
       "timeline.beginning": "Inicio del historial",
       "timeline.now": "Ahora",
       "window.resize": "Cambiar el tamaño de la ventana (arrastra o usa las flechas)",
-      "window.background": "Fondo",
+      "window.background": "Transparencia",
       "window.background_transparency": "Transparencia del fondo",
       "window.maximize": "Maximizar ventana",
       "window.restore": "Restaurar ventana",
@@ -1895,7 +1905,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Aplicar",
       "timeline.custom_invalid": "Introduce una fecha válida: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "La fecha «Desde» debe ser anterior a «Hasta»."
+      "timeline.custom_order": "La fecha «Desde» debe ser anterior a «Hasta».",
+      "vehicles.battles": "Batallas con este vehículo",
+      "sort.value_per_battle": "{0} {1} / batalla: {2}"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2128,7 +2140,7 @@
       "timeline.beginning": "Початок історії",
       "timeline.now": "Зараз",
       "window.resize": "Змінити розмір вікна (перетягніть кут або скористайтеся стрілками)",
-      "window.background": "Тло",
+      "window.background": "Прозорість",
       "window.background_transparency": "Прозорість тла",
       "window.maximize": "Розгорнути вікно",
       "window.restore": "Відновити розмір вікна",
@@ -2211,7 +2223,9 @@
       "timeline.custom_placeholder": "YYYY-MM-DD HH:mm",
       "timeline.custom_apply": "Застосувати",
       "timeline.custom_invalid": "Введіть коректну дату: YYYY-MM-DD HH:mm.",
-      "timeline.custom_order": "Початок має передувати кінцю."
+      "timeline.custom_order": "Початок має передувати кінцю.",
+      "vehicles.battles": "Бої на цій машині",
+      "sort.value_per_battle": "{0} {1} / бій: {2}"
     }
   }
 }

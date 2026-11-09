@@ -93,6 +93,28 @@ class AppearanceTests(unittest.TestCase):
         self.assertEqual(actual, expected)
         self.assertEqual(self.output.getvalue(), '')
 
+    def test_only_untouched_wide_preset_adopts_the_more_accessible_breakpoint(self):
+        old = {'wide_cards': dict((key, 800) for key in ('battles', 'vehicles', 'maps', 'tiers'))}
+        expected_bytes = json.dumps(old).encode('utf-8')
+        self.assertEqual(self.write(old)['wide_cards'], style.default_config()['wide_cards'])
+        with io.open(self.path, 'rb') as source:
+            self.assertEqual(source.read(), expected_bytes)
+        self.assertEqual(self.write({'wide_cards': {'battles': 800}})['wide_cards']['battles'], 800)
+        old['wide_cards']['battles'] = 820
+        self.assertEqual(self.write(old)['wide_cards'], old['wide_cards'])
+
+    def test_previous_spinner_pair_adopts_gray_without_overriding_custom_colors(self):
+        old = {'colors': {'garage_spinner_border': 'rgba(207,190,140,0.25)',
+                          'garage_spinner_border_top_color': '#dfd3a4'}}
+        actual = self.write(old)
+        for key in old['colors']:
+            self.assertEqual(actual['colors'][key], style.DEFAULT_CONFIG['colors'][key])
+        with io.open(self.path, 'r', encoding='utf-8') as source:
+            self.assertEqual(json.load(source), old)
+        old['colors']['garage_spinner_border_top_color'] = '#abcdef'
+        self.assertEqual(self.write(old)['colors']['garage_spinner_border_top_color'], '#abcdef')
+        self.assertEqual(self.write(old)['colors']['garage_spinner_border'], 'rgba(207,190,140,0.25)')
+
     def test_invalid_leaf_keeps_valid_siblings_and_logs_only_field_reason(self):
         actual = self.write({'colors': {'window_background': 'SECRET-user-value',
                                        'window_border': '#246'},

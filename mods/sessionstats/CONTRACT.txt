@@ -408,3 +408,15 @@ byte-string locale codes on Python 2 as well as Unicode, with the same allowlist
 On failure, preserve the previous file and selected language and notify locally.
 Reload the panel and footer labels after success; never reset history, periods or sort state.
 Manual config changes remain supported. The old external language JSON is ignored.
+
+GROUP BATTLE HISTORY AND ACTIVE SORT VALUES
+set_vehicle_battles(scope, vehicle_id, page, period_id) follows set_map_battles.
+The vehicle_battles UI action carries account_key, scope, vehicle_id, zero-based
+page and period_id. Visible subscribed group rows expose battle_list with
+items {id, name, map, started_at, outcome, wn8}, page, pages, total, page_size.
+Both group histories are indexed newest-first and slice at most ten rows.
+Existing battle_select resolves the current Battles page and returns the guarded
+request identity; selecting a target retains an orange frame in the same period.
+Active aggregate metric sorting also publishes sort_value, the exact scalar
+used by its Min/Average/Max comparator (null if unavailable). Finance tables
+continue to show totals; the net-credit sort caption explicitly states / battle.

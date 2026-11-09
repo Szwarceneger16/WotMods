@@ -140,8 +140,8 @@
     "garage_wn8_text": "#bdc0c2",
     "garage_wn8_text_shadow": "#000",
     "garage_wn8_hover_text": "#eee6c9",
-    "garage_spinner_border": "rgba(207,190,140,0.25)",
-    "garage_spinner_border_top_color": "#dfd3a4"
+    "garage_spinner_border": "rgba(150,154,157,0.25)",
+    "garage_spinner_border_top_color": "#969a9d"
   },
   "radii": {
     "window": 8,
@@ -173,10 +173,10 @@
     "tiers": 520
   },
   "wide_cards": {
-    "battles": 800,
-    "vehicles": 800,
-    "maps": 800,
-    "tiers": 800
+    "battles": 720,
+    "vehicles": 720,
+    "maps": 720,
+    "tiers": 720
   },
   "window": {
     "background_transparency": 0,
