@@ -174,10 +174,19 @@ class FakeItem:
         return self.can_use,None
 
 
+class EquipmentEvent:
+    def __init__(self): self.handlers=[]
+    def __iadd__(self, fn): self.handlers.append(fn); return self
+    def __isub__(self, fn): self.handlers.remove(fn); return self
+    def emit(self, *args):
+        for fn in list(self.handlers): fn(*args)
+
+
 class FakeItems:
     def __init__(self,item):
         self.item=item
         self.compact=72
+        self.onEquipmentUpdated=EquipmentEvent()
     def iterEquipmentsByTag(self,tag):
         if tag=='medkit' and self.item is not None:
             return [(self.compact,self.item)]
@@ -237,6 +246,8 @@ class Tests(unittest.TestCase):
         self.env=patch.dict(os.environ,{'LOCALAPPDATA':self.temp.name})
         self.env.start()
         self.world=FakeBW()
+        self.physical_keys=set()
+        self.world.isKeyDown=lambda code:code in self.physical_keys
         self.gui=FakeGUI()
         self.resmgr=types.ModuleType('ResMgr')
         self.game=Path(self.temp.name)/'game'
@@ -247,7 +258,9 @@ class Tests(unittest.TestCase):
         self.resmgr.isFile=lambda path:path not in self.missing
         self.item=FakeItem()
         self.world.avatar=types.SimpleNamespace(
-            vehicle=types.SimpleNamespace(health=1000,perkEffects={'equipment':['medkitPremium']}),
+            vehicle=types.SimpleNamespace(health=1000,perkEffects={'equipment':['medkitPremium']},
+                crewCompactDescrs=(b'fake_commander',), typeDescriptor=types.SimpleNamespace(
+                    type=types.SimpleNamespace(crewRoles=(('commander',),), tags=set()))),
             isObserver=lambda:False,arena=types.SimpleNamespace(period=3))
         names=['gui.Scaleform','gui.Scaleform.daapi','gui.Scaleform.daapi.view',
                'gui.Scaleform.daapi.view.battle','gui.Scaleform.daapi.view.battle.shared',
@@ -259,6 +272,12 @@ class Tests(unittest.TestCase):
                'gui.battle_control.controllers.consumables',
                'gui.battle_control.controllers.consumables.equipment_ctrl']
         packages={name:types.ModuleType(name) for name in names}
+        packages['items']=types.ModuleType('items')
+        packages['items.tankmen']=types.ModuleType('items.tankmen')
+        class FakeTankmanDescr:
+            def __init__(self, compact, battleOnly=False): pass
+            def skillLevels(self, active_roles): return [('commander_staySharp',100)]
+        packages['items.tankmen'].TankmanDescr=FakeTankmanDescr
         self.client_language='en'
         packages['helpers']=types.ModuleType('helpers')
         packages['helpers'].getClientLanguage=lambda:self.client_language
@@ -290,14 +309,40 @@ class Tests(unittest.TestCase):
             COMPONENT_UNREGISTERED='onComponentUnRegistered')
         arena_module=types.ModuleType('constants')
         arena_module.ARENA_PERIOD=types.SimpleNamespace(BATTLE=3,PREBATTLE=2,AFTERBATTLE=4)
+        class KeyEvent:
+            def __init__(self): self.handlers=[]
+            def __iadd__(self, fn): self.handlers.append(fn); return self
+            def __isub__(self, fn): self.handlers.remove(fn); return self
+            def emit(self, event):
+                for fn in list(self.handlers): fn(event)
+        self.key_event=KeyEvent()
+        self.key_up_event=KeyEvent()
+        packages['gui.InputHandler']=types.ModuleType('gui.InputHandler')
+        packages['gui.InputHandler'].g_instance=types.SimpleNamespace(onKeyDown=self.key_event,onKeyUp=self.key_up_event)
+        packages['Keys']=types.ModuleType('Keys')
+        packages['Keys'].KEY_M=50
+        for name, code in (('LCONTROL',29),('RCONTROL',157),('LALT',56),('RALT',184),('LSHIFT',42),('RSHIFT',54),('V',47),('X',45),('A',30),('B',48),('C',46),('ESCAPE',1)):
+            setattr(packages['Keys'],'KEY_'+name,code)
+        packages['messenger']=types.ModuleType('messenger')
+        self.chat_focused=False
+        packages['messenger'].MessengerEntry=types.SimpleNamespace(
+            g_instance=types.SimpleNamespace(gui=types.SimpleNamespace(isFocused=lambda:self.chat_focused)))
         self.patch=patch.dict(sys.modules,{'BigWorld':self.world,'GUI':self.gui,'constants':arena_module,
                  'ResMgr':self.resmgr,'SoundGroups':sound_groups,'gui':types.ModuleType('gui'),**packages})
         self.patch.start()
+        self.source_path=patch.object(sys,'path',[str(ROOT/'source')]+sys.path)
+        self.source_path.start()
         spec=importlib.util.spec_from_file_location('mod_staysharp_v160',SOURCE)
         self.mod=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.mod)
         self.orig_populate=Panel._populate
         self.orig_dispose=Panel._dispose
+        # Historical overlay regressions count overlay roots separately.
+        # HUD-control tests explicitly enable their native GUI path.
+        self.controls_patch=None
+        if not getattr(self, 'TEST_CONTROLS', False):
+            self.controls_patch=patch.object(self.mod, '_sync_controls')
+            self.controls_patch.start()
         self.mod.init()
         self.panel=Panel(self.item)
         self.emit_register()
@@ -311,6 +356,9 @@ class Tests(unittest.TestCase):
 
     def tearDown(self):
         self.mod.fini()
+        if self.controls_patch is not None:
+            self.controls_patch.stop()
+        self.source_path.stop()
         self.patch.stop()
         self.env.stop()
         self.temp.cleanup()
@@ -845,7 +893,9 @@ class Tests(unittest.TestCase):
             getControllingVehicleID=lambda:8)
         self.state(10)
         self.assertFalse(self.mod._overlay_active)
-        self.assertEqual(self.mod._last_reason,'controlling_vehicle_not_player')
+        self.assertEqual(self.mod._perk_state,'unknown')
+        self.assertEqual(self.key_event.handlers,[])
+        self.assertIsNone(self.mod._overlay)
 
     def test_71_destroyed_avatar_while_entity_has_health_hides(self):
         overlay=self.visible_start()
@@ -1270,17 +1320,17 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.audio_plays,[])
         self.state()
         self.assertEqual(self.audio_plays,[(detected+1.0,self.mod.READY_VOICE_EVENT)])
-        self.state(15)
+        self.state(39)
         self.assertEqual(len(self.audio_plays),1)
         self.state()
-        self.assertEqual(self.audio_plays[-1],(detected+5.0,'battle_equipment_1019'))
-        self.state(16)
-        self.assertEqual(self.audio_plays[-1],(detected+9.0,'battle_equipment_1019'))
+        self.assertEqual(self.audio_plays[-1],(detected+11.0,self.mod.READY_VOICE_EVENT))
+        self.state(40)
+        self.assertEqual(self.audio_plays[-1],(detected+21.0,self.mod.READY_VOICE_EVENT))
         self.assertEqual(len(self.audio_plays),3)
 
     def test_119_sound_handles_are_reused_during_ready_interval(self):
-        self.state(65)
-        self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT,'battle_equipment_1019'])
+        self.state(125)
+        self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT])
         self.assertEqual(len(self.audio_plays),4)
 
     def test_120_cooldown_stops_audio_and_next_ready_rearms_voice(self):
@@ -1305,9 +1355,9 @@ class Tests(unittest.TestCase):
         self.panel.native_visible=True
         self.state(5)
         self.assertEqual(len(self.audio_plays),1)
-        self.state(16)
+        self.state(36)
         self.assertEqual([event for _,event in self.audio_plays],
-                         [self.mod.READY_VOICE_EVENT,'battle_equipment_1019'])
+                         [self.mod.READY_VOICE_EVENT]*2)
 
     def test_122_hidden_hud_still_tracks_cooldown(self):
         self.visible_start()
@@ -1328,41 +1378,116 @@ class Tests(unittest.TestCase):
             self.panel.camera_mode=camera
             self.panel.isActive=False
             self.state(4)
+        self.state(24)
         self.assertEqual(len(self.audio_plays),2)
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
 
     def test_124_frame_stall_emits_only_one_reminder(self):
         self.visible_start()
         self.world.clock+=60.0
         self.state()
         self.assertEqual(len(self.audio_plays),2)
-        self.state(15)
+        self.state(39)
         self.assertEqual(len(self.audio_plays),2)
         self.state()
         self.assertEqual(len(self.audio_plays),3)
 
-    def test_125_voice_failure_falls_back_without_stopping_overlay(self):
+    def test_voice_failure_never_falls_back_to_native_sound(self):
         self.audio_fail.add(self.mod.READY_VOICE_EVENT)
-        self.visible_start()
-        self.assertTrue(self.mod._overlay_active)
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
-        self.state(32)
-        self.assertEqual(self.audio_gets.count(self.mod.READY_VOICE_EVENT),1)
-        self.assertEqual(len(self.audio_plays),3)
-
-    def test_126_native_effect_failure_is_bounded_and_visual_survives(self):
-        self.audio_fail.add('battle_equipment_1019')
         self.visible_start()
         self.state(40)
         self.assertTrue(self.mod._overlay_active)
-        self.assertEqual(self.audio_gets.count('battle_equipment_1019'),1)
-        self.assertEqual(len(self.audio_plays),1)
+        self.assertEqual(self.audio_plays,[])
+        self.assertEqual(self.audio_gets,[self.mod.READY_VOICE_EVENT])
 
-    def test_127_small_medkit_uses_its_own_native_activation_effect(self):
-        self.panel._cds[3]=73
-        self.panel.sessionProvider.shared.equipments.compact=73
-        self.state(21)
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_763')
+    def key(self, code, down=True, repeated=False):
+        if down: self.physical_keys.add(code)
+        else: self.physical_keys.discard(code)
+        event=types.SimpleNamespace(key=code,isKeyDown=lambda:down,
+            isRepeatedEvent=lambda:repeated)
+        (self.key_event if down else self.key_up_event).emit(event)
+
+    def press_shortcut(self, codes=(29,56,50)):
+        for code in codes: self.key(code)
+        for code in reversed(codes): self.key(code,False)
+
+    def test_hotkey_disables_and_restores_reminder_for_battle(self):
+        event=types.SimpleNamespace(key=50,isKeyDown=lambda:True,
+            isRepeatedEvent=lambda:False,isCtrlDown=lambda:True,
+            isAltDown=lambda:True,isShiftDown=lambda:False)
+        self.visible_start()
+        self.press_shortcut()
+        self.assertFalse(self.mod._overlay_active)
+        before=list(self.audio_plays)
+        self.state(40)
+        self.assertEqual(self.audio_plays,before)
+        self.press_shortcut()
+        self.state(6)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
+        self.emit_unregister()
+        self.assertEqual(self.key_event.handlers,[])
+        self.emit_register()
+        self.assertTrue(self.mod._reminder_enabled)
+
+    def test_hotkey_ignores_chat_and_repeat(self):
+        event=types.SimpleNamespace(key=50,isKeyDown=lambda:True,
+            isRepeatedEvent=lambda:False,isCtrlDown=lambda:True,
+            isAltDown=lambda:True,isShiftDown=lambda:False)
+        self.chat_focused=True
+        self.key_event.emit(event)
+        self.chat_focused=False
+        event.isRepeatedEvent=lambda:True
+        self.key_event.emit(event)
+        self.assertTrue(self.mod._reminder_enabled)
+
+    def test_audio_diagnostics_identify_resolved_config_without_listing_other_mods(self):
+        class Section:
+            def __init__(self, value='', children=None):
+                self.asString=value
+                self.children=children or {}
+            def __getitem__(self, key): return self.children.get(key)
+            def values(self): return list(self.children.values())
+        banks=Section(children={'a':Section('other-private-name.bnk'),
+                                'b':Section(' ', {'name':Section('staysharp_medkit.bnk')})})
+        self.resmgr.openSection=lambda path:Section(children={'loadBanks':banks})
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_visible=True',messages)
+        self.assertIn('bank_entry=yes',messages)
+        self.assertNotIn('other-private-name',messages)
+        self.missing.add('audioww/staysharp_medkit.bnk')
+        self.resmgr.openSection=lambda path:Section(children={'loadBanks':Section()})
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_visible=False',messages)
+        self.assertIn('bank_entry=no',messages)
+
+    def test_voice_diagnostics_record_attempts_without_claiming_audibility(self):
+        with patch.object(self.mod, '_log') as log:
+            self.state(45)
+            self.emit_unregister()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('audio create event=staysharp_medkit_ready',messages)
+        self.assertIn('audio handle present=True',messages)
+        self.assertIn('audio play attempt=1 result=none result_type=NoneType isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio play attempt=2 result=none result_type=NoneType isPlaying=unknown audible=unknown',messages)
+        self.assertIn('audio battle_end attempts=2 failures=0 disabled=False',messages)
+
+    def test_diagnostic_exception_redacts_values_and_does_not_disable_audio(self):
+        def failed(path):
+            raise ValueError('private user path and arbitrary content')
+        self.resmgr.openSection=failed
+        with patch.object(self.mod, '_log') as log:
+            self.mod._audio_diagnostics()
+        messages='\n'.join(call.args[0] for call in log.call_args_list)
+        self.assertIn('bank_entry=unknown',messages)
+        self.assertIn('exception=ValueError',messages)
+        self.assertNotIn('private user path',messages)
+        self.visible_start()
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
 
     def test_128_destroyed_vehicle_cancels_audio(self):
         self.visible_start()
@@ -1428,12 +1553,19 @@ class Tests(unittest.TestCase):
         self.assertIn(self.mod.READY_VOICE_EVENT,self.audio_stops)
         self.assertIsNone(self.mod._audio_next_reminder)
 
-    def test_136_native_playback_false_uses_effect_fallback(self):
-        voice=types.SimpleNamespace(play=lambda:False,stop=lambda:None)
-        self.sounds[self.mod.READY_VOICE_EVENT]=voice
-        self.visible_start()
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
-        self.assertTrue(self.mod._voice_disabled)
+    def test_falsey_play_result_does_not_disable_future_voice_attempts(self):
+        for result in (False, 0, None):
+            with self.subTest(result=result):
+                calls=[]
+                self.sounds[self.mod.READY_VOICE_EVENT]=types.SimpleNamespace(
+                    play=lambda:calls.append(self.world.clock) or result,
+                    stop=lambda:None, isPlaying=True)
+                self.mod._voice_player=None
+                self.mod._voice_disabled=False
+                self.mod._play_ready_voice()
+                self.mod._play_ready_voice()
+                self.assertEqual(len(calls),2)
+                self.assertFalse(self.mod._voice_disabled)
 
 
     def write_language_config(self, value):
@@ -1443,7 +1575,59 @@ class Tests(unittest.TestCase):
 
     def test_137_missing_config_is_created_with_auto_language(self):
         path=self.game/'mods'/'configs'/'staysharp.medkit.json'
-        self.assertEqual(json.loads(path.read_text()),{'language':'auto'})
+        self.assertEqual(json.loads(path.read_text()),{
+            'language':'auto', 'enabled':True, 'voice_enabled':True, 'voice_volume':70,
+            'hotkeys':{'toggle_mod':['CTRL','ALT','M'],'toggle_voice':['CTRL','ALT','V']}})
+
+    def test_audio_defaults_apply_to_legacy_language_only_configuration(self):
+        path=self.write_language_config({'language':'pl'})
+        original=path.read_bytes()
+        self.mod._load_language()
+        self.assertTrue(self.mod._reminder_enabled)
+        self.assertTrue(self.mod._voice_enabled)
+        self.mod._voice_player=None
+        self.visible_start()
+        self.assertEqual(self.sounds['staysharp_medkit_ready_pl'].volume,0.7)
+        self.assertEqual(path.read_bytes(),original)
+
+    def test_voice_toggle_keeps_visual_reminder_and_rearms_audio_when_enabled(self):
+        self.visible_start()
+        before=len(self.audio_plays)
+        self.mod._toggle_voice()
+        self.state(24)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(len(self.audio_plays),before)
+        self.mod._toggle_voice()
+        self.state(5)
+        self.assertEqual(len(self.audio_plays),before+1)
+
+    def test_configured_defaults_and_volume_are_applied_in_next_battle(self):
+        self.write_language_config({'enabled':False,'voice_enabled':False,'voice_volume':35})
+        self.mod._load_language()
+        self.emit_unregister()
+        self.emit_register()
+        self.state(20)
+        self.assertFalse(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays,[])
+        self.mod._toggle_reminder()
+        self.state(6)
+        self.assertTrue(self.mod._overlay_active)
+        self.assertEqual(self.audio_plays,[])
+        self.mod._toggle_voice()
+        self.state(5)
+        self.assertEqual(self.sounds[self.mod.READY_VOICE_EVENT].volume,0.35)
+        self.emit_unregister()
+        self.emit_register()
+        self.assertFalse(self.mod._reminder_enabled)
+        self.assertFalse(self.mod._voice_enabled)
+
+    def test_invalid_audio_settings_restore_safe_defaults(self):
+        for invalid in ('70',True,-1,101,None,float('nan')):
+            self.write_language_config({'voice_volume':invalid,'enabled':0,'voice_enabled':'false'})
+            self.mod._load_language()
+            self.assertEqual(self.mod._voice_volume,70)
+            self.assertTrue(self.mod._reminder_enabled)
+            self.assertTrue(self.mod._voice_enabled)
 
     def test_138_all_manual_languages_select_their_own_voice(self):
         for language in ('en','pl','ru','fr','de','es','uk'):
@@ -1452,7 +1636,7 @@ class Tests(unittest.TestCase):
                 before=path.read_bytes()
                 self.mod._load_language()
                 self.mod._voice_player=None
-                self.mod._play_ready_voice(72)
+                self.mod._play_ready_voice()
                 expected='staysharp_medkit_ready'+('' if language=='en' else '_'+language)
                 self.assertEqual(self.audio_plays[-1][1],expected)
                 self.assertEqual(path.read_bytes(),before)
@@ -1493,7 +1677,7 @@ class Tests(unittest.TestCase):
     def test_143_malformed_oversized_and_bom_configs(self):
         self.client_language='uk'
         path=self.write_language_config({})
-        for raw in (b'{oops',b'\xff',b' '*4097+b'{}'):
+        for raw in (b'{oops',b'\xff',b' '*(self.mod.CONFIG_MAX_BYTES+1)+b'{}'):
             path.write_bytes(raw)
             self.mod._load_language()
             self.assertEqual(self.mod._language,'uk')
@@ -1533,16 +1717,15 @@ class Tests(unittest.TestCase):
             self.state(32)
             self.animate_at(2)
         self.assertEqual(self.mod._language,'en')
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.assertEqual(self.audio_plays[-1][1],self.mod.READY_VOICE_EVENT)
 
-    def test_148_localized_voice_failure_uses_native_effect(self):
+    def test_localized_voice_failure_is_silent(self):
         self.write_language_config({'language':'pl'})
         self.mod._load_language()
         self.audio_fail.add('staysharp_medkit_ready_pl')
         self.visible_start()
-        self.assertEqual(self.audio_plays[-1][1],'battle_equipment_1019')
+        self.assertEqual(self.audio_plays,[])
         self.assertTrue(self.mod._overlay_active)
-
 
     def test_149_resolver_wins_over_another_installation_cwd(self):
         self.write_language_config({'language':'pl'})

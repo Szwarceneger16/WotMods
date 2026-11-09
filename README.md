@@ -12,11 +12,24 @@ Integration rules: [mods/sessionstats/README.md](mods/sessionstats/README.md).
 # Stay Sharp — Medkit Reminder for World of Tanks
 
 A small **client-side visual and audio reminder** for the Commander's *Stay Sharp* perk.
-When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. After one second of eligible readiness, it says **"Medkit is ready" once**; while the outline keeps pulsing, the native medkit activation effect repeats every four seconds. Seven spoken languages match Session Stats (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`), selected automatically from WoT or explicitly in the small [language configuration](docs/AUDIO.md#language-configuration). Both sounds use WoT's Wwise audio engine. No keypresses, automatic consumable use, game-stat changes or injected network traffic.
+When the perk allows using a ready medkit, an orange frame around its original HUD slot smoothly brightens for two seconds and fades for two seconds. The bundled **"Medkit is ready"** voice starts about half a second before a tracked medkit cooldown ends. If the medkit is already ready at battle start, it plays one second after the battle starts. It then repeats every ten seconds while the medkit remains eligible, independently of the continuous outline pulse. Configure separate mod/voice shortcuts from the medkit button immediately to the left of the garage settings gear. Defaults are **Ctrl+Alt+M** and **Ctrl+Alt+V**; recorded three/four-key combinations are saved in the existing configuration. Battle shortcuts also work while movement keys are held, with configured modifiers still required. Press the configured mod shortcut during a battle to turn the entire reminder off or on; it starts enabled in the next battle. Seven spoken languages (`en`, `pl`, `ru`, `fr`, `de`, `es`, `uk`) are selected from WoT or in the [language configuration](docs/AUDIO.md#language-configuration). No automatic consumable use, game-stat changes or injected network traffic.
 
 **Voice credit:** This audio was created with Boson AI's Higgs Audio — https://www.boson.ai/higgs-audio. All seven announcements are AI-generated prerecorded audio; [generation provenance and terms](docs/AUDIO.md#bank-and-volume) are included with the package.
 
-The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint, all required DDS frames, and its own small voice soundbank.
+The mod uses the regular consumables HUD and works independently of arcade, sniper and SPG/strategic camera modes. It is packaged as **one `.wotmod`** containing the Python 2.7 game entrypoint, all required DDS frames, its voice soundbank and garage settings UI. The installer also includes the same pinned OpenWG Gameface library used by Session Stats for its native footer button.
+
+The reminder and voice default to enabled, at **70% voice volume**. Use the
+game cursor to left-click the power or speaker icon above the medkit and toggle
+the reminder or voice for the current battle. Ctrl can show the cursor, but
+clicking does not require Ctrl or any other modifier. Icons are visible in arcade and artillery
+views and hide in the ordinary sniper view. Configuration defaults are
+restored in the next battle.
+
+The mod reads the own vehicle's learned, active-role crew skills before creating
+any battle graphics, mouse monitoring or sound. Without Stay Sharp, or while crew
+data is unavailable, it remains dormant: no icons, pulse, voice or hotkey/equipment
+subscriptions. A cached crew check once per second detects vehicle/crew changes.
+The icons use cursor/button polling and never register native GUI input callbacks.
 
 ## Downloads
 
@@ -33,7 +46,7 @@ Configurations are optional `mods/configs/*.json.example` files and are not load
 
 Optional language configuration: `mods/configs/staysharp.medkit.json`, beside the game-version folders. The mod creates an `auto` default there when possible; see [language selection](docs/AUDIO.md#language-configuration).
 
-The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the v1.7.0 soundbank, routing/volume and audio timing still require an in-game regression test. Back up the last working version before testing an update.
+The version folder must match your currently installed WoT version. This modification is community-maintained and relies on internal WoT interfaces; **an update to WoT can break it**. The v1.5.0 rendering has been confirmed in a real client; the soundbank, routing/volume, hotkey and audio timing still require an in-game regression test. Back up the last working version before testing an update.
 
 Diagnostic log (created on the player's computer, **never included in releases**): `%LOCALAPPDATA%\StaySharpMedkit\staysharp.log`.
 
@@ -48,7 +61,7 @@ python3 source/build_wotmod.py
 sha256sum dist/*.wotmod
 ```
 
-The `assets/medkit_pulse_master.dds.b85` file is a compressed, ASCII-encoded source DDS. The builder recreates **all 21 original DDS animation frames byte-for-byte** using an exact, tested alpha-scaling formula; the full assets do not need to be separately committed. The **historical v1.6.0** artifact has SHA-256 `9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927`. This legacy check applies only when building v1.6.0. Current code starts at **v1.7.0**, which adds native WoT audio reminders. The builder validates the voice checksum and embeds it as PCM in a deterministic Wwise v150 bank. See [audio packaging and compatibility](docs/AUDIO.md), including coexistence with other sound mods.
+The `assets/medkit_pulse_master.dds.b85` file is a compressed, ASCII-encoded source DDS. The builder recreates **all 21 original DDS animation frames byte-for-byte** using an exact, tested alpha-scaling formula; the full assets do not need to be separately committed. The **historical v1.6.0** artifact has SHA-256 `9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927`. This legacy check applies only when building v1.6.0. Current code starts at **v1.7.0**, which adds Wwise voice reminders. The builder validates the voice checksum and embeds it as PCM in a deterministic Wwise v150 bank. See [audio packaging and compatibility](docs/AUDIO.md), including coexistence with other sound mods.
 
 See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](docs/REVIEW_1.6.0.md), and [installation guide](docs/INSTALACJA.md).
 

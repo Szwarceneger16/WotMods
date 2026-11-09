@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,11 +31,15 @@ def mod(identifier, version, payload=b'payload'):
                     'res/'+identifier+'/module.pyc': payload})
 
 
-def build(directory, kind, version, internal=False, stable=False, installed_name=None, client=r.CLIENT):
+def build(directory, kind, version, internal=False, stable=False, installed_name=None, client=r.CLIENT, garage=False):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = r.KINDS[kind][1]
     primary = prefix+version+'.wotmod'
     (directory/primary).write_bytes(mod(prefix[:-1], version))
+    if garage:
+        resources=r.read_zip(io.BytesIO((directory/primary).read_bytes()))
+        resources[r.MEDKIT_GARAGE_RESOURCE]=b'/* garage settings fixture */'
+        (directory/primary).write_bytes(archive(resources))
     if kind == 'sessionstats':
         config, language = b'{"language":"auto"}', b'{"languages":{"en":{}}}'
         dependency = mod('net.openwg.gameface', '1.2.2')
@@ -107,6 +112,82 @@ class InstallerTests(unittest.TestCase):
         path=r.package(self.source,self.out,'sessionstats')
         self.assertEqual(first,path.read_bytes())
 
+    def garage_medkit(self):
+        build(self.source,'staysharp','1.8.4',garage=True)
+        target=r.package(self.source,self.out,'staysharp')
+        return target,r.verify(target)
+
+    def real_stats_dependency(self, directory):
+        """Use the exact shared vendor package inside the synthetic stats build."""
+        dependency=r.medkit_gameface_dependency()
+        (directory/r.OPENWG_PACKAGE).write_bytes(dependency)
+        inner=directory/'wot-statystyki-sesji-v0.3.4.zip'
+        contents=r.read_zip(inner)
+        contents['mods/'+r.CLIENT+'/net.openwg/'+r.OPENWG_PACKAGE]=dependency
+        (inner).write_bytes(archive(contents))
+        r.manifest(directory)
+
+    def test_garage_medkit_bundles_the_exact_existing_vendor_and_license(self):
+        target,(_,_,client,files,primary)=self.garage_medkit()
+        vendor='mods/'+client+'/net.openwg/'+r.OPENWG_PACKAGE
+        self.assertEqual(r.digest(files[vendor]),r.OPENWG_SHA256)
+        self.assertEqual(files[vendor],r.medkit_gameface_dependency())
+        self.assertEqual(files['docs/staysharp/OPENWG_LICENSE'],(ROOT/'assets/OPENWG_LICENSE').read_bytes())
+        self.assertIn(r.MEDKIT_GARAGE_RESOURCE,r.read_zip(io.BytesIO(files[primary])))
+        self.assertIn(b'garage settings button',files['docs/staysharp/INSTALL.txt'])
+        before=target.read_bytes()
+        self.assertEqual(r.package(self.source,self.out,'staysharp').read_bytes(),before)
+
+    def test_garage_medkit_rejects_missing_modified_misplaced_dependency_and_missing_license(self):
+        unused,(_,version,client,original,primary)=self.garage_medkit()
+        vendor='mods/'+client+'/net.openwg/'+r.OPENWG_PACKAGE
+        for change in ('missing','modified','misplaced','license'):
+            with self.subTest(change=change):
+                files=dict(original)
+                del files['docs/staysharp/SHA256SUMS.txt']
+                if change=='missing':del files[vendor]
+                elif change=='modified':files[vendor]+=b'tampered'
+                elif change=='misplaced':files['mods/'+client+'/'+r.OPENWG_PACKAGE]=files.pop(vendor)
+                else:del files['docs/staysharp/OPENWG_LICENSE']
+                with self.assertRaises(ValueError):
+                    r.write_installer(self.out,'staysharp',version,client,files)
+
+    def test_only_the_pinned_identical_shared_dependency_may_install_twice(self):
+        self.garage_medkit()
+        stats=self.root/'stats'
+        build(stats,'sessionstats','0.3.4',internal=True,stable=True)
+        self.real_stats_dependency(stats)
+        r.package(stats,self.out,'sessionstats')
+        self.assertEqual(len(r.verify_directory(self.out)),2)
+        before={path.name:path.read_bytes() for path in self.out.iterdir()}
+        r.normalize(self.out)
+        self.assertEqual({path.name:path.read_bytes() for path in self.out.glob('*.zip')},before)
+
+    def test_different_library_at_the_shared_install_path_is_rejected(self):
+        self.garage_medkit()
+        stats=self.root/'stats'
+        build(stats,'sessionstats','0.3.4',internal=True,stable=True)
+        r.package(stats,self.out,'sessionstats')
+        with self.assertRaisesRegex(ValueError,'Conflicting package install paths'):
+            r.verify_directory(self.out)
+
+    def test_vendor_asset_is_verified_without_executing_it(self):
+        asset_root=self.root/'asset-root'
+        (asset_root/'assets').mkdir(parents=True)
+        asset=(asset_root/'assets/openwg_gameface_1.2.2.wotmod.b85')
+        asset.write_text('00000')
+        with patch.object(r,'ROOT',asset_root),self.assertRaisesRegex(ValueError,'checksum'):
+            r.medkit_gameface_dependency()
+
+    def test_old_medkit_does_not_acquire_a_garage_dependency(self):
+        build(self.source,'staysharp','1.8.3')
+        target=r.package(self.source,self.out,'staysharp')
+        _,_,_,files,primary=r.verify(target)
+        self.assertEqual([name for name in files if name.endswith('.wotmod')],[primary])
+        before=target.read_bytes()
+        r.normalize(self.out)
+        self.assertEqual(target.read_bytes(),before)
+
     def test_new_client_retargets_both_installers_without_changing_mod_bytes(self):
         self.both()
         before = r.verify_directory(self.out)
@@ -122,6 +203,28 @@ class InstallerTests(unittest.TestCase):
                               for name, data in files.items()
                               if name.startswith('mods/' + client + '/')})
             self.assertIn(b'not an in-game compatibility test', files['docs/'+kind+'/COMPATIBILITY.txt'])
+
+    def test_new_client_retargets_shared_garage_dependency_without_changing_bytes(self):
+        self.garage_medkit()
+        stats=self.root/'stats'
+        build(stats,'sessionstats','0.3.4',internal=True,stable=True)
+        self.real_stats_dependency(stats)
+        r.package(stats,self.out,'sessionstats')
+        before=r.verify_directory(self.out)
+        packages={kind:{name.split('/',2)[2]:data for name,data in files.items()
+                        if name.startswith('mods/'+client+'/')}
+                  for kind,unused_version,client,files,unused_primary in before}
+        r.normalize(self.out,'2.5.0.0')
+        (self.out/'SHA256SUMS.txt').unlink()
+        after=r.verify_directory(self.out)
+        self.assertEqual({report[2] for report in after},{'2.5.0.0'})
+        for kind,unused_version,client,files,unused_primary in after:
+            self.assertEqual(packages[kind],{name.split('/',2)[2]:data
+                             for name,data in files.items()
+                             if name.startswith('mods/'+client+'/')})
+            vendor='mods/'+client+'/net.openwg/'+r.OPENWG_PACKAGE
+            self.assertEqual(r.digest(files[vendor]),r.OPENWG_SHA256)
+            self.assertIn(b'Target client: 2.5.0.0.',files['docs/'+kind+'/INSTALL.txt'])
 
     def test_retarget_refuses_to_publish_an_older_game_client(self):
         self.both()

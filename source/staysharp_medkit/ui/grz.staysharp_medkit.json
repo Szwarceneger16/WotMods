@@ -1,0 +1,8 @@
+[
+  {
+    "type": "Layout",
+    "id": "R.mods.grz.staysharp_medkit.views.Settings",
+    "path": "coui://gui/gameface/mods/staysharp_medkit/settings.html",
+    "parameters": {"entrance": "Settings", "impl": "gameface"}
+  }
+]
