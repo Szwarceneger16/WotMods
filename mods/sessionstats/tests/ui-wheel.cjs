@@ -18,6 +18,8 @@ async function makePage(browser, native) {
     for (const scope of Object.values(snapshot.scopes)) {
         const sample = scope.battles[0];
         scope.battles = Array.from({length:95}, (_, index) => ({...sample,id:'wheel-'+index,started_at:1700000000-index}));
+        // This suite exercises legacy client batching, not native page replies.
+        if(scope.pagination)delete scope.pagination.battles;
     }
     if (native) {
         await page.addInitScript(snapshot => {

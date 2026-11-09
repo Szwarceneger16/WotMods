@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import bisect
 import math
+import uuid
 from collections import Counter
 
 from .core import (_number, _text, _OUTCOMES, _CURRENCIES, _BREAKDOWN,
@@ -282,11 +283,19 @@ class ScopeIndex(object):
         self.pending = 0
         self._sort_cache = {}
         self.warnings = Counter()
+        self._revision_generation = uuid.uuid4().hex
+        self._revision = 0
+
+    @property
+    def data_revision(self):
+        return '{0}:{1}'.format(self._revision_generation, self._revision)
 
     def build(self, items):
         complete(self.build_steps(items))
 
     def build_steps(self, items):
+        self._revision_generation = uuid.uuid4().hex
+        self._revision = 0
         self.records, self.order, self.pending, self.warnings = {}, [], 0, Counter()
         self._sort_cache = {}
         for position, item in enumerate(items):
@@ -328,6 +337,7 @@ class ScopeIndex(object):
             self._change(old[0], old[1], -1)
 
     def _change(self, record, item, direction):
+        self._revision += 1
         self._sort_cache = {}
         identifier = record['arena_id']
         key = (record.get('started_at') or 0, identifier)
@@ -431,7 +441,8 @@ class ScopeIndex(object):
     def snapshot(self, label, started_at, pages=None, orders=None, map_pages=None, vehicle_pages=None):
         pages, orders = pages or {}, orders or {}
         result = {'label': label, 'started_at': started_at, 'pending': self.pending,
-                  'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {}, 'period_id': self.identifier}
+                  'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {},
+                  'period_id': self.identifier, 'data_revision': self.data_revision}
         for kind in ('vehicles', 'maps', 'battles', 'tiers'):
             options = orders.get(kind, DEFAULT_ORDER)
             options = options if valid_order(options) else DEFAULT_ORDER

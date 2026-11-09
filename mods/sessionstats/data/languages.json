@@ -317,7 +317,11 @@
       "timeline.custom_invalid": "Enter a valid date: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "From must be earlier than To.",
       "vehicles.battles": "Battles in this vehicle",
-      "sort.value_per_battle": "{0} {1} / battle: {2}"
+      "sort.value_per_battle": "{0} {1} / battle: {2}",
+      "page.top": "Back to top",
+      "page.loading": "Loading page…",
+      "page.error": "Could not load this page.",
+      "page.retry": "Retry"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -635,7 +639,11 @@
       "timeline.custom_invalid": "Wpisz poprawną datę: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "Początek musi być wcześniejszy niż koniec.",
       "vehicles.battles": "Bitwy tym pojazdem",
-      "sort.value_per_battle": "{0} {1} / bitwę: {2}"
+      "sort.value_per_battle": "{0} {1} / bitwę: {2}",
+      "page.top": "Wróć na górę",
+      "page.loading": "Ładowanie strony…",
+      "page.error": "Nie udało się wczytać strony.",
+      "page.retry": "Ponów"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -953,7 +961,11 @@
       "timeline.custom_invalid": "Введите корректную дату: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "Начало периода должно быть раньше конца.",
       "vehicles.battles": "Бои на этой машине",
-      "sort.value_per_battle": "{0} {1} / бой: {2}"
+      "sort.value_per_battle": "{0} {1} / бой: {2}",
+      "page.top": "Наверх",
+      "page.loading": "Загрузка страницы…",
+      "page.error": "Не удалось загрузить страницу.",
+      "page.retry": "Повторить"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1271,7 +1283,11 @@
       "timeline.custom_invalid": "Saisissez une date valide : YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "Le début doit précéder la fin.",
       "vehicles.battles": "Batailles avec ce véhicule",
-      "sort.value_per_battle": "{0} {1} / bataille : {2}"
+      "sort.value_per_battle": "{0} {1} / bataille : {2}",
+      "page.top": "Retour en haut",
+      "page.loading": "Chargement de la page…",
+      "page.error": "Impossible de charger cette page.",
+      "page.retry": "Réessayer"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1589,7 +1605,11 @@
       "timeline.custom_invalid": "Bitte gültiges Datum eingeben: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "„Von“ muss vor „Bis“ liegen.",
       "vehicles.battles": "Gefechte mit diesem Fahrzeug",
-      "sort.value_per_battle": "{0} {1} / Gefecht: {2}"
+      "sort.value_per_battle": "{0} {1} / Gefecht: {2}",
+      "page.top": "Nach oben",
+      "page.loading": "Seite wird geladen…",
+      "page.error": "Diese Seite konnte nicht geladen werden.",
+      "page.retry": "Erneut versuchen"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -1907,7 +1927,11 @@
       "timeline.custom_invalid": "Introduce una fecha válida: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "La fecha «Desde» debe ser anterior a «Hasta».",
       "vehicles.battles": "Batallas con este vehículo",
-      "sort.value_per_battle": "{0} {1} / batalla: {2}"
+      "sort.value_per_battle": "{0} {1} / batalla: {2}",
+      "page.top": "Volver arriba",
+      "page.loading": "Cargando página…",
+      "page.error": "No se pudo cargar esta página.",
+      "page.retry": "Reintentar"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2225,7 +2249,11 @@
       "timeline.custom_invalid": "Введіть коректну дату: YYYY-MM-DD HH:mm.",
       "timeline.custom_order": "Початок має передувати кінцю.",
       "vehicles.battles": "Бої на цій машині",
-      "sort.value_per_battle": "{0} {1} / бій: {2}"
+      "sort.value_per_battle": "{0} {1} / бій: {2}",
+      "page.top": "Угору",
+      "page.loading": "Завантаження сторінки…",
+      "page.error": "Не вдалося завантажити сторінку.",
+      "page.retry": "Повторити"
     }
   }
 }

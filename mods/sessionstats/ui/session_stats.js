@@ -11,6 +11,8 @@
         orders: {}, openSelect: null, list: [], loadedCount: 40, renderedCount: 0,
         timelineSignature: null, customRangeKey: null, customDates: {}, openMaps: {}, mapContext: null,
         pendingBattle: null, battleJump: null, highlightedBattle: null, navigationSequence: 0,
+        targetTimer: null, targetSequence: 0, feed: null, renderedFeed: null,
+        feedSequence: 0, feedForceStart: null, pageJump: null, filterShift: 0, orderIntent: null,
         openBattles: {}, resize: null, logicalSize: null,
         cardFlowToken: 0, cardFlowQueued: false, cardFlowAttempts: 0, cardFlowTimer: null,
         windowPrefs: null, windowSaved: null, windowPending: null, windowChanges: {},
@@ -19,7 +21,7 @@
         resizeSequence: 0, timePointAccount: null, timePointCount: null, timePointEdited: false,
         resizeQueued: false, resizeTimer: null, resizeLast: 0, resizeMeasureToken: 0 };
     // BEGIN GENERATED ENGLISH
-    var english = {"cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "help.info": "Information", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "maps.battles": "Battles on this map", "maps.empty": "No battles available", "maps.loading": "Loading battles\u2026", "maps.open_battle": "Show battle", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.column.crew_xp": "Crew XP", "more.column.free_xp": "Free XP", "more.column.xp": "XP", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.less": "Less", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.change": "{0}: {1}", "more.progress.none": "No progress recorded", "more.progress.range": "{0}: {1} \u2192 {2} ({3})", "more.progress.target": "{0}: {1}/{2}", "more.progress.unavailable": "Battle progress unavailable", "more.progress.unit.battles": "Battles", "more.progress.unit.counter": "Progress", "more.progress.unit.damage": "Damage", "more.progress.unit.kills": "Vehicles destroyed", "more.progress.unit.seconds": "Seconds", "more.progress.unit.vehicles": "Vehicles", "more.progress.unit.xp": "XP", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.next": "Next", "page.previous": "Previous", "page.status": "Page {0} of {1}", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.statistic": "Statistic", "sort.value_per_battle": "{0} {1} / battle: {2}", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.custom": "Custom date", "timeline.custom_apply": "Apply", "timeline.custom_invalid": "Enter a valid date: YYYY-MM-DD HH:mm.", "timeline.custom_order": "From must be earlier than To.", "timeline.custom_placeholder": "YYYY-MM-DD HH:mm", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "vehicles.battles": "Battles in this vehicle", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.background": "Transparency", "window.background_transparency": "Background transparency", "window.maximize": "Maximize window", "window.resize": "Resize window (drag or use arrow keys)", "window.restore": "Restore window", "window.save_error": "Could not save window settings. Your configuration was preserved.", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
+    var english = {"cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "help.info": "Information", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "maps.battles": "Battles on this map", "maps.empty": "No battles available", "maps.loading": "Loading battles\u2026", "maps.open_battle": "Show battle", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.column.crew_xp": "Crew XP", "more.column.free_xp": "Free XP", "more.column.xp": "XP", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.less": "Less", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.change": "{0}: {1}", "more.progress.none": "No progress recorded", "more.progress.range": "{0}: {1} \u2192 {2} ({3})", "more.progress.target": "{0}: {1}/{2}", "more.progress.unavailable": "Battle progress unavailable", "more.progress.unit.battles": "Battles", "more.progress.unit.counter": "Progress", "more.progress.unit.damage": "Damage", "more.progress.unit.kills": "Vehicles destroyed", "more.progress.unit.seconds": "Seconds", "more.progress.unit.vehicles": "Vehicles", "more.progress.unit.xp": "XP", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.error": "Could not load this page.", "page.loading": "Loading page\u2026", "page.next": "Next", "page.previous": "Previous", "page.retry": "Retry", "page.status": "Page {0} of {1}", "page.top": "Back to top", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.statistic": "Statistic", "sort.value_per_battle": "{0} {1} / battle: {2}", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.custom": "Custom date", "timeline.custom_apply": "Apply", "timeline.custom_invalid": "Enter a valid date: YYYY-MM-DD HH:mm.", "timeline.custom_order": "From must be earlier than To.", "timeline.custom_placeholder": "YYYY-MM-DD HH:mm", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "vehicles.battles": "Battles in this vehicle", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.background": "Transparency", "window.background_transparency": "Background transparency", "window.maximize": "Maximize window", "window.resize": "Resize window (drag or use arrow keys)", "window.restore": "Restore window", "window.save_error": "Could not save window settings. Your configuration was preserved.", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
     // END GENERATED ENGLISH
     var translations = english;
     function t(key, args) {
@@ -61,7 +63,7 @@
         'group-tabs', 'list-meta', 'titlebar', 'title-actions', 'timeline', 'time-point',
         'time-point-controls', 'time-point-name', 'resize-grip', 'maximize', 'window-background',
         'background-transparency', 'background-transparency-track', 'background-transparency-thumb',
-        'background-transparency-value'];
+        'background-transparency-value', 'filter-panel', 'scroll-top'];
     var i;
     for (i = 0; i < ids.length; i += 1) { nodes[ids[i]] = document.getElementById('ss-' + ids[i]); }
 
@@ -783,6 +785,7 @@
         return String((state.payload || {}).account_key) + '/' + state.scope + '/' + String(scope.period_id || scope.started_at) + '/' + state.group;
     }
     function getOrder(scope) {
+        if (state.orderIntent && state.orderIntent.group === state.group && sameContext(state.orderIntent.context)) { return state.orderIntent.options; }
         return (state.nativeSession && scope.ordering && scope.ordering[state.group]) || state.orders[orderKey(scope)] || defaultOrder;
     }
     function ordered(items, options) {
@@ -822,9 +825,12 @@
         options[field] = value;
         state.loadedCount = 40;
         if (state.nativeSession && scope.pagination) {
+            retireFeed(); state.feedForceStart = 0;
+            state.orderIntent = {context:viewContext(), group:state.group, options:options};
+            renderSelects(scope);
             options.scope = scopeName(); options.group = state.group;
             options.period_id = scope.period_id; options.account_key = state.payload.account_key;
-            invoke('sort',options);
+            if (!invoke('sort',options)) { state.orderIntent = null; renderSelects(scope); }
         } else {
             state.orders[orderKey(scope)] = options;
             render();
@@ -983,7 +989,7 @@
         if (value !== '__custom__') { delete state.customDates[field]; }
         cancelBattleNavigation();
         state.loadedCount = 40;
-        resetViewScroll();
+        retireFeed(); state.orderIntent = null; state.feedForceStart = 0;
         invoke('timeline_range', args);
     }
     function renderTimeline(timeline, disabled) {
@@ -1293,6 +1299,46 @@
         var current = viewContext();
         return context.account_key === current.account_key && context.scope === current.scope && context.period_id === current.period_id;
     }
+    function clearBattleTarget() {
+        state.targetSequence += 1;
+        var timer = state.targetTimer; state.targetTimer = null;
+        state.highlightedBattle = null;
+        cancelUITimer(timer);
+        (state.groupCards || []).forEach(function (card) {
+            ['ss-battle-target', 'ss-target-pulsing', 'ss-target-muted'].forEach(function (name) { card.classList.remove(name); });
+        });
+    }
+    function paintBattleTarget(card) {
+        var target = state.highlightedBattle;
+        if (!target || !sameContext(target.context) || card.getAttribute('data-group-id') !== target.id) { return; }
+        var outline = card.querySelector('.ss-battle-target-outline');
+        if (!outline) { outline = append(card, element('span', 'ss-battle-target-outline')); outline.setAttribute('aria-hidden', 'true'); }
+        card.classList.add('ss-battle-target');
+        var pulsing = Date.now() < target.until;
+        card.classList[pulsing ? 'add' : 'remove']('ss-target-pulsing');
+        card.classList[pulsing ? 'remove' : 'add']('ss-target-muted');
+        card.setAttribute('tabindex', '-1');
+    }
+    function targetClick(event) {
+        if (!state.highlightedBattle) { return; }
+        var target = null;
+        (state.groupCards || []).some(function (card) {
+            if (card.getAttribute('data-group-id') === state.highlightedBattle.id) { target = card; return true; }
+            return false;
+        });
+        if (!target || !target.contains(event.target)) { clearBattleTarget(); }
+    }
+    function targetFocusOut(event) {
+        if (!state.highlightedBattle || state.rendering) { return; }
+        var card = event.target;
+        while (card && card !== root && !card.classList.contains('ss-battle-target')) { card = card.parentNode; }
+        if (card && card !== root && (!event.relatedTarget || !card.contains(event.relatedTarget))) { clearBattleTarget(); }
+    }
+    function targetFocusIn(event) { if (!state.rendering) { targetClick(event); } }
+    document.addEventListener('click', targetClick, true);
+    root.addEventListener('focusout', targetFocusOut);
+    root.addEventListener('focusin', targetFocusIn);
+    window.addEventListener('blur', clearBattleTarget);
     function cancelBattleNavigation() { state.pendingBattle = null; state.battleJump = null; }
     function selectMapBattle(id, context) {
         if (!sameContext(context)) { return; }
@@ -1307,6 +1353,7 @@
         if (!pending || !focus || focus.request_id !== pending.request_id || String(focus.id) !== pending.id) { return; }
         state.pendingBattle = null;
         state.group = 'battles'; state.loadedCount = 40;
+        state.feedForceStart = scope.pagination && scope.pagination.battles ? scope.pagination.battles.page : 0;
         state.battleJump = {id:pending.id, context:pending.context, attempts:0};
     }
     function finishBattleJump() {
@@ -1328,12 +1375,18 @@
             if (!state.resizeQueued && jump.attempts < 3) { jump.attempts += 1; queueResize(); }
             return;
         }
-        var offset = Math.max(0, scroll.scrollTop + box.top - container.top - 8 * (state.nativeScale || 1));
+        var offset = Math.max(0, scroll.scrollTop + box.top - container.top - pinnedFilterHeight() - 8 * (state.nativeScale || 1));
         state.battleJump = null;
-        state.highlightedBattle = {id:jump.id, context:jump.context};
-        (state.groupCards || []).forEach(function (card) { card.classList.remove('ss-battle-target'); });
-        target.setAttribute('tabindex', '-1');
-        target.classList.add('ss-battle-target');
+        clearBattleTarget();
+        state.highlightedBattle = {id:jump.id, context:jump.context, until:Date.now() + 5000};
+        paintBattleTarget(target);
+        var sequence = ++state.targetSequence;
+        state.targetTimer = window.setTimeout(function () {
+            if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle) { return; }
+            state.targetTimer = null;
+            state.highlightedBattle.until = 0;
+            (state.groupCards || []).forEach(paintBattleTarget);
+        }, 5000);
         focusControl(target);
         state.scrollTarget = offset;
         scroll.scrollTop = state.scrollTarget;
@@ -1341,32 +1394,62 @@
     function attachMapMore(card, header, map) {
         var vehicle = state.group === 'vehicles', kind = vehicle ? 'vehicle' : 'map';
         var context = viewContext(), key = JSON.stringify([context.account_key, context.scope, context.period_id, kind, String(map.id)]);
+        var identifier = String(map.id), group = state.group;
         var titleKey = vehicle ? 'vehicles.battles' : 'maps.battles';
         var button = append(header, element('button', 'ss-control ss-button ss-more-button ss-map-more-button' + (vehicle ? ' ss-vehicle-more-button' : '')));
         button.type = 'button';
         var caption = append(button, element('span', 'ss-control-label'));
         var panel = append(card, element('div', 'ss-map-battles' + (vehicle ? ' ss-vehicle-battles' : '')));
         panel.setAttribute('role', 'region'); panel.setAttribute('aria-label', t(titleKey));
+        var body = null, previous = null, next = null, pageText = null;
+        var rendered = null, requestedPage = null;
+        function live() {
+            return sameContext(context) && state.group === group && document.documentElement.contains(card);
+        }
         function load(page) {
-            if (!sameContext(context)) { return; }
+            if (!live() || requestedPage !== null) { return; }
+            requestedPage = page;
             panel.setAttribute('aria-busy', 'true');
             var args = {account_key:context.account_key, scope:context.scope, period_id:context.period_id, page:page};
-            args[kind + '_id'] = map.id;
-            invoke(kind + '_battles', args);
-        }
-        function show(open) {
-            button.setAttribute('aria-expanded', String(open));
-            button.title = t(open ? 'more.less' : 'more.button'); caption.textContent = button.title;
-            panel.style.display = open ? 'block' : 'none';
-            if (!open || panel.firstChild) { queueResize(); return; }
-            var list = map.battle_list;
-            if (!list) { append(panel, element('p', 'ss-map-empty', t('maps.loading'))); panel.setAttribute('aria-busy', 'true'); }
-            else {
+            args[kind + '_id'] = identifier;
+            if (!invoke(kind + '_battles', args)) {
+                requestedPage = null;
                 panel.setAttribute('aria-busy', 'false');
-                append(panel, element('h3', 'ss-more-title', t(titleKey)));
-                if (!list.items || !list.items.length) { append(panel, element('p', 'ss-map-empty', t('maps.empty'))); }
+            }
+        }
+        function ensurePanel() {
+            if (body) { return; }
+            append(panel, element('h3', 'ss-more-title', t(titleKey)));
+            // This fixed ten-row viewport also exists while loading/empty, so
+            // replacing a partial last page never moves the pagination/card.
+            body = append(panel, element('div', 'ss-history-body'));
+            var pagination = append(panel, element('div', 'ss-map-battles-pagination'));
+            function pageButton(direction, name) {
+                var control = append(pagination, element('button', 'ss-control ss-button ss-map-page-' + name));
+                control.type = 'button';
+                append(control, element('span', 'ss-control-label', t('page.' + name)));
+                control.onclick = function () {
+                    if (!control.disabled && map.battle_list) { load(map.battle_list.page + direction); }
+                };
+                return control;
+            }
+            previous = pageButton(-1, 'previous');
+            pageText = append(pagination, element('span', 'ss-map-battles-page'));
+            next = pageButton(1, 'next');
+        }
+        function renderHistory() {
+            ensurePanel();
+            var list = map.battle_list, signature = JSON.stringify(list || null);
+            if (rendered === signature) { return; }
+            var active = document.activeElement;
+            var focusedPager = active === previous || active === next ? active : null;
+            var localScroll = body.scrollTop, panelScroll = panel.scrollTop, globalScroll = nodes.scroll.scrollTop;
+            clear(body);
+            if (!list) { append(body, element('p', 'ss-map-empty', t('maps.loading'))); }
+            else {
+                if (!list.items || !list.items.length) { append(body, element('p', 'ss-map-empty', t('maps.empty'))); }
                 (list.items || []).forEach(function (battle) {
-                    var row = append(panel, element('div', 'ss-map-battle-row'));
+                    var row = append(body, element('div', 'ss-map-battle-row'));
                     row.setAttribute('data-battle-id', String(battle.id));
                     var identity = append(row, element('div', 'ss-map-battle-info'));
                     append(identity, element('strong', 'ss-map-battle-name', vehicle ? (battle.map || t('unknown.map')) : (battle.name || t('unknown.vehicle'))));
@@ -1376,23 +1459,47 @@
                     var open = append(row, element('button', 'ss-control ss-button ss-map-battle-open'));
                     open.type = 'button'; open.setAttribute('data-battle-id', String(battle.id));
                     append(open, element('span', 'ss-control-label', t('maps.open_battle')));
-                    open.onclick = function () { selectMapBattle(battle.id, context); };
+                    open.onclick = function () {
+                        if (live() && body.contains(open)) { selectMapBattle(battle.id, context); }
+                    };
                 });
-                var pagination = append(panel, element('div', 'ss-map-battles-pagination'));
-                function pageButton(direction, name) {
-                    var control = append(pagination, element('button', 'ss-control ss-button ss-map-page-' + name));
-                    control.type = 'button'; control.disabled = list.page + direction < 0 || list.page + direction >= list.pages;
-                    append(control, element('span', 'ss-control-label', t('page.' + name)));
-                    control.onclick = function () { if (!control.disabled) { load(list.page + direction); } };
-                }
-                pageButton(-1, 'previous');
-                append(pagination, element('span', 'ss-map-battles-page', t('page.status', [list.page + 1, list.pages])));
-                pageButton(1, 'next');
+            }
+            previous.disabled = !list || list.page <= 0;
+            next.disabled = !list || list.page + 1 >= list.pages;
+            pageText.textContent = list ? t('page.status', [list.page + 1, list.pages]) : '';
+            rendered = signature;
+            if (focusedPager) {
+                var target = !focusedPager.disabled ? focusedPager : !previous.disabled ? previous : !next.disabled ? next : button;
+                if (document.activeElement !== target) { focusControl(target); }
+            }
+            body.scrollTop = localScroll;
+            panel.scrollTop = panelScroll;
+            if (nodes.scroll.scrollTop !== globalScroll) { nodes.scroll.scrollTop = globalScroll; }
+        }
+        function show(open) {
+            button.setAttribute('aria-expanded', String(open));
+            button.title = t(open ? 'more.less' : 'more.button'); caption.textContent = button.title;
+            panel.style.display = open ? 'block' : 'none';
+            if (open) {
+                renderHistory();
+                panel.setAttribute('aria-busy', String(requestedPage !== null || !map.battle_list));
             }
             queueResize();
         }
+        card._ssHistoryUpdate = function (item) {
+            if (!live() || !item || String(item.id) !== identifier) { return false; }
+            map = item;
+            var list = map.battle_list;
+            // Polling can deliver the previous page while our request is in
+            // flight. A clamped reply is valid when the final page disappeared.
+            if (requestedPage !== null && list && list.page !== requestedPage && requestedPage < list.pages) { return true; }
+            if (list) { requestedPage = null; }
+            if (button.getAttribute('aria-expanded') === 'true') { renderHistory(); }
+            panel.setAttribute('aria-busy', String(requestedPage !== null || !list));
+            return true;
+        };
         button.onclick = function () {
-            if (!sameContext(context)) { return; }
+            if (!live()) { return; }
             var open = button.getAttribute('aria-expanded') !== 'true';
             if (open) { state.openMaps[key] = true; } else { delete state.openMaps[key]; }
             invalidateCardFlow(); show(open);
@@ -1401,26 +1508,27 @@
         show(state.openMaps[key] === true);
     }
 
-    function appendGroupBatch(limit) {
+    function appendGroupBatch(limit, page) {
         invalidateCardFlow();
-        var list = state.list;
+        page = page || state.cardPages[0];
+        var list = page.items;
         var end = Math.min(list.length, limit);
         var fragment = document.createDocumentFragment();
         var index, item, stats, group, header, identity, subtitle, heading, meta;
         var battle = state.group === 'battles';
-        for (index = state.renderedCount; index < end; index += 1) {
+        for (index = page.renderedCount; index < end; index += 1) {
             item = list[index];
             stats = item.stats || {};
             group = append(fragment, element('div', 'ss-group' + (battle ? ' ss-battle' : '')));
             group.setAttribute('role', 'listitem');
             group.setAttribute('data-group-id', String(item.id || ''));
-            group.setAttribute('data-list-index', String(index));
+            group.setAttribute('data-list-index', String(page.offset + index));
             group.setAttribute('data-layout-index', String(index));
-            group.id = 'ss-card-' + state.group + '-' + index;
+            group.id = 'ss-card-' + state.group + '-' + (page.offset + index);
             if (battle && state.highlightedBattle && String(item.id) === state.highlightedBattle.id && sameContext(state.highlightedBattle.context)) {
-                group.classList.add('ss-battle-target'); group.setAttribute('tabindex', '-1');
+                paintBattleTarget(group);
             }
-            state.groupCards.push(group);
+            state.groupCards.push(group); page.cards.push(group);
             header = append(group, element('div', 'ss-group-header'));
             appendVisual(header, item);
             identity = append(header, element('div', 'ss-group-name'));
@@ -1450,9 +1558,10 @@
             if (battle) { attachBattleMore(group, header, item); }
             else if (state.group === 'maps' || state.group === 'vehicles') { attachMapMore(group, header, item); }
         }
-        state.cardLanes[0].appendChild(fragment);
-        state.renderedCount = end;
-        state.loadedCount = Math.max(40, end);
+        page.lanes[0].appendChild(fragment);
+        page.renderedCount = end;
+        state.renderedCount = state.groupCards.length;
+        state.loadedCount = Math.max(40, state.renderedCount);
         layoutBattleCards();
         queueResize();
     }
@@ -1465,10 +1574,10 @@
             state.cardFlowTimer = null;
         }
     }
-    function arrangeCardLanes(desired) {
+    function arrangeCardLanes(desired, page) {
         var focused = document.activeElement, scrollTop = nodes.scroll.scrollTop, moved = false;
         desired.forEach(function (cards, index) {
-            var lane = state.cardLanes[index], cursor = lane.firstElementChild;
+            var lane = page.lanes[index], cursor = lane.firstElementChild;
             cards.forEach(function (card) {
                 if (card !== cursor) { lane.insertBefore(card, cursor); moved = true; }
                 cursor = card.nextElementSibling;
@@ -1478,11 +1587,12 @@
         if (focused && document.activeElement !== focused && typeof focused.focus === 'function') { focused.focus(); }
         nodes.scroll.scrollTop = scrollTop;
     }
-    function hasExpandedBattle() {
-        return (state.group === 'battles' || state.group === 'maps' || state.group === 'vehicles') && (state.groupCards || []).some(function (card) {
-            var button = card.querySelector('.ss-more-button');
-            return button && button.getAttribute('aria-expanded') === 'true';
-        });
+    function hasExpandedBattle(page) {
+        return (state.group === 'battles' || state.group === 'maps' || state.group === 'vehicles') &&
+            ((page && page.cards) || state.groupCards || []).some(function (card) {
+                var button = card.querySelector('.ss-more-button');
+                return button && button.getAttribute('aria-expanded') === 'true';
+            });
     }
     function queueCardFlow() {
         if (state.destroyed || state.cardFlowQueued || state.cardFlowAttempts >= 3 ||
@@ -1493,56 +1603,40 @@
             if (state.destroyed || token !== state.cardFlowToken) { return; }
             state.cardFlowQueued = false;
             state.cardFlowAttempts += 1;
-            if (!state.cardLayoutWide || !hasExpandedBattle() || !state.cardColumns ||
-                    state.cardColumns.parentNode !== nodes.groups) { return; }
-            var scale = state.nativeScale || 1, cards = state.groupCards || [];
-            var cardWidth = state.effectiveCardWidth || (state.cardWidths || {battles:500})[state.group];
-            var heights = [], valid = true;
-            // Read every height at the settled fixed width before moving any
-            // node. Native column flow remains responsible for all positions.
-            cards.forEach(function (card) {
-                var box = card.getBoundingClientRect(), height = box.height;
-                if (!(height > 1)) { height = card.offsetHeight; }
-                if (!hasNumber(height) || height <= 1 || !hasNumber(box.width) ||
-                        Math.abs(box.width / scale - cardWidth) > 1) { valid = false; }
-                heights.push(height / scale);
-            });
-            if (valid) {
-                var next = [16, 68], desired = [[], []];
-                cards.forEach(function (card, index) {
-                    var lane = next[0] <= next[1] ? 0 : 1;
-                    desired[lane].push(card);
-                    next[lane] += heights[index] + 16;
+            var scale = state.nativeScale || 1, cardWidth = state.effectiveCardWidth;
+            (state.cardPages || []).forEach(function (page) {
+                if (!state.cardLayoutWide || !hasExpandedBattle(page) || !root.contains(page.columns)) { return; }
+                var heights = [], valid = true;
+                page.cards.forEach(function (card) {
+                    var box = card.getBoundingClientRect(), height = box.height;
+                    if (!(height > 1)) { height = card.offsetHeight; }
+                    if (!hasNumber(height) || height <= 1 || !hasNumber(box.width) || Math.abs(box.width / scale - cardWidth) > 1) { valid = false; }
+                    heights.push(height / scale);
                 });
-                arrangeCardLanes(desired);
-            }
-            // A finite verification catches positive but stale native heights
-            // after expansion; it never starts a resize or polling loop.
-            queueCardFlow();
-            finishBattleJump();
+                if (valid) {
+                    var next = [16, 68], desired = [[], []];
+                    page.cards.forEach(function (card, index) {
+                        var lane = next[0] <= next[1] ? 0 : 1;
+                        desired[lane].push(card); next[lane] += heights[index] + 16;
+                    });
+                    arrangeCardLanes(desired, page);
+                }
+            });
+            queueCardFlow(); finishBattleJump(); finishPageJump(); updatePinnedFilters();
         }
         if (typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(function () { window.requestAnimationFrame(settle); });
         } else {
-            try {
-                state.cardFlowTimer = window.setTimeout(function () {
-                    if (token !== state.cardFlowToken || state.destroyed) { return; }
-                    state.cardFlowTimer = null;
-                    settle();
-                }, 16);
-            } catch (error) { state.cardFlowQueued = false; }
+            try { state.cardFlowTimer = window.setTimeout(function () {
+                if (token !== state.cardFlowToken || state.destroyed) { return; }
+                state.cardFlowTimer = null; settle();
+            }, 16); } catch (error) { state.cardFlowQueued = false; }
         }
     }
     function layoutBattleCards() {
-        /* Widths are applied first. Expanded cards select their chronological
-           lane after layout; native normal flow always positions the cards. */
-        if (!state.cardColumns || state.cardColumns.parentNode !== nodes.groups) { return; }
-        var scale = state.nativeScale || 1;
-        var width = nodes.groups.getBoundingClientRect().width / scale;
+        if (!state.cardPages || !state.cardPages.length) { return; }
+        var scale = state.nativeScale || 1, width = nodes.groups.getBoundingClientRect().width / scale;
         if (state.logicalSize || (state.payload && state.payload.window_size) || !(width > 0)) {
-            /* A saved large window must select its columns on first opening,
-               even if the native surface still exposes its previous layout box.
-               Reserve the border, scroll padding and scrollbar in logical px. */
             var payload = state.payload || {}, viewport = payload.viewport || {};
             var preferred = state.logicalSize && state.logicalSize.width;
             if (!hasNumber(preferred) && payload.window_size) { preferred = payload.window_size[0]; }
@@ -1554,81 +1648,310 @@
         var wider = Math.max(cardWidth, (state.wideCardWidths || {battles:720, vehicles:720, maps:720, tiers:720})[state.group]);
         if (width >= wider * 2 + 64) { cardWidth = wider; }
         state.effectiveCardWidth = cardWidth;
-        var columnWidth = cardWidth * 2 + 64;
-        var wide = width >= columnWidth;
-        state.cardColumns.style.width = (wide ? columnWidth : cardWidth) + 'rem';
-        state.cardColumns.style.flexBasis = (wide ? columnWidth : cardWidth) + 'rem';
-        state.cardLanes.forEach(function (lane) {
-            lane.style.width = cardWidth + 'rem';
-            lane.style.flex = wide ? '0 0 ' + cardWidth + 'rem' : '1 1 0rem';
-        });
-        nodes.groups.className = 'ss-card-layout' + (wide ? ' ss-two-columns ss-card-stream' : '') +
-            (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
-            (Math.min(width, cardWidth) < 500 ? ' ss-stacked-more' : '') +
-            (Math.min(width, cardWidth) < (state.group === 'battles' ? 430 : 500) ? ' ss-narrow-cards' : '');
+        var columnWidth = cardWidth * 2 + 64, wide = width >= columnWidth;
         var layoutKey = [wide, cardWidth, scale, Math.round(Math.min(width, cardWidth) * 1000)].join(':');
         var changed = state.cardLayoutKey !== layoutKey;
         if (changed) { invalidateCardFlow(); }
-        var cards = state.groupCards || [], owned = [];
-        var expanded = wide && hasExpandedBattle(), desired = [[], []];
-        for (var index = 0; index < cards.length; index += 1) {
-            var card = cards[index], lane = state.cardLanes[wide ? index % 2 : 0];
-            if (changed || !expanded) { desired[wide ? index % 2 : 0].push(card); }
-            else if (card.parentNode !== state.cardLanes[0] && card.parentNode !== state.cardLanes[1]) { lane.appendChild(card); }
-            card.setAttribute('aria-posinset', String(index + 1));
-            card.setAttribute('aria-setsize', String(state.list.length));
+        nodes.groups.className = 'ss-card-layout' + (state.renderedFeed ? ' ss-feed-layout' : '') +
+            (state.feedStaging ? ' ss-feed-staging' : '') +
+            (wide ? ' ss-two-columns ss-card-stream' : '') + (wide && state.group === 'battles' ? ' ss-battle-stream' : '') +
+            (Math.min(width, cardWidth) < 500 ? ' ss-stacked-more' : '') +
+            (Math.min(width, cardWidth) < (state.group === 'battles' ? 430 : 500) ? ' ss-narrow-cards' : '');
+        (state.cardPages || []).forEach(function (page) {
+            page.columns.style.width = (wide ? columnWidth : cardWidth) + 'rem';
+            page.columns.style.flexBasis = (wide ? columnWidth : cardWidth) + 'rem';
+            page.lanes.forEach(function (lane) {
+                lane.style.width = cardWidth + 'rem'; lane.style.flex = wide ? '0 0 ' + cardWidth + 'rem' : '1 1 0rem';
+            });
+            var desired = [[], []], expanded = wide && hasExpandedBattle(page);
+            page.cards.forEach(function (card, index) {
+                var lane = page.lanes[wide ? index % 2 : 0];
+                if (changed || !expanded || page.key !== layoutKey) { desired[wide ? index % 2 : 0].push(card); }
+                else if (card.parentNode !== page.lanes[0] && card.parentNode !== page.lanes[1]) { lane.appendChild(card); }
+            });
+            if (changed || !expanded || page.key !== layoutKey) { arrangeCardLanes(desired, page); }
+            page.key = layoutKey;
+        });
+        var owned = [], cards = state.groupCards || [], total = state.renderedFeed ? state.renderedFeed.total : state.list.length;
+        cards.forEach(function (card, index) {
+            card.setAttribute('aria-posinset', String(Number(card.getAttribute('data-list-index')) + 1));
+            card.setAttribute('aria-setsize', String(total));
             if (index + 1 < cards.length) { card.setAttribute('aria-flowto', cards[index + 1].id); }
             else { card.removeAttribute('aria-flowto'); }
             owned.push(card.id);
-        }
-        if (changed || !expanded) { arrangeCardLanes(desired); }
-        /* The independent visual columns use lane order in the DOM. Explicit
-           ownership and positions retain the sorted list's accessible order. */
+        });
         nodes.groups.setAttribute('aria-owns', owned.join(' '));
-        state.cardLayoutWide = wide;
-        state.cardLayoutKey = layoutKey;
+        state.cardLayoutWide = wide; state.cardLayoutKey = layoutKey;
         queueCardFlow();
     }
+    function feedCollectionIdentity(scope) {
+        var order = getOrder(scope);
+        return JSON.stringify([state.payload.account_key, scopeName(), scope.period_id, state.group,
+            order.metric, order.statistic, order.direction, order.chronology]);
+    }
+    function feedIdentity(scope) { return feedCollectionIdentity(scope) + '/' + state.language; }
+    function feedContextIdentity() { return JSON.stringify([state.payload.account_key, scopeName(), currentScope().period_id, state.group]); }
+    function cancelUITimer(timer) {
+        if (timer !== null && timer !== undefined) { try { window.clearTimeout(timer); } catch (error) { /* Ownership guards retire retained callbacks. */ } }
+    }
+    function retireFeed() {
+        var feed = state.feed;
+        state.feed = null; state.pageJump = null;
+        if (feed && feed.pending) { cancelUITimer(feed.pending.timer); }
+    }
+    function pageBoundary(feed, index, loading) {
+        var section = element('div', 'ss-continuous-page');
+        section.setAttribute('data-page-index', String(index));
+        section.setAttribute('aria-label', t('page.status', [index + 1, feed.pages]));
+        var divider = append(section, element('div', 'ss-page-divider'));
+        append(divider, element('span', 'ss-page-divider-label', t('page.status', [index + 1, feed.pages])));
+        if (loading) {
+            var spinner = append(section, element('div', 'ss-page-spinner'));
+            spinner.setAttribute('role', 'status'); spinner.setAttribute('aria-label', t('page.loading'));
+            section.setAttribute('aria-busy', 'true');
+        }
+        return section;
+    }
+    function showFeedPending(feed) {
+        if (state.feed !== feed) { return; }
+        var old = nodes.groups.querySelector('.ss-page-pending');
+        if (old && old.parentNode) { old.parentNode.removeChild(old); }
+        if (!feed.pending && feed.error === null) { return; }
+        var index = feed.pending ? feed.pending.page : feed.error;
+        var section = pageBoundary(feed, index, !!feed.pending);
+        section.className += ' ss-page-pending';
+        if (feed.error !== null && !feed.pending) {
+            var status = append(section, element('div', 'ss-page-status', t('page.error')));
+            var retry = append(status, element('button', 'ss-control ss-button'));
+            append(retry, element('span', 'ss-control-label', t('page.retry')));
+            retry.type = 'button'; retry.onclick = function () { if (state.feed === feed) { requestFeedPage(feed, index, feed.errorNavigate); } };
+        }
+        if (index < feed.start) { nodes.groups.insertBefore(section, nodes.groups.firstChild); }
+        else { append(nodes.groups, section); }
+    }
+    function requestFeedPage(feed, index, navigate) {
+        if (state.destroyed || state.feed !== feed || feed.pending || index < 0 || index >= feed.pages) { return; }
+        var request = 'page-' + Date.now().toString(36) + '-' + (++state.feedSequence);
+        var pending = {page:index, id:request, navigate:!!navigate, timer:null};
+        feed.pending = pending; feed.error = null;
+        showFeedPending(feed); updateFeedControls();
+        function fail() {
+            if (state.destroyed || state.feed !== feed || feed.pending !== pending) { return; }
+            feed.pending = null; feed.error = index; feed.errorNavigate = pending.navigate;
+            showFeedPending(feed); updateFeedControls(); setStatus(t('page.error'));
+        }
+        function send() {
+            if (state.destroyed || state.feed !== feed || feed.pending !== pending || !sameContext(feed.context)) { return; }
+            pending.timer = window.setTimeout(fail, 10000);
+            if (!invoke('page', {scope:feed.context.scope, group:feed.group, page:index, period_id:feed.context.period_id,
+                    account_key:feed.context.account_key, request_id:request})) {
+                cancelUITimer(pending.timer); fail();
+            }
+        }
+        // Never invoke a synchronous native model callback from inside render.
+        if (typeof window.requestAnimationFrame === 'function') { window.requestAnimationFrame(send); }
+        else { window.setTimeout(send, 0); }
+    }
+    function prepareFeed(scope) {
+        var meta = scope.pagination && scope.pagination[state.group];
+        if (!state.nativeSession || !meta || !hasNumber(meta.page) || !hasNumber(meta.pages) || !hasNumber(meta.total) ||
+                meta.pages < 1 || meta.page < 0 || meta.page >= meta.pages || meta.total < 0) { retireFeed(); return null; }
+        var key = feedIdentity(scope), collectionKey = feedCollectionIdentity(scope), revision = String(scope.data_revision || JSON.stringify(scope.summary));
+        var feed = state.feed, old = state.renderedFeed;
+        if (!feed || feed.key !== key || feed.revision !== revision) {
+            var navigation = feed && feed.collectionKey === collectionKey && feed.pending && feed.pending.navigate ? feed.pending.page :
+                feed && feed.collectionKey === collectionKey ? feed.navigationPage : null;
+            retireFeed();
+            var start = state.feedForceStart !== null ? state.feedForceStart : feed && feed.collectionKey === collectionKey ? feed.start : meta.page;
+            start = Math.max(0, Math.min(start, meta.pages - 1));
+            var count = !state.battleJump && old ? Math.max(1, old.last - old.start + 1) : 1;
+            feed = {key:key, collectionKey:collectionKey, contextKey:feedContextIdentity(), revision:revision, context:viewContext(), group:state.group, cache:{}, signatures:{}, pending:null,
+                error:null, start:start, last:Math.min(meta.pages - 1, start + count - 1), current:start,
+                pages:meta.pages, total:meta.total, size:meta.page_size || 40, version:0, navigationPage:null};
+            if (hasNumber(navigation)) {
+                feed.navigationPage = Math.max(0, Math.min(navigation, meta.pages - 1));
+                feed.start = Math.min(feed.start, feed.navigationPage); feed.last = Math.max(feed.last, feed.navigationPage);
+            }
+            state.feed = feed; state.feedForceStart = null;
+        }
+        feed.pages = meta.pages; feed.total = meta.total;
+        feed.last = Math.min(feed.last, meta.pages - 1);
+        var pending = feed.pending;
+        var matching = !pending || (meta.page === pending.page && (!meta.request_id || meta.request_id === pending.id));
+        if (matching) {
+            var rows = scope[state.group] || [], signature = JSON.stringify(rows);
+            if (Object.prototype.hasOwnProperty.call(feed.signatures, meta.page) && feed.signatures[meta.page] !== signature) { feed.version += 1; }
+            feed.signatures[meta.page] = signature; feed.cache[meta.page] = rows.slice(0);
+            if (pending) {
+                cancelUITimer(pending.timer);
+                feed.pending = null; feed.error = null;
+                feed.start = Math.min(feed.start, meta.page); feed.last = Math.max(feed.last, meta.page);
+                if (pending.navigate) { feed.navigationPage = meta.page; }
+            }
+        }
+        var patch = scope.battle_history;
+        if (patch && patch.kind === state.group && patch.battle_list) {
+            Object.keys(feed.cache).forEach(function (page) {
+                var changed = false;
+                feed.cache[page] = feed.cache[page].map(function (row) {
+                    if (String(row.id) !== String(patch.id) || JSON.stringify(row.battle_list) === JSON.stringify(patch.battle_list)) { return row; }
+                    var copy = {}; Object.keys(row).forEach(function (key) { copy[key] = row[key]; });
+                    copy.battle_list = patch.battle_list; changed = true; return copy;
+                });
+                if (changed) { feed.signatures[page] = JSON.stringify(feed.cache[page]); feed.version += 1; }
+            });
+        }
+        if (!feed.pending && feed.error === null) {
+            for (var index = feed.start; index <= feed.last; index += 1) {
+                if (!Object.prototype.hasOwnProperty.call(feed.cache, index)) { requestFeedPage(feed, index, false); break; }
+            }
+            if (!feed.pending && hasNumber(feed.navigationPage)) {
+                state.pageJump = {feed:feed, page:feed.navigationPage}; feed.current = feed.navigationPage;
+                feed.navigationPage = null;
+            }
+        }
+        return feed;
+    }
+    function createCardPage(index, items, feed) {
+        var section = feed ? pageBoundary(feed, index, false) : nodes.groups;
+        if (feed) { append(nodes.groups, section); }
+        var holder = feed ? append(section, element('div', 'ss-page-cards')) : section;
+        var columns = append(holder, element('div', 'ss-card-columns'));
+        columns.setAttribute('role', 'presentation');
+        var page = {index:index, section:section, columns:columns, items:items, cards:[], renderedCount:0,
+            offset:feed ? index * feed.size : 0, lanes:[append(columns, element('div', 'ss-card-column ss-card-column-left')),
+                append(columns, element('div', 'ss-card-column ss-card-column-right'))]};
+        page.lanes.forEach(function (lane) { lane.setAttribute('role', 'presentation'); });
+        return page;
+    }
+    function updateFeedControls() {
+        var feed = state.renderedFeed;
+        if (!feed) { return; }
+        document.getElementById('ss-page-previous').disabled = !!(state.feed && state.feed.pending) || feed.current <= 0;
+        document.getElementById('ss-page-next').disabled = !!(state.feed && state.feed.pending) || feed.current + 1 >= feed.pages;
+        document.getElementById('ss-page-label').textContent = t('page.status', [feed.current + 1, feed.pages]);
+    }
     function renderGroups(scope) {
-        invalidateCardFlow();
-        clear(nodes.groups);
-        nodes.groups.className = 'ss-card-layout';
-        nodes.groups.setAttribute('role', 'list');
-        nodes.groups.removeAttribute('aria-owns');
-        state.groupCards = [];
-        state.cardLayoutWide = null;
-        state.cardLayoutKey = null;
-        state.cardColumns = append(nodes.groups, element('div', 'ss-card-columns'));
-        state.cardColumns.setAttribute('role', 'presentation');
-        state.cardLanes = [
-            append(state.cardColumns, element('div', 'ss-card-column ss-card-column-left')),
-            append(state.cardColumns, element('div', 'ss-card-column ss-card-column-right'))
-        ];
-        state.cardLanes[0].setAttribute('role', 'presentation');
-        state.cardLanes[1].setAttribute('role', 'presentation');
-        state.list = state.nativeSession && scope.pagination ? (scope[state.group] || []).slice(0) : ordered(scope[state.group] || [], getOrder(scope));
+        var feed = prepareFeed(scope), complete = true;
         renderSelects(scope);
         document.getElementById('ss-sorting').style.display = 'flex';
-        state.renderedCount = 0;
-        nodes.groups.setAttribute('aria-label', t('groups.' + state.group + '.aria'));
-        var page = scope.pagination && scope.pagination[state.group];
-        nodes['list-meta'].textContent = t('groups.' + state.group + '.total', [number(page ? page.total : state.list.length)]);
         document.getElementById('ss-pagination').style.display = 'flex';
-        document.getElementById('ss-page-previous').disabled = !page || page.page <= 0;
-        document.getElementById('ss-page-next').disabled = !page || page.page + 1 >= page.pages;
-        document.getElementById('ss-page-label').textContent = page ? t('page.status', [page.page + 1, page.pages]) : '';
-        if (!state.list.length) {
-            append(state.cardLanes[0], element('p', 'ss-empty',
-                t('groups.empty')));
-            return;
+        var meta = scope.pagination && scope.pagination[state.group];
+        nodes['list-meta'].textContent = t('groups.' + state.group + '.total', [number(meta ? meta.total : (scope[state.group] || []).length)]);
+        if (feed) {
+            for (var index = feed.start; index <= feed.last; index += 1) {
+                if (!Object.prototype.hasOwnProperty.call(feed.cache, index)) { complete = false; break; }
+            }
+            if (!complete && state.renderedFeed && state.groupCards && state.groupCards.length) {
+                stageFeedContext(feed.contextKey !== state.renderedFeed.contextKey);
+                nodes.groups.setAttribute('aria-busy', 'true'); updateFeedControls(); return;
+            }
         }
-        appendGroupBatch(state.loadedCount);
+        var renderKey = [state.xp, state.language, state.appearanceCSS, feed && feed.version].join('|');
+        var reuse = feed && state.renderedFeed === feed && state.cardRenderKey === renderKey;
+        if (!reuse) {
+            var previousHeight = nodes.groups.getBoundingClientRect().height;
+            if (previousHeight > 0) { nodes.groups.style.minHeight = previousHeight + 'px'; state.groupMinHeight = true; }
+            invalidateCardFlow(); clear(nodes.groups);
+            nodes.groups.className = 'ss-card-layout' + (feed ? ' ss-feed-layout' : '');
+            nodes.groups.setAttribute('role', 'list'); nodes.groups.removeAttribute('aria-owns');
+            state.groupCards = []; state.cardPages = []; state.cardLayoutWide = null; state.cardLayoutKey = null;
+            state.renderedFeed = feed; state.cardRenderKey = renderKey; state.renderedCount = 0;
+        }
+        nodes.groups.setAttribute('aria-busy', String(!complete));
+        stageFeedContext(false);
+        state.cardContextKey = feedContextIdentity();
+        nodes.groups.setAttribute('aria-label', t('groups.' + state.group + '.aria'));
+        if (feed) {
+            var pending = nodes.groups.querySelector('.ss-page-pending');
+            if (pending && pending.parentNode) { pending.parentNode.removeChild(pending); }
+            for (var pageIndex = feed.start; pageIndex <= feed.last; pageIndex += 1) {
+                if (!feed.cache[pageIndex] || state.cardPages.some(function (page) { return page.index === pageIndex; })) { continue; }
+                var cardPage = createCardPage(pageIndex, feed.cache[pageIndex], feed);
+                state.cardPages.push(cardPage); appendGroupBatch(cardPage.items.length, cardPage);
+            }
+            state.cardPages.sort(function (a, b) { return a.index - b.index; });
+            var cursor = nodes.groups.firstElementChild;
+            state.cardPages.forEach(function (page) {
+                if (page.section !== cursor) { nodes.groups.insertBefore(page.section, cursor); }
+                cursor = page.section.nextElementSibling;
+            });
+            state.groupCards = []; state.list = [];
+            state.cardPages.forEach(function (page) { state.groupCards = state.groupCards.concat(page.cards); state.list = state.list.concat(page.items); });
+            showFeedPending(feed); updateFeedControls();
+        } else {
+            state.list = ordered(scope[state.group] || [], getOrder(scope));
+            var legacy = createCardPage(0, state.list, null); state.cardPages = [legacy];
+            document.getElementById('ss-page-previous').disabled = true;
+            document.getElementById('ss-page-next').disabled = true;
+            document.getElementById('ss-page-label').textContent = '';
+            appendGroupBatch(state.loadedCount, legacy);
+        }
+        state.cardColumns = state.cardPages[0] && state.cardPages[0].columns;
+        state.cardLanes = state.cardPages[0] && state.cardPages[0].lanes;
+        if (!state.groupCards.length && complete) {
+            append(state.cardPages[0] ? state.cardPages[0].lanes[0] : nodes.groups, element('p', 'ss-empty', t('groups.empty')));
+        }
+        layoutBattleCards(); queueResize();
+    }
+    function pinnedFilterHeight() {
+        return nodes['filter-panel'] ? nodes['filter-panel'].getBoundingClientRect().height : 0;
+    }
+    function stageFeedContext(hidden) {
+        state.feedStaging = hidden;
+        nodes.groups.classList[hidden ? 'add' : 'remove']('ss-feed-staging');
+        if (hidden) { nodes.groups.setAttribute('aria-hidden', 'true'); }
+        else { nodes.groups.removeAttribute('aria-hidden'); }
+    }
+    function updatePinnedFilters(recalculate) {
+        var panel = nodes['filter-panel'];
+        if (!panel || state.destroyed) { return; }
+        var viewport = nodes.scroll.getBoundingClientRect(), box = panel.getBoundingClientRect();
+        if (!(box.height > 0) || !(viewport.height > 0)) { return; }
+        if (recalculate || !hasNumber(state.filterBase)) { state.filterBase = box.top - viewport.top + nodes.scroll.scrollTop - state.filterShift; }
+        var base = state.filterBase;
+        var shift = box.height < viewport.height - 30 * state.nativeScale ? Math.max(0, nodes.scroll.scrollTop - base) : 0;
+        state.filterShift = shift; panel.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+        panel.classList[shift > 0 ? 'add' : 'remove']('is-pinned');
+        if (nodes['scroll-top']) {
+            nodes['scroll-top'].style.display = nodes.scroll.scrollTop > 60 * state.nativeScale ? 'flex' : 'none';
+            nodes['scroll-top'].style.bottom = Math.max(48 * state.nativeScale,
+                root.getBoundingClientRect().bottom - viewport.bottom + 12 * state.nativeScale) + 'px';
+        }
+        var feed = state.renderedFeed;
+        if (feed && state.cardPages && state.cardPages.length) {
+            var current = state.cardPages[0].index;
+            state.cardPages.forEach(function (page) {
+                if (page.section.getBoundingClientRect().top <= viewport.top + box.height + 24 * state.nativeScale) { current = page.index; }
+            });
+            feed.current = current; updateFeedControls();
+        }
+    }
+    function finishPageJump() {
+        var jump = state.pageJump;
+        if (!jump || jump.feed !== state.renderedFeed || state.cardFlowQueued) { return; }
+        var target = null;
+        (state.cardPages || []).some(function (page) { if (page.index === jump.page) { target = page.section; return true; } return false; });
+        if (!target) { return; }
+        var box = target.getBoundingClientRect(), viewport = nodes.scroll.getBoundingClientRect();
+        if (!(box.height > 1) || !(box.width > 1)) { return; }
+        state.pageJump = null;
+        if (state.feed) { state.feed.navigationPage = null; }
+        state.scrollTarget = Math.max(0, nodes.scroll.scrollTop + box.top - viewport.top - pinnedFilterHeight());
+        nodes.scroll.scrollTop = state.scrollTarget; updatePinnedFilters();
     }
     function loadNearBottom() {
-        if (state.renderedCount >= state.list.length) { return; }
+        updatePinnedFilters();
         var remaining = nodes.scroll.scrollHeight - nodes.scroll.scrollTop - nodes.scroll.clientHeight;
-        if (remaining <= 200) { appendGroupBatch(state.renderedCount + 40); }
+        if (remaining > 200 * state.nativeScale) { return; }
+        if (state.renderedFeed && state.feed === state.renderedFeed) {
+            var feed = state.feed;
+            if (!feed.pending && feed.error === null && feed.last + 1 < feed.pages) { requestFeedPage(feed, feed.last + 1, false); }
+        } else if (!state.feed && state.renderedCount < state.list.length) {
+            appendGroupBatch(state.renderedCount + 40, state.cardPages[0]);
+        }
     }
+
     function onNativeWheel(event) {
         /* WoT's vertical-scroll adapter treats positive deltaY as up (Next=-1).
            A browser's default overflow scroll uses the opposite sign. Only the
@@ -1641,7 +1964,12 @@
             event.stopPropagation();
             return;
         }
-        var target = event.target;
+        var target = event.target, history = null;
+        var ancestor = target;
+        while (ancestor && ancestor !== nodes.scroll && ancestor !== root) {
+            if (ancestor.classList && ancestor.classList.contains('ss-history-body')) { history = ancestor; break; }
+            ancestor = ancestor.parentNode;
+        }
         while (target && target !== nodes.scroll && target !== root) { target = target.parentNode; }
         if (target !== nodes.scroll) { return; }
         var vertical = event.deltaY;
@@ -1655,8 +1983,6 @@
             return;
         }
         if (vertical === 0) { return; }
-        event.preventDefault();
-        event.stopPropagation();
         /* Gameface may report a normalized wheel delta such as +/-1, not a
            browser pixel distance. WoT's own vertical list uses its visible
            height / 4 per wheel event. Use that same proportional step so the
@@ -1665,6 +1991,11 @@
         var step = (vertical < 0 ? 1 : -1) * nodes.scroll.clientHeight / 4;
         if (event.deltaMode === 2) { step = -vertical * nodes.scroll.clientHeight; }
         step *= state.scrollSpeed;
+        event.preventDefault(); event.stopPropagation();
+        if (history) {
+            var inner = Math.max(0, Math.min(history.scrollHeight - history.clientHeight, history.scrollTop + step));
+            if (inner !== history.scrollTop) { history.scrollTop = inner; return; }
+        }
         var last = Math.max(0, nodes.scroll.scrollHeight - nodes.scroll.clientHeight);
         var current = state.scrollTarget === null ? nodes.scroll.scrollTop : state.scrollTarget;
         state.scrollTarget = null;
@@ -1688,12 +2019,20 @@
     }
     function onScrollIntent(event) {
         cancelBattleNavigation();
+        state.pageJump = null;
+        if (state.feed) { state.feed.navigationPage = null; }
+        if (state.feed && state.feed.pending) { state.feed.pending.navigate = false; }
         // Native wheel input consumes the pending logical offset itself before
         // cancelling restoration; its DOM getter can still expose an old frame.
         if (event.type === 'wheel' && state.bound) { return; }
         if (event.type === 'keydown') {
             var key = event.key || event.keyCode;
             if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 38, 40, 33, 34, 36, 35, 32].indexOf(key) < 0) { return; }
+        }
+        var target = event.target;
+        while (target && target !== nodes.scroll) {
+            if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') { return; }
+            target = target.parentNode;
         }
         // A wheel, scrollbar drag or scrolling key after rendering belongs to
         // the user; a queued layout must not undo that newer movement.
@@ -1703,6 +2042,10 @@
     nodes.scroll.addEventListener('mousedown', onScrollIntent, true);
     nodes.scroll.addEventListener('keydown', onScrollIntent, true);
     function render() {
+        state.rendering = true;
+        try { renderView(); } finally { state.rendering = false; }
+    }
+    function renderView() {
         var payload = state.payload;
         if (!payload || !payload.scopes) { return; }
         hideHelp();
@@ -1725,13 +2068,12 @@
         if (!scope || !scope.summary) { return; }
         var mapContext = JSON.stringify([payload.account_key, scopeName(), scope.period_id]);
         if (mapContext !== state.mapContext) { state.openMaps = {}; state.mapContext = mapContext; }
-        if (state.highlightedBattle && !sameContext(state.highlightedBattle.context)) { state.highlightedBattle = null; }
+        if (state.highlightedBattle && !sameContext(state.highlightedBattle.context)) { clearBattleTarget(); }
         consumeBattleFocus(scope);
         var page = scope.pagination && scope.pagination[state.group];
         var viewKey = JSON.stringify([payload.account_key, scopeName(), state.group,
             scope.period_id, scope.from_point, scope.to_point, scope.from_date, scope.to_date, page && page.page]);
-        var oldTop = state.viewKey !== viewKey ? 0 :
-            (state.scrollTarget === null ? nodes.scroll.scrollTop : state.scrollTarget);
+        var oldTop = state.scrollTarget === null ? nodes.scroll.scrollTop : state.scrollTarget;
         state.viewKey = viewKey;
         state.scrollTarget = oldTop;
         selected('ss-scope-launch', state.scope === 'launch');
@@ -1768,10 +2110,17 @@
         if (scopeName() === 'timeline') { nodes.started.textContent = ''; }
         if (loading || loadError) {
             showReset(false);
+            if (state.groupCards && state.groupCards.length && !payload.loading && !payload.load_error) {
+                stageFeedContext(state.cardContextKey !== feedContextIdentity());
+                nodes.groups.setAttribute('aria-busy', 'true');
+                renderSelects(scope); setStatus(loadError || t('core.loading'));
+                nodes.scroll.scrollTop = oldTop; queueResize(); return;
+            }
             clear(nodes.summary);
             clear(nodes.groups);
             state.list = [];
             state.renderedCount = 0;
+            state.cardPages = []; state.groupCards = []; state.renderedFeed = null;
             nodes['list-meta'].textContent = '';
             document.getElementById('ss-page-label').textContent = '';
             document.getElementById('ss-pagination').style.display = 'none';
@@ -1836,6 +2185,18 @@
             }
             if (!value || typeof value !== 'object' || !value.scopes ||
                     !value.scopes.launch || !value.scopes.manual) { throw new Error('Invalid snapshot'); }
+            var intent = state.orderIntent;
+            if (intent) {
+                var intended = value.scopes[intent.context.scope];
+                if (value.account_key === intent.context.account_key && intended && intended.period_id === intent.context.period_id) {
+                    var actual = intended.ordering && intended.ordering[intent.group];
+                    if (actual && ['metric', 'statistic', 'direction', 'chronology'].some(function (key) {
+                        return actual[key] !== intent.options[key];
+                    })) { return true; }
+                }
+                state.orderIntent = null;
+            }
+            if (historyOnlyUpdate(value)) { return true; }
             if (state.payload && state.payload.account_key !== value.account_key) {
                 showReset(false);
                 resetWindowSettings();
@@ -1843,7 +2204,10 @@
                 state.openBattles = {};
                 state.openMaps = {};
                 state.customDates = {}; state.customRangeKey = null;
-                state.highlightedBattle = null;
+                clearBattleTarget(); retireFeed(); state.renderedFeed = null; state.orderIntent = null;
+                state.cardPages = []; state.groupCards = []; state.feedForceStart = null;
+                state.filterBase = null;
+                resetViewScroll();
                 cancelBattleNavigation();
                 state.timelineSignature = null;
             }
@@ -1858,6 +2222,38 @@
             setStatus(t('error.snapshot'));
             return false;
         }
+    }
+    function historyOnlyUpdate(value) {
+        if (!state.payload || !state.groupCards || !state.groupCards.length ||
+                (state.group !== 'maps' && state.group !== 'vehicles') || state.feed !== state.renderedFeed) { return false; }
+        function signature(snapshot) {
+            return JSON.stringify(snapshot, function (key, item) {
+                return key === 'battle_list' || key === 'battle_history' || (this === snapshot && key === 'generated_at') ? undefined : item;
+            });
+        }
+        if (signature(state.payload) !== signature(value)) { return false; }
+        state.payload = value;
+        var scope = currentScope(), items = {}, patch = scope.battle_history;
+        (scope[state.group] || []).forEach(function (item) { if (item.battle_list) { items['$' + item.id] = item.battle_list; } });
+        if (patch && patch.kind === state.group && patch.battle_list) { items['$' + patch.id] = patch.battle_list; }
+        var lookup = {};
+        function replace(item) {
+            var list = items['$' + item.id], copy = item;
+            if (list) { copy = {}; Object.keys(item).forEach(function (key) { copy[key] = item[key]; }); copy.battle_list = list; }
+            lookup['$' + copy.id] = copy; return copy;
+        }
+        if (state.feed) {
+            Object.keys(state.feed.cache).forEach(function (page) {
+                state.feed.cache[page] = state.feed.cache[page].map(replace);
+                state.feed.signatures[page] = JSON.stringify(state.feed.cache[page]);
+            });
+        } else { state.list = state.list.map(replace); }
+        (state.cardPages || []).forEach(function (page) { page.items = page.items.map(replace); });
+        state.groupCards.forEach(function (card) {
+            var item = lookup['$' + card.getAttribute('data-group-id')];
+            if (item && typeof card._ssHistoryUpdate === 'function') { card._ssHistoryUpdate(item); }
+        });
+        return true;
     }
     function invoke(action, extra) {
         if (state.destroyed) { return false; }
@@ -1884,7 +2280,9 @@
     function focusControl(node) {
         /* Focus support differs between Gameface releases. It must never stop a tab change. */
         if (node && typeof node.focus === 'function') {
+            var top = nodes.scroll.scrollTop;
             try { node.focus(); } catch (error) { /* Mouse interaction remains available. */ }
+            if (nodes.scroll.scrollTop !== top) { nodes.scroll.scrollTop = top; }
         }
     }
     function nativeMove(on) {
@@ -1937,27 +2335,36 @@
         closeSelect(false);
         if (!state.payload || !state.payload.scopes[scope]) { return; }
         cancelBattleNavigation();
+        state.orderIntent = null; if (state.scope !== scope) { state.feedForceStart = 0; }
         state.scope = scope; state.loadedCount = 40;
-        showReset(false); resetViewScroll(); render();
+        showReset(false); render();
     }
     function switchGroup(group) {
         closeSelect(false);
         cancelBattleNavigation();
+        state.orderIntent = null; if (state.group !== group) { state.feedForceStart = 0; }
         if (state.group !== group) { state.loadedCount = 40; }
-        state.group = group; resetViewScroll(); render();
+        state.group = group; render();
     }
     function changePage(direction) {
         if (state.destroyed || !state.payload || !state.payload.scopes) { return; }
-        var scope = currentScope();
-        var page = scope && scope.pagination && scope.pagination[state.group];
-        if (!page || page.page + direction < 0 || page.page + direction >= page.pages) { return; }
+        var feed = state.renderedFeed;
+        if (!feed || state.feed !== feed || feed.pending) { return; }
+        var page = feed.current + direction;
+        if (page < 0 || page >= feed.pages) { return; }
         cancelBattleNavigation();
-        state.loadedCount = 40; resetViewScroll();
-        invoke('page', {scope:scopeName(), group:state.group, page:page.page + direction,
-            period_id:scope.period_id, account_key:state.payload.account_key});
+        if (Object.prototype.hasOwnProperty.call(feed.cache, page)) {
+            state.pageJump = {feed:feed, page:page};
+            if (page < feed.start || page > feed.last) {
+                feed.start = Math.min(feed.start, page); feed.last = Math.max(feed.last, page); render();
+            } else { finishPageJump(); }
+        } else { requestFeedPage(feed, page, true); }
     }
     document.getElementById('ss-page-previous').onclick = function () { changePage(-1); };
     document.getElementById('ss-page-next').onclick = function () { changePage(1); };
+    if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {
+        cancelBattleNavigation(); state.pageJump = null; resetViewScroll(); updatePinnedFilters();
+    }; }
     function switchXP(xp) { state.xp = xp; render(); }
     document.getElementById('ss-scope-launch').onclick = function () { switchScope('launch'); };
     document.getElementById('ss-scope-manual').onclick = function () { switchScope('manual'); };
@@ -1969,7 +2376,10 @@
     document.getElementById('ss-group-maps').onclick = function () { switchGroup('maps'); };
     document.getElementById('ss-group-battles').onclick = function () { switchGroup('battles'); };
     nodes.close.onclick = function () { if (state.dialog) { showReset(false); } else { invoke('close'); } };
-    nodes.refresh.onclick = function () { invoke('refresh'); };
+    nodes.refresh.onclick = function () {
+        if (state.feed && state.feed.error !== null) { requestFeedPage(state.feed, state.feed.error, false); }
+        else { invoke('refresh'); }
+    };
     nodes['time-point'].onclick = function () {
         if (state.payload && !nodes['time-point'].disabled) {
             if (!state.timePointEdited) { nodes['time-point-name'].value = date(Date.now() / 1000, false); }
@@ -2404,8 +2814,11 @@
             layoutSummary();
             layoutBattleCards();
             resizeNative();
+            if (state.groupMinHeight) { nodes.groups.style.minHeight = ''; state.groupMinHeight = false; }
             restoreViewScroll();
             finishBattleJump();
+            finishPageJump();
+            updatePinnedFilters(true);
         }
         if (typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(function () { window.requestAnimationFrame(measure); });
@@ -2533,6 +2946,12 @@
         if (state.destroyed) { return; }
         state.destroyed = true;
         cancelBattleNavigation();
+        clearBattleTarget(); retireFeed(); state.renderedFeed = null;
+        nodes.groups.style.minHeight = ''; state.groupMinHeight = false;
+        document.removeEventListener('click', targetClick, true);
+        root.removeEventListener('focusout', targetFocusOut);
+        root.removeEventListener('focusin', targetFocusIn);
+        if (nodes['scroll-top']) { nodes['scroll-top'].onclick = null; }
         resetWindowSettings();
         if (nodes.maximize) { nodes.maximize.onclick = null; }
         if (nodes['background-transparency']) {
@@ -2557,6 +2976,7 @@
         nodes.scroll.removeEventListener('mousedown', onScrollIntent, true);
         nodes.scroll.removeEventListener('keydown', onScrollIntent, true);
         window.removeEventListener('blur', hideHelp);
+        window.removeEventListener('blur', clearBattleTarget);
         window.removeEventListener('resize', hideHelp);
         closeSelect(false);
         document.removeEventListener('mousedown',outsideSelect);

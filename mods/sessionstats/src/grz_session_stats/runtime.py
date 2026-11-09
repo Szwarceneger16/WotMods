@@ -1648,7 +1648,7 @@ class Runtime(object):
                 elif action == 'vehicle_battles':
                     accepted = service.set_vehicle_battles(scope, getter('vehicle_id'), int(raw_page), period_id)
                 else:
-                    accepted = service.set_page(scope, group, int(raw_page), period_id)
+                    accepted = service.set_page(scope, group, int(raw_page), period_id, getter('request_id'))
                 if not accepted:
                     return
             self._window_call('refresh')

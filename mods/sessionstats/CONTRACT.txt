@@ -420,3 +420,14 @@ request identity; selecting a target retains an orange frame in the same period.
 Active aggregate metric sorting also publishes sort_value, the exact scalar
 used by its Min/Average/Max comparator (null if unavailable). Finance tables
 continue to show totals; the net-credit sort caption explicitly states / battle.
+
+CONTINUOUS PAGE REPLIES
+The page action accepts an optional safe ASCII request_id of 1..64 characters.
+Accepted identity is echoed at scope.pagination[group].request_id and retires
+on sorting, battle selection or period/range replacement. scope.data_revision
+is an opaque per-index generation/counter; content mutations/rebuilds change it,
+while page/sort/drill-down navigation leaves it unchanged. Client caches must
+never merge pages across account, period, group, ordering, locale or revision.
+Each scope may also publish one latest battle_history={kind,id,battle_list};
+it returns at most ten rows for a requested map/vehicle even when that card
+is outside the current global page. The main global page remains unchanged.

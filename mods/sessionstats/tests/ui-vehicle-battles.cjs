@@ -4,23 +4,24 @@ const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;function 
 const commands=(page,action)=>page.evaluate(action=>__grzCommands.filter(item=>item.action===action),action);
 module.exports=async ({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  const page=await nativeHost(browser,{initialViewport:{width:1900,height:1300},viewport:{width:1900,height:1300,scale:1}});
+  const page=await nativeHost(browser,{initialViewport:{width:3840,height:2560},viewport:{width:3840,height:2560,scale:1},realTimers:true});
   try {
-    for(const [language,messages] of Object.entries(languages)) {
-      await page.evaluate(({language,messages})=>{
+    for(const scale of [1,2])for(const [language,messages] of Object.entries(languages)) {
+      await page.evaluate(({language,messages,scale})=>{
         const payload=JSON.parse(model.payload),scope=payload.scopes.launch,sample=scope.vehicles[0];
-        payload.account_key='synthetic-vehicle-account-'+language;payload.window_size=[1400,1100];payload.localization={language,messages};
+        payload.account_key='synthetic-vehicle-account-'+language+'-'+scale;payload.window_size=[1400,1100];payload.localization={language,messages};
+        payload.viewport={width:3840,height:2560,scale};
         scope.period_id='synthetic-vehicle-period-'+language;
         scope.vehicles=[{...sample,id:'synthetic-heavy',name:'Synthetic Heavy'},{...sample,id:'synthetic-light',name:'Synthetic Light'}];
         scope.vehicles.forEach(vehicle=>delete vehicle.battle_list);delete scope.battle_focus;
         scope.pagination={vehicles:{page:0,pages:1,total:2,page_size:40},battles:{page:0,pages:2,total:43,page_size:40}};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-      },{language,messages});await page.locator('#ss-scope-launch').click();await page.locator('#ss-group-vehicles').click();await frames(page);
+      },{language,messages,scale});await page.locator('#ss-scope-launch').click();await page.locator('#ss-group-vehicles').click();await frames(page);
       const vehicle=page.locator('[data-group-id="synthetic-heavy"]'),more=vehicle.locator('.ss-vehicle-more-button');
       await more.click();let sent=await commands(page,'vehicle_battles'),request=sent[sent.length-1];
       check('Vehicle More requests its first account-owned page in '+language+': '+JSON.stringify(request),
         request.vehicle_id==='synthetic-heavy' && request.map_id===undefined && request.page==='0' && request.scope==='launch' &&
-        request.account_key==='synthetic-vehicle-account-'+language && request.period_id==='synthetic-vehicle-period-'+language && await more.textContent()===messages['more.less']);
+        request.account_key==='synthetic-vehicle-account-'+language+'-'+scale && request.period_id==='synthetic-vehicle-period-'+language && await more.textContent()===messages['more.less']);
       async function list(pageNumber) {
         await page.evaluate(pageNumber=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
           scope.vehicles[0].battle_list={page:pageNumber,pages:2,total:13,page_size:10,
@@ -42,13 +43,23 @@ module.exports=async ({browser,nativeHost,check})=>{
       await vehicle.locator('.ss-map-page-next').click();sent=await commands(page,'vehicle_battles');request=sent[sent.length-1];
       check('Vehicle Next retains vehicle and period ownership in '+language,
         request.vehicle_id==='synthetic-heavy' && request.page==='1' && request.period_id==='synthetic-vehicle-period-'+language);
+      await frames(page);
+      const historyPosition=()=>vehicle.locator('.ss-vehicle-battles').evaluate(panel=>{
+        const box=panel.getBoundingClientRect(),body=panel.querySelector('.ss-history-body').getBoundingClientRect(),
+          pagination=panel.querySelector('.ss-map-battles-pagination').getBoundingClientRect();
+        return {top:box.top,height:box.height,bodyHeight:body.height,paginationTop:pagination.top,scroll:document.getElementById('ss-scroll').scrollTop};
+      });
+      const fullHistory=await historyPosition();
       await list(1);
+      const partialHistory=await historyPosition();
       check('The last vehicle page replaces rows and keeps More open in '+language,
         await vehicle.locator('.ss-map-battle-row').count()===3 && await vehicle.locator('.ss-map-page-next').isDisabled() && await more.getAttribute('aria-expanded')==='true');
+      check('A partial vehicle-history page retains its panel height, controls and whole-window position in '+language+': '+JSON.stringify({fullHistory,partialHistory}),
+        fullHistory.bodyHeight>0 && Object.keys(fullHistory).every(key=>Math.abs(fullHistory[key]-partialHistory[key])<=1));
       const target='synthetic-vehicle-battle-12';await vehicle.locator('.ss-map-battle-open[data-battle-id="'+target+'"]').click();
       sent=await commands(page,'battle_select');request=sent[sent.length-1];
       check('Vehicle navigation waits for its native battle selection reply in '+language,
-        request.id===target && request.account_key==='synthetic-vehicle-account-'+language && request.period_id==='synthetic-vehicle-period-'+language &&
+        request.id===target && request.account_key==='synthetic-vehicle-account-'+language+'-'+scale && request.period_id==='synthetic-vehicle-period-'+language &&
         await page.locator('#ss-group-vehicles').getAttribute('aria-pressed')==='true');
       await page.evaluate(request=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch,sample=scope.battles[0];
         scope.battles=Array.from({length:3},(_,index)=>({...sample,id:index===1 ? request.id : 'synthetic-vehicle-neighbor-'+index,name:'Synthetic battle '+index}));
@@ -57,18 +68,37 @@ module.exports=async ({browser,nativeHost,check})=>{
       const targetCard=page.locator('[data-group-id="'+target+'"]');
       check('Vehicle selection focuses the exact battle with a visible target in '+language,
         await page.locator('#ss-group-battles').getAttribute('aria-pressed')==='true' && await targetCard.evaluate(card=>
-          document.activeElement===card && card.classList.contains('ss-battle-target') && parseFloat(getComputedStyle(card).outlineWidth)>=3));
-      for(const refresh of ['payload','xp','more','group']) {
+          document.activeElement===card && card.classList.contains('ss-battle-target') &&
+          parseFloat(getComputedStyle(card.querySelector('.ss-battle-target-outline')).borderTopWidth)>=3));
+      for(const refresh of ['payload','more']) {
         if(refresh==='payload')await page.evaluate(()=>__grzEvents['viewEnv.onDataChanged']());
-        if(refresh==='xp')await page.locator('#ss-xp-received').click();
         if(refresh==='more')await targetCard.locator('.ss-more-button').click();
-        if(refresh==='group'){await page.locator('#ss-group-vehicles').click();await page.locator('#ss-group-battles').click();}
         await frames(page);
         check('Selected battle highlighting survives '+refresh+' rendering in '+language,await targetCard.evaluate(card=>card.classList.contains('ss-battle-target')));
       }
+      if(language==='en') {
+        check('A newly selected battle starts its five-second orange pulse',await targetCard.evaluate(card=>card.classList.contains('ss-target-pulsing')));
+        await page.waitForTimeout(5100);
+        const muted=await targetCard.evaluate(card=>({muted:card.classList.contains('ss-target-muted'),pulse:card.classList.contains('ss-target-pulsing'),
+          outlineOpacity:parseFloat(getComputedStyle(card.querySelector('.ss-battle-target-outline')).opacity),cardOpacity:getComputedStyle(card).opacity}));
+        check('After five seconds only the target outline becomes thirty percent transparent: '+JSON.stringify(muted),
+          muted.muted && !muted.pulse && Math.abs(muted.outlineOpacity-0.7)<0.01 && muted.cardOpacity==='1');
+      }
+      await page.locator('#ss-xp-received').click();await frames(page);
+      check('An outside control click retires the selected battle outline in '+language,await page.locator('.ss-battle-target').count()===0);
+      if(language==='en') {
+        await page.locator('#ss-group-vehicles').click();await frames(page);
+        if(await more.getAttribute('aria-expanded')!=='true')await more.click();
+        await vehicle.locator('.ss-map-battle-open[data-battle-id="'+target+'"]').click();sent=await commands(page,'battle_select');
+        const repeat=sent[sent.length-1];
+        await page.evaluate(request=>{const payload=JSON.parse(model.payload);payload.scopes.launch.battle_focus={id:request.id,request_id:request.request_id};
+          model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},repeat);await frames(page);
+        await targetCard.focus();await page.locator('#ss-close').focus();
+        check('Keyboard focus leaving the card subtree retires its outline at'+(scale*100)+'%',await page.locator('.ss-battle-target').count()===0);
+      }
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.launch.period_id+='-new';
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
-      check('A new period retires the selected battle highlight in '+language,await page.locator('.ss-battle-target').count()===0);
+      check('A new period cannot resurrect a dismissed battle highlight in '+language,await page.locator('.ss-battle-target').count()===0);
     }
   } finally {await page.close();}
 };

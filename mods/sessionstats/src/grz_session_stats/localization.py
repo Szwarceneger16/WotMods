@@ -227,8 +227,18 @@ class Localizer(object):
             return isinstance(value, text_type) and (value in fallbacks or any(
                 pattern.match(value) for pattern, key, unused in self._patterns
                 if key in ('unknown.vehicle_id', 'unknown.map_id')))
+        def translate_battle_list(battle_list):
+            if isinstance(battle_list, dict):
+                for battle in battle_list.get('items', []):
+                    for field in ('name', 'map'):
+                        value = battle.get(field)
+                        if is_fallback(value):
+                            battle[field] = self.translate(value)
         for name, scope in snapshot.get('scopes', {}).items():
             scope['label'] = self.text('scope.' + name)
+            history = scope.get('battle_history')
+            if isinstance(history, dict):
+                translate_battle_list(history.get('battle_list'))
             for grouping in ('vehicles', 'maps', 'battles', 'tiers'):
                 for row in scope.get(grouping, []):
                     for field in ('name', 'map'):
@@ -236,12 +246,7 @@ class Localizer(object):
                         if is_fallback(value):
                             row[field] = self.translate(row[field])
                     battle_list = row.get('battle_list') if grouping in ('maps', 'vehicles') else None
-                    if isinstance(battle_list, dict):
-                        for battle in battle_list.get('items', []):
-                            for field in ('name', 'map'):
-                                value = battle.get(field)
-                                if is_fallback(value):
-                                    battle[field] = self.translate(value)
+                    translate_battle_list(battle_list)
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
                     if isinstance(outcome_visual, dict) and row.get('outcome') in ('win', 'loss', 'draw'):

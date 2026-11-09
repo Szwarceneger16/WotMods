@@ -111,7 +111,7 @@ module.exports=async ({browser,nativeHost,check})=>{
         const card=document.querySelector('[data-group-id="'+target+'"]'),scroll=document.getElementById('ss-scroll');
         if(!card)return null;const box=card.getBoundingClientRect(),viewport=scroll.getBoundingClientRect();
         return {focused:document.activeElement===card,tabindex:card.getAttribute('tabindex'),top:box.top,bottom:box.bottom,
-          viewportTop:viewport.top,viewportBottom:viewport.bottom,page:JSON.parse(model.payload).scopes.launch.pagination.battles.page};
+          viewportTop:Math.max(viewport.top,document.getElementById('ss-filter-panel').getBoundingClientRect().bottom),viewportBottom:viewport.bottom,page:JSON.parse(model.payload).scopes.launch.pagination.battles.page};
       },target);
       check('The matching reply selects and focuses the exact sorted Battles page in '+language+': '+JSON.stringify(focus),
         await page.locator('#ss-group-battles').getAttribute('aria-pressed')==='true' && focus && focus.focused && focus.tabindex==='-1' &&
@@ -140,7 +140,7 @@ module.exports=async ({browser,nativeHost,check})=>{
     await page.locator('#ss-sort-chronology [data-value="oldest"]').click();await focusReply(page,request);
     check('Changing map order retires an outstanding battle jump',await page.locator('#ss-group-maps').getAttribute('aria-pressed')==='true');
     await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
-    await page.locator('#ss-page-next').click();await focusReply(page,request);
+    await page.locator('#ss-page-next').click();await frames(page);await focusReply(page,request);
     check('Changing the map page retires an outstanding battle jump',await page.locator('#ss-group-maps').getAttribute('aria-pressed')==='true');
     await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
     await page.locator('#ss-scope-manual').click();await focusReply(page,request);
@@ -174,7 +174,7 @@ module.exports=async ({browser,nativeHost,check})=>{
       __restoreJumpRect();const card=document.querySelector('[data-group-id="'+target+'"]'),box=card.getBoundingClientRect(),
         container=document.getElementById('ss-scroll').getBoundingClientRect();
       return {...__jumpGeometry,focused:document.activeElement===card,targeted:card.classList.contains('ss-battle-target'),
-        top:box.top,viewportTop:container.top,viewportBottom:container.bottom};
+        top:box.top,viewportTop:Math.max(container.top,document.getElementById('ss-filter-panel').getBoundingClientRect().bottom),viewportBottom:container.bottom};
     },request.id);
     check('Battle navigation waits through zero target and placeholder container geometry before focusing and scrolling: '+JSON.stringify(deferred),
       deferred.samples.length===2 && deferred.samples.every(sample=>!sample.focused && !sample.targeted && sample.before===sample.after) &&

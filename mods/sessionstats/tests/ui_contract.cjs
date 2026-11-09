@@ -504,7 +504,8 @@ async function runFeatureSuite(file,browser) {
   await page.evaluate(p=>{
     const q=JSON.parse(JSON.stringify(p));const list=q.scopes.launch.battles;const long=[];
     for(let n=0;n<200;n++){const row=JSON.parse(JSON.stringify(list[n%list.length]));row.id='long-'+n;row.started_at=1800000000-n;long.push(row);}
-    q.scopes.launch.battles=long;GRZSessionStats.update(q);
+    q.scopes.launch.battles=long;if(q.scopes.launch.pagination)delete q.scopes.launch.pagination.battles;
+    GRZSessionStats.update(q);
   },fixtures.normal);
   check('Long battle history starts with a bounded batch',await page.locator('#ss-groups .ss-group').count()===40);
   await page.locator('#ss-scroll').evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));});
@@ -813,6 +814,8 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
+  await runFeatureSuite('./ui-history-inplace.cjs',browser);
+  await runFeatureSuite('./ui-detail-widths.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);
