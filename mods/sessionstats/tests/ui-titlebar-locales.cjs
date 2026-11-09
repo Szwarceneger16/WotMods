@@ -39,6 +39,39 @@ module.exports=async ({browser,nativeHost,check})=>{
         const label=language+' at'+width+'px/'+(scale*100)+'%';
         check('Title controls remain visible inside the floating header: '+label+': '+JSON.stringify(audit.overflow),
           audit.items.every(item=>item.width>0 && item.height>0) && audit.overflow.length===0);
+        const windowInk=await page.evaluate(()=>{
+          function bounds(frame,pseudo) {
+            const style=getComputedStyle(frame,pseudo);if(style.display==='none')return null;
+            const box=frame.getBoundingClientRect(),width=parseFloat(style.width),height=parseFloat(style.height),
+              left=box.left+parseFloat(style.left),top=box.top+parseFloat(style.top),
+              origin=style.transformOrigin.split(' ').map(parseFloat),matrix=new DOMMatrix(style.transform==='none'?undefined:style.transform);
+            const points=[[0,0],[width,0],[width,height],[0,height]].map(([x,y])=>{
+              const point=new DOMPoint(x-origin[0],y-origin[1]).matrixTransform(matrix);
+              return {x:left+origin[0]+point.x,y:top+origin[1]+point.y};
+            });
+            return {left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),
+              top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y)),
+              color:style.backgroundColor,strokeColor:style.borderTopColor,stroke:parseFloat(style.borderTopWidth)};
+          }
+          function center(pieces) {return {x:(Math.min(...pieces.map(p=>p.left))+Math.max(...pieces.map(p=>p.right)))/2,
+            y:(Math.min(...pieces.map(p=>p.top))+Math.max(...pieces.map(p=>p.bottom)))/2};}
+          function buttonCenter(button) {const r=button.getBoundingClientRect();return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2};}
+          const close=document.getElementById('ss-close'),label=close.querySelector('.ss-control-label'),toggle=document.getElementById('ss-maximize'),
+            symbol=toggle.querySelector('.ss-window-toggle-symbol'),pressed=toggle.getAttribute('aria-pressed'),states=[];
+          const closePieces=[':before',':after'].map(pseudo=>bounds(label,pseudo));
+          for(const state of ['false','true']) {toggle.setAttribute('aria-pressed',state);
+            const pieces=[':before',':after'].map(pseudo=>bounds(symbol,pseudo)).filter(Boolean);
+            states.push({state,pieces,center:center(pieces),button:buttonCenter(toggle)});}
+          toggle.setAttribute('aria-pressed',pressed);
+          return {close:{pieces:closePieces,center:center(closePieces),button:buttonCenter(close),
+            font:parseFloat(getComputedStyle(label).fontSize),color:getComputedStyle(close).color},
+            states,toggleColor:getComputedStyle(toggle).color};
+        });
+        const centered=ink=>Math.abs(ink.center.x-ink.button.x)<=0.5 && Math.abs(ink.center.y-ink.button.y)<=0.5;
+        check('Close, maximize and restore ink share the centered window-control row: '+label+': '+JSON.stringify(windowInk),
+          windowInk.close.font===0 && centered(windowInk.close) && windowInk.close.pieces.every(piece=>piece.color===windowInk.close.color) &&
+          windowInk.states.every(state=>centered(state) && Math.abs(state.center.y-windowInk.close.center.y)<=0.5 &&
+            state.pieces.length===(state.state==='true'?2:1) && state.pieces.every(piece=>piece.stroke>=scale && piece.strokeColor===windowInk.toggleColor)));
         if(wide) {
           check('Wide title, point name, slider, language and window controls share one row: '+label+': '+JSON.stringify(audit.items),
             Math.min(...audit.items.map(item=>item.bottom))-Math.max(...audit.items.map(item=>item.top))>=15 && audit.bar.height<=51);

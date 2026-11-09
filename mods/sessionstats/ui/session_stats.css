@@ -11,7 +11,11 @@ body { color:#e5e2cb; font-family:Warhelios, Arial, sans-serif; font-size:14rem;
 .ss-control { display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:Warhelios, Arial, sans-serif; font-size:14rem; cursor:pointer; }
 .ss-control-label { display:block; flex-shrink:1; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:Warhelios, Arial, sans-serif; font-size:14rem; line-height:18rem; text-align:center; pointer-events:none; }
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
-.ss-close .ss-control-label { font-size:25rem; line-height:28rem; }
+/* Center actual strokes, not a font-dependent multiplication-sign baseline. */
+.ss-close .ss-control-label { position:absolute; left:50%; top:50%; width:14rem; height:14rem; margin:-7rem 0 0 -7rem; font-size:0; line-height:0; }
+.ss-close .ss-control-label:before, .ss-close .ss-control-label:after { content:""; display:block; position:absolute; left:0; top:6rem; width:14rem; height:2rem; background:currentColor; pointer-events:none; }
+.ss-close .ss-control-label:before { transform:rotate(45deg); }
+.ss-close .ss-control-label:after { transform:rotate(-45deg); }
 button:disabled { opacity:0.45; }
 .ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid #646044; border-radius:8rem; }
 .ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:8rem; background:#111309; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem #88805c, inset 0 0 28rem #292819; pointer-events:none; }
@@ -29,10 +33,12 @@ button:disabled { opacity:0.45; }
 .ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:transparent; color:#bcb693; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:5rem; }
 .ss-close:hover, .ss-close:focus, .ss-window-toggle:hover, .ss-window-toggle:focus { color:#f5e3a5; background:#252614; }
 .ss-window-toggle { right:38rem; }
-.ss-window-toggle-symbol { display:block; position:relative; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
-.ss-window-toggle-symbol:before { content:""; display:none; position:absolute; left:-4rem; top:3rem; width:12rem; height:10rem; border:1rem solid currentColor; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol { left:2rem; top:-1rem; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; }
+.ss-window-toggle-symbol { display:block; position:absolute; left:50%; top:50%; width:16rem; height:14rem; margin:-7rem 0 0 -8rem; pointer-events:none; }
+.ss-window-toggle-symbol:before, .ss-window-toggle-symbol:after { content:""; display:block; box-sizing:border-box; position:absolute; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
+.ss-window-toggle-symbol:before { display:none; }
+.ss-window-toggle-symbol:after { left:2rem; top:2rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; left:0; top:4rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:after { left:4rem; top:0; }
 /* Caption and track share one compact frame, keeping the label next to its
    slider while preserving a single title row in wide windows. */
 .ss-background-control { display:flex; position:relative; align-items:center; justify-content:space-between; flex:0 1 auto; min-width:146rem; max-width:100%; height:30rem; margin:0 8rem 0 0; padding:0 5rem; border:1rem solid #555944; border-radius:5rem; background:#111309; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
