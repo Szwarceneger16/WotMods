@@ -32,6 +32,7 @@ function snapshot() {
     for (const scope of Object.values(data.scopes)) {
         const first = scope.battles[0];
         scope.battles = Array.from({length:95}, (_,i)=>({...first,id:'appearance-'+i,started_at:1700000000-i}));
+        if(scope.pagination)delete scope.pagination.battles;
     }
     return data;
 }
@@ -230,6 +231,7 @@ async function footer(browser) {
         // at the initial hover state and scroll anchor: a stationary pointer
         // could otherwise open help when summary content moves underneath it.
         await page.mouse.move(1400,940);
+        await frames(page);
         await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=0;});
         await frames(page);
         await pushPanel(page,{...presentation.custom,panel_css:42});
