@@ -58,10 +58,19 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=node.scrollHeight;node.dispatchEvent(new Event('scroll'));});await frames(page);
       sent=await requests(page);request=sent[sent.length-1];
       check('The loaded bottom requests exactly the next missing page: '+label+': '+JSON.stringify(request),sent.length===loaded+1 && request.page==='2');
+      const beforeAppend=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
       await emit(page,2,request);
+      check('Automatic append preserves the viewport at the loading boundary: '+label,
+        Math.abs(await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)-beforeAppend)<=1);
       check('Final partial reply extends the same feed to85 rows: '+label,
         await page.locator('#ss-groups .ss-group').count()===85 && await page.locator('.ss-continuous-page[data-page-index="2"] .ss-group').count()===5 &&
         await page.locator('.ss-page-spinner:visible').count()===0);
+      const beforeFinal=(await requests(page)).length;
+      if (await page.locator('#ss-page-next').isEnabled()) { await page.locator('#ss-page-next').click(); }
+      await frames(page);
+      check('A cached short final page becomes current at the clamped scroll end: '+label,
+        await page.locator('#ss-page-next').isDisabled() && await page.locator('#ss-page-label').textContent()===pageLabel(3) &&
+        (await requests(page)).length===beforeFinal);
       const pin=await page.evaluate(()=>{const box=document.getElementById('ss-filter-panel').getBoundingClientRect(),viewport=document.getElementById('ss-scroll').getBoundingClientRect();
         return {top:box.top,bottom:box.bottom,viewportTop:viewport.top,viewportBottom:viewport.bottom};});
       check('The complete filter panel stays visible above the appended feed: '+label+': '+JSON.stringify(pin),pin.top>=pin.viewportTop-1 && pin.bottom<=pin.viewportBottom+1);

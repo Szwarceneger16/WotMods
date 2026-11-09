@@ -1390,6 +1390,7 @@
         focusControl(target);
         state.scrollTarget = offset;
         scroll.scrollTop = state.scrollTarget;
+        queueResize();
     }
     function attachMapMore(card, header, map) {
         var vehicle = state.group === 'vehicles', kind = vehicle ? 'vehicle' : 'map';
@@ -1864,12 +1865,14 @@
         nodes.groups.setAttribute('aria-label', t('groups.' + state.group + '.aria'));
         if (feed) {
             var pending = nodes.groups.querySelector('.ss-page-pending');
-            if (pending && pending.parentNode) { pending.parentNode.removeChild(pending); }
             for (var pageIndex = feed.start; pageIndex <= feed.last; pageIndex += 1) {
                 if (!feed.cache[pageIndex] || state.cardPages.some(function (page) { return page.index === pageIndex; })) { continue; }
                 var cardPage = createCardPage(pageIndex, feed.cache[pageIndex], feed);
                 state.cardPages.push(cardPage); appendGroupBatch(cardPage.items.length, cardPage);
             }
+            // Replace a loading boundary only after the new page has its full
+            // height, so a viewport at the old bottom never clamps upward.
+            if (pending && pending.parentNode) { pending.parentNode.removeChild(pending); }
             state.cardPages.sort(function (a, b) { return a.index - b.index; });
             var cursor = nodes.groups.firstElementChild;
             state.cardPages.forEach(function (page) {
@@ -1924,6 +1927,11 @@
             state.cardPages.forEach(function (page) {
                 if (page.section.getBoundingClientRect().top <= viewport.top + box.height + 24 * state.nativeScale) { current = page.index; }
             });
+            // A short final page cannot align its divider with the pinned
+            // bar: the scroll range ends first. It is still the current page.
+            if (nodes.scroll.scrollTop + nodes.scroll.clientHeight >= nodes.scroll.scrollHeight - 2 * state.nativeScale) {
+                current = state.cardPages[state.cardPages.length - 1].index;
+            }
             feed.current = current; updateFeedControls();
         }
     }
@@ -1939,6 +1947,7 @@
         if (state.feed) { state.feed.navigationPage = null; }
         state.scrollTarget = Math.max(0, nodes.scroll.scrollTop + box.top - viewport.top - pinnedFilterHeight());
         nodes.scroll.scrollTop = state.scrollTarget; updatePinnedFilters();
+        queueResize();
     }
     function loadNearBottom() {
         updatePinnedFilters();
@@ -2364,6 +2373,7 @@
     document.getElementById('ss-page-next').onclick = function () { changePage(1); };
     if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {
         cancelBattleNavigation(); state.pageJump = null; resetViewScroll(); updatePinnedFilters();
+        queueResize();
     }; }
     function switchXP(xp) { state.xp = xp; render(); }
     document.getElementById('ss-scope-launch').onclick = function () { switchScope('launch'); };

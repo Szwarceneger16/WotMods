@@ -32,7 +32,20 @@ module.exports = async function ({browser, nativeHost, check}) {
     document.querySelector('#ss-timeline-from .ss-select-trigger').textContent === 'Beginning of history' &&
     document.querySelector('#ss-timeline-to .ss-select-trigger').textContent === 'Now' &&
     document.querySelector('#ss-reset').style.display === 'none'));
-  await page.evaluate(() => { window.__timelineReadySnapshot = JSON.parse(model.payload); });
+  await page.evaluate(() => {
+    window.__timelineReadySnapshot = JSON.parse(model.payload);
+    window.__timelineDataFingerprint = function () {
+      const text = node => {
+        const copy = node.cloneNode(true);copy.querySelectorAll('.ss-info-button').forEach(button=>button.remove());
+        return copy.textContent.replace(/\s+/g,' ').trim();
+      };
+      return {summary:text(document.getElementById('ss-summary')),
+        cards:[...document.querySelectorAll('#ss-groups .ss-group')].map(card=>({id:card.dataset.groupId,text:text(card)})),
+        page:document.getElementById('ss-page-label').textContent};
+    };
+    window.__timelineCompleteFingerprint = __timelineDataFingerprint();
+    window.__timelineCompleteCardNodes = [...document.querySelectorAll('#ss-groups .ss-group')];
+  });
   for (const scopedState of ['loading', 'error']) {
     await page.evaluate(scopedState => {
       const payload = JSON.parse(JSON.stringify(__timelineReadySnapshot));
@@ -41,6 +54,11 @@ module.exports = async function ({browser, nativeHost, check}) {
       timeline.loading = scopedState === 'loading';
       timeline.load_error = scopedState === 'error' ? 'Synthetic selected range failure' : '';
       timeline.from_point = scopedState === 'error' ? 'first' : '';
+      timeline.summary.battles = timeline.summary.observed_battles = timeline.summary.wn8 = 9999999;
+      for (const key of ['min','avg','max','sum']) timeline.summary.xp_base[key] = 9999999;
+      for (const group of ['vehicles','maps','tiers','battles']) timeline[group].forEach(row=>{
+        row.name = 'Synthetic incomplete prefix row';row.stats.wn8 = 9999999;
+      });
       window.__timelineRangeCount = __grzCommands.filter(command => command.action === 'timeline_range').length;
       model.payload = JSON.stringify(payload); __grzEvents['viewEnv.onDataChanged']();
     }, scopedState);
@@ -49,11 +67,19 @@ module.exports = async function ({browser, nativeHost, check}) {
       await page.locator('#ss-timeline-to .ss-select-trigger').isVisible() &&
       await page.locator('#ss-timeline-from .ss-select-trigger').isEnabled() &&
       await page.locator('#ss-timeline-to .ss-select-trigger').isEnabled());
-    check('Selected range ' + scopedState + ' hides incomplete totals and battle rows',
-      await page.locator('#ss-summary .ss-kpi-value').count() === 0 &&
-      await page.locator('#ss-groups .ss-group').count() === 0 &&
-      await page.locator('#ss-page-label').textContent() === '' &&
-      await page.locator('#ss-status').textContent() === (scopedState === 'error' ?
+    const retained = await page.evaluate(() => {
+      const current = __timelineDataFingerprint(),previous = __timelineCompleteFingerprint,
+        nodes = [...document.querySelectorAll('#ss-groups .ss-group')];
+      const compact = (current.summary + current.cards.map(card=>card.text).join('')).replace(/\s/g,'');
+      return {summarySame:current.summary===previous.summary,cardsSame:JSON.stringify(current.cards)===JSON.stringify(previous.cards),
+        nodesSame:nodes.length>0 && nodes.length===__timelineCompleteCardNodes.length && nodes.every((node,index)=>node===__timelineCompleteCardNodes[index]),
+        pageSame:current.page===previous.page,busy:document.getElementById('ss-groups').getAttribute('aria-busy'),
+        prefixRendered:compact.includes('9999999') || compact.includes('Syntheticincompleteprefixrow'),
+        status:document.getElementById('ss-status').textContent,ids:current.cards.map(card=>card.id)};
+    });
+    check('Selected range ' + scopedState + ' retains only the last complete DOM while marking its pending state: '+JSON.stringify(retained),
+      retained.summarySame && retained.cardsSame && retained.nodesSame && retained.pageSame && retained.busy==='true' &&
+      !retained.prefixRendered && retained.status===(scopedState==='error' ?
         'Synthetic selected range failure' : 'Loading history. New battle results are being saved.'));
     const field = scopedState === 'loading' ? 'from' : 'to';
     const point = scopedState === 'loading' ? 'first' : 'last';
