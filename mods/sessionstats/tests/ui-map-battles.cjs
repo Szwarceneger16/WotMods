@@ -170,6 +170,20 @@ module.exports=async ({browser,nativeHost,check})=>{
       };
     },request.id);
     await focusReply(page,request);
+    const waitingFocus=await page.evaluate(async target=>{
+      const card=document.querySelector('[data-group-id="'+target+'"]'),payload=model.payload,
+        scroll=document.getElementById('ss-scroll'),before=scroll.scrollTop;
+      if(document.activeElement && document.activeElement!==document.body && typeof document.activeElement.blur==='function')document.activeElement.blur();
+      // Native mounting may publish root/body focus before its target geometry.
+      // Confirm that event without advancing the owned geometry retry timer.
+      document.getElementById('grz-session-stats').dispatchEvent(new FocusEvent('focusin',{bubbles:true,relatedTarget:null}));
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      return {samePayload:model.payload===payload,focused:document.activeElement===card,
+        targeted:card.classList.contains('ss-battle-target'),outlines:card.querySelectorAll('.ss-battle-target-outline').length,
+        before,after:scroll.scrollTop};
+    },request.id);
+    check('Ambiguous native root/body focus preserves early paint while owned battle geometry is pending: '+JSON.stringify(waitingFocus),
+      waitingFocus.samePayload && !waitingFocus.focused && waitingFocus.targeted && waitingFocus.outlines===1 && waitingFocus.before===waitingFocus.after);
     await page.evaluate(async target=>{
       // Drive owned short geometry retries, never a wheel/input event. Keep
       // the long pulse/page/tooltip timers under the host's existing control.

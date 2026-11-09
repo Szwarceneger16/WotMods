@@ -1336,6 +1336,9 @@
         function confirm() {
             if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle ||
                     state.rendering || state.targetFocusTransfer || !root.contains(card)) { return; }
+            // Early paint precedes native focus while card geometry mounts.
+            // Explicit outside controls/clicks still dismiss synchronously.
+            if (state.battleJump && state.battleJump.id === state.highlightedBattle.id) { return; }
             if (!card.contains(document.activeElement)) { clearBattleTarget(); }
         }
         if (typeof window.requestAnimationFrame === 'function') {
