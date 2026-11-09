@@ -85,6 +85,8 @@ class SinglePublisherTests(unittest.TestCase):
         self.assertIn('source/build_wotmod.py', medkit)
         self.assertNotIn('scripts/sessionstats/validate.sh', medkit)
         self.assertIn('scripts/sessionstats/validate.sh', stats)
+        self.assertIn('export PYTHON27=', stats)
+        self.assertLess(stats.index('export PYTHON27='), stats.index('bash scripts/sessionstats/validate.sh'))
         self.assertNotIn('source/build_wotmod.py', stats)
         self.assertIn('scripts/privacy_audit.py --scan-dist', medkit)
         self.assertIn('scripts/sessionstats/release.py --verify-directory', stats)

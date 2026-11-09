@@ -24,6 +24,9 @@ case "$module" in
   sessionstats)
     export SESSIONSTATS_VERSION="$version"
     bash scripts/sessionstats/python27.sh
+    # $GITHUB_ENV is read by later Actions steps only, not the current shell.
+    export PYTHON27="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/sessionstats-cpython27/Python-2.7.18/python"
+    [[ -x "$PYTHON27" ]] || { echo 'Verified Python 2.7 interpreter missing' >&2; exit 1; }
     bash scripts/sessionstats/validate.sh
     python3 scripts/sessionstats/release.py --verify-directory mods/sessionstats/dist --version "$version"
     source_dir=mods/sessionstats/dist

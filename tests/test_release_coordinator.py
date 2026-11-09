@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -90,6 +91,31 @@ class PlanTests(unittest.TestCase):
     def test_unknown_latest_tag_fails_instead_of_silent_migration(self):
         with self.assertRaisesRegex(ValueError, 'Unrecognized'):
             self.make([], tag='some-other-v9.0.0')
+
+    def test_cross_module_rename_rebuilds_both_source_and_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(root), *args]).decode().strip()
+
+            git('init', '-q')
+            git('config', 'user.name', 'Synthetic fixture')
+            git('config', 'user.email', 'fixture.invalid')
+            original = root / 'assets/VOICE_NOTICE.txt'
+            original.parent.mkdir()
+            original.write_text('A packaged Medkit asset\n')
+            git('add', '.')
+            git('commit', '-qm', 'Base')
+            moved = root / 'mods/sessionstats/docs/VOICE_NOTICE.txt'
+            moved.parent.mkdir(parents=True)
+            git('mv', 'assets/VOICE_NOTICE.txt', 'mods/sessionstats/docs/VOICE_NOTICE.txt')
+            git('commit', '-qm', 'Cross-module rename')
+            changes = git('diff', '--no-renames', '--name-only', 'HEAD~1', 'HEAD').splitlines()
+            self.assertEqual(set(changes), {'assets/VOICE_NOTICE.txt',
+                                            'mods/sessionstats/docs/VOICE_NOTICE.txt'})
+            self.assertEqual(coordinator.selected_modules(changes, self.registry),
+                             ['staysharp', 'sessionstats'])
 
     def test_rapid_merges_preserve_both_updates_in_either_order(self):
         first = self.make(['source/mod_staysharp_medkit.py'])
@@ -238,6 +264,13 @@ class AssemblyTests(unittest.TestCase):
         before = {x.name: x.read_bytes() for x in self.previous.iterdir()}
         self.assemble([])
         self.assertEqual({x.name: x.read_bytes() for x in self.out.iterdir()}, before)
+        self.assertIn('## Downloads', self.notes.read_text())
+
+    def test_no_build_artifact_directory_is_valid_for_carry_forward(self):
+        self.built.rmdir()
+        self.assemble([])
+        self.assertTrue((self.out / 'StaySharp-Medkit-v1.8.22.zip').exists())
+        self.assertTrue((self.out / 'Session-Stats-v0.3.15.zip').exists())
         self.assertIn('## Downloads', self.notes.read_text())
 
     def test_new_client_retargets_binaries_without_recompiling(self):

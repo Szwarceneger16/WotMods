@@ -218,7 +218,7 @@ def plan(args):
             print('Source commit already superseded by Latest; no release')
             return
         subprocess.check_call(['git', 'merge-base', '--is-ancestor', base_sha, source_sha], cwd=ROOT)
-        changes = subprocess.check_output(['git', 'diff', '-z', '--name-only',
+        changes = subprocess.check_output(['git', 'diff', '--no-renames', '-z', '--name-only',
                                            base_sha, source_sha], cwd=ROOT).decode('utf-8').split('\0')
     else:
         if args.previous_dir:
@@ -297,10 +297,13 @@ def assemble(args):
         raise ValueError('Unexpected previous Release')
     built = Path(args.built_dir)
     expected = {installer_name(mod, result['versions'][mod]) for mod in changed}
-    received = {p.name for p in built.iterdir()} if built.exists() else set()
+    if built.exists() and (not built.is_dir() or built.is_symlink()):
+        raise ValueError('Build artifact path must be a regular directory')
+    built_files = list(built.iterdir()) if built.exists() else []
+    received = {p.name for p in built_files}
     if received != expected:
         raise ValueError('Build artifacts mismatch: expected %r, got %r' % (expected, received))
-    if any(not p.is_file() or p.is_symlink() for p in built.iterdir()):
+    if any(not p.is_file() or p.is_symlink() for p in built_files):
         raise ValueError('Build artifacts must be regular files')
     for mod in changed:
         newname = installer_name(mod, result['versions'][mod])

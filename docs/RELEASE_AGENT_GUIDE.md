@@ -52,7 +52,9 @@ workflow version: it could run a different CI harness against newer source.
    Latest already contains a strictly newer descendant commit. Divergence or
    history rewrites fail closed.
 4. Diff **all** source changes since the last published tag, not just the last
-   push's changed-file list or individual PR. Select each affected mod using
+   push's changed-file list or individual PR. Disable Git rename detection so
+   a cross-mod move selects both the removed source and new destination.
+   Select each affected mod using
    the registry. A previously failed build is therefore retried automatically
    by a later accepted merge affecting the same source lineage.
 5. Allocate independent SemVer for each changed mod: maximum of its reviewed
@@ -87,11 +89,13 @@ contains one ZIP per registered mod, even when only one mod changed.
 | Merge A, then merge B 5 minutes later | A can publish A1+B0, followed by B producing A1+B1. No unchanged mod is rebuilt in the second run. |
 | B's event starts before older A's event | B diffs from the last published commit and builds all not-yet-published A and B changes. A later skips as superseded. |
 | One commit edits A+B | Two independent matrix builds; exactly one complete Release. |
+| File moves from A's bundled assets into B | Treat both removal and addition as build changes; rebuild both affected mods. |
 | A1 and A2 arrive rapidly | Serial planning makes A2 increment after A1 or includes both in one build. An older SHA never makes Latest roll backward. |
 | A's build fails, then a B merge arrives | No partial Release for A; B's cumulative diff selects both modules and either publishes both or fails. |
 | One changed mod fails in a two-mod run | Publish job does not start; successful artifact cannot be published alone. |
 | Unrelated docs or CI-only change | No new Release unless this is the one-time migration from old tag namespace. |
 | No module binaries changed but WoT client folder changes | Repack verified installers for the new target, preserving binary bytes; explicitly warn that compatibility is untested. |
+| Migration or retarget requires no build artifacts | Allow an absent internal `built/` directory, but still require an exact empty build set and verify all carried ZIPs. |
 | Two WoT client updates without an intervening merge | Produce two distinct global release tags, both on the same source commit, and never mutate the first immutable Release. |
 | Re-run of a published source commit | Plan is a no-op; immutable Releases and tags are not overwritten. |
 | Release draft interrupted after upload | Fail closed. Inspect manually; do not delete or finish it automatically. A rerun cannot mutate an immutable published Release. |
