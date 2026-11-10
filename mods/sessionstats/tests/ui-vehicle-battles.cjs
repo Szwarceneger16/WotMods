@@ -113,7 +113,19 @@ module.exports=async ({browser,nativeHost,check})=>{
           await targetCard.locator('.ss-battle-target-outline').count()===1 && await page.locator('.ss-battle-target-outline').count()===1);
         await targetCard.evaluate(card=>{window.__dismissedTarget=card;window.__targetDismissPayload=model.payload;});
         await targetCard.focus();await page.locator('#ss-close').focus();
-        check('Keyboard focus leaving the card removes its painted outline without rendering at'+(scale*100)+'%',
+        await targetCard.evaluate(card=>{
+          const root=document.getElementById('grz-session-stats');
+          card.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:root}));
+          card.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:null}));
+          for(const node of [document.body,document.documentElement,root])node.dispatchEvent(new FocusEvent('focusin',{bubbles:true,relatedTarget:null}));
+          window.dispatchEvent(new Event('blur'));
+        });await frames(page);
+        check('Native focus/blur events after a completed vehicle jump preserve its visible frame at'+(scale*100)+'%',
+          await targetCard.evaluate(card=>card===__dismissedTarget && model.payload===__targetDismissPayload &&
+            card.classList.contains('ss-battle-target') && card.querySelectorAll('.ss-battle-target-outline').length===1 &&
+            getComputedStyle(card).borderTopColor==='rgb(231, 162, 59)'));
+        await page.locator('.ss-game-mode').click();await frames(page);
+        check('An explicit outside click still removes the selected vehicle battle frame at'+(scale*100)+'%',
           await targetCard.evaluate(card=>card===__dismissedTarget && model.payload===__targetDismissPayload &&
             !card.classList.contains('ss-battle-target') && card.querySelector('.ss-battle-target-outline')===null) &&
           await page.locator('.ss-battle-target-outline').count()===0);

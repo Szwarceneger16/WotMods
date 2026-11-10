@@ -533,9 +533,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-map-battles-page, .ss-map-page-status { display:block; flex:1 1 80rem; min-width:0; margin:0 4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:16rem; text-align:center; }
 .ss-map-battles .ss-empty { margin:0; padding:6rem; font-size:12rem; line-height:18rem; }
 .ss-map-empty { margin:0; padding:6rem; color:{{colors.period_text}}; font-size:12rem; line-height:18rem; }
-/* Keep the target treatment in an owned overlay: fading it must never dim
-   the battle's text, table values or timeline connectors. */
-.ss-battle-target { outline:none; }
+/* The card's ordinary border is the native-safe selection baseline. Preserve
+   its width/layout; optional overlay effects never control visibility. */
+.ss-group.ss-battle-target { outline:none; border-color:{{colors.session_tab_marker_background}}; }
 .ss-battle-target-outline { display:block; position:absolute; z-index:3; top:-3rem; right:-3rem; bottom:-3rem; left:-3rem; border:3rem solid {{colors.session_tab_marker_background}}; border-radius:{{radii.group_card}}rem; box-shadow:0 0 9rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; pointer-events:none; }
 .ss-target-pulsing .ss-battle-target-outline { animation:ss-battle-target-pulse 1s ease-in-out 5; }
 .ss-target-muted .ss-battle-target-outline { opacity:{{opacity.target_dimmed}}; }

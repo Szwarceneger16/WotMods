@@ -608,8 +608,11 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
   await runFeatureSuite('./ui-pagination.cjs',browser);
+  await runFeatureSuite('./ui-bidirectional-pages.cjs',browser);
+  await runFeatureSuite('./ui-feed-anchor.cjs',browser);
   await runFeatureSuite('./ui-outcomes.cjs',browser);
   await runFeatureSuite('./ui-loading.cjs',browser);
+  await runFeatureSuite('./ui-empty-state.cjs',browser);
   await runFeatureSuite('./ui-notices.cjs',browser);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>

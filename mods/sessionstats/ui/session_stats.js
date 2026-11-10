@@ -1337,40 +1337,11 @@
         });
         if (!target || !target.contains(event.target)) { clearBattleTarget(); }
     }
-    function confirmTargetFocus(card) {
-        var sequence = state.targetSequence;
-        function confirm() {
-            if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle ||
-                    state.rendering || state.targetFocusTransfer || !root.contains(card)) { return; }
-            // Early paint precedes native focus while card geometry mounts.
-            // Explicit outside controls/clicks still dismiss synchronously.
-            if (state.battleJump && state.battleJump.id === state.highlightedBattle.id &&
-                    sameContext(state.battleJump.context) && Date.now() < state.battleJump.deadline) { return; }
-            if (!card.contains(document.activeElement)) { clearBattleTarget(); }
-        }
-        if (typeof window.requestAnimationFrame === 'function') {
-            window.requestAnimationFrame(function () { window.requestAnimationFrame(confirm); });
-        } else { window.setTimeout(confirm, 0); }
-    }
-    function targetFocusOut(event) {
-        if (!state.highlightedBattle || state.rendering || state.targetFocusTransfer) { return; }
-        var card = event.target;
-        while (card && card !== root && !card.classList.contains('ss-battle-target')) { card = card.parentNode; }
-        if (!card || card === root) { return; }
-        if (!event.relatedTarget) { confirmTargetFocus(card); }
-        else if (!card.contains(event.relatedTarget)) { clearBattleTarget(); }
-    }
-    function targetFocusIn(event) {
-        if (state.rendering || state.targetFocusTransfer) { return; }
-        if (state.highlightedBattle && (event.target === document.body || event.target === document.documentElement || event.target === root)) {
-            var card = root.querySelector('.ss-battle-target');
-            if (card) { confirmTargetFocus(card); }
-        } else { targetClick(event); }
-    }
+    // Selection belongs to the navigation result, not DOM/native focus.
+    // Gameface can publish null/body/root focus, another control's focus or
+    // window blur while mounting/reparenting the battle. Only an explicit
+    // outside click or a changed result context dismisses its visible frame.
     document.addEventListener('click', targetClick, true);
-    root.addEventListener('focusout', targetFocusOut);
-    root.addEventListener('focusin', targetFocusIn);
-    window.addEventListener('blur', clearBattleTarget);
     function cancelBattleNavigation() {
         state.pendingBattle = null; state.battleJump = null;
         var timer = state.battleJumpTimer; state.battleJumpTimer = null; cancelUITimer(timer);
@@ -1387,8 +1358,19 @@
         if (pending && !sameContext(pending.context)) { cancelBattleNavigation(); return; }
         if (!pending || !focus || focus.request_id !== pending.request_id || String(focus.id) !== pending.id) { return; }
         cancelBattleNavigation();
+        clearBattleTarget();
         state.group = 'battles'; state.loadedCount = 40;
         state.feedForceStart = scope.pagination && scope.pagination.battles ? scope.pagination.battles.page : 0;
+        // Own the selection as soon as its native reply is accepted. Cards
+        // paint it during construction, before any layout/focus retry can
+        // stall or expire; only scrolling depends on measurable geometry.
+        state.highlightedBattle = {id:pending.id, context:pending.context, until:Date.now() + 5000};
+        var sequence = ++state.targetSequence;
+        state.targetTimer = window.setTimeout(function () {
+            if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle) { return; }
+            state.targetTimer = null; state.highlightedBattle.until = 0;
+            (state.groupCards || []).forEach(paintBattleTarget);
+        }, 5000);
         state.battleJump = {id:pending.id, context:pending.context, attempts:0, deadline:Date.now() + 2000};
     }
     function finishBattleJump() {
@@ -1399,7 +1381,7 @@
         if (Date.now() >= jump.deadline || jump.attempts >= 40) {
             cancelBattleNavigation(); return;
         }
-        if (jump.targetPainted && (!state.highlightedBattle || state.highlightedBattle.id !== jump.id)) {
+        if (!state.highlightedBattle || state.highlightedBattle.id !== jump.id) {
             cancelBattleNavigation(); return;
         }
         if (state.cardFlowQueued) { return; }
@@ -1408,20 +1390,6 @@
             if (card.getAttribute('data-group-id') === jump.id) { target = card; return true; }
             return false;
         });
-        // Publish the owned frame before native geometry is ready. Delayed
-        // measurements must postpone scrolling, not hide the selected battle.
-        if (target && !jump.targetPainted) {
-            jump.targetPainted = true;
-            clearBattleTarget();
-            state.highlightedBattle = {id:jump.id, context:jump.context, until:Date.now() + 5000};
-            paintBattleTarget(target);
-            var sequence = ++state.targetSequence;
-            state.targetTimer = window.setTimeout(function () {
-                if (state.destroyed || sequence !== state.targetSequence || !state.highlightedBattle) { return; }
-                state.targetTimer = null; state.highlightedBattle.until = 0;
-                (state.groupCards || []).forEach(paintBattleTarget);
-            }, 5000);
-        }
         var scroll = nodes.scroll, box = target && target.getBoundingClientRect(), container = scroll.getBoundingClientRect();
         function validRect(rect) {
             return rect && hasNumber(rect.top) && hasNumber(rect.width) && hasNumber(rect.height) && rect.width > 1 && rect.height > 1;
@@ -1679,7 +1647,7 @@
                     arrangeCardLanes(desired, page);
                 }
             });
-            queueCardFlow(); finishBattleJump(); finishPageJump(); updatePinnedFilters();
+            queueCardFlow(); finishFeedAnchor(); finishBattleJump(); finishPageJump(); updatePinnedFilters();
         }
         if (typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(function () { window.requestAnimationFrame(settle); });
@@ -1754,7 +1722,55 @@
     function retireFeed() {
         var feed = state.feed;
         state.feed = null; state.pageJump = null;
+        if (feed) { feed.prependAnchor = null; }
         if (feed && feed.pending) { cancelUITimer(feed.pending.timer); }
+    }
+    function captureFeedAnchor(feed) {
+        if (feed.prependAnchor && (Date.now() >= feed.prependAnchor.deadline || feed.prependAnchor.attempts >= 40)) { feed.prependAnchor = null; }
+        if (state.feed !== feed || state.renderedFeed !== feed || feed.prependAnchor || feed.topRequested ||
+                state.pageJump || state.battleJump || !state.cardPages || !state.cardPages.length) { return; }
+        var section = state.cardPages[0].section, box = section.getBoundingClientRect();
+        var viewport = nodes.scroll.getBoundingClientRect(), rawTop = nodes.scroll.scrollTop;
+        if (!(box.height > 1) || !(box.width > 1)) { return; }
+        feed.prependAnchor = {section:section, position:box.top - viewport.top + rawTop,
+            scroll:state.scrollTarget === null ? rawTop : state.scrollTarget, remaining:3, attempts:0, deadline:Date.now() + 2000};
+    }
+    function finishFeedAnchor(measured) {
+        var feed = state.feed, anchor = feed && feed.prependAnchor;
+        if (!anchor) { return; }
+        if (state.destroyed || state.renderedFeed !== feed || feed.topRequested || state.pageJump || state.battleJump ||
+                !nodes.groups.contains(anchor.section)) { feed.prependAnchor = null; return; }
+        if (Date.now() >= anchor.deadline || anchor.attempts >= 40) { feed.prependAnchor = null; return; }
+        var box = anchor.section.getBoundingClientRect(), viewport = nodes.scroll.getBoundingClientRect();
+        var valid = box.height > 1 && box.width > 1, beforeAnchor = true;
+        (state.cardPages || []).forEach(function (page) {
+            if (page.section === anchor.section) { beforeAnchor = false; }
+            if (!beforeAnchor) { return; }
+            page.cards.forEach(function (card) {
+                var rect = card.getBoundingClientRect();
+                if (!(rect.height > 1) || !(rect.width > 1)) { valid = false; }
+            });
+        });
+        if (valid) {
+            state.scrollTarget = Math.max(0, anchor.scroll + box.top - viewport.top + nodes.scroll.scrollTop - anchor.position);
+            nodes.scroll.scrollTop = state.scrollTarget;
+        }
+        // Native page/column heights can settle after the insertion frame.
+        // A newer user intent clears this anchor before moving the viewport.
+        if (measured) {
+            anchor.attempts += 1;
+            if ((valid && --anchor.remaining <= 0) || anchor.attempts >= 40) { feed.prependAnchor = null; }
+            else { queueResize(); }
+        }
+    }
+    function revealFeedTop(feed) {
+        feed.prependAnchor = null; feed.topRequested = false; feed.navigationPage = null;
+        if (feed.start !== 0) {
+            // A direct jump need not download every intervening page. Keep
+            // their cache entries, but render a contiguous window at page one.
+            feed.start = 0; feed.last = 0; feed.current = 0; feed.version += 1;
+        }
+        state.pageJump = null; resetViewScroll();
     }
     function pageBoundary(feed, index, loading) {
         var section = element('div', 'ss-continuous-page');
@@ -1771,10 +1787,12 @@
     }
     function showFeedPending(feed) {
         if (state.feed !== feed) { return; }
+        var prior = nodes.groups.querySelector('.ss-page-pending');
+        var index = feed.pending ? feed.pending.page : feed.error;
+        if ((index !== null && index < feed.start) || (prior && Number(prior.getAttribute('data-page-index')) < feed.start)) { captureFeedAnchor(feed); }
         var old = nodes.groups.querySelector('.ss-page-pending');
         if (old && old.parentNode) { old.parentNode.removeChild(old); }
-        if (!feed.pending && feed.error === null) { return; }
-        var index = feed.pending ? feed.pending.page : feed.error;
+        if (!feed.pending && feed.error === null) { finishFeedAnchor(); return; }
         var section = pageBoundary(feed, index, !!feed.pending);
         section.className += ' ss-page-pending';
         if (feed.error !== null && !feed.pending) {
@@ -1785,9 +1803,18 @@
         }
         if (index < feed.start) { nodes.groups.insertBefore(section, nodes.groups.firstChild); }
         else { append(nodes.groups, section); }
+        finishFeedAnchor();
+        if (feed.prependAnchor) { queueResize(); }
     }
     function requestFeedPage(feed, index, navigate) {
         if (state.destroyed || state.feed !== feed || feed.pending || index < 0 || index >= feed.pages) { return; }
+        if (Object.prototype.hasOwnProperty.call(feed.cache, index) && index >= feed.start - 1 && index <= feed.last + 1) {
+            if (index < feed.start && !navigate) { captureFeedAnchor(feed); }
+            feed.start = Math.min(feed.start, index); feed.last = Math.max(feed.last, index);
+            feed.error = null;
+            if (navigate) { state.pageJump = {feed:feed, page:index}; }
+            render(); return;
+        }
         var request = 'page-' + Date.now().toString(36) + '-' + (++state.feedSequence);
         var pending = {page:index, id:request, navigate:!!navigate, timer:null};
         feed.pending = pending; feed.error = null;
@@ -1822,9 +1849,11 @@
             var start = state.feedForceStart !== null ? state.feedForceStart : feed && feed.collectionKey === collectionKey ? feed.start : meta.page;
             start = Math.max(0, Math.min(start, meta.pages - 1));
             var count = !state.battleJump && old ? Math.max(1, old.last - old.start + 1) : 1;
+            var topRequested = feed && feed.collectionKey === collectionKey && feed.topRequested;
             feed = {key:key, collectionKey:collectionKey, contextKey:feedContextIdentity(), revision:revision, context:viewContext(), group:state.group, cache:{}, signatures:{}, pending:null,
                 error:null, start:start, last:Math.min(meta.pages - 1, start + count - 1), current:start,
-                pages:meta.pages, total:meta.total, size:meta.page_size || 40, version:0, navigationPage:null};
+                pages:meta.pages, total:meta.total, size:meta.page_size || 40, version:0, navigationPage:null,
+                topRequested:!!topRequested, prependAnchor:null};
             if (hasNumber(navigation)) {
                 feed.navigationPage = Math.max(0, Math.min(navigation, meta.pages - 1));
                 feed.start = Math.min(feed.start, feed.navigationPage); feed.last = Math.max(feed.last, feed.navigationPage);
@@ -1840,9 +1869,14 @@
             if (Object.prototype.hasOwnProperty.call(feed.signatures, meta.page) && feed.signatures[meta.page] !== signature) { feed.version += 1; }
             feed.signatures[meta.page] = signature; feed.cache[meta.page] = rows.slice(0);
             if (pending) {
+                if (meta.page < feed.start && !pending.navigate && !feed.topRequested) { captureFeedAnchor(feed); }
                 cancelUITimer(pending.timer);
                 feed.pending = null; feed.error = null;
-                feed.start = Math.min(feed.start, meta.page); feed.last = Math.max(feed.last, meta.page);
+                // A cancelled direct Top request may still fill its cache;
+                // it must not splice a gap into the user's current window.
+                if (meta.page >= feed.start - 1 && meta.page <= feed.last + 1) {
+                    feed.start = Math.min(feed.start, meta.page); feed.last = Math.max(feed.last, meta.page);
+                }
                 if (pending.navigate) { feed.navigationPage = meta.page; }
             }
         }
@@ -1858,7 +1892,9 @@
                 if (changed) { feed.signatures[page] = JSON.stringify(feed.cache[page]); feed.version += 1; }
             });
         }
-        if (!feed.pending && feed.error === null) {
+        if (feed.topRequested && Object.prototype.hasOwnProperty.call(feed.cache, 0)) { revealFeedTop(feed); }
+        if (!feed.pending && feed.error === null && feed.topRequested) { requestFeedPage(feed, 0, false); }
+        if (!feed.pending && feed.error === null && !feed.topRequested) {
             for (var index = feed.start; index <= feed.last; index += 1) {
                 if (!Object.prototype.hasOwnProperty.call(feed.cache, index)) { requestFeedPage(feed, index, false); break; }
             }
@@ -1948,10 +1984,14 @@
         }
         state.cardColumns = state.cardPages[0] && state.cardPages[0].columns;
         state.cardLanes = state.cardPages[0] && state.cardPages[0].lanes;
-        if (!state.groupCards.length && complete) {
-            append(state.cardPages[0] ? state.cardPages[0].lanes[0] : nodes.groups, element('p', 'ss-empty', t('groups.empty')));
+        var emptyMarkers = nodes.groups.querySelectorAll('.ss-groups-empty');
+        for (var emptyIndex = 0; emptyIndex < emptyMarkers.length; emptyIndex += 1) {
+            if (emptyMarkers[emptyIndex].parentNode) { emptyMarkers[emptyIndex].parentNode.removeChild(emptyMarkers[emptyIndex]); }
         }
-        layoutBattleCards(); queueResize();
+        if (!state.groupCards.length && complete) {
+            append(state.cardPages[0] ? state.cardPages[0].lanes[0] : nodes.groups, element('p', 'ss-empty ss-groups-empty', t('groups.empty')));
+        }
+        layoutBattleCards(); finishFeedAnchor(); queueResize();
     }
     function pinnedFilterHeight() {
         return nodes['filter-panel'] ? nodes['filter-panel'].getBoundingClientRect().height : 0;
@@ -2023,14 +2063,22 @@
         nodes.scroll.scrollTop = state.scrollTarget; updatePinnedFilters();
         queueResize();
     }
-    function loadNearBottom() {
+    function loadNearEdges() {
+        if (state.destroyed) { return; }
         updatePinnedFilters();
-        var remaining = nodes.scroll.scrollHeight - nodes.scroll.scrollTop - nodes.scroll.clientHeight;
-        if (remaining > 200 * state.nativeScale) { return; }
         if (state.renderedFeed && state.feed === state.renderedFeed) {
             var feed = state.feed;
-            if (!feed.pending && feed.error === null && feed.last + 1 < feed.pages) { requestFeedPage(feed, feed.last + 1, false); }
-        } else if (!state.feed && state.renderedCount < state.list.length) {
+            if (feed.pending || feed.error !== null || feed.topRequested || state.pageJump || state.battleJump) { return; }
+            var first = state.cardPages && state.cardPages[0], viewport = nodes.scroll.getBoundingClientRect();
+            var firstTop = first && first.section.getBoundingClientRect().top;
+            var threshold = 200 * state.nativeScale;
+            if (feed.start > 0 && first && firstTop >= viewport.top + pinnedFilterHeight() - threshold && firstTop <= viewport.bottom + threshold) {
+                requestFeedPage(feed, feed.start - 1, false); return;
+            }
+            var remaining = nodes.scroll.scrollHeight - nodes.scroll.scrollTop - nodes.scroll.clientHeight;
+            if (remaining <= threshold && feed.last + 1 < feed.pages) { requestFeedPage(feed, feed.last + 1, false); }
+        } else if (!state.feed && state.renderedCount < state.list.length &&
+                nodes.scroll.scrollHeight - nodes.scroll.scrollTop - nodes.scroll.clientHeight <= 200 * state.nativeScale) {
             appendGroupBatch(state.renderedCount + 40, state.cardPages[0]);
         }
     }
@@ -2085,7 +2133,7 @@
         nodes.scroll.scrollTop = Math.max(0, Math.min(last, current + step));
         /* Some client revisions deliver programmatic scroll events later.
            Appending near the end must not depend on another wheel notch. */
-        loadNearBottom();
+        loadNearEdges();
     }
     function setStatus(message) { nodes.status.textContent = message; }
     function resetViewScroll() {
@@ -2104,6 +2152,7 @@
         cancelBattleNavigation();
         state.pageJump = null;
         if (state.feed) { state.feed.navigationPage = null; }
+        if (state.feed) { state.feed.topRequested = false; state.feed.prependAnchor = null; }
         if (state.feed && state.feed.pending) { state.feed.pending.navigate = false; }
         // Native wheel input consumes the pending logical offset itself before
         // cancelling restoration; its DOM getter can still expose an old frame.
@@ -2438,14 +2487,14 @@
         closeSelect(false);
         if (!state.payload || !state.payload.scopes[scope]) { return; }
         cancelBattleNavigation();
-        state.orderIntent = null; if (state.scope !== scope) { state.feedForceStart = 0; }
+        state.orderIntent = null; if (state.scope !== scope) { clearBattleTarget(); state.feedForceStart = 0; }
         state.scope = scope; state.loadedCount = 40;
         showReset(false); render();
     }
     function switchGroup(group) {
         closeSelect(false);
         cancelBattleNavigation();
-        state.orderIntent = null; if (state.group !== group) { state.feedForceStart = 0; }
+        state.orderIntent = null; if (state.group !== group) { clearBattleTarget(); state.feedForceStart = 0; }
         if (state.group !== group) { state.loadedCount = 40; }
         state.group = group; render();
     }
@@ -2455,7 +2504,7 @@
         if (!feed || state.feed !== feed || feed.pending) { return; }
         var page = feed.current + direction;
         if (page < 0 || page >= feed.pages) { return; }
-        cancelBattleNavigation();
+        cancelBattleNavigation(); clearBattleTarget(); feed.prependAnchor = null; feed.topRequested = false;
         if (Object.prototype.hasOwnProperty.call(feed.cache, page)) {
             state.pageJump = {feed:feed, page:page};
             if (page < feed.start || page > feed.last) {
@@ -2466,11 +2515,18 @@
     document.getElementById('ss-page-previous').onclick = function () { changePage(-1); };
     document.getElementById('ss-page-next').onclick = function () { changePage(1); };
     if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {
-        cancelBattleNavigation(); state.pageJump = null;
+        cancelBattleNavigation(); clearBattleTarget(); state.pageJump = null;
         if (state.feed) {
+            var feed = state.feed; feed.prependAnchor = null;
             // Keep the requested data, but let Top supersede its old destination.
-            state.feed.navigationPage = null; state.feed.errorNavigate = false;
-            if (state.feed.pending) { state.feed.pending.navigate = false; }
+            feed.navigationPage = null; feed.errorNavigate = false;
+            if (feed.pending) { feed.pending.navigate = false; }
+            if (feed.start > 0) {
+                feed.topRequested = true; feed.error = null;
+                if (feed.pending && feed.pending.page !== 0) { cancelUITimer(feed.pending.timer); feed.pending = null; }
+                if (Object.prototype.hasOwnProperty.call(feed.cache, 0)) { revealFeedTop(feed); render(); }
+                else if (!feed.pending) { requestFeedPage(feed, 0, false); }
+            }
         }
         resetViewScroll(); updatePinnedFilters();
         queueResize();
@@ -2510,7 +2566,7 @@
                 scope:state.scope, account_key:state.payload.account_key
             })) { showReset(false); }
     };
-    nodes.scroll.addEventListener('scroll', loadNearBottom);
+    nodes.scroll.addEventListener('scroll', loadNearEdges);
     root.addEventListener('wheel', onNativeWheel, false);
     nodes.titlebar.addEventListener('mousedown', beginNativeDrag);
     document.addEventListener('mouseup', endNativeDrag);
@@ -2929,6 +2985,7 @@
                 // Native flow/clamping may settle after this measurement.
                 queueResize();
             }
+            finishFeedAnchor(true);
             restoreViewScroll();
             finishBattleJump();
             finishPageJump();
@@ -3063,8 +3120,6 @@
         clearBattleTarget(); retireFeed(); state.renderedFeed = null;
         nodes.groups.style.minHeight = ''; state.groupMinHeight = false;
         document.removeEventListener('click', targetClick, true);
-        root.removeEventListener('focusout', targetFocusOut);
-        root.removeEventListener('focusin', targetFocusIn);
         if (nodes['scroll-top']) { nodes['scroll-top'].onclick = null; }
         resetWindowSettings();
         if (nodes.maximize) { nodes.maximize.onclick = null; }
@@ -3086,11 +3141,11 @@
         root.removeEventListener('mousedown', pressHelp);
         root.removeEventListener('click', clickHelp);
         nodes.scroll.removeEventListener('scroll', hideHelp);
+        nodes.scroll.removeEventListener('scroll', loadNearEdges);
         nodes.scroll.removeEventListener('wheel', onScrollIntent, true);
         nodes.scroll.removeEventListener('mousedown', onScrollIntent, true);
         nodes.scroll.removeEventListener('keydown', onScrollIntent, true);
         window.removeEventListener('blur', hideHelp);
-        window.removeEventListener('blur', clearBattleTarget);
         window.removeEventListener('resize', hideHelp);
         closeSelect(false);
         document.removeEventListener('mousedown',outsideSelect);

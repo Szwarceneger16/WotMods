@@ -219,16 +219,21 @@ still reports period totals.
 
 ### Continuous result pages
 
-Scrolling near the loaded end appends the next 40-result page beneath a dashed,
-localized page-number separator. A spinner marks its loading boundary; failed
-requests offer Retry. Previous/Next scroll to an already loaded page or fetch
-the adjacent page. The native double-chevron button returns to the full summary.
+Scrolling near either loaded edge fetches the adjacent 40-result page with a
+dashed, localized page-number separator. Earlier pages are inserted above the
+current cards while preserving their visible position. A spinner marks its
+loading boundary; failed requests offer Retry. Previous/Next scroll to an already
+loaded page or fetch the adjacent page. The native double-chevron button returns
+to the full summary and page one of the selected result order, fetching it when
+navigation initially opened a later page.
 The grouping and sorting bar pins inside the scroll viewport. Filter changes
 retain the current pixel offset, rebuilding the loaded window atomically for
 a new ordering or index revision. New account histories start at the top.
 
 Map/vehicle history pagers update their fixed-height ten-row viewport in place,
 including cards on an earlier loaded global page. Battle navigation pulses its
-outline for five seconds, then leaves it 30% transparent until focus leaves the
-card or the user clicks elsewhere. Wider battle cards keep the bonus matrix
+overlay for five seconds, then leaves it 30% transparent. The card's solid orange
+border remains visible through native focus/blur events and any background
+transparency setting. An explicit outside click or a changed view/period clears
+the selection. Wider battle cards keep the bonus matrix
 at 308 logical pixels and assign the additional width to mission details.

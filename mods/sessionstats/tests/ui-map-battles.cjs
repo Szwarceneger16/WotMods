@@ -116,6 +116,39 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('The matching reply selects and focuses the exact sorted Battles page in '+language+': '+JSON.stringify(focus),
         await page.locator('#ss-group-battles').getAttribute('aria-pressed')==='true' && focus && focus.focused && focus.tabindex==='-1' &&
         focus.page===2 && focus.top>=focus.viewportTop-1 && focus.top<focus.viewportBottom-1);
+      await page.evaluate(target=>{
+        const card=document.querySelector('[data-group-id="'+target+'"]'),root=document.getElementById('grz-session-stats');
+        card.blur();card.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:null}));
+        for(const node of [document.body,document.documentElement,root,document.getElementById('ss-close')]) {
+          node.dispatchEvent(new FocusEvent('focusin',{bubbles:true,relatedTarget:null}));
+        }
+        document.getElementById('ss-close').focus();window.dispatchEvent(new Event('blur'));
+        const payload=JSON.parse(model.payload);payload.appearance=payload.appearance||{};
+        payload.appearance.window_settings={background_transparency:100,maximized:false,
+          restored_width:payload.window_size[0],restored_height:payload.window_size[1]};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },target);await frames(page);
+      const stableFrame=await page.evaluate(target=>{
+        const card=document.querySelector('[data-group-id="'+target+'"]'),outline=card.querySelector('.ss-battle-target-outline');
+        if(!outline)return null;
+        outline.style.display='none';outline.style.opacity='0';outline.style.animation='none';
+        const selected=card.getBoundingClientRect(),css=getComputedStyle(card);
+        const result={painted:card.classList.contains('ss-battle-target'),color:css.borderTopColor,
+          width:parseFloat(css.borderTopWidth),opacity:css.opacity,
+          transparency:document.getElementById('ss-background-transparency').getAttribute('aria-valuenow'),
+          backgroundOpacity:getComputedStyle(document.getElementById('ss-window-background')).opacity,
+          panelOpacity:getComputedStyle(document.getElementById('grz-session-stats')).opacity};
+        card.classList.remove('ss-battle-target');const ordinary=card.getBoundingClientRect();card.classList.add('ss-battle-target');
+        result.sameSize=selected.width===ordinary.width && selected.height===ordinary.height;
+        outline.style.display='';outline.style.opacity='';outline.style.animation='';return result;
+      },target);
+      check('A committed map selection survives native null/root/body/control focus and window blur, with an opaque ordinary border at100% background transparency even when overlay paint is absent in '+language+': '+JSON.stringify(stableFrame),
+        stableFrame && stableFrame.painted && stableFrame.color==='rgb(231, 162, 59)' && stableFrame.width===1 && stableFrame.opacity==='1' && stableFrame.sameSize &&
+        stableFrame.transparency==='100' && stableFrame.backgroundOpacity==='0' && stableFrame.panelOpacity==='1');
+      await page.evaluate(()=>{
+        const payload=JSON.parse(model.payload);payload.appearance.window_settings.background_transparency=0;
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      });await frames(page);
       await page.locator('#ss-group-maps').click();await frames(page);
       await focusReply(page,request);
       check('A consumed focus reply cannot pull a user back from Maps or close its details in '+language,
@@ -220,16 +253,47 @@ module.exports=async ({browser,nativeHost,check})=>{
       return card.classList.contains('ss-battle-target') && document.activeElement!==card &&
         [...__grzTimers].some(([,timer])=>timer.delay===50);
     },request.id));
-    await page.locator('#ss-close').focus();
+    await page.locator('.ss-game-mode').click();
     const dismissedAt=await page.evaluate(()=>{
+      window.__dismissedMapFocus=document.activeElement;
       const before=document.getElementById('ss-scroll').scrollTop;__restoreDismissRect();
       const retry=[...__grzTimers].find(([,timer])=>timer.delay===50);
       if(retry){__grzTimers.delete(retry[0]);retry[1].callback();}
       return before;
     });await frames(page);
     check('Late native geometry cannot refocus or scroll a battle after its frame was dismissed',await page.evaluate(before=>
-      document.activeElement===document.getElementById('ss-close') &&
+      document.activeElement===__dismissedMapFocus &&
       document.getElementById('ss-scroll').scrollTop===before && document.querySelectorAll('.ss-battle-target-outline').length===0,dismissedAt));
+    await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
+    await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
+    await page.evaluate(request=>{
+      const now=Date.now,started=now(),original=HTMLElement.prototype.getBoundingClientRect;
+      Date.now=()=>started;
+      window.__restoreFirstBattleLayout=()=>{Date.now=now;HTMLElement.prototype.getBoundingClientRect=original;};
+      HTMLElement.prototype.getBoundingClientRect=function(){
+        if(this.getAttribute('data-group-id')===request.id)return {top:0,left:0,right:0,bottom:0,width:0,height:0};
+        return original.call(this);
+      };
+      const payload=JSON.parse(model.payload),scope=payload.scopes.launch,sample=scope.battles[0];
+      scope.battles=Array.from({length:5},(_,index)=>({...sample,id:index===2?request.id:'synthetic-late-neighbor-'+index}));
+      scope.pagination.battles={page:2,pages:3,page_size:40,total:85};scope.battle_focus={id:request.id,request_id:request.request_id};
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      const card=document.querySelector('[data-group-id="'+request.id+'"]');
+      window.__paintedBeforeFirstLayout=card.classList.contains('ss-battle-target') && card.querySelectorAll('.ss-battle-target-outline').length===1;
+      // No queued animation/layout callback has run yet. The native surface
+      // may remain unmeasurable longer than the bounded scroll retry window.
+      Date.now=()=>started+3000;
+    },request);await frames(page);
+    check('The selected frame is constructed before first layout and survives a native layout delayed beyond the scroll deadline',await page.evaluate(target=>{
+      const card=document.querySelector('[data-group-id="'+target+'"]');
+      return __paintedBeforeFirstLayout && card.classList.contains('ss-battle-target') && document.activeElement!==card &&
+        getComputedStyle(card).borderTopColor==='rgb(231, 162, 59)' && card.querySelectorAll('.ss-battle-target-outline').length===1;
+    },request.id));
+    await page.evaluate(()=>{__restoreFirstBattleLayout();window.dispatchEvent(new Event('resize'));});await frames(page);
+    check('A late first native layout retains the selected frame without reviving expired focus',await page.evaluate(target=>{
+      const card=document.querySelector('[data-group-id="'+target+'"]');
+      return card.classList.contains('ss-battle-target') && document.activeElement!==card;
+    },request.id));
     for(const limit of ['deadline','attempts']) {
       await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
       await map.locator('.ss-map-battle-open').first().click();selected=await commands(page,'battle_select');request=selected[selected.length-1];
