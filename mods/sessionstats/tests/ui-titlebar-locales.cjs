@@ -19,6 +19,16 @@ module.exports=async ({browser,nativeHost,check})=>{
           payload.scopes.timeline.time_points=[];
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
         },{width,language,messages});await frames(page);
+        // Match the native background-color restriction already covered by
+        // footer QA. Chromium alone accepts this unsupported Gameface paint.
+        await page.evaluate(()=>{
+          for(const sheet of document.styleSheets)for(const rule of sheet.cssRules || []) {
+            if(!rule.style)continue;
+            for(const name of ['background','background-color']) {
+              if(rule.style.getPropertyValue(name).trim().toLowerCase()==='currentcolor')rule.style.removeProperty(name);
+            }
+          }
+        });
         const audit=await page.evaluate(scale=>{
           const box=node=>{const r=node.getBoundingClientRect();return {left:r.left/scale,right:r.right/scale,
             top:r.top/scale,bottom:r.bottom/scale,width:r.width/scale,height:r.height/scale};};
@@ -39,12 +49,80 @@ module.exports=async ({browser,nativeHost,check})=>{
         const label=language+' at'+width+'px/'+(scale*100)+'%';
         check('Title controls remain visible inside the floating header: '+label+': '+JSON.stringify(audit.overflow),
           audit.items.every(item=>item.width>0 && item.height>0) && audit.overflow.length===0);
+        const windowInk=await page.evaluate(()=>{
+          function bounds(frame,pseudo) {
+            const style=getComputedStyle(frame,pseudo);if(style.display==='none')return null;
+            const box=frame.getBoundingClientRect(),width=parseFloat(style.width),height=parseFloat(style.height),
+              left=box.left+parseFloat(style.left),top=box.top+parseFloat(style.top),
+              origin=style.transformOrigin.split(' ').map(parseFloat),matrix=new DOMMatrix(style.transform==='none'?undefined:style.transform);
+            const points=[[0,0],[width,0],[width,height],[0,height]].map(([x,y])=>{
+              const point=new DOMPoint(x-origin[0],y-origin[1]).matrixTransform(matrix);
+              return {x:left+origin[0]+point.x,y:top+origin[1]+point.y};
+            });
+            return {left:Math.min(...points.map(p=>p.x)),right:Math.max(...points.map(p=>p.x)),
+              top:Math.min(...points.map(p=>p.y)),bottom:Math.max(...points.map(p=>p.y)),
+              color:style.backgroundColor,strokeColor:style.borderTopColor,stroke:parseFloat(style.borderTopWidth)};
+          }
+          function center(pieces) {return {x:(Math.min(...pieces.map(p=>p.left))+Math.max(...pieces.map(p=>p.right)))/2,
+            y:(Math.min(...pieces.map(p=>p.top))+Math.max(...pieces.map(p=>p.bottom)))/2};}
+          function buttonCenter(button) {const r=button.getBoundingClientRect();return {x:(r.left+r.right)/2,y:(r.top+r.bottom)/2};}
+          const close=document.getElementById('ss-close'),label=close.querySelector('.ss-control-label'),toggle=document.getElementById('ss-maximize'),
+            symbol=toggle.querySelector('.ss-window-toggle-symbol'),pressed=toggle.getAttribute('aria-pressed'),states=[];
+          const closePieces=[':before',':after'].map(pseudo=>bounds(label,pseudo));
+          for(const state of ['false','true']) {toggle.setAttribute('aria-pressed',state);
+            const pieces=[':before',':after'].map(pseudo=>bounds(symbol,pseudo)).filter(Boolean);
+            states.push({state,pieces,center:center(pieces),button:buttonCenter(toggle)});}
+          toggle.setAttribute('aria-pressed',pressed);
+          return {close:{pieces:closePieces,center:center(closePieces),button:buttonCenter(close),
+            font:parseFloat(getComputedStyle(label).fontSize),color:getComputedStyle(close).color,decorative:label.getAttribute('aria-hidden')==='true'},
+            states,toggleColor:getComputedStyle(toggle).color};
+        });
+        const centered=ink=>Math.abs(ink.center.x-ink.button.x)<=0.5 && Math.abs(ink.center.y-ink.button.y)<=0.5;
+        check('Close, maximize and restore ink share the centered window-control row: '+label+': '+JSON.stringify(windowInk),
+          windowInk.close.decorative && windowInk.close.font===0 && centered(windowInk.close) && windowInk.close.pieces.every(piece=>piece.color===windowInk.close.color) &&
+          windowInk.states.every(state=>centered(state) && Math.abs(state.center.y-windowInk.close.center.y)<=0.5 &&
+            state.pieces.length===(state.state==='true'?2:1) && state.pieces.every(piece=>piece.stroke>=scale && piece.strokeColor===windowInk.toggleColor)));
+        if(language==='en') {
+          const close=page.locator('#ss-close');
+          const painted=()=>close.evaluate(button=>[':before',':after'].every(pseudo=>
+            getComputedStyle(button.querySelector('.ss-control-label'),pseudo).backgroundColor===getComputedStyle(button).color));
+          await close.hover();
+          check('Close hover strokes retain native-safe paint: '+label,await painted());
+          await page.mouse.move(0,0);await close.focus();
+          check('Close keyboard-focus strokes retain native-safe paint: '+label,await painted());
+          await close.evaluate(button=>button.blur());
+        }
         if(wide) {
           check('Wide title, point name, slider, language and window controls share one row: '+label+': '+JSON.stringify(audit.items),
             Math.min(...audit.items.map(item=>item.bottom))-Math.max(...audit.items.map(item=>item.top))>=15 && audit.bar.height<=51);
           check('Wide localized header text remains readable without clipping: '+label+': '+JSON.stringify(audit.clipped),audit.clipped.length===0);
         }
         await page.locator('#ss-group-battles').click();await frames(page);
+        if(language==='en') {
+          const beforeArrow=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
+          await page.locator('#ss-scroll').evaluate((node,scale)=>{
+            node.scrollTop=Math.min(node.scrollHeight-node.clientHeight,240*scale);node.dispatchEvent(new Event('scroll'));
+          },scale);await frames(page);
+          check('Top chevron paint is measured on its visible scrolled action: '+label,
+            await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)>60*scale && await page.locator('#ss-scroll-top').isVisible());
+          const arrow=await page.locator('.ss-scroll-top-icon').evaluate(icon=>({
+            image:getComputedStyle(icon).backgroundImage,
+            color:getComputedStyle(icon).color,
+            chevrons:[':before',':after'].map(pseudo=>{const style=getComputedStyle(icon,pseudo);
+              return {content:style.content,display:style.display,width:parseFloat(style.width),height:parseFloat(style.height),
+                top:parseFloat(style.top),left:style.borderLeftColor,topColor:style.borderTopColor,
+                stroke:parseFloat(style.borderTopWidth),transform:style.transform};})
+          }));
+          check('Both Top chevrons paint their orange strokes rather than a gray bitmap: '+label+': '+JSON.stringify(arrow),
+            arrow.image==='none' && arrow.color==='rgb(231, 162, 59)' &&
+            arrow.chevrons.every(piece=>piece.content==='""' && piece.display==='block' && piece.width>=12*scale &&
+              piece.height>=12*scale && piece.stroke>=3*scale && piece.left===arrow.color && piece.topColor===arrow.color && piece.transform!=='none') &&
+            arrow.chevrons[1].top-arrow.chevrons[0].top===10*scale);
+          await page.locator('#ss-scroll').evaluate((node,offset)=>{node.scrollTop=offset;node.dispatchEvent(new Event('scroll'));},beforeArrow);
+          await frames(page);
+          check('Measuring Top paint restores the titlebar fixture offset: '+label,
+            Math.abs(await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)-beforeArrow)<=1);
+        }
         const buttons=page.locator('.ss-more-button');
         for(let index=0;index<Math.min(2,await buttons.count());index++) {
           const button=buttons.nth(index);

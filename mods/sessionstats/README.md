@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.5.0 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.5.1 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -228,3 +228,24 @@ map cards. The selected battle keeps a visible orange frame across snapshot
 refreshes in the same period. Active net-credit sorting displays the exact
 per-battle Min/Average/Max value beside the vehicle metadata; the finance table
 still reports period totals.
+
+### Continuous result pages
+
+Scrolling near either loaded edge fetches the adjacent 40-result page with a
+dashed, localized page-number separator. Earlier pages are inserted above the
+current cards while preserving their visible position. A spinner marks its
+loading boundary; failed requests offer Retry. Previous/Next scroll to an already
+loaded page or fetch the adjacent page. The native double-chevron button returns
+to the full summary and page one of the selected result order, fetching it when
+navigation initially opened a later page.
+The grouping and sorting bar pins inside the scroll viewport. Filter changes
+retain the current pixel offset, rebuilding the loaded window atomically for
+a new ordering or index revision. New account histories start at the top.
+
+Map/vehicle history pagers update their fixed-height ten-row viewport in place,
+including cards on an earlier loaded global page. Battle navigation pulses its
+overlay for five seconds, then leaves it 30% transparent. The card's solid orange
+border remains visible through native focus/blur events and any background
+transparency setting. An explicit outside click or a changed view/period clears
+the selection. Wider battle cards keep the bonus matrix
+at 308 logical pixels and assign the additional width to mission details.

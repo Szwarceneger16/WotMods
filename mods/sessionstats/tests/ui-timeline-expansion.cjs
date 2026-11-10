@@ -11,9 +11,9 @@ module.exports=async function ({browser,nativeHost,check}) {
   const publish=fn=>page.evaluate(fn);
   async function layout() {
     return page.locator('#ss-groups').evaluate(groups=>{
-      const rect=node=>window.__realExpansionRect.call(node),container=groups.querySelector('.ss-card-columns'),
-        columnBox=rect(container),axis=columnBox.left+columnBox.width/2;
+      const rect=node=>window.__realExpansionRect.call(node);
       const cards=[...groups.querySelectorAll('.ss-group')].sort((a,b)=>Number(a.dataset.listIndex)-Number(b.dataset.listIndex)).map(node=>{
+        const columnBox=rect(node.closest('.ss-card-columns')),axis=columnBox.left+columnBox.width/2;
         const box=rect(node),style=getComputedStyle(node,':before'),right=node.parentNode.classList.contains('ss-card-column-right'),
           side=right ? 'right' : 'left',offset=parseFloat(right ? style.left : style.right),width=parseFloat(style.width),
           connection=right ? box.left+offset : box.right-offset;
@@ -32,7 +32,8 @@ module.exports=async function ({browser,nativeHost,check}) {
           modelViewport:payload.viewport,logicalPreference:payload.window_size,nativeSize:window.__nativeSize},
         owns:(groups.getAttribute('aria-owns') || '').split(/\s+/).filter(Boolean),
         lanes:[...groups.querySelectorAll('.ss-card-column')].map(lane=>[...lane.children].map(card=>Number(card.dataset.listIndex))),
-        expected:payload.scopes.timeline.battles.map(card=>String(card.id))};
+        expected:window.__expansionExpectedIds || payload.scopes.timeline.battles.map(card=>String(card.id)),
+        total:payload.scopes.timeline.pagination.battles ? payload.scopes.timeline.pagination.battles.total : payload.scopes.timeline.battles.length};
     });
   }
   async function verify(context,options={}) {
@@ -42,7 +43,7 @@ module.exports=async function ({browser,nativeHost,check}) {
       Math.min(card.right,other.right)-Math.max(card.left,other.left)<=1 ||
       Math.min(card.bottom,other.bottom)-Math.max(card.top,other.top)<=1));
     const states=cards.every(card=>!!card.expanded===opened.has(card.id) && !!card.visible===opened.has(card.id));
-    const order=cards.every((card,index)=>card.index===index && card.id===value.expected[index] && card.pos===index+1 && card.size===value.expected.length);
+    const order=cards.length<=value.expected.length && cards.every((card,index)=>card.index===index && card.id===value.expected[index] && card.pos===index+1 && card.size===value.total);
     const aria=value.owns.join('|')===cards.map(card=>card.elementId).join('|');
     const lanes=value.lanes.every(lane=>lane.every((index,position)=>!position || index>lane[position-1]));
     const connections=!value.two || cards.every(card=>card.connected);
@@ -88,6 +89,7 @@ module.exports=async function ({browser,nativeHost,check}) {
       timeline.ordering={battles:{metric:'off',statistic:'avg',direction:'desc',chronology:'newest'}};
       payload.scopes.launch=JSON.parse(JSON.stringify(timeline));payload.scopes.launch.period_id='synthetic-launch-period';
       window.__expansionOriginalRows=JSON.parse(JSON.stringify(timeline.battles));
+      window.__expansionExpectedIds=timeline.battles.map(card=>String(card.id));
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });
     await page.locator('#ss-scope-manual').click();await page.locator('#ss-group-battles').click();await settle();
@@ -142,30 +144,36 @@ module.exports=async function ({browser,nativeHost,check}) {
     await publish(()=>{
       const command=__grzCommands.filter(item=>item.action==='sort').pop(),payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
       scope.ordering.battles={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
-      scope.battles.reverse();model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      scope.battles.reverse();window.__expansionExpectedIds=scope.battles.map(card=>String(card.id));
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });await settle();await verify('native chronology order changes without losing open IDs');
-    await page.locator('#ss-page-next').click();
+    await page.locator('#ss-page-next').click();await settle();
     await publish(()=>{
       const payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
       window.__expansionPageZero=JSON.parse(JSON.stringify(scope.battles));
       scope.pagination.battles.page=1;scope.battles=scope.battles.map(card=>({...card,id:'other-page-'+card.id}));
+      const request=__grzCommands.filter(item=>item.action==='page').pop();scope.pagination.battles.request_id=request.request_id;
+      window.__expansionExpectedIds=__expansionPageZero.concat(scope.battles).map(card=>String(card.id));
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-    });await settle();await verify('different page IDs remain closed');
+    });await settle();await verify('appended page IDs remain closed while original open panels persist');
     await page.locator('#ss-page-previous').click();
     await publish(()=>{
       const payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
       scope.pagination.battles.page=0;scope.battles=__expansionPageZero;
+      delete scope.pagination.battles.request_id;
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });await settle();await verify('returning to a page restores each open battle');
     await publish(()=>{
       const payload=JSON.parse(model.payload);payload.account_key='another-synthetic-account';
+      window.__expansionExpectedIds=payload.scopes.timeline.battles.map(card=>String(card.id));
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });opened.clear();await settle();await verify('account switch clears all opened IDs');
 
     await publish(()=>{
       const payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
       scope.battles=Array.from({length:52},(_,index)=>({...__expansionOriginalRows[index%24],id:'append-'+String(index).padStart(2,'0'),started_at:1900000000-index}));
-      scope.pagination.battles={page:0,page_size:52,total:52,pages:1};
+      delete scope.pagination.battles;
+      window.__expansionExpectedIds=scope.battles.map(card=>String(card.id));
       scope.ordering.battles.chronology='newest';model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });await settle();
     check('Long expanded history still starts with one bounded batch',await page.locator('#ss-groups .ss-group').count()===40);

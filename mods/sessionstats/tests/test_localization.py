@@ -331,6 +331,22 @@ class LocalizationTests(unittest.TestCase):
             expected['battle_list']['items'][1]['map'] = self.catalog[language]['unknown.map']
             self.assertEqual(actual, expected, language)
 
+    def test_supplemental_offscreen_history_localizes_fallbacks_without_touching_identity(self):
+        snapshot = {'warnings': [], 'scopes': {'instance': {'battle_history': {
+            'kind': 'vehicles', 'id': '1', 'battle_list': {'items': [
+                {'id': 'installation-fixture', 'name': loc.ENGLISH['unknown.vehicle_id'].format(77),
+                 'map': loc.LEGACY_POLISH['unknown.map_id'].format(42), 'started_at': 100, 'wn8': None},
+                {'id': 'installation-known', 'name': 'Leopard 1', 'map': 'Malinówka', 'wn8': 0}],
+                'page': 2, 'pages': 3, 'total': 22, 'page_size': 10}}}}}
+        original = copy.deepcopy(snapshot)
+        for language in loc.SUPPORTED:
+            actual = loc.Localizer(language).snapshot(copy.deepcopy(snapshot))['scopes']['instance']['battle_history']
+            expected = copy.deepcopy(original['scopes']['instance']['battle_history'])
+            expected['battle_list']['items'][0]['name'] = self.catalog[language]['unknown.vehicle_id'].format(77)
+            expected['battle_list']['items'][0]['map'] = self.catalog[language]['unknown.map_id'].format(42)
+            self.assertEqual(actual, expected, language)
+        self.assertEqual(snapshot, original)
+
     def test_parameterized_legacy_warnings_keep_their_own_message_pattern(self):
         examples = (('runtime.backlog', (13,)), ('status.pending', (3,)),
                     ('health.notice', ('damage: missing', 'Fixture: read error')))

@@ -44,6 +44,14 @@ async function controlLayout(page) {
   }),captions);
 }
 
+async function settleScroll(page) {
+  // Fixture-written offsets must follow the render's owned restoration and
+  // its optional follow-up measurement; trusted user input has separate tests.
+  await page.evaluate(()=>new Promise(resolve=>{let remaining=4;
+    function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+  }));
+}
+
 async function battleCards(page) {
   return page.locator('#ss-groups .ss-group').evaluateAll(groups=>groups.map(group=>({
     id:group.getAttribute('data-group-id'),
@@ -296,8 +304,13 @@ async function runFeatureSuite(file,browser) {
   check('Received XP differs from base XP',before!==after && after.includes('Received XP'));
   await page.locator('#ss-group-maps').click();
   check('Map grouping contains all five maps',await page.locator('#ss-groups .ss-group').count()===5);
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=el.scrollHeight);
-  check('Mouse/scroll position can reach last group',await page.locator('#ss-scroll').evaluate(el=>el.scrollTop>0));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const scrollReach=await page.locator('#ss-scroll').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight,
+    lastBottom:document.querySelector('#ss-groups .ss-group:last-child').getBoundingClientRect().bottom,bottom:el.getBoundingClientRect().bottom}));
+  check('Mouse/scroll position can reach last group: '+JSON.stringify(scrollReach),
+    scrollReach.top>0 && Math.abs(scrollReach.top-scrollReach.max)<=1 && scrollReach.lastBottom<=scrollReach.bottom+1);
   await page.locator('#ss-scope-manual').click();
   check('Manual session contains previous launch too',(await kpis())[0]==='25');
   check('Changing scope keeps selected grouping',(await page.evaluate(()=>GRZSessionStats.getState())).group==='maps');
@@ -397,10 +410,16 @@ async function runFeatureSuite(file,browser) {
   await page.setViewportSize({width:744,height:730});
   await page.locator('#ss-group-vehicles').click();
   await page.locator('#ss-xp-base').click();
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=0);
+  await settleScroll(page);
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-final.png')});
   await page.locator('#ss-group-battles').click();
-  await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=document.getElementById('ss-group-tabs').offsetTop-el.offsetTop);
+  await settleScroll(page);
+  await page.locator('#ss-scroll').evaluate(el=>{const first=document.querySelector('#ss-groups .ss-group');
+    el.scrollTop+=first.getBoundingClientRect().top-el.getBoundingClientRect().top-document.getElementById('ss-filter-panel').getBoundingClientRect().height-8;
+  });
+  await settleScroll(page);
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-battles.png')});
   await page.locator('#ss-group-vehicles').click();
 
@@ -504,9 +523,11 @@ async function runFeatureSuite(file,browser) {
   await page.evaluate(p=>{
     const q=JSON.parse(JSON.stringify(p));const list=q.scopes.launch.battles;const long=[];
     for(let n=0;n<200;n++){const row=JSON.parse(JSON.stringify(list[n%list.length]));row.id='long-'+n;row.started_at=1800000000-n;long.push(row);}
-    q.scopes.launch.battles=long;GRZSessionStats.update(q);
+    q.scopes.launch.battles=long;if(q.scopes.launch.pagination)delete q.scopes.launch.pagination.battles;
+    GRZSessionStats.update(q);
   },fixtures.normal);
   check('Long battle history starts with a bounded batch',await page.locator('#ss-groups .ss-group').count()===40);
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));});
   await page.waitForFunction(()=>document.querySelectorAll('#ss-groups .ss-group').length>40);
   check('Scrolling appends more battles without a button',await page.locator('#ss-groups .ss-group').count()>40);
@@ -587,8 +608,11 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
   await runFeatureSuite('./ui-pagination.cjs',browser);
+  await runFeatureSuite('./ui-bidirectional-pages.cjs',browser);
+  await runFeatureSuite('./ui-feed-anchor.cjs',browser);
   await runFeatureSuite('./ui-outcomes.cjs',browser);
   await runFeatureSuite('./ui-loading.cjs',browser);
+  await runFeatureSuite('./ui-empty-state.cjs',browser);
   await runFeatureSuite('./ui-notices.cjs',browser);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
@@ -813,6 +837,9 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
+  await runFeatureSuite('./ui-history-inplace.cjs',browser);
+  await runFeatureSuite('./ui-detail-widths.cjs',browser);
+  await runFeatureSuite('./ui-version.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);

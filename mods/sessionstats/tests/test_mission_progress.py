@@ -126,6 +126,24 @@ class MissionProgressTests(unittest.TestCase):
             None, {}, {'battlesUniqueVehicles': {2: True}})}}, {})['missions']['fixture:quest']
         self.assertNotIn('objectives', row)
 
+    def test_awards_without_native_conditions_do_not_compare_reset_or_rebased_counters(self):
+        for before, after in ((4, 0), (4, 1), (0, 0), (0, 2)):
+            row = result_details({'questsProgress': {'fixture:quest': (
+                None, {'battlesCount': before, 'battlesUniqueVehicles': list(range(before)), 'bonusCount': 0},
+                {'battlesCount': after, 'battlesUniqueVehicles': list(range(after)), 'bonusCount': 1})}}, {})['missions']['fixture:quest']
+            self.assertEqual(row, {'status': 'completed', 'progress_state': 'unavailable'})
+
+    def test_nonaward_counter_decreases_remain_explicit_progress(self):
+        row = result_details({'questsProgress': {'fixture:quest': (
+            None, {'battlesCount': 4, 'battlesUniqueVehicles': [1, 2], 'bonusCount': 1},
+            {'battlesCount': 0, 'battlesUniqueVehicles': [], 'bonusCount': 1})}}, {})['missions']['fixture:quest']
+        self.assertEqual(row['status'], 'progress')
+        self.assertEqual(row['progress_state'], 'changed')
+        self.assertEqual([(item['key'], item['before'], item['after'], item['delta'])
+                          for item in row['objectives']],
+                         [('battlesCount', 4, 0, -4), ('battlesUniqueVehicles', 2, 0, -2)])
+        self.assertEqual((row['before'], row['after'], row['progress_kind']), (2, 0, 'vehicles'))
+
     def personal(self, current, config, values, completed=False):
         module_name = 'gui.server_events.personal_progress.storage'
 
@@ -243,6 +261,34 @@ class MissionProgressTests(unittest.TestCase):
         self.assertTrue(service.record_result(normalize_result(raw)))
         stored = service.snapshot()['scopes']['manual']['battles'][0]['details']['missions']['fixture:quest']
         self.assertEqual(stored['objectives'][0], dict(expected, after=3, delta=2))
+
+    def test_award_reconciliation_preserves_native_progress_and_can_enrich_unknown_progress(self):
+        for after, packed in ((0, (5, 5, 1, True)), (1, (1, 5, 1, False))):
+            raw = raw_result()
+            raw['personal'][1]['questsProgress'] = {'fixture:quest': (
+                'vehicle-group', {'battlesCount': 4, 'bonusCount': 0},
+                {'battlesCount': after, 'bonusCount': 1})}
+            def resolve(rows):
+                _common_objectives(self.quest(self.condition('battlesCount', 5, packed)), rows['fixture:quest'])
+            native = normalize_result(raw, mission_resolver=resolve)
+            fallback = normalize_result(raw)
+            expected = native['details']['missions']['fixture:quest']
+            self.assertEqual(expected['status'], 'completed')
+            self.assertEqual(expected['objectives'][0]['delta'], 1)
+            self.assertEqual(fallback['details']['missions']['fixture:quest'],
+                             {'status': 'completed', 'progress_state': 'unavailable'})
+            self.assertTrue(fallback['reconcile'])
+            for first, retry in ((native, fallback), (fallback, native)):
+                directory = tempfile.mkdtemp()
+                self.addCleanup(shutil.rmtree, directory)
+                clock = Clock(first['started_at'] - 10)
+                service = StatsService(directory, 'EU:7', 'first', EXPECTED, now=clock)
+                clock.value = first['ended_at'] + 1
+                self.assertTrue(service.record_result(first))
+                clock.value += 1
+                service.record_result(retry)
+                stored = service.snapshot()['scopes']['manual']['battles'][0]['details']['missions']['fixture:quest']
+                self.assertEqual(stored, expected)
 
     def test_objective_fields_enrich_without_revision_and_explicit_revision_can_replace_them(self):
         original = dict(key='battlesCount', unit='battles', before=1, after=2, delta=1,

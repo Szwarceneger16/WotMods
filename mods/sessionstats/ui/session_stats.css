@@ -11,7 +11,13 @@ body { color:#e5e2cb; font-family:Warhelios, Arial, sans-serif; font-size:14rem;
 .ss-control { display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:Warhelios, Arial, sans-serif; font-size:14rem; cursor:pointer; }
 .ss-control-label { display:block; flex-shrink:1; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:Warhelios, Arial, sans-serif; font-size:14rem; line-height:18rem; text-align:center; pointer-events:none; }
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
-.ss-close .ss-control-label { font-size:25rem; line-height:28rem; }
+/* Center actual strokes, not a font-dependent multiplication-sign baseline. */
+.ss-close .ss-control-label { position:absolute; left:50%; top:50%; width:14rem; height:14rem; margin:-7rem 0 0 -7rem; font-size:0; line-height:0; }
+/* Gameface rejects currentColor backgrounds; keep stroke paint explicit. */
+.ss-close .ss-control-label:before, .ss-close .ss-control-label:after { content:""; display:block; position:absolute; left:0; top:6rem; width:14rem; height:2rem; background:#bcb693; pointer-events:none; }
+.ss-close:hover .ss-control-label:before, .ss-close:hover .ss-control-label:after, .ss-close:focus .ss-control-label:before, .ss-close:focus .ss-control-label:after { background:#f5e3a5; }
+.ss-close .ss-control-label:before { transform:rotate(45deg); }
+.ss-close .ss-control-label:after { transform:rotate(-45deg); }
 button:disabled { opacity:0.45; }
 .ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid #646044; border-radius:8rem; }
 .ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:8rem; background:#111309; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem #88805c, inset 0 0 28rem #292819; pointer-events:none; }
@@ -29,20 +35,22 @@ button:disabled { opacity:0.45; }
 .ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:transparent; color:#bcb693; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:5rem; }
 .ss-close:hover, .ss-close:focus, .ss-window-toggle:hover, .ss-window-toggle:focus { color:#f5e3a5; background:#252614; }
 .ss-window-toggle { right:38rem; }
-.ss-window-toggle-symbol { display:block; position:relative; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
-.ss-window-toggle-symbol:before { content:""; display:none; position:absolute; left:-4rem; top:3rem; width:12rem; height:10rem; border:1rem solid currentColor; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol { left:2rem; top:-1rem; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; }
+.ss-window-toggle-symbol { display:block; position:absolute; left:50%; top:50%; width:16rem; height:14rem; margin:-7rem 0 0 -8rem; pointer-events:none; }
+.ss-window-toggle-symbol:before, .ss-window-toggle-symbol:after { content:""; display:block; box-sizing:border-box; position:absolute; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
+.ss-window-toggle-symbol:before { display:none; }
+.ss-window-toggle-symbol:after { left:2rem; top:2rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; left:0; top:4rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:after { left:4rem; top:0; }
 /* Caption and track share one compact frame, keeping the label next to its
    slider while preserving a single title row in wide windows. */
-.ss-background-control { display:flex; position:relative; align-items:center; justify-content:space-between; flex:0 1 auto; min-width:140rem; max-width:100%; height:30rem; margin:0 8rem 0 0; padding:0 5rem; border:1rem solid #555944; border-radius:5rem; background:#111309; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
+.ss-background-control { display:flex; position:relative; align-items:center; justify-content:space-between; flex:0 1 auto; min-width:146rem; max-width:100%; height:30rem; margin:0 8rem 0 0; padding:0 5rem; border:1rem solid #555944; border-radius:5rem; background:#111309; box-shadow:inset 0 1rem rgba(213,191,132,0.12); }
 .ss-background-caption { display:block; position:absolute; z-index:1; left:9rem; top:1rem; width:86rem; margin:0; color:#b3b69a; font-size:11rem; line-height:13rem; white-space:nowrap; pointer-events:none; }
 .ss-background-slider { display:block; position:relative; flex:0 0 94rem; width:94rem; min-width:94rem; height:28rem; padding:0 4rem; cursor:pointer; touch-action:none; }
 .ss-background-track { display:block; position:absolute; left:4rem; right:4rem; bottom:5rem; height:4rem; border-radius:5rem; background:#555944; box-shadow:inset 0 1rem rgba(213,191,132,0.12); pointer-events:none; }
 .ss-background-thumb { display:block; position:absolute; left:0; top:50%; width:8rem; height:12rem; margin:-6rem 0 0 -4rem; border:1rem solid #555944; border-radius:5rem; background:linear-gradient(#45483a, #2d3325); box-shadow:0 1rem 3rem #000; pointer-events:none; }
 .ss-background-slider:focus { outline:1rem solid #d3c79b; outline-offset:-1rem; }
 .ss-background-slider:hover .ss-background-thumb, .ss-background-slider:focus .ss-background-thumb { border-color:rgba(236,220,174,0.3); background:linear-gradient(#5b5b45, #3a412e); }
-.ss-background-value { display:block; flex:0 0 30rem; width:30rem; color:#b3b69a; font-size:11rem; line-height:14rem; text-align:right; }
+.ss-background-value { display:block; flex:0 0 38rem; width:38rem; color:#b3b69a; font-size:14rem; line-height:18rem; text-align:right; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
 .ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid #050601; border-radius:5rem; }
 .ss-scope { position:relative; flex:1 1 auto; min-width:0; width:auto; height:28rem; border:0; background:linear-gradient(#383a2c, #16190e 58%, #1c2014); color:#ada98b; padding:4rem 6rem; border-radius:5rem; box-shadow:inset 0 1rem #646149; }
@@ -136,6 +144,8 @@ button:disabled { opacity:0.45; }
 .ss-data-notices { padding:5rem 0 0; }
 .ss-data-notice { color:#d9bf8b; font-size:13rem; line-height:18rem; margin:2rem 0 0; }
 .ss-explainer { color:#b1b49a; font-size:12rem; margin-top:5rem; line-height:17rem; }
+.ss-filter-panel { position:relative; z-index:20; width:100%; }
+.ss-filter-panel.is-pinned { background:#111309; box-shadow:0 5rem 8rem #000, inset 0 -1rem #655431; }
 .ss-group-tabs { display:flex; min-height:30rem; border-top:1rem solid #393b24; border-bottom:1rem solid #655431; border-radius:5rem 5rem 0 0; }
 .ss-group-tab { width:25%; padding:4rem 3rem 6rem; min-height:30rem; border:0; border-radius:5rem 5rem 0 0; background:transparent; color:#afaa8b; font-size:14rem; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:#252614; color:#eaddb4; }
@@ -163,6 +173,7 @@ button:disabled { opacity:0.45; }
 .ss-empty { color:#b5b095; font-size:14rem; padding:16rem 4rem; margin:0; line-height:20rem; }
 .ss-footer { flex-shrink:0; display:flex; align-items:center; min-height:36rem; border-top:1rem solid #3b3c24; border-radius:0 0 7rem 7rem; padding:5rem 25rem 7rem 10rem; background:linear-gradient(#171b0d,#1f2213); box-shadow:inset 0 -2rem #050601; }
 .ss-status { display:block; flex:1; min-width:0; color:#a5a286; font-size:11rem; line-height:14rem; padding-right:8rem; }
+.ss-version { display:block; flex:0 0 auto; color:#a5a286; font-size:11rem; line-height:14rem; padding-right:8rem; white-space:nowrap; }
 .ss-button { flex-shrink:0; min-width:82rem; min-height:28rem; padding:4rem 10rem; font-size:12rem; border:1rem solid #555944; border-radius:5rem; color:#dfd4ae; background:linear-gradient(#45483a,#34392a 48%,#2d3325); box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 1rem 0 rgba(213,191,132,0.12), inset -1rem 0 rgba(213,191,132,0.12); text-shadow:0 1rem 1rem #000; transition:color 120ms, border-color 120ms, box-shadow 120ms; }
 .ss-button:hover, .ss-button:focus { color:#f1e3b8; border-color:rgba(236,220,174,0.3); background:linear-gradient(#5b5b45,#45483a 48%,#3a412e); box-shadow:inset 0 1rem rgba(236,220,174,0.3), inset 0 0 7rem rgba(213,191,132,0.12), 0 0 4rem rgba(213,191,132,0.12); }
 .ss-button:active, .ss-scope:active, .ss-small-toggle:active { background:linear-gradient(#2d3325,#34392a); box-shadow:inset 0 2rem 4rem #000, inset 0 -1rem rgba(213,191,132,0.12); text-shadow:none; }
@@ -309,6 +320,7 @@ button:disabled { opacity:0.45; }
 /* Map history stays a small native flex list. Each owned jump action remains
    separate from the row's name, date, rating and result text. */
 .ss-map-battles { display:block; min-width:0; width:100%; margin-top:3rem; border:1rem solid #303421; border-radius:4rem; background:#181d11; }
+.ss-history-body { display:block; min-width:0; width:100%; height:460rem; overflow-y:auto; overflow-x:hidden; }
 .ss-map-battle-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:5rem 6rem; border-top:1rem solid #303421; }
 .ss-map-battle-row:first-child { border-top:0; }
 .ss-map-battle-row:nth-child(even) { background:#1a1f13; }
@@ -327,7 +339,16 @@ button:disabled { opacity:0.45; }
 .ss-map-battles-page, .ss-map-page-status { display:block; flex:1 1 80rem; min-width:0; margin:0 4rem; color:#b3b69a; font-size:11rem; line-height:16rem; text-align:center; }
 .ss-map-battles .ss-empty { margin:0; padding:6rem; font-size:12rem; line-height:18rem; }
 .ss-map-empty { margin:0; padding:6rem; color:#aaa68c; font-size:12rem; line-height:18rem; }
-.ss-battle-target { outline:3rem solid #e7a23b; outline-offset:2rem; border-color:#e7a23b; box-shadow:0 0 12rem #e7a23b, inset 0 0 0 1rem #e7a23b; }
+/* The card's ordinary border is the native-safe selection baseline. Preserve
+   its width/layout; optional overlay effects never control visibility. */
+.ss-group.ss-battle-target { outline:none; border-color:#e7a23b; }
+.ss-battle-target-outline { display:block; position:absolute; z-index:3; top:-3rem; right:-3rem; bottom:-3rem; left:-3rem; border:3rem solid #e7a23b; border-radius:7rem; box-shadow:0 0 9rem #e7a23b, inset 0 0 0 1rem #e7a23b; pointer-events:none; }
+.ss-target-pulsing .ss-battle-target-outline { animation:ss-battle-target-pulse 1s ease-in-out 5; }
+.ss-target-muted .ss-battle-target-outline { opacity:0.7; }
+@keyframes ss-battle-target-pulse {
+  0%, 100% { box-shadow:0 0 3rem #e7a23b, inset 0 0 0 1rem #e7a23b; }
+  50% { box-shadow:0 0 14rem #e7a23b, inset 0 0 0 1rem #e7a23b; }
+}
 .ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:transparent; color:#aaa68c; cursor:nwse-resize; touch-action:none; }
 .ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:#f0d392; }
@@ -374,9 +395,9 @@ button:disabled { opacity:0.45; }
 .ss-more-table .ss-more-mission-status { display:block; min-width:0; width:100%; margin-top:4rem; padding:4rem 0 0; border-top:1rem solid #303421; color:#ebe7d4; font-size:12rem; line-height:16rem; }
 .ss-more-mission-description { width:100%; margin-top:4rem; }
 /* 308 + 8 + 170 fits the 486rem content of a default 500rem battle card. */
-.ss-more-reward-block.ss-more-bonus-block { flex:1 1 308rem; margin-right:8rem; }
+.ss-more-reward-block.ss-more-bonus-block { flex:0 1 308rem; width:308rem; margin-right:8rem; }
 .ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
-.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:100%; width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:486rem; width:486rem; max-width:100%; margin-right:0; }
 .ss-bonus-matrix { width:100%; }
 .ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid #303421; }
 .ss-bonus-row:first-child { border-top:0; }
@@ -416,6 +437,30 @@ button:disabled { opacity:0.45; }
 /* Fixed-width cards stay in native column flow. Expanded battle heights are
    sampled after layout to choose chronological lanes, never absolute offsets. */
 .ss-card-layout { display:flex; align-items:flex-start; justify-content:center; width:100%; }
+.ss-feed-layout { display:block; }
+.ss-feed-staging .ss-continuous-page { visibility:hidden; }
+.ss-feed-staging .ss-page-pending { visibility:visible; }
+.ss-page-status { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; min-height:30rem; padding:5rem; color:#b3b69a; }
+.ss-page-status .ss-button { margin-left:8rem; }
+.ss-continuous-page { display:block; min-width:0; width:100%; }
+.ss-page-cards { display:flex; align-items:flex-start; justify-content:center; min-width:0; width:100%; }
+.ss-page-divider { position:relative; display:flex; align-items:center; justify-content:center; width:100%; min-height:32rem; margin:6rem 0 2rem; }
+.ss-page-divider:before { content:""; display:block; position:absolute; top:50%; left:0; right:0; height:1rem; background-image:linear-gradient(to right, rgba(236,220,174,0.3) 50%, transparent 50%); background-size:10rem 1rem; background-repeat:repeat-x; pointer-events:none; }
+.ss-page-divider-label { position:relative; display:block; max-width:100%; padding:3rem 10rem; border:1rem solid #303421; border-radius:5rem; background:#111309; color:#b3b69a; font-size:12rem; line-height:18rem; text-align:center; }
+.ss-page-spinner { display:flex; align-items:center; justify-content:center; width:100%; height:26rem; }
+.ss-page-spinner:before { content:""; display:block; width:16rem; height:16rem; border:2rem solid rgba(150,154,157,0.25); border-top-color:#e7a23b; border-radius:5rem; animation:ss-page-spin 1s linear infinite; pointer-events:none; }
+@keyframes ss-page-spin {
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
+}
+.ss-scroll-top { position:absolute; z-index:25; right:24rem; bottom:48rem; width:42rem; min-width:42rem; height:42rem; margin:0; padding:4rem; border:1rem solid #e7a23b; border-radius:5rem; color:#e7a23b; background:linear-gradient(#45483a, #2d3325); box-shadow:0 0 8rem #e7a23b, inset 0 1rem rgba(236,220,174,0.3); }
+.ss-scroll-top:hover, .ss-scroll-top:focus { outline:1rem solid #e7a23b; outline-offset:2rem; box-shadow:0 0 14rem #e7a23b, inset 0 1rem rgba(236,220,174,0.3); }
+/* Paint the chevrons themselves with the control's accent. Native bitmap
+   pixels do not inherit color, so an orange frame cannot tint a gray texture. */
+.ss-scroll-top-icon { display:block; position:relative; width:32rem; height:32rem; color:inherit; pointer-events:none; }
+.ss-scroll-top-icon:before, .ss-scroll-top-icon:after { content:""; display:block; box-sizing:border-box; position:absolute; left:10rem; width:12rem; height:12rem; border-top:3rem solid currentColor; border-left:3rem solid currentColor; transform:rotate(45deg); pointer-events:none; }
+.ss-scroll-top-icon:before { top:8rem; }
+.ss-scroll-top-icon:after { top:18rem; }
 .ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
 .ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }
 .ss-card-column-right { display:none; }

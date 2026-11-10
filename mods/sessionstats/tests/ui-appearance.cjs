@@ -32,6 +32,7 @@ function snapshot() {
     for (const scope of Object.values(data.scopes)) {
         const first = scope.battles[0];
         scope.battles = Array.from({length:95}, (_,i)=>({...first,id:'appearance-'+i,started_at:1700000000-i}));
+        if(scope.pagination)delete scope.pagination.battles;
     }
     return data;
 }
@@ -230,6 +231,7 @@ async function footer(browser) {
         // at the initial hover state and scroll anchor: a stationary pointer
         // could otherwise open help when summary content moves underneath it.
         await page.mouse.move(1400,940);
+        await frames(page);
         await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=0;});
         await frames(page);
         await pushPanel(page,{...presentation.custom,panel_css:42});
@@ -263,6 +265,11 @@ async function footer(browser) {
         await page.evaluate(()=>{document.createElement=realCreateElement;});
         await pushPanel(page,presentation.custom);
         check('A later valid refresh recovers the panel appearance after a DOM failure',await page.locator('#grz-session-stats-appearance').count()===1);
+        await page.locator('#grz-session-stats-appearance').evaluate(node=>node.remove());
+        await pushPanel(page,presentation.custom);
+        check('An identical valid refresh recreates an externally detached appearance node',
+            await page.locator('#grz-session-stats-appearance').count()===1 &&
+            await page.locator('#grz-session-stats').evaluate(node=>getComputedStyle(node).borderTopColor==='rgb(18, 52, 86)'));
         await page.evaluate(()=>{GRZSessionStats.destroy();testEvents['viewEnv.onDataChanged']();});
         check('Panel cleanup removes its style and retained model events cannot reapply it',await page.locator('#grz-session-stats-appearance').count()===0);
         await page.close();

@@ -49,7 +49,10 @@ class InstallationLedgerTests(unittest.TestCase):
         self.clock.value = 200
         restored = self.open('run-b')
         self.assertEqual(self.stats(restored)['battles'], 2)
-        self.assertEqual(restored.snapshot()[0], self.session.snapshot()[0])
+        previous = copy.deepcopy(self.session.snapshot()[0])
+        current = copy.deepcopy(restored.snapshot()[0])
+        self.assertNotEqual(current.pop('data_revision'), previous.pop('data_revision'))
+        self.assertEqual(current, previous)
 
     def test_manual_installation_reset_survives_restart_and_excludes_late_old_results(self):
         self.record(complete=False)

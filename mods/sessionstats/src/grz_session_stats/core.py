@@ -270,9 +270,12 @@ class StatsService(object):
         self._timeline_job = None
         self._timeline_error = None
         self._pages = {}
+        self._page_requests = {}
+        self._empty_view_revision = uuid.uuid4().hex
         self._orders = {}
         self._map_pages = {}
         self._vehicle_pages = {}
+        self._history_request = {}
         self._battle_focus = {}
         self._receipt = None
         self._intake = None
@@ -543,7 +546,7 @@ class StatsService(object):
             return self._indexes[scope]
         return None
 
-    def set_page(self, scope, group, page, period_id=None):
+    def set_page(self, scope, group, page, period_id=None, request_id=None):
         if not self.ready or self._closed:
             return False
         if group not in ('battles', 'vehicles', 'maps', 'tiers'):
@@ -553,7 +556,19 @@ class StatsService(object):
             return False
         if period_id is not None and period_id != index.identifier:
             return False
+        if request_id is not None:
+            if not isinstance(request_id, (text_type, bytes)):
+                return False
+            request_id = _text(request_id)
+            if (not 1 <= len(request_id) <= 64 or any(char not in
+                    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.:-' for char in request_id)):
+                return False
         self._pages.setdefault(scope, {})[group] = page
+        requests = self._page_requests.setdefault(scope, {})
+        if request_id is None:
+            requests.pop(group, None)
+        else:
+            requests[group] = {'period_id': index.identifier, 'request_id': request_id}
         self._battle_focus.pop(scope, None)
         return True
 
@@ -567,6 +582,7 @@ class StatsService(object):
             return False
         self._orders.setdefault(scope, {})[group] = dict(options)
         self._pages.setdefault(scope, {})[group] = 0
+        self._page_requests.get(scope, {}).pop(group, None)
         self._battle_focus.pop(scope, None)
         return True
 
@@ -589,6 +605,7 @@ class StatsService(object):
             current = {'period_id': period_id, 'pages': {}}
             opened[scope] = current
         current['pages'][group_id] = page
+        self._history_request[scope] = {'period_id': period_id, 'kind': kind, 'id': group_id, 'page': page}
         return True
 
     def select_battle(self, scope, identifier, period_id, request_id):
@@ -607,6 +624,7 @@ class StatsService(object):
         if page is None:
             return False
         self._pages.setdefault(scope, {})['battles'] = page
+        self._page_requests.get(scope, {}).pop('battles', None)
         self._battle_focus[scope] = {'period_id': period_id, 'id': identifier, 'request_id': request_id}
         return True
 
@@ -616,6 +634,14 @@ class StatsService(object):
         vehicles = self._vehicle_pages.get(name, {})
         vehicle_pages = vehicles.get('pages') if vehicles.get('period_id') == index.identifier else None
         scope = index.snapshot(label, started_at, self._pages.get(name), self._orders.get(name), map_pages, vehicle_pages)
+        history = self._history_request.get(name)
+        if history and history['period_id'] == index.identifier:
+            battle_list = index._group_battles(history['kind'], history['id'], history['page'])
+            if battle_list is not None:
+                scope['battle_history'] = {'kind': history['kind'], 'id': history['id'], 'battle_list': battle_list}
+        for group, request in self._page_requests.get(name, {}).items():
+            if request['period_id'] == index.identifier:
+                scope['pagination'][group]['request_id'] = request['request_id']
         focus = self._battle_focus.get(name)
         if (focus and focus['period_id'] == index.identifier and
                 any(row['id'] == focus['id'] for row in scope['battles'])):
@@ -979,8 +1005,10 @@ class StatsService(object):
         from .projection import ScopeIndex
         self._indexes['manual'] = ScopeIndex(new_id, self.expected_table)
         self._pages.pop('manual', None)
+        self._page_requests.pop('manual', None)
         self._map_pages.pop('manual', None)
         self._vehicle_pages.pop('manual', None)
+        self._history_request.pop('manual', None)
         self._battle_focus.pop('manual', None)
         return new_id
 
@@ -1044,8 +1072,10 @@ class StatsService(object):
             self._filtered_timeline = None
             self._timeline_error = None
             self._pages.pop('timeline', None)
+            self._page_requests.pop('timeline', None)
             self._map_pages.pop('timeline', None)
             self._vehicle_pages.pop('timeline', None)
+            self._history_request.pop('timeline', None)
             self._battle_focus.pop('timeline', None)
             if start or end:
                 from .projection import ScopeIndex
@@ -1135,6 +1165,8 @@ class StatsService(object):
             index = ScopeIndex(identifier, self.expected_table)
         scope = self._scope_snapshot('timeline', index, message('scope.timeline'),
                                      self._timeline_dates[0] if start == '__custom__' else points.get(start))
+        if not ready or self.timeline_loading or self._timeline_error:
+            scope['data_revision'] = self._empty_view_revision
         scope['loading'] = self.timeline_loading
         if ready and self._timeline_error:
             scope['load_error'] = self._timeline_error
@@ -1208,6 +1240,8 @@ class StatsService(object):
             from .projection import ScopeIndex
             scopes = dict((name, ScopeIndex('', self.expected_table).snapshot(message('scope.' + name), self._initial_time))
                           for name in ('launch', 'manual'))
+            for scope in scopes.values():
+                scope['data_revision'] = self._empty_view_revision
             return {'version': VERSION, 'account_key': self.account_key, 'generated_at': self._time(),
                     'loading': self.loading, 'load_error': None if self.loading else self.last_error,
                     'expected': copy.deepcopy(self.expected_table.metadata), 'scopes': scopes,

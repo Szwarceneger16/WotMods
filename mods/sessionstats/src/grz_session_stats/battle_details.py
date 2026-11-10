@@ -261,24 +261,27 @@ def result_details(avatar, vehicle, active=None, mission_resolver=None):
                 if row.get('status') != 'completed':
                     row.update(kind='crucible', stage=int(challenge.group(1)), status='failed')
             continue
-        before = _bounded_number(previous.get('battlesCount'))
-        after = _bounded_number(current.get('battlesCount'))
         row = missions.setdefault(quest_id, {})
         status = 'completed' if complete else 'observed'
         if status == 'completed' or row.get('status') != 'failed':
             row['status'] = status
         row['_result_progress'] = (entry[0], previous, current)
-        _set_progress(row, _result_counters(previous, current), previous == current)
+        # An award can reset or rebase counters for the next repetition. Only
+        # the native condition knows its target and the progress earned here.
+        _set_progress(row, [] if complete else _result_counters(previous, current), previous == current)
         if challenge:
             row.update(kind='crucible', stage=int(challenge.group(1)))
-        if before is not None and after is not None and before != after:
-            row.update(before=before, after=after)
-        unique_vehicles = current.get('battlesUniqueVehicles')
-        if isinstance(unique_vehicles, (dict, list, tuple, set, frozenset)):
-            previous_vehicles = previous.get('battlesUniqueVehicles')
-            if isinstance(previous_vehicles, (dict, list, tuple, set, frozenset)):
-                if len(previous_vehicles) != len(unique_vehicles):
-                    row.update(before=len(previous_vehicles), after=len(unique_vehicles), progress_kind='vehicles')
+        if not complete:
+            before = _bounded_number(previous.get('battlesCount'))
+            after = _bounded_number(current.get('battlesCount'))
+            if before is not None and after is not None and before != after:
+                row.update(before=before, after=after)
+            unique_vehicles = current.get('battlesUniqueVehicles')
+            if isinstance(unique_vehicles, (dict, list, tuple, set, frozenset)):
+                previous_vehicles = previous.get('battlesUniqueVehicles')
+                if isinstance(previous_vehicles, (dict, list, tuple, set, frozenset)):
+                    if len(previous_vehicles) != len(unique_vehicles):
+                        row.update(before=len(previous_vehicles), after=len(unique_vehicles), progress_kind='vehicles')
 
     for owner in (avatar, vehicle):
         for mission_id, subquests in _mapping(owner.get('PM2Progress')).items():

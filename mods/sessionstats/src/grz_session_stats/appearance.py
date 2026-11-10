@@ -184,7 +184,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'panel_footer': 7,
            'confirmation': 8,
            'garage_spinner': 5},
- 'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45},
+ 'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7},
  'scroll': {'speed_multiplier': 1.0},
  'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
  'wide_cards': {'battles': 720, 'vehicles': 720, 'maps': 720, 'tiers': 720},
@@ -205,7 +205,13 @@ body { color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; fon
 .ss-control { display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:Warhelios, Arial, sans-serif; font-size:14rem; cursor:pointer; }
 .ss-control-label { display:block; flex-shrink:1; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:Warhelios, Arial, sans-serif; font-size:14rem; line-height:18rem; text-align:center; pointer-events:none; }
 .ss-small-toggle .ss-control-label, .ss-button .ss-control-label { font-size:12rem; line-height:17rem; }
-.ss-close .ss-control-label { font-size:25rem; line-height:28rem; }
+/* Center actual strokes, not a font-dependent multiplication-sign baseline. */
+.ss-close .ss-control-label { position:absolute; left:50%; top:50%; width:14rem; height:14rem; margin:-7rem 0 0 -7rem; font-size:0; line-height:0; }
+/* Gameface rejects currentColor backgrounds; keep stroke paint explicit. */
+.ss-close .ss-control-label:before, .ss-close .ss-control-label:after { content:""; display:block; position:absolute; left:0; top:6rem; width:14rem; height:2rem; background:{{colors.close_text}}; pointer-events:none; }
+.ss-close:hover .ss-control-label:before, .ss-close:hover .ss-control-label:after, .ss-close:focus .ss-control-label:before, .ss-close:focus .ss-control-label:after { background:{{colors.close_hover_text}}; }
+.ss-close .ss-control-label:before { transform:rotate(45deg); }
+.ss-close .ss-control-label:after { transform:rotate(-45deg); }
 button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; }
 .ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; pointer-events:none; }
@@ -223,20 +229,22 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-close, .ss-window-toggle { position:absolute; top:6rem; right:9rem; border:0; background:{{colors.close_background}}; color:{{colors.close_text}}; width:27rem; height:30rem; margin:0; padding:0; font-size:25rem; border-radius:{{radii.control}}rem; }
 .ss-close:hover, .ss-close:focus, .ss-window-toggle:hover, .ss-window-toggle:focus { color:{{colors.close_hover_text}}; background:{{colors.group_tab_hover_background}}; }
 .ss-window-toggle { right:38rem; }
-.ss-window-toggle-symbol { display:block; position:relative; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
-.ss-window-toggle-symbol:before { content:""; display:none; position:absolute; left:-4rem; top:3rem; width:12rem; height:10rem; border:1rem solid currentColor; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol { left:2rem; top:-1rem; }
-.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; }
+.ss-window-toggle-symbol { display:block; position:absolute; left:50%; top:50%; width:16rem; height:14rem; margin:-7rem 0 0 -8rem; pointer-events:none; }
+.ss-window-toggle-symbol:before, .ss-window-toggle-symbol:after { content:""; display:block; box-sizing:border-box; position:absolute; width:12rem; height:10rem; border:1rem solid currentColor; pointer-events:none; }
+.ss-window-toggle-symbol:before { display:none; }
+.ss-window-toggle-symbol:after { left:2rem; top:2rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:before { display:block; left:0; top:4rem; }
+.ss-window-toggle[aria-pressed="true"] .ss-window-toggle-symbol:after { left:4rem; top:0; }
 /* Caption and track share one compact frame, keeping the label next to its
    slider while preserving a single title row in wide windows. */
-.ss-background-control { display:flex; position:relative; align-items:center; justify-content:space-between; flex:0 1 auto; min-width:140rem; max-width:100%; height:30rem; margin:0 8rem 0 0; padding:0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
+.ss-background-control { display:flex; position:relative; align-items:center; justify-content:space-between; flex:0 1 auto; min-width:146rem; max-width:100%; height:30rem; margin:0 8rem 0 0; padding:0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 .ss-background-caption { display:block; position:absolute; z-index:1; left:9rem; top:1rem; width:86rem; margin:0; color:{{colors.list_meta_text}}; font-size:11rem; line-height:13rem; white-space:nowrap; pointer-events:none; }
 .ss-background-slider { display:block; position:relative; flex:0 0 94rem; width:94rem; min-width:94rem; height:28rem; padding:0 4rem; cursor:pointer; touch-action:none; }
 .ss-background-track { display:block; position:absolute; left:4rem; right:4rem; bottom:5rem; height:4rem; border-radius:{{radii.control}}rem; background:{{colors.button_border}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
 .ss-background-thumb { display:block; position:absolute; left:0; top:50%; width:8rem; height:12rem; margin:-6rem 0 0 -4rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}}, {{colors.button_background_end}}); box-shadow:0 1rem 3rem {{colors.title_text_shadow}}; pointer-events:none; }
 .ss-background-slider:focus { outline:1rem solid {{colors.garage_button_focus_outline}}; outline-offset:-1rem; }
 .ss-background-slider:hover .ss-background-thumb, .ss-background-slider:focus .ss-background-thumb { border-color:{{colors.button_shadow_1}}; background:linear-gradient({{colors.button_hover_background_start}}, {{colors.button_hover_background_end}}); }
-.ss-background-value { display:block; flex:0 0 30rem; width:30rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:14rem; text-align:right; }
+.ss-background-value { display:block; flex:0 0 38rem; width:38rem; color:{{colors.list_meta_text}}; font-size:14rem; line-height:18rem; text-align:right; }
 .ss-controls { padding:0 12rem 4rem; flex-shrink:0; }
 .ss-scopes { display:flex; flex:0 1 260rem; min-width:0; width:260rem; max-width:100%; margin:0 8rem 4rem 0; border:1rem solid {{colors.session_tabs_border}}; border-radius:{{radii.control}}rem; }
 .ss-scope { position:relative; flex:1 1 auto; min-width:0; width:auto; height:28rem; border:0; background:linear-gradient({{colors.session_tab_background_start}}, {{colors.session_tab_background_middle}} 58%, {{colors.session_tab_background_end}}); color:{{colors.session_tab_text}}; padding:4rem 6rem; border-radius:{{radii.control}}rem; box-shadow:inset 0 1rem {{colors.session_tab_shadow}}; }
@@ -330,6 +338,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-data-notices { padding:5rem 0 0; }
 .ss-data-notice { color:{{colors.data_notice_text}}; font-size:13rem; line-height:18rem; margin:2rem 0 0; }
 .ss-explainer { color:{{colors.explanation_text}}; font-size:12rem; margin-top:5rem; line-height:17rem; }
+.ss-filter-panel { position:relative; z-index:20; width:100%; }
+.ss-filter-panel.is-pinned { background:{{colors.window_background}}; box-shadow:0 5rem 8rem {{colors.title_text_shadow}}, inset 0 -1rem {{colors.group_tabs_border_bottom}}; }
 .ss-group-tabs { display:flex; min-height:30rem; border-top:1rem solid {{colors.group_tabs_border_top}}; border-bottom:1rem solid {{colors.group_tabs_border_bottom}}; border-radius:{{radii.group_tabs}}rem {{radii.group_tabs}}rem 0 0; }
 .ss-group-tab { width:25%; padding:4rem 3rem 6rem; min-height:30rem; border:0; border-radius:{{radii.control}}rem {{radii.control}}rem 0 0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
@@ -357,6 +367,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-empty { color:{{colors.empty_text}}; font-size:14rem; padding:16rem 4rem; margin:0; line-height:20rem; }
 .ss-footer { flex-shrink:0; display:flex; align-items:center; min-height:36rem; border-top:1rem solid {{colors.panel_footer_border_top}}; border-radius:0 0 {{radii.panel_footer}}rem {{radii.panel_footer}}rem; padding:5rem 25rem 7rem 10rem; background:linear-gradient({{colors.panel_footer_background_start}},{{colors.panel_footer_background_end}}); box-shadow:inset 0 -2rem {{colors.session_tabs_border}}; }
 .ss-status { display:block; flex:1; min-width:0; color:{{colors.status_text}}; font-size:11rem; line-height:14rem; padding-right:8rem; }
+.ss-version { display:block; flex:0 0 auto; color:{{colors.status_text}}; font-size:11rem; line-height:14rem; padding-right:8rem; white-space:nowrap; }
 .ss-button { flex-shrink:0; min-width:82rem; min-height:28rem; padding:4rem 10rem; font-size:12rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; color:{{colors.button_text}}; background:linear-gradient({{colors.button_background_start}},{{colors.button_background_middle}} 48%,{{colors.button_background_end}}); box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 1rem 0 {{colors.button_shadow_2}}, inset -1rem 0 {{colors.button_shadow_2}}; text-shadow:0 1rem 1rem {{colors.title_text_shadow}}; transition:color 120ms, border-color 120ms, box-shadow 120ms; }
 .ss-button:hover, .ss-button:focus { color:{{colors.button_hover_text}}; border-color:{{colors.button_shadow_1}}; background:linear-gradient({{colors.button_hover_background_start}},{{colors.button_background_start}} 48%,{{colors.button_hover_background_end}}); box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 7rem {{colors.button_shadow_2}}, 0 0 4rem {{colors.button_shadow_2}}; }
 .ss-button:active, .ss-scope:active, .ss-small-toggle:active { background:linear-gradient({{colors.button_background_end}},{{colors.button_background_middle}}); box-shadow:inset 0 2rem 4rem {{colors.title_text_shadow}}, inset 0 -1rem {{colors.button_shadow_2}}; text-shadow:none; }
@@ -503,6 +514,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Map history stays a small native flex list. Each owned jump action remains
    separate from the row's name, date, rating and result text. */
 .ss-map-battles { display:block; min-width:0; width:100%; margin-top:3rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
+.ss-history-body { display:block; min-width:0; width:100%; height:460rem; overflow-y:auto; overflow-x:hidden; }
 .ss-map-battle-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:5rem 6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-map-battle-row:first-child { border-top:0; }
 .ss-map-battle-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
@@ -521,7 +533,16 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-map-battles-page, .ss-map-page-status { display:block; flex:1 1 80rem; min-width:0; margin:0 4rem; color:{{colors.list_meta_text}}; font-size:11rem; line-height:16rem; text-align:center; }
 .ss-map-battles .ss-empty { margin:0; padding:6rem; font-size:12rem; line-height:18rem; }
 .ss-map-empty { margin:0; padding:6rem; color:{{colors.period_text}}; font-size:12rem; line-height:18rem; }
-.ss-battle-target { outline:3rem solid {{colors.session_tab_marker_background}}; outline-offset:2rem; border-color:{{colors.session_tab_marker_background}}; box-shadow:0 0 12rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+/* The card's ordinary border is the native-safe selection baseline. Preserve
+   its width/layout; optional overlay effects never control visibility. */
+.ss-group.ss-battle-target { outline:none; border-color:{{colors.session_tab_marker_background}}; }
+.ss-battle-target-outline { display:block; position:absolute; z-index:3; top:-3rem; right:-3rem; bottom:-3rem; left:-3rem; border:3rem solid {{colors.session_tab_marker_background}}; border-radius:{{radii.group_card}}rem; box-shadow:0 0 9rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; pointer-events:none; }
+.ss-target-pulsing .ss-battle-target-outline { animation:ss-battle-target-pulse 1s ease-in-out 5; }
+.ss-target-muted .ss-battle-target-outline { opacity:{{opacity.target_dimmed}}; }
+@keyframes ss-battle-target-pulse {
+  0%, 100% { box-shadow:0 0 3rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+  50% { box-shadow:0 0 14rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+}
 .ss-resize-grip { display:block; position:absolute; z-index:31; right:0; bottom:0; width:16rem; height:16rem; min-width:0; min-height:0; margin:0; padding:0; border:0; background:{{colors.close_background}}; color:{{colors.period_text}}; cursor:nwse-resize; touch-action:none; }
 .ss-resize-grip::before { content:""; display:block; position:absolute; right:3rem; bottom:3rem; width:9rem; height:9rem; border-right:2rem solid currentColor; border-bottom:2rem solid currentColor; pointer-events:none; }
 .ss-resize-grip:focus, .ss-resize-grip:hover { color:{{colors.session_tab_active_text}}; }
@@ -568,9 +589,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-table .ss-more-mission-status { display:block; min-width:0; width:100%; margin-top:4rem; padding:4rem 0 0; border-top:1rem solid {{colors.details_separator_border_top}}; color:{{colors.metric_value_text}}; font-size:12rem; line-height:16rem; }
 .ss-more-mission-description { width:100%; margin-top:4rem; }
 /* 308 + 8 + 170 fits the 486rem content of a default 500rem battle card. */
-.ss-more-reward-block.ss-more-bonus-block { flex:1 1 308rem; margin-right:8rem; }
+.ss-more-reward-block.ss-more-bonus-block { flex:0 1 308rem; width:308rem; margin-right:8rem; }
 .ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
-.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:100%; width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:486rem; width:486rem; max-width:100%; margin-right:0; }
 .ss-bonus-matrix { width:100%; }
 .ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
@@ -610,6 +631,30 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Fixed-width cards stay in native column flow. Expanded battle heights are
    sampled after layout to choose chronological lanes, never absolute offsets. */
 .ss-card-layout { display:flex; align-items:flex-start; justify-content:center; width:100%; }
+.ss-feed-layout { display:block; }
+.ss-feed-staging .ss-continuous-page { visibility:hidden; }
+.ss-feed-staging .ss-page-pending { visibility:visible; }
+.ss-page-status { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; min-height:30rem; padding:5rem; color:{{colors.list_meta_text}}; }
+.ss-page-status .ss-button { margin-left:8rem; }
+.ss-continuous-page { display:block; min-width:0; width:100%; }
+.ss-page-cards { display:flex; align-items:flex-start; justify-content:center; min-width:0; width:100%; }
+.ss-page-divider { position:relative; display:flex; align-items:center; justify-content:center; width:100%; min-height:32rem; margin:6rem 0 2rem; }
+.ss-page-divider:before { content:""; display:block; position:absolute; top:50%; left:0; right:0; height:1rem; background-image:linear-gradient(to right, {{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:10rem 1rem; background-repeat:repeat-x; pointer-events:none; }
+.ss-page-divider-label { position:relative; display:block; max-width:100%; padding:3rem 10rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.list_meta_text}}; font-size:12rem; line-height:18rem; text-align:center; }
+.ss-page-spinner { display:flex; align-items:center; justify-content:center; width:100%; height:26rem; }
+.ss-page-spinner:before { content:""; display:block; width:16rem; height:16rem; border:2rem solid {{colors.garage_spinner_border}}; border-top-color:{{colors.session_tab_marker_background}}; border-radius:{{radii.garage_spinner}}rem; animation:ss-page-spin 1s linear infinite; pointer-events:none; }
+@keyframes ss-page-spin {
+  from { transform:rotate(0deg); }
+  to { transform:rotate(360deg); }
+}
+.ss-scroll-top { position:absolute; z-index:25; right:24rem; bottom:48rem; width:42rem; min-width:42rem; height:42rem; margin:0; padding:4rem; border:1rem solid {{colors.session_tab_marker_background}}; border-radius:{{radii.control}}rem; color:{{colors.session_tab_marker_background}}; background:linear-gradient({{colors.button_background_start}}, {{colors.button_background_end}}); box-shadow:0 0 8rem {{colors.session_tab_marker_background}}, inset 0 1rem {{colors.button_shadow_1}}; }
+.ss-scroll-top:hover, .ss-scroll-top:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:2rem; box-shadow:0 0 14rem {{colors.session_tab_marker_background}}, inset 0 1rem {{colors.button_shadow_1}}; }
+/* Paint the chevrons themselves with the control's accent. Native bitmap
+   pixels do not inherit color, so an orange frame cannot tint a gray texture. */
+.ss-scroll-top-icon { display:block; position:relative; width:32rem; height:32rem; color:inherit; pointer-events:none; }
+.ss-scroll-top-icon:before, .ss-scroll-top-icon:after { content:""; display:block; box-sizing:border-box; position:absolute; left:10rem; width:12rem; height:12rem; border-top:3rem solid currentColor; border-left:3rem solid currentColor; transform:rotate(45deg); pointer-events:none; }
+.ss-scroll-top-icon:before { top:8rem; }
+.ss-scroll-top-icon:after { top:18rem; }
 .ss-card-columns { position:relative; display:flex; align-items:flex-start; flex:0 1 620rem; min-width:0; width:620rem; max-width:100%; }
 .ss-card-column { display:flex; flex-direction:column; flex:1 1 0rem; min-width:0; width:620rem; }
 .ss-card-column-right { display:none; }

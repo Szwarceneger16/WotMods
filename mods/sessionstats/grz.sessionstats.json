@@ -161,7 +161,8 @@
   "opacity": {
     "window": 1.0,
     "garage_button": 1.0,
-    "disabled_controls": 0.45
+    "disabled_controls": 0.45,
+    "target_dimmed": 0.7
   },
   "scroll": {
     "speed_multiplier": 1.0

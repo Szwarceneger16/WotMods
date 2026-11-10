@@ -61,7 +61,7 @@ module.exports=async({browser,nativeHost,check})=>{
       delete scroll.scrollTop;
     });
     await frames();
-    check('Switching to Timeline ignores a stale native scroll getter and shows the summary',await summaryAtTop());
+    check('Switching to Timeline preserves the current pixels with a stale native scroll getter',Math.abs(await top()-550)<=1);
     check('Changing scope does not focus a reset control when no dialog was open',
       await page.evaluate(()=>__scrollResetFocuses===0));
 
@@ -72,11 +72,11 @@ module.exports=async({browser,nativeHost,check})=>{
       document.getElementById('ss-scroll').scrollTop=130;
     });
     await frames();
-    check('Scope navigation reapplies its top intent after deferred layout or focus movement',await summaryAtTop());
+    check('Scope changes retain the previous pixel offset after deferred focus movement',Math.abs(await top()-500)<=1);
     await position(500);
     await page.evaluate(()=>{document.getElementById('ss-group-maps').onclick();document.getElementById('ss-scroll').scrollTop=130;});
     await frames();
-    check('Changing result grouping also returns to the complete summary after layout',await summaryAtTop());
+    check('Grouping changes retain the previous pixel offset after deferred layout',Math.abs(await top()-500)<=1);
 
     const retained=await position(450);
     await render();await frames();
@@ -107,11 +107,43 @@ module.exports=async({browser,nativeHost,check})=>{
     await page.evaluate(()=>document.getElementById('ss-group-battles').onclick());await frames();
     const moreAt=await page.evaluate(()=>{
       const scroll=document.getElementById('ss-scroll'),card=document.querySelector('#ss-groups .ss-group');
-      scroll.scrollTop+=card.getBoundingClientRect().top-scroll.getBoundingClientRect().top-20;
+      scroll.scrollTop+=card.getBoundingClientRect().top-scroll.getBoundingClientRect().top-document.getElementById('ss-filter-panel').getBoundingClientRect().height-20;
       return scroll.scrollTop;
     });
     await page.evaluate(()=>document.querySelector('#ss-groups .ss-more-button').onclick());await frames();
     check('Opening battle details preserves the visible battle position',Math.abs(await top()-moreAt)<=1);
+
+    await page.evaluate(()=>{
+      const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+      scope.tiers=scope.tiers.slice(0,6);
+      scope.pagination.tiers={page:0,page_size:40,total:6,pages:1};
+      model.payload=JSON.stringify(payload);GRZSessionStats.update(model.payload);
+    });await frames();
+    check('The shrink regression starts well down the long battle list',await position(2500)>2000);
+    await page.evaluate(()=>{
+      const scroll=document.getElementById('ss-scroll');
+      // Gameface can apply a shorter content range without publishing its
+      // automatic clamp as a scroll event; the next wheel then repairs it.
+      window.__silentNativeClamp=event=>event.stopImmediatePropagation();
+      scroll.addEventListener('scroll',__silentNativeClamp,true);
+      document.getElementById('ss-group-tiers').onclick();
+    });await frames();await frames();
+    const shrink=await page.evaluate(()=>{
+      const scroll=document.getElementById('ss-scroll'),viewport=scroll.getBoundingClientRect();
+      const panel=document.getElementById('ss-filter-panel').getBoundingClientRect();
+      const groups=document.getElementById('ss-groups').getBoundingClientRect();
+      const naturalHeight=groups.bottom-viewport.top+scroll.scrollTop+parseFloat(getComputedStyle(scroll).paddingBottom);
+      const visible=[...document.querySelectorAll('#ss-groups .ss-group')].filter(card=>{
+        const box=card.getBoundingClientRect();return box.bottom>Math.max(viewport.top,panel.bottom) && box.top<viewport.bottom;
+      }).length;
+      scroll.removeEventListener('scroll',__silentNativeClamp,true);
+      return {top:scroll.scrollTop,height:scroll.scrollHeight,client:scroll.clientHeight,naturalHeight,
+        panelTop:panel.top,panelBottom:panel.bottom,viewportTop:viewport.top,viewportBottom:viewport.bottom,visible};
+    });
+    check('Switching long Battles to six Tiers settles real bounds and visible cards without any wheel event: '+JSON.stringify(shrink),
+      shrink.top<=Math.max(0,shrink.naturalHeight-shrink.client)+2 &&
+      shrink.height<=Math.max(shrink.client,shrink.naturalHeight)+2 && shrink.visible>0 &&
+      shrink.panelTop>=shrink.viewportTop-1 && shrink.panelBottom<=shrink.viewportBottom+1);
 
     await position(400);
     await page.evaluate(()=>{
@@ -130,20 +162,21 @@ module.exports=async({browser,nativeHost,check})=>{
       model.payload=JSON.stringify(payload);GRZSessionStats.update(model.payload);
     });
     await frames();
-    check('A newly selected timeline period starts at the summary',await summaryAtTop());
+    check('A newly selected timeline period retains the current pixel offset',Math.abs(await top()-400)<=1);
 
     const wheelAt=await page.evaluate(()=>{
       document.getElementById('ss-group-vehicles').onclick();
       const scroll=document.getElementById('ss-scroll');
+      const before=scroll.scrollTop;
       let prototype=scroll,descriptor;
       while(prototype && !descriptor) {descriptor=Object.getOwnPropertyDescriptor(prototype,'scrollTop');prototype=Object.getPrototypeOf(prototype);}
       Object.defineProperty(scroll,'scrollTop',{configurable:true,get:()=>550,set(value){descriptor.set.call(this,value);}});
       scroll.dispatchEvent(new WheelEvent('wheel',{deltaY:-1,bubbles:true,cancelable:true}));
       delete scroll.scrollTop;
-      return scroll.clientHeight/4;
+      return before+scroll.clientHeight/4;
     });
     await frames();
-    check('A native wheel after navigation starts from the logical top instead of a stale offset',Math.abs(await top()-wheelAt)<=1);
+    check('A native wheel after filtering starts from its retained logical offset instead of a stale getter',Math.abs(await top()-wheelAt)<=1);
 
     await page.evaluate(()=>{
       document.getElementById('ss-group-vehicles').onclick();
@@ -153,6 +186,7 @@ module.exports=async({browser,nativeHost,check})=>{
     });
     await frames();
     check('A newer user scrollbar movement cancels an older queued navigation correction',Math.abs(await top()-120)<=1);
+    await position(400);
     await page.evaluate(()=>{
       document.getElementById('ss-group-maps').onclick();
       GRZSessionStats.destroy();

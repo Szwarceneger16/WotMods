@@ -83,6 +83,17 @@ async function audit(page,mode,group) {
       // text node so a wrapped paragraph is not mistaken for a clipped value.
       const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
       const box=node.getBoundingClientRect(),style=getComputedStyle(node);
+      if(node.matches('#ss-close > .ss-control-label[aria-hidden="true"]')) {
+        const button=node.parentElement,color=getComputedStyle(button).color;
+        const strokes=[':before',':after'].map(pseudo=>getComputedStyle(node,pseudo));
+        if(!(button.getAttribute('aria-label') || '').trim() || parseFloat(style.fontSize)!==0 ||
+          !strokes.every(stroke=>stroke.content==='""' && stroke.display==='block' &&
+            parseFloat(stroke.width)>0 && parseFloat(stroke.height)>0 &&
+            stroke.backgroundColor===color && stroke.transform!=='none')) {
+          issues.push({kind:'unpainted-close-symbol'});
+        }
+        continue;
+      }
       let textNode;
       while((textNode=walker.nextNode())) {
         if(!textNode.textContent.trim()) continue;

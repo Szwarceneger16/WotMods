@@ -1,5 +1,94 @@
 # Changelog
 
+## 1.8.13
+
+- Display the installed Stay Sharp Medkit version beside the close button in the garage settings header, including versions assigned by the release build.
+
+## 1.8.12
+
+- Reconcile physically held modifiers after chat, modal and input resets, preventing plain shortcuts from firing while an extra modifier remains down.
+- Suppress shortcut dispatch when native key-state queries are unavailable or fail, while preserving shortcut-recording cancellation and saved bindings.
+
+## 1.8.11
+
+- Replace the garage medkit button's persistent focus frame with subtle neutral gray hover and press backgrounds; retained footer focus no longer leaves a selected outline.
+
+## 1.8.10
+
+- Show the native clickable-hand cursor over eligible battle reminder buttons and restore the arrow when leaving or hiding the controls.
+- Allow shortcuts while other ordinary keys are held, including movement keys; retain exact modifier requirements, one-shot latches and complete multi-key recording.
+- Show Cancel only during shortcut recording while reserving its layout space, keeping the panel and description stationary.
+
+## 1.8.9
+
+- Place Cancel beside the description in a permanently reserved footer row, enabling it only while recording a shortcut.
+- Keep the 360×232 panel height stable during capture, cancellation, saves and errors; feedback uses the existing description area.
+
+## 1.8.8
+
+- Center the close cross using symmetric CSS strokes instead of a font glyph.
+- Remove the empty idle feedback area and shorten the panel to 232 logical pixels; expand only when capture or feedback needs room.
+- Raise the panel above the garage footer with a 24-logical-pixel gap, retaining responsive edge gutters.
+- Reduce the garage medkit glyph to 20×19 logical pixels while preserving its existing click area.
+
+## 1.8.7
+
+- Restyle garage shortcut settings with the same bundled camouflage as Session Stats, rounded corners, an inset beveled frame, raised buttons and recessed shortcut fields.
+- Place labels above each shortcut and widen clear buttons, retaining explicit native button captions and capture/error feedback.
+- Keep a scaled 16-pixel inset on every client edge and uniformly fit the complete panel on smaller windows or larger UI scales, including portrait and ultrawide layouts.
+
+## 1.8.6
+
+- Place the garage medkit icon immediately before the native settings gear and keep the popup above that button.
+- Verify and retry native texture sizing after loading so the entire shortcut panel remains visible instead of being clipped by the initial surface.
+- Close settings on another icon click or garage focus loss, cancelling unfinished key capture and preserving saved shortcuts.
+
+
+## 1.8.5
+
+- Remove the settings writer's dependency on ctypes: the embedded WoT client does not provide its native _ctypes module, and importing it during 1.8.4 startup aborted the game loader.
+- Use dependency-free, recoverable configuration replacement on embedded Windows Python 2.7, preserving existing settings and recovering an interrupted backup before loading defaults.
+- Contain initialization errors inside this mod and make cleanup safe after an incomplete startup. Keep the 1.8.4 smaller icons, garage settings and configurable shortcuts.
+
+## 1.8.4
+
+- Reduce battle power/voice controls from 24 to 16 logical pixels and bake 40 percent transparency into all four icon textures.
+- Add a matching medkit button at the far left of the native garage footer, before WG session statistics. Open a small native settings window above that button.
+- Record separate mod and voice shortcuts, including three/four-key and larger simultaneous combinations, side-specific modifiers and ordinary keyboard keys. Save on release; Escape cancels recording.
+- Persist validated shortcuts atomically in the existing configuration, preserve unrelated settings, reject overlapping bindings and retain active shortcuts if saving fails.
+- Keep the working 1.8.3 battle rendering/input path. The new garage interface uses the same pinned OpenWG Gameface dependency already used by Session Stats, without a runtime download.
+
+## 1.8.3
+
+- Remove native GUI input scripts and focus from both status icons after client logs showed `Unregistered type : BW::KeyEvent` immediately before access violations. Read cursor/button state on a bounded timer and defer actions and root detachment outside input dispatch.
+- Activate battle graphics, sound and input only for an own vehicle with a learned Stay Sharp skill in an active crew role. Without the skill or a readable crew snapshot, stay dormant with one cached state check per second and release existing mod resources.
+
+## 1.8.2
+
+- Let the game cursor click both status icons with or without Ctrl. Check the actual visible, active cursor instead of requiring a modifier-key state, while retaining HUD, camera and modal-window guards.
+
+## 1.8.1
+
+- Separate the voice reminder interval from the visual pulse: repeat every ten seconds while the pulse continues at its original rate.
+- Announce about half a second before a tracked medkit cooldown ends, or one second after battle start when already ready. Preserve the announcement across the READY transition without a duplicate.
+- Timestamp native cooldown updates and use server battle time for initial readiness; fall back to actual readiness if no trustworthy cooldown timestamp exists.
+- Route clickable status icons through independent native GUI roots with cursor hit testing, ahead of the full-screen Flash battle interface.
+
+## 1.8.0
+
+- Write the Wargaming-compatible Wwise bank header so WoT can read the bundled voice bank.
+- Enable the reminder and voice by default, with a configurable voice volume of 70 percent.
+- Add separate clickable reminder and voice status icons above the medkit. Keep them in arcade and artillery views and hide them in the regular sniper view.
+- Apply HUD and shortcut toggles for the current battle, then restore configured defaults in the next battle.
+
+## 1.7.1
+
+- Repeat the bundled ready voice instead of the native medkit activation sound; do not fall back to that sound on audio errors.
+- Add Ctrl+Alt+M to toggle the reminder for the current battle.
+- Record bounded diagnostics for audio resource visibility, resolved bank configuration, voice attempts, API results and battle controls.
+- Do not treat falsey `play()` returns as errors: the WoT client was observed reporting a falsey result with `isPlaying=True`.
+- In-game verification of the voice bank and hotkey is still required.
+
 ## 1.7.0
 
 - Install the mod as `GRZ_Medkit_Reminder.wotmod` so updates replace one file; keep the release version in the installer ZIP name and internal mod metadata. Preserve existing immutable installers with the older versioned filenames.

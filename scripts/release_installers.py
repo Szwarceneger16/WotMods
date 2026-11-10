@@ -5,6 +5,7 @@ No builds or GitHub mutations happen here. Current-format installers are
 validated and carried byte-for-byte unless their game directory must change.
 """
 import argparse
+import base64
 import hashlib
 import io
 import json
@@ -24,6 +25,20 @@ KINDS = {
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
 }
 MEDKIT_INSTALLED_PACKAGE = 'GRZ_Medkit_Reminder.wotmod'
+MEDKIT_GARAGE_RESOURCE = 'res/gui/gameface/mods/staysharp_medkit/footer.js'
+OPENWG_PACKAGE = 'net.openwg.gameface_1.2.2.wotmod'
+OPENWG_SHA256 = '2bb65f28663e3ab34b5a1102a1bbd1f6e17a65e1f6a898a8645c4ab732b50184'
+
+
+def medkit_gameface_dependency():
+    """Decode the existing, unmodified vendor package; never fetch at build time."""
+    path = ROOT / 'assets' / 'openwg_gameface_1.2.2.wotmod.b85'
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 128 * 1024:
+        raise ValueError('Missing or invalid bundled OpenWG dependency')
+    payload = base64.b85decode(b''.join(path.read_bytes().split()))
+    if digest(payload) != OPENWG_SHA256:
+        raise ValueError('Bundled OpenWG dependency checksum mismatch')
+    return payload
 
 
 def digest(data):
@@ -170,6 +185,13 @@ def verify(path):
                 raise ValueError('Missing configuration example')
     elif 'mods/configs/staysharp.medkit.json.example' not in files:
         raise ValueError('Missing configuration example')
+    if kind == 'staysharp' and MEDKIT_GARAGE_RESOURCE in package:
+        dependency = 'mods/' + client + '/net.openwg/' + OPENWG_PACKAGE
+        wanted.add(dependency)
+        if dependency not in files or digest(files[dependency]) != OPENWG_SHA256:
+            raise ValueError('Missing or modified medkit OpenWG dependency')
+        if doc + 'OPENWG_LICENSE' not in files:
+            raise ValueError('Missing medkit OpenWG license')
     if {n for n in files if n.startswith('mods/') and n.endswith('.wotmod')} != wanted:
         raise ValueError('Unexpected mod package')
     return kind, version, client, files, primary
@@ -194,6 +216,15 @@ def write_installer(directory, kind, version, client, files):
         upgrade = ('Target client: ' + client + '. Installed file: ' + filename + '.\n'
                    'Remove any other versions of this same mod from ' + mod_dir + '\n'
                    'before starting the game. Keep the installed ' + filename + ' file.\n\n')
+    includes_medkit_footer = kind == 'staysharp' and (
+        'mods/' + client + '/net.openwg/' + OPENWG_PACKAGE in files)
+    dependency_note = ('OpenWG Gameface is included for the garage settings button.\n'
+                       'Its shared package is identical to the one used by Session Stats.\n'
+                       'Keep it when uninstalling if another mod still uses it.\n'
+                       'Record shortcuts in the garage medkit popup; successful changes\n'
+                       'are saved in mods/configs/staysharp.medkit.json immediately.\n'
+                       if includes_medkit_footer else
+                       'OpenWG is included in Session Stats; no separate download is required.\n')
     files[doc + 'INSTALL.txt'] = (
         KINDS[kind][2] + ' ' + version + '\n\n'
         'Close World of Tanks. Extract this ZIP into the game installation folder\n'
@@ -203,7 +234,7 @@ def write_installer(directory, kind, version, client, files):
         'mods/configs/ end in .json.example and are not loaded. To customize,\n'
         'copy the desired example, remove only .example, then edit the JSON.\n'
         'Keep your existing .json files when updating. Restart the game after edits.\n'
-        'OpenWG is included in Session Stats; no separate download is required.\n'
+        + dependency_note
     ).encode('utf-8')
     files[doc + 'SHA256SUMS.txt'] = ''.join(digest(b) + '  ' + n + '\n'
         for n, b in sorted(files.items())).encode('ascii')
@@ -273,6 +304,16 @@ def package(source, destination, kind, client=CLIENT):
                 payload['docs/sessionstats/' + name] = data
     else:
         payload['mods/' + client + '/' + MEDKIT_INSTALLED_PACKAGE] = files[primary]
+        resources = read_zip(io.BytesIO(files[primary]))
+        if MEDKIT_GARAGE_RESOURCE in resources:
+            payload['mods/' + client + '/net.openwg/' + OPENWG_PACKAGE] = medkit_gameface_dependency()
+            license_path = ROOT / 'assets' / 'OPENWG_LICENSE'
+            if license_path.is_symlink() or not license_path.is_file():
+                raise ValueError('Missing bundled OpenWG license')
+            payload['docs/staysharp/OPENWG_LICENSE'] = license_path.read_bytes()
+            guide = ROOT / 'docs' / 'INSTALACJA.md'
+            if guide.is_file():
+                payload['docs/staysharp/INSTALACJA.md'] = guide.read_bytes()
         sample = ROOT / 'staysharp.medkit.example.json'
         payload['mods/configs/staysharp.medkit.json.example'] = (
             sample.read_bytes() if sample.is_file() else b'{\n  "language": "auto"\n}\n')
@@ -354,22 +395,32 @@ def normalize(directory, client=CLIENT):
     manifest(directory)
 
 
-def verify_directory(directory):
+def verify_directory(directory, expected_kinds=None):
+    expected = set(KINDS) if expected_kinds is None else set(expected_kinds)
+    if not expected or not expected <= set(KINDS):
+        raise ValueError('Invalid expected installer module set')
     paths = list(Path(directory).iterdir())
-    if len(paths) != 2 or any(not p.is_file() or p.is_symlink() for p in paths):
-        raise ValueError('Release must contain exactly two installer ZIPs')
+    if len(paths) != len(expected) or any(not p.is_file() or p.is_symlink() for p in paths):
+        raise ValueError('Release must contain exactly the expected installer ZIPs')
     reports = [verify(p) for p in paths]
-    if {r[0] for r in reports} != set(KINDS):
-        raise ValueError('Release needs one installer for each mod')
+    if {r[0] for r in reports} != expected:
+        raise ValueError('Release needs one installer for each expected mod')
     if len({r[2] for r in reports}) != 1:
         raise ValueError('Installers target different game clients')
     # Compare IDs and resource paths without compiling/rebuilding either mod.
-    resources, ids = set(), set()
+    resources, ids, packages = set(), set(), {}
     import xml.etree.ElementTree as ET
     for report in reports:
         for name, data in report[3].items():
             if not name.startswith('mods/') or not name.endswith('.wotmod'):
                 continue
+            if name in packages:
+                # Both installers may carry the same verified shared library.
+                # No other duplicate install path or package ID is permitted.
+                shared = 'mods/' + report[2] + '/net.openwg/' + OPENWG_PACKAGE
+                if name == shared and packages[name] == data and digest(data) == OPENWG_SHA256:
+                    continue
+                raise ValueError('Conflicting package install paths')
             contents = read_zip(io.BytesIO(data))
             identifier = ET.fromstring(contents['meta.xml']).findtext('id')
             paths = {n for n in contents if n.startswith('res/')}
@@ -377,6 +428,7 @@ def verify_directory(directory):
                 raise ValueError('Conflicting package IDs/resources')
             ids.add(identifier)
             resources.update(paths)
+            packages[name] = data
     return reports
 
 

@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.5.0
+# Appearance and scrolling configuration — 0.5.1
 
 ## File placement and applying changes
 
@@ -28,7 +28,7 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-13 corner radii, three opacity settings, a scrolling multiplier, two card-width
+13 corner radii, four opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
@@ -69,6 +69,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `opacity.window` | `1.0` | Entire panel, including text |
 | `opacity.garage_button` | `1.0` | Entire garage button |
 | `opacity.disabled_controls` | `0.45` | Disabled controls |
+| `opacity.target_dimmed` | `0.7` | Battle outline after its five-second pulse; 30% transparent |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
 | `cards.battles` | `500` | Battle card width in logical pixels |
 | `cards.vehicles` | `560` | Vehicle card width in logical pixels |
