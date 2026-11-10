@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('release_installers', ROOT/'scripts/release_installers.py')
 r = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(r)
+HISTORICAL_KINDS = {'staysharp', 'sessionstats'}
 
 
 def archive(files):
@@ -76,6 +77,11 @@ def build(directory, kind, version, internal=False, stable=False, installed_name
 
 class InstallerTests(unittest.TestCase):
     def setUp(self):
+        # These fixtures model the released two-module format, even after a
+        # later reviewed registry activates another independently verified mod.
+        registered = patch.object(r, 'registered_kinds', return_value=HISTORICAL_KINDS)
+        registered.start()
+        self.addCleanup(registered.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
@@ -434,6 +440,11 @@ class InstallerTests(unittest.TestCase):
 
 
 class SnapshotInstallerTests(unittest.TestCase):
+    def setUp(self):
+        registered = patch.object(r, 'registered_kinds', return_value=HISTORICAL_KINDS)
+        registered.start()
+        self.addCleanup(registered.stop)
+
     def test_each_publisher_retargets_carried_mod_from_a_modern_release(self):
         from test_release_snapshot import FAKE_GH
         target = '2.5.0.0'

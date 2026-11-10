@@ -11,6 +11,7 @@ on:
       - 'VERSION'
       - 'mods/**'
       - 'scripts/sessionstats/**'
+      - 'scripts/hangarsync/**'
       - 'scripts/release_installers.py'
       - 'scripts/release_version.py'
       - 'scripts/build_release_module.sh'
@@ -39,6 +40,7 @@ concurrency:
 
 jobs:
   updates:
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'Szwarceneger16/WotMods' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/wot-updates.yml
 
   plan:
@@ -183,7 +185,7 @@ jobs:
           path: built
           merge-multiple: true
 
-      - name: Revalidate snapshot and assemble both installers
+      - name: Revalidate snapshot and assemble all registered installers
         shell: bash
         run: |
           set -euo pipefail
@@ -308,3 +310,6 @@ jobs:
           python3 scripts/release_installers.py verify "$remote"
           check_remote_tag
           echo "Published and verified: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG"
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            cat release-notes.md >> "$GITHUB_STEP_SUMMARY"
+          fi

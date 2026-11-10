@@ -23,6 +23,19 @@ PREVIOUS_SESSIONSTATS_PACKAGE = 'GRZ_Session_Stats.wotmod'
 KINDS = {
     'staysharp': ('StaySharp-Medkit-v', 'com.staysharp.medkitreminder_', 'Stay Sharp Medkit'),
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
+    'hangarsync': ('GRZ_Hangar_Sync-v', 'com.grz.hangarsync_', 'Hangar Sync'),
+}
+HANGAR_PACKAGE = 'GRZ_Hangar_Sync.wotmod'
+HANGAR_CONFIG = 'mods/configs/GRZ_Hangar_Sync.json.example'
+HANGAR_MODULES = {
+    'mod_grz_hangar_sync', 'grz_hangar_battle_pass', 'grz_hangar_crew',
+    'grz_hangar_stats', 'grz_hangar_mission_metadata',
+}
+HANGAR_EXAMPLE = {
+    'enabled': False, 'endpoint_url': '', 'device_token': '',
+    'sites_access_token': '', 'region': 'EU', 'display_name': '',
+    'allowed_players': [], 'include_crew': False, 'interval_seconds': 120,
+    'include_missions': False, 'mission_diagnostics': True,
 }
 MEDKIT_INSTALLED_PACKAGE = 'GRZ_Medkit_Reminder.wotmod'
 MEDKIT_GARAGE_RESOURCE = 'res/gui/gameface/mods/staysharp_medkit/footer.js'
@@ -43,6 +56,36 @@ def medkit_gameface_dependency():
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def unique_json(data):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError('Duplicate JSON field')
+            result[key] = value
+        return result
+    return json.loads(data, object_pairs_hook=pairs)
+
+
+def registered_kinds(path=None):
+    """Require the current explicit registry, not every supported file format."""
+    path = ROOT / 'scripts/release_modules.json' if path is None else Path(path)
+    data = unique_json(path.read_text(encoding='utf-8'))
+    if not isinstance(data, dict) or data.get('schema_version') != 1 or not isinstance(data.get('modules'), list):
+        raise ValueError('Invalid release registry')
+    ids = []
+    for entry in data['modules']:
+        if not isinstance(entry, dict):
+            raise ValueError('Invalid module registry entry')
+        kind = entry.get('id')
+        if not isinstance(kind, str) or kind not in KINDS or entry.get('installer_prefix') != KINDS[kind][0]:
+            raise ValueError('Unregistered installer format')
+        ids.append(kind)
+    if not ids or len(ids) != len(set(ids)):
+        raise ValueError('Invalid registered installer module set')
+    return set(ids)
 
 
 def safe(name):
@@ -112,6 +155,8 @@ def installer_name(kind, version):
 
 
 def installed_package(kind, version, report=None):
+    if kind == 'hangarsync':
+        return HANGAR_PACKAGE
     legacy = KINDS[kind][1] + version + '.wotmod'
     if kind != 'sessionstats':
         return legacy
@@ -137,6 +182,8 @@ def bundled_languages(report, package):
 def verify(path):
     kind, version = identity(path.name)
     files = read_zip(path)
+    if kind == 'hangarsync':
+        return verify_hangar(version, files)
     doc = 'docs/' + kind + '/'
     check_manifest(files, doc + 'SHA256SUMS.txt')
     report = json.loads(files[doc + 'INSTALLER.json'])
@@ -197,6 +244,58 @@ def verify(path):
     return kind, version, client, files, primary
 
 
+def verify_hangar(version, files):
+    """Verify the native ZIP without executing or rewrapping its bytecode."""
+    primaries = [name for name in files if re.fullmatch(
+        r'mods/[0-9]+(?:\.[0-9]+){3}/GRZ_Hangar_Sync\.wotmod', name)]
+    if len(primaries) != 1:
+        raise ValueError('Missing or ambiguous Hangar package')
+    primary = primaries[0]
+    client = primary.split('/')[1]
+    if set(files) != {primary, HANGAR_CONFIG, 'README.md', 'SHA256SUMS.txt'}:
+        raise ValueError('Unexpected Hangar installer members')
+    # The native format hashes installable bytes; its README is a separate,
+    # bounded text member. The external Release manifest covers the entire ZIP.
+    check_manifest({name: files[name] for name in (primary, HANGAR_CONFIG, 'SHA256SUMS.txt')})
+    example = unique_json(files[HANGAR_CONFIG].decode('utf-8'))
+    if (example != HANGAR_EXAMPLE or not isinstance(example, dict) or
+            any(type(example[key]) is not type(value) for key, value in HANGAR_EXAMPLE.items())):
+        raise ValueError('Hangar example must be disabled and credential-free')
+    if not files['README.md'] or len(files['README.md']) > 512 * 1024:
+        raise ValueError('Invalid Hangar README')
+    files['README.md'].decode('utf-8')
+    package = read_zip(io.BytesIO(files[primary]))
+    expected = {'meta.xml'} | {
+        'res/scripts/client/gui/mods/' + name + '.pyc' for name in HANGAR_MODULES}
+    if set(package) != expected:
+        raise ValueError('Unexpected Hangar package resources')
+    import xml.etree.ElementTree as ET
+    meta = ET.fromstring(package['meta.xml'])
+    if (meta.tag != 'root' or len(meta.findall('id')) != 1 or len(meta.findall('version')) != 1
+            or meta.findtext('id') != 'com.grz.hangarsync' or meta.findtext('version') != version):
+        raise ValueError('Hangar metadata does not match installer')
+    if any(len(package[name]) <= 8 or not package[name].startswith(b'\x03\xf3\r\n')
+           for name in expected - {'meta.xml'}):
+        raise ValueError('Invalid Hangar Python 2.7 resource')
+    return 'hangarsync', version, client, files, primary
+
+
+def write_hangar(directory, version, client, files):
+    """Retarget a verified native archive while retaining every payload byte."""
+    primary = 'mods/' + client + '/' + HANGAR_PACKAGE
+    files['SHA256SUMS.txt'] = ''.join(
+        digest(files[name]) + '  ' + name + '\n' for name in (primary, HANGAR_CONFIG)).encode('ascii')
+    target = directory / installer_name('hangarsync', version)
+    with zipfile.ZipFile(target, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for name, data in files.items():
+            info = zipfile.ZipInfo(name, (2026, 11, 3, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            archive.writestr(info, data)
+    verify(target)
+    return target
+
+
 def write_installer(directory, kind, version, client, files):
     doc = 'docs/' + kind + '/'
     files[doc + 'INSTALLER.json'] = (json.dumps({
@@ -252,6 +351,23 @@ def write_installer(directory, kind, version, client, files):
 def package(source, destination, kind, client=CLIENT):
     source, destination = Path(source), Path(destination)
     files = directory_files(source)
+    if kind == 'hangarsync':
+        installers = [name for name in files if name.startswith(KINDS[kind][0]) and name.endswith('.zip')]
+        if len(installers) != 1 or set(files) != {HANGAR_PACKAGE, installers[0]}:
+            raise ValueError('Unexpected Hangar build assets')
+        original = source / installers[0]
+        _, _, actual_client, bundle, primary = verify(original)
+        if actual_client != client or bundle[primary] != files[HANGAR_PACKAGE]:
+            raise ValueError('Hangar installer and verified build disagree')
+        expected_example = ROOT / 'mods/hangarsync/GRZ_Hangar_Sync.json.example'
+        if (expected_example.is_symlink() or not expected_example.is_file() or
+                bundle[HANGAR_CONFIG] != expected_example.read_bytes()):
+            raise ValueError('Hangar installer and reviewed example disagree')
+        destination.mkdir(parents=True, exist_ok=True)
+        target = destination / original.name
+        target.write_bytes(files[original.name])
+        verify(target)
+        return target
     check_manifest(files)
     _, primary_prefix, _ = KINDS[kind]
     primaries = [n for n in files if n.startswith(primary_prefix) and n.endswith('.wotmod')]
@@ -346,6 +462,13 @@ def retarget_installers(directory, client):
                 continue
             doc = 'docs/' + kind + '/'
             payload = dict(payload)
+            if kind == 'hangarsync':
+                prefix = 'mods/' + previous + '/'
+                payload = {(('mods/' + client + '/' + name[len(prefix):])
+                            if name.startswith(prefix) else name): data
+                           for name, data in payload.items()}
+                write_hangar(Path(temporary), version, client, payload)
+                continue
             del payload[doc + 'SHA256SUMS.txt']
             prefix = 'mods/' + previous + '/'
             payload = {(('mods/' + client + '/' + name[len(prefix):])
@@ -396,7 +519,7 @@ def normalize(directory, client=CLIENT):
 
 
 def verify_directory(directory, expected_kinds=None):
-    expected = set(KINDS) if expected_kinds is None else set(expected_kinds)
+    expected = registered_kinds() if expected_kinds is None else set(expected_kinds)
     if not expected or not expected <= set(KINDS):
         raise ValueError('Invalid expected installer module set')
     paths = list(Path(directory).iterdir())
@@ -441,16 +564,18 @@ def notes(directory, output, repository, tag):
         lines.append('| ' + KINDS[kind][2] + ' | ' + version + ' | [' + name + '](' + url + ') |')
     lines += ['', '## Installation', '',
         'Close WoT and extract the ZIP into the folder containing `WorldOfTanks.exe`. '
-        'Keep the nested `mods/` folders. Both installers target client **' + reports[0][2] + '**.', '',
+        'Keep the nested `mods/` folders. All installers target client **' + reports[0][2] + '**.', '',
         'A matching install path does not by itself confirm in-game compatibility. '
         'An installer may carry forward unchanged mod binaries from an earlier client.', '',
-        'Session Stats includes OpenWG Gameface. Install either mod or both. '
+        'Session Stats includes OpenWG Gameface. Install the mods you need. '
         'Remove older `.wotmod` versions of the same mod from the active version folder.', '',
         'Configuration files are optional examples in `mods/configs/*.json.example`. '
-        'Defaults work without renaming them. To customize, copy the example and remove '
-        'the final `.example`. Existing `.json` settings are preserved. Restart WoT after editing.', '',
+        'Stay Sharp and Session Stats work with their built-in defaults. Hangar Sync requires '
+        'a separate validated local configuration with explicit destination, credentials and player allowlist. '
+        'Follow the included Hangar README; never publish your configuration. Existing `.json` '
+        'settings are preserved. Restart WoT after editing.', '',
         'Instructions, licenses, source where applicable and build/checksum information '
-        'are inside `docs/staysharp/` or `docs/sessionstats/` in each ZIP. '
+        'are inside `docs/staysharp/`, `docs/sessionstats/`, or the native Hangar `README.md` in each ZIP. '
         'GitHub source archives are for developers.', '',
         '<details>', '<summary>Installer SHA-256 checksums</summary>', '', '```text']
     for path in sorted(Path(directory).iterdir()):

@@ -22,7 +22,101 @@ def job(name):
     return match.group(1)
 
 
+def condition_matches(expression, context):
+    """Evaluate the actual job guard with a narrow grammar, never eval code."""
+    token = re.compile(r"github\.(?:repository|ref|event_name)|'(?:[^']|'')*'|==|&&|\|\||[()]")
+    tokens = []
+    end = 0
+    for match in token.finditer(expression):
+        if expression[end:match.start()].strip():
+            raise ValueError('Unsupported trust-condition syntax')
+        tokens.append(match.group(0))
+        end = match.end()
+    if expression[end:].strip():
+        raise ValueError('Unsupported trust-condition syntax')
+    position = [0]
+
+    def take(expected=None):
+        if position[0] >= len(tokens):
+            raise ValueError('Incomplete trust condition')
+        value = tokens[position[0]]
+        if expected is not None and value != expected:
+            raise ValueError('Unexpected trust-condition token')
+        position[0] += 1
+        return value
+
+    def atom():
+        if position[0] < len(tokens) and tokens[position[0]] == '(':
+            take('(')
+            value = either()
+            take(')')
+            return value
+        field = take()
+        if field not in ('github.repository', 'github.ref', 'github.event_name'):
+            raise ValueError('Only immutable event context may select installer publication')
+        take('==')
+        value = take()
+        if not (value.startswith("'") and value.endswith("'")):
+            raise ValueError('Expected a literal trust boundary')
+        return context[field] == value[1:-1].replace("''", "'")
+
+    def both():
+        value = atom()
+        while position[0] < len(tokens) and tokens[position[0]] == '&&':
+            take('&&')
+            right = atom()
+            value = value and right
+        return value
+
+    def either():
+        value = both()
+        while position[0] < len(tokens) and tokens[position[0]] == '||':
+            take('||')
+            right = both()
+            value = value or right
+        return value
+
+    value = either()
+    if position[0] != len(tokens):
+        raise ValueError('Unexpected trailing trust-condition tokens')
+    return value
+
+
 class SinglePublisherTests(unittest.TestCase):
+    def test_canonical_main_gate_precedes_every_artifact_and_publisher_job(self):
+        condition = re.search(r'^    if: (.+)$', job('updates'), re.MULTILINE).group(1)
+        cases = [
+            ('pull_request', 'refs/pull/19/merge', 'Szwarceneger16/WotMods', False),
+            ('pull_request', 'refs/heads/main', 'Szwarceneger16/WotMods', False),
+            ('pull_request_target', 'refs/heads/main', 'Szwarceneger16/WotMods', False),
+            ('workflow_run', 'refs/heads/main', 'Szwarceneger16/WotMods', False),
+            ('push', 'refs/heads/feature/candidate', 'Szwarceneger16/WotMods', False),
+            ('push', 'refs/tags/main', 'Szwarceneger16/WotMods', False),
+            ('workflow_dispatch', 'refs/heads/feature/candidate', 'Szwarceneger16/WotMods', False),
+            ('workflow_dispatch', 'refs/tags/main', 'Szwarceneger16/WotMods', False),
+            ('push', 'refs/heads/main', 'contributor/WotMods', False),
+            ('workflow_dispatch', 'refs/heads/main', 'contributor/WotMods', False),
+            ('push', 'refs/heads/main', 'Szwarceneger16/WotMods', True),
+            ('workflow_dispatch', 'refs/heads/main', 'Szwarceneger16/WotMods', True),
+        ]
+        for event, ref, repository, expected in cases:
+            with self.subTest(event=event, ref=ref, repository=repository):
+                self.assertEqual(condition_matches(condition, {
+                    'github.event_name': event, 'github.ref': ref,
+                    'github.repository': repository}), expected)
+        self.assertIn('needs: updates', job('plan'))
+        self.assertIn('needs: [plan, updates]', job('build'))
+        self.assertIn('needs: [plan, updates, build]', job('publish'))
+        for name in ('plan', 'build', 'publish'):
+            self.assertNotIn('always()', job(name))
+            self.assertNotIn('!cancelled()', job(name))
+
+    def test_download_summary_follows_remote_byte_and_checksum_verification(self):
+        publish = job('publish')
+        summary = publish.index('cat release-notes.md >> "$GITHUB_STEP_SUMMARY"')
+        self.assertLess(publish.index('cmp -- "release/$name" "$remote/$name"'), summary)
+        self.assertLess(publish.index('python3 scripts/release_installers.py verify "$remote"'), summary)
+
     def test_previous_per_mod_publishers_are_retired(self):
         self.assertFalse((ROOT / '.github/workflows/release.yml').exists())
         self.assertFalse((ROOT / '.github/workflows/sessionstats-release.yml').exists())
