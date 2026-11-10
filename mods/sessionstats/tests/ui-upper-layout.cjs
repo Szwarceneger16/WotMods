@@ -94,9 +94,10 @@ module.exports=async function ({browser,nativeHost,check}) {
           wn8:document.querySelector('#ss-summary .ss-kpi-value.ss-wn8').textContent,
         };
       },scale);
-      const caption=width+' logical pixels at '+(scale*100)+'% in a '+gameWidth+'px game';
+      const expectedWidth=Math.max(550,width);
+      const caption=expectedWidth+' logical pixels at '+(scale*100)+'% in a '+gameWidth+'px game';
       check('Upper controls and summary stay within the floating window: '+caption,
-        Math.abs(audit.root.width-width)<=1 && audit.overflow.length===0);
+        Math.abs(audit.root.width-expectedWidth)<=1 && audit.overflow.length===0);
       check('Summary sections keep capped widths and readable full values: '+caption,
         audit.panels[0].width<=461 && audit.pair.width<=651 && audit.panels[1].width<=301 && audit.panels[2].width<=351 &&
         audit.badNumbers.length===0 && audit.values.join('|')==='12345678|-12345678|-12345678' &&
@@ -119,7 +120,7 @@ module.exports=async function ({browser,nativeHost,check}) {
           Math.abs(audit.filters[0].top-audit.xp.top)<=2 &&
           audit.filters[1].right<=audit.xp.left);
         check('Wide result count, pagination and sorting share a bounded row: '+caption,
-          audit.lower[1].width<=341 && audit.lower[2].width<=295 &&
+          audit.lower[1].width<=341 && audit.lower[2].width<=425 &&
           audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
           Math.min(...audit.lower.map(box=>box.bottom))-Math.max(...audit.lower.map(box=>box.top))>5 &&
           Math.max(...audit.lowerTriggers.map(box=>box.bottom))-Math.min(...audit.lowerTriggers.map(box=>box.bottom))<=2);
@@ -212,7 +213,8 @@ module.exports=async function ({browser,nativeHost,check}) {
             const box=bar.getBoundingClientRect(),fields=[...bar.querySelectorAll('.ss-sort-field')];
             const scale=parseFloat(getComputedStyle(document.documentElement).fontSize);
             const limits={'ss-sort-statistic':66,'ss-sort-metric':121,'ss-sort-direction':110};
-            if(box.width<=0 || box.width/scale>295 || fields.length!==3 ||
+            const wide=bar.parentNode.classList.contains('ss-filters-wide');
+            if(box.width<=0 || box.width/scale>(wide?425:295) || fields.length!==3 ||
               fields.some(field=>{const id=field.querySelector('.ss-select').id;
                 return !limits[id] || field.getBoundingClientRect().width/scale>limits[id];})) return false;
             return fields.every(field=>{

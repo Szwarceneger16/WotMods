@@ -253,5 +253,5 @@ border remains visible through native focus/blur events and any background
 transparency setting. An explicit outside click or a changed view/period clears
 the selection. Bonus source labels sit beside aligned resource values. Ordinary
 matrices retain their compact width; additional resource columns or long amounts
-can expand the matrix from 308 to486 logical pixels. Remaining card width goes
+can expand the matrix from 308 to 486 logical pixels. Remaining card width goes
 to mission details.

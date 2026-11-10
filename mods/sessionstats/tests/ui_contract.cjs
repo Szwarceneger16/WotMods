@@ -604,6 +604,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-postbattle.cjs',browser);
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
+  await runFeatureSuite('./ui-filter-ux.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
@@ -681,7 +682,7 @@ async function runFeatureSuite(file,browser) {
   await synchronous.close();
   for(const helpers of ['absent','throw']) {
     const degraded=await nativeHost(browser,{helpers,noFocus:true,drag:helpers});
-    check('Python resize is still sent when native helpers are '+helpers,await degraded.evaluate(()=>__grzCommands.some(x=>x.action==='resize' && x.width==='700' && x.height==='620')));
+    check('Python resize is still sent when native helpers are '+helpers,await degraded.evaluate(()=>__grzCommands.some(x=>x.action==='resize' && x.width==='700' && x.height==='730')));
     await degraded.locator('#ss-scope-manual').click();
     await degraded.locator('#ss-reset').click();
     await degraded.locator('#ss-reset-cancel').click();
@@ -834,12 +835,15 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-timeline-details.cjs',browser);
   await runFeatureSuite('./ui-wide-cards.cjs',browser);
   await runFeatureSuite('./ui-window-settings.cjs',browser);
+  await runFeatureSuite('./ui-scrollbar.cjs',browser);
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
   await runFeatureSuite('./ui-history-inplace.cjs',browser);
   await runFeatureSuite('./ui-detail-widths.cjs',browser);
+  await runFeatureSuite('./ui-compact-details.cjs',browser);
   await runFeatureSuite('./ui-version.cjs',browser);
+  await runFeatureSuite('./ui-custom-date-source.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);

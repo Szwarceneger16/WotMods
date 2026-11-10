@@ -99,7 +99,7 @@ module.exports=async ({browser,nativeHost,check})=>{
     await publish(page,server,{request_id:oldMaximize.request_id,saved:true});
     check('Changing accounts retires the previous maximized logical size and restores the new account dimensions',
       await page.locator('#ss-maximize').getAttribute('aria-pressed')==='false' && await slider.getAttribute('aria-valuenow')==='45' &&
-      await page.evaluate(()=>__nativeSize[0]===840 && __nativeSize[1]===680));
+      await page.evaluate(()=>__nativeSize[0]===840 && __nativeSize[1]===730));
   } finally {await page.close();}
 
   for(const scale of [1,2]) {
@@ -128,8 +128,8 @@ module.exports=async ({browser,nativeHost,check})=>{
       await resized.setViewportSize({width:viewport.width,height:viewport.height});
       await resized.evaluate(viewport=>{const payload=JSON.parse(model.payload);payload.viewport=viewport;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},viewport);await frames(resized);
-      check('Growing the viewport after an initially constrained maximize cycle restores700x620 at'+(scale*100)+'%',
-        await resized.evaluate(scale=>__nativeSize[0]===700*scale && __nativeSize[1]===620*scale,scale));
+      check('Growing the viewport preserves the700x620 preference while displaying the730px minimum at'+(scale*100)+'%',
+        await resized.evaluate(scale=>__nativeSize[0]===700*scale && __nativeSize[1]===730*scale,scale));
       await resized.locator('#ss-group-battles').click();
       const ids=await resized.locator('.ss-group').evaluateAll(cards=>cards.slice(0,2).map(card=>card.dataset.groupId));
       for(const id of ids) await resized.locator('[data-group-id="'+id+'"] .ss-more-button').click();
@@ -156,8 +156,8 @@ module.exports=async ({browser,nativeHost,check})=>{
       await resized.setViewportSize({width:viewport.width,height:viewport.height});
       await resized.evaluate(viewport=>{const payload=JSON.parse(model.payload);payload.viewport=viewport;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},viewport);await frames(resized);
-      check('A larger viewport restores the saved700x620 preference at'+(scale*100)+'%',
-        await resized.evaluate(scale=>__nativeSize[0]===700*scale && __nativeSize[1]===620*scale,scale));
+      check('A larger viewport restores the saved width and minimum display height at'+(scale*100)+'%',
+        await resized.evaluate(scale=>__nativeSize[0]===700*scale && __nativeSize[1]===730*scale,scale));
       const beforeResize=(await commands(resized)).length,grip=await resized.locator('#ss-resize-grip').boundingBox();
       await resized.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await resized.mouse.down();
       await resized.mouse.move(grip.x+grip.width/2+20*scale,grip.y+grip.height/2+12*scale);
@@ -165,14 +165,14 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('Regular resizing does not save intermediate pointer samples at'+(scale*100)+'%',(await commands(resized)).length===beforeResize);
       await resized.mouse.up();await frames(resized);values=await commands(resized);const resizeSave=values[values.length-1];
       check('Regular resize release saves one final logical size at'+(scale*100)+'%',
-        values.length===beforeResize+1 && resizeSave.maximized==='false' && resizeSave.restored_width==='740' && resizeSave.restored_height==='644');
-      await publish(resized,{...defaults,restored_width:740,restored_height:644},{request_id:resizeSave.request_id,saved:true});
+        values.length===beforeResize+1 && resizeSave.maximized==='false' && resizeSave.restored_width==='740' && resizeSave.restored_height==='754');
+      await publish(resized,{...defaults,restored_width:740,restored_height:754},{request_id:resizeSave.request_id,saved:true});
       const beforeKeyboard=(await commands(resized)).length;
       await resized.locator('#ss-resize-grip').focus();await resized.locator('#ss-resize-grip').press('ArrowRight');await frames(resized);
       values=await commands(resized);const keyboardSave=values[values.length-1];
       check('One keyboard resize persists one logical size change at'+(scale*100)+'%',
-        values.length===beforeKeyboard+1 && keyboardSave.restored_width==='764' && keyboardSave.restored_height==='644' && keyboardSave.maximized==='false');
-      await publish(resized,{...defaults,restored_width:764,restored_height:644},{request_id:keyboardSave.request_id,saved:true});
+        values.length===beforeKeyboard+1 && keyboardSave.restored_width==='764' && keyboardSave.restored_height==='754' && keyboardSave.maximized==='false');
+      await publish(resized,{...defaults,restored_width:764,restored_height:754},{request_id:keyboardSave.request_id,saved:true});
     } finally {await resized.close();}
   }
 

@@ -18,7 +18,9 @@ snapshots or resize events cannot revive that destination. Expiry preserves the
 existing outline. Native focus/blur events do not own selection: Gameface can
 publish them during mounting or reparenting. An explicit outside click or changed
 view/context dismisses the frame. Its ordinary card border carries the solid
-orange baseline without changing dimensions; the animated overlay is cosmetic.
+orange baseline; the animated overlay is cosmetic. A separate in-flow localized
+selection banner identifies the battle even if decorative border/outline paint
+is unavailable. Removing that banner invalidates the card flow before relayout.
 The map drill-down regressions cover both retry limits and delayed geometry.
 
 The previous 16×16 client bitmap

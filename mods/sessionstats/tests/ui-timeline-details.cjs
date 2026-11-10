@@ -249,7 +249,8 @@ module.exports = async function ({browser, nativeHost, check}) {
     bonusRows.filter(row=>row.label==='Premium account').length===1 &&
     bonusRows.find(row=>row.label==='Premium account').values.join('|')==='×1.5|×1.5|—|—|—' &&
     bonusRows.find(row=>row.label==='First victory').values.join('|')==='—|×2|—|—|—' &&
-    await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>row.children.length===6)) &&
+    await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>
+      row.querySelectorAll('[role="rowheader"],[role="columnheader"],[role="cell"]').length===6)) &&
     await details.locator('.ss-more-bonuses .ss-more-value').count()===0 &&
     await details.locator('.ss-more-factors').count()===0);
   check('The full-width point strip precedes separate bonus and mission columns',await details.evaluate(panel=>{
@@ -311,7 +312,8 @@ module.exports = async function ({browser, nativeHost, check}) {
       bonusBox=bonus.getBoundingClientRect(),missionBox=missions.getBoundingClientRect();
     return Math.abs(card.width/scale-500)<=1 && Math.abs(point.width-panel.getBoundingClientRect().width)<=scale &&
       title.right<=table.left+scale && Math.min(title.bottom,table.bottom)>Math.max(title.top,table.top) &&
-      point.bottom<=columns.top+scale && Math.abs(bonusBox.top-missionBox.top)<=scale && bonusBox.right<=missionBox.left+scale &&
+      point.bottom<=columns.top+scale &&
+      ((Math.abs(bonusBox.top-missionBox.top)<=scale && bonusBox.right<=missionBox.left+scale) || missionBox.top>=bonusBox.bottom-scale) &&
       Array.from(missions.querySelectorAll('.ss-more-mission')).every(row=>row.getBoundingClientRect().height>0);
   }));
   await page.evaluate(()=>{

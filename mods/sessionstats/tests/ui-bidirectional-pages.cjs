@@ -37,7 +37,7 @@ function assertBidirectionalSource(source=shipped()){
     viewContext:()=>({account_key:state.payload.account_key,scope:state.scope,period_id:scope.period_id}),
     sameContext:owned=>!state.destroyed&&owned.account_key===state.payload.account_key&&owned.scope===state.scope&&owned.period_id===scope.period_id,
     append:(parent,node)=>parent.appendChild(node),element:(tag,className)=>new Node(className,/ss-page-divider/.test(className)?20:/ss-page-spinner/.test(className)?30:0),
-    invoke:(action,args)=>{commands.push({action,...args});return true;},setStatus(){},renderSelects(){},t:key=>key,number:String,
+    invoke:(action,args)=>{commands.push({action,...args});return true;},setStatus(){},renderSelects(){},renderFilterActivity(){},t:key=>key,number:String,date:String,
     invalidateCardFlow(){},clear:node=>node.children.slice().forEach(child=>node.removeChild(child)),stageFeedContext(){},
     ordered:items=>items,layoutBattleCards(){},queueResize(){resizes++;},pinnedFilterHeight:()=>50,
     cancelBattleNavigation(){state.battleJump=null;},clearBattleTarget(){dismissed++;},
