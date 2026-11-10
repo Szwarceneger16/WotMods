@@ -28,7 +28,7 @@ STYLE_URL = 'coui://gui/gameface/mods/staysharp_medkit/footer.css'
 MAX_PAYLOAD_CHARS = 16384
 ACTIONS = frozenset(('open', 'close', 'begin_capture', 'cancel_capture', 'clear_binding'))
 BINDINGS = frozenset(('toggle_mod', 'toggle_voice'))
-PAYLOAD_KEYS = frozenset(('hotkeys', 'display', 'capturing', 'preview', 'status',
+PAYLOAD_KEYS = frozenset(('version', 'hotkeys', 'display', 'capturing', 'preview', 'status',
                           'error', 'labels', 'enabled', 'voice_enabled'))
 _installed = None
 

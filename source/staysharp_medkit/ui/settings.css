@@ -68,6 +68,20 @@ body { margin:0; padding:0; width:360rem; height:232rem; overflow:hidden; backgr
     white-space:nowrap;
     text-shadow:0 1rem 2rem #000;
 }
+.grz-medkit-settings-version {
+    display:none;
+    flex:0 0 auto;
+    margin:0 3rem 0 6rem;
+    padding:2rem 4rem;
+    border:1rem solid rgba(131,130,99,0.35);
+    border-radius:3rem;
+    background:rgba(12,14,7,0.35);
+    color:#c3bea2;
+    font-size:12rem;
+    line-height:16rem;
+    white-space:nowrap;
+    text-shadow:0 1rem #000;
+}
 .grz-medkit-settings-body {
     display:flex;
     flex-direction:column;

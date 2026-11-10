@@ -6,6 +6,7 @@ const vm=require('vm');
 const root=path.resolve(__dirname,'..');
 const script=path.join(root,'source/staysharp_medkit/ui/footer.js');
 const settingsScript=path.join(root,'source/staysharp_medkit/ui/settings.js');
+const modVersion=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
 async function nodeContracts(){
   class Element {
     constructor(tag, document) {
@@ -51,9 +52,9 @@ async function nodeContracts(){
     el('div','native-divider2','Footer_divider_4ccd0230',row);
     el('div','native-notifications','Footer_icon_6ff60f47 Footer_icon__notification_827f4505',row).setAttribute('data-test-id','notificationCenter');
     doc.documentElement.clientWidth=1920;doc.documentElement.clientHeight=36;doc.body.clientWidth=1920;
-    const state={hotkeys:{toggle_mod:['KEY_LCONTROL','KEY_LALT','KEY_M'],toggle_voice:['KEY_LCONTROL','KEY_LALT','KEY_V']},display:{toggle_mod:'Ctrl + Alt + M',toggle_voice:'Ctrl + Alt + V'},capturing:null,preview:[],labels:{},status:'',error:''};
+    const state={version:modVersion,hotkeys:{toggle_mod:['KEY_LCONTROL','KEY_LALT','KEY_M'],toggle_voice:['KEY_LCONTROL','KEY_LALT','KEY_V']},display:{toggle_mod:'Ctrl + Alt + M',toggle_voice:'Ctrl + Alt + V'},capturing:null,preview:[],labels:{},status:'',error:''};
     const events={},actions=[],layouts=[],callbacks=[],warnings=[],frames=[],sizes=[],observers=[];
-    if(options.settings){const view=el('section','grz-medkit-settings','grz-medkit-settings',doc.body);for(const suffix of ['title','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel','bottom'])el(suffix==='mod'||suffix==='voice'||suffix.indexOf('clear-')===0||suffix==='close'||suffix==='cancel'?'button':'div','grz-medkit-settings-'+suffix,'',view);}
+    if(options.settings){const view=el('section','grz-medkit-settings','grz-medkit-settings',doc.body);for(const suffix of ['title','version','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel','bottom'])el(suffix==='mod'||suffix==='voice'||suffix.indexOf('clear-')===0||suffix==='close'||suffix==='cancel'?'button':'div','grz-medkit-settings-'+suffix,'',view);}
     if(options.captions){for(const suffix of ['mod','voice','clear-mod','clear-voice','cancel','close'])el('span','grz-medkit-settings-'+suffix+'-caption','grz-medkit-settings-button-label',doc.getElementById('grz-medkit-settings-'+suffix));}
     state.viewport={width:1920,height:1080,scale:1.5};
     const model={state:{value:JSON.stringify(state)},onAction:args=>{const copy=JSON.parse(JSON.stringify(args));(copy.action==='layout'?layouts:actions).push(copy);}};
@@ -121,6 +122,16 @@ async function nodeContracts(){
     assert.deepStrictEqual(s.actions,[],'Native Settings binding cannot replay an action');assert.deepStrictEqual(s.callbacks,[['add',0]]);
     assert.deepStrictEqual(s.sizes,[[540,348]],'Texture sizing uses Python GUI scale, never browser DPR');
     assert.strictEqual(s.doc.documentElement.style.fontSize,'1.5px');
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').textContent,'v'+modVersion);
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').getAttribute('aria-label'),'Stay Sharp Medkit version '+modVersion);
+    s.patch({version:'1.8.99'});
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').textContent,'v1.8.99','Displayed version follows the installed runtime, not the static UI assets');
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').style.display,'block');
+    s.patch({version:'1.8.99<script>alert(1)</script>'});
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').textContent,'');
+    assert.strictEqual(find(s,'#grz-medkit-settings-version').style.display,'none','Invalid version is hidden');
+    s.patch({version:modVersion});
+    assert.deepStrictEqual(s.sizes,[[540,348]],'Version changes never resize the native window');
     assert.strictEqual(find(s,'#grz-medkit-settings-bottom').style.display,'flex','The description and cancel row always keeps its place');
     assert.strictEqual(find(s,'#grz-medkit-settings-cancel').disabled,true);
     assert.strictEqual(find(s,'#grz-medkit-settings-cancel').style.display,'flex');
@@ -152,7 +163,7 @@ async function nodeContracts(){
   assert.strictEqual(find(labeled,'#grz-medkit-settings-cancel-caption').textContent,'Anuluj');
   labeled.context.GRZStaySharpSettings.destroy();
   const html=fs.readFileSync(path.join(root,'source/staysharp_medkit/ui/settings.html'),'utf8');
-  for(const suffix of ['title','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel','bottom'])assert(html.includes('id="grz-medkit-settings-'+suffix+'"'));
+  for(const suffix of ['title','version','close','label-mod','label-voice','mod','voice','clear-mod','clear-voice','hint','feedback','cancel','bottom'])assert(html.includes('id="grz-medkit-settings-'+suffix+'"'));
   assert(!/\beval\s*\(|innerHTML|https?:\/\//.test(fs.readFileSync(script,'utf8')+fs.readFileSync(settingsScript,'utf8')),'Native frontend has no executable/remote/config-HTML path');
   console.log('PASS: Node DOM contracts cover the native gear anchor, global/footer-texture coordinates, bounded fallbacks, rerenders, no commands on binding, Settings model, capture shielding, safe text and cleanup.');
 }
@@ -166,8 +177,13 @@ async function browserContracts(){
     await page.evaluate(()=>{window.actions=[];window.isDomBuilt=true;window.engine={whenReady:Promise.resolve(),on(){},off(){}};window.viewEnv={addDataChangedCallback(){return 1;},removeDataChangedCallback(){}};window.subViews={ids(){return[41];},get(){return{model:{grzMedkitFooter:{state:'{}',onAction:args=>actions.push(args)}}};}};});
     await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/footer.css')});await page.addScriptTag({path:script});await page.waitForSelector('#grz-medkit-footer-button');assert(await page.evaluate(()=>document.querySelector('#grz-medkit-footer-host').nextElementSibling.getAttribute('data-test-id')==='menu'));assert.strictEqual(await page.locator('.App_footer_test > div').count(),3);await page.locator('#grz-medkit-footer-button').click();assert.strictEqual((await page.evaluate(()=>actions))[0].action,'open');
     await page.setContent(fs.readFileSync(path.join(root,'source/staysharp_medkit/ui/settings.html'),'utf8').replace(/<link[^>]+>|<script[^>]+><\/script>/g,''));
-    await page.evaluate(()=>{window.actions=[];window.layouts=[];window.state={hotkeys:{toggle_mod:['Ctrl','Alt','M'],toggle_voice:['Ctrl','Alt','V']},capturing:'toggle_mod',preview:['Ctrl','Alt','Shift','M'],viewport:{width:1920,height:1080,scale:1}};window.model={state:JSON.stringify(state),onAction:args=>(args.action==='layout'?layouts:actions).push(args)};window.isDomBuilt=true;window.engine={whenReady:Promise.resolve(),on(){},off(){}};window.viewEnv={addDataChangedCallback(){return 1;},removeDataChangedCallback(){},resizeViewPx(){}};});
-    await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/settings.css')});await page.addScriptTag({path:settingsScript});await page.waitForSelector('#grz-medkit-settings-mod');await page.evaluate(()=>Promise.resolve());assert.strictEqual(await page.locator('#grz-medkit-settings-mod').textContent(),'Ctrl + Alt + Shift + M');const dimensions=await page.locator('#grz-medkit-settings').boundingBox();assert.strictEqual(dimensions.width,360);assert.strictEqual(dimensions.height,232);await page.locator('#grz-medkit-settings-mod').focus();await page.keyboard.press('Space');assert.deepStrictEqual(await page.evaluate(()=>actions),[]);await page.locator('#grz-medkit-settings-cancel').click();assert.deepStrictEqual(await page.evaluate(()=>actions),[{action:'cancel_capture'}]);if(process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT)await page.screenshot({path:process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT});assert.deepStrictEqual(errors,[]);console.log('PASS: real-browser native footer icon and compact Settings Settings layout.');
+    await page.evaluate(version=>{window.actions=[];window.layouts=[];window.state={version,hotkeys:{toggle_mod:['Ctrl','Alt','M'],toggle_voice:['Ctrl','Alt','V']},capturing:'toggle_mod',preview:['Ctrl','Alt','Shift','M'],labels:{title:'Skróty apteczki'},viewport:{width:1920,height:1080,scale:1}};window.model={state:JSON.stringify(state),onAction:args=>(args.action==='layout'?layouts:actions).push(args)};window.isDomBuilt=true;window.engine={whenReady:Promise.resolve(),on(){},off(){}};window.viewEnv={addDataChangedCallback(){return 1;},removeDataChangedCallback(){},resizeViewPx(){}};},modVersion);
+    await page.addStyleTag({path:path.join(root,'source/staysharp_medkit/ui/settings.css')});await page.addScriptTag({path:settingsScript});await page.waitForSelector('#grz-medkit-settings-mod');await page.evaluate(()=>Promise.resolve());assert.strictEqual(await page.locator('#grz-medkit-settings-mod').textContent(),'Ctrl + Alt + Shift + M');const dimensions=await page.locator('#grz-medkit-settings').boundingBox();assert.strictEqual(dimensions.width,360);assert.strictEqual(dimensions.height,232);
+    assert.strictEqual(await page.locator('#grz-medkit-settings-version').textContent(),'v'+modVersion);
+    const versionBounds=await page.locator('#grz-medkit-settings-version').boundingBox();
+    const closeBounds=await page.locator('#grz-medkit-settings-close').boundingBox();
+    assert(versionBounds && closeBounds && versionBounds.x+versionBounds.width<=closeBounds.x,'Version label stays to the left of the close button');
+    await page.locator('#grz-medkit-settings-mod').focus();await page.keyboard.press('Space');assert.deepStrictEqual(await page.evaluate(()=>actions),[]);await page.locator('#grz-medkit-settings-cancel').click();assert.deepStrictEqual(await page.evaluate(()=>actions),[{action:'cancel_capture'}]);if(process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT)await page.screenshot({path:process.env.GRZ_MEDKIT_FOOTER_SCREENSHOT});assert.deepStrictEqual(errors,[]);console.log('PASS: real-browser native footer icon, settings version badge and compact layout.');
   }finally{await browser.close();}
 }
 (async()=>{await nodeContracts();if(process.env.GRZ_MEDKIT_BROWSER_TEST==='1')await browserContracts();})().catch(error=>{console.error(error);process.exitCode=1;});
