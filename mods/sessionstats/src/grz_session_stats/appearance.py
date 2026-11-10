@@ -461,8 +461,16 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
 @media (max-width:420px) {
   .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
-  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
+  .ss-sorting .ss-select-trigger { padding-left:2rem; padding-right:2rem; }
+  .ss-sorting .ss-select-arrow { width:5rem; height:5rem; margin-left:2rem; margin-right:1rem; }
+  .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
+  .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 }
+.ss-filters-compact .ss-sorting .ss-control-label, .ss-filters-compact .ss-page-center .ss-control-label { font-size:11rem; }
+.ss-filters-compact .ss-sorting .ss-select-trigger { padding-left:2rem; padding-right:2rem; }
+.ss-filters-compact .ss-sorting .ss-select-arrow { width:5rem; height:5rem; margin-left:2rem; margin-right:1rem; }
+.ss-filters-compact .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
+.ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
 .ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }

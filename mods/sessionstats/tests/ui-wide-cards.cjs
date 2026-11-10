@@ -30,7 +30,14 @@ module.exports=async ({browser,nativeHost,check})=>{
       });
       await page.locator('#ss-scope-manual').click();
       async function viewport(wide,offset) {
-        const width=(2*wide+64+34+offset)*scale+20;
+        // The owned rail replaces the old native gutter. Measure the painted
+        // content inset so ±2 targets the real card threshold at either scale.
+        const inset=await page.evaluate(scale=>{
+          const panel=document.getElementById('grz-session-stats').getBoundingClientRect();
+          const groups=document.getElementById('ss-groups').getBoundingClientRect();
+          return (panel.width-groups.width)/scale;
+        },scale);
+        const width=Math.round((2*wide+64+inset+offset)*scale+20);
         await page.setViewportSize({width,height});
         await page.evaluate(width=>{const payload=JSON.parse(model.payload);payload.viewport.width=width;
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},width);

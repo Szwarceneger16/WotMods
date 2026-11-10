@@ -994,6 +994,7 @@
         if (state.destroyed || !controls || !state.payload || !currentScope()) { return; }
         var box = controls.getBoundingClientRect();
         if (!(box.width > 1)) { return; }
+        controls.classList[box.width / (state.nativeScale || 1) < 340 ? 'add' : 'remove']('ss-filters-compact');
         // Gameface's document can be wider than this resizable panel. Measure
         // a nonshrinking candidate row against the panel's real content box.
         controls.classList.add('ss-filters-wide');
@@ -2675,7 +2676,6 @@
             if (state.payload && state.payload.account_key !== value.account_key) {
                 showReset(false);
                 resetWindowSettings();
-                state.logicalSize = null;
                 state.openBattles = {};
                 state.openMaps = {};
                 state.customDates = {}; state.customRangeKey = null;
@@ -2685,6 +2685,9 @@
                 resetViewScroll();
                 cancelBattleNavigation();
                 state.timelineSignature = null;
+                // Cleanup can request layout using the old snapshot. Hydrate
+                // the new account's size only after those callbacks finish.
+                state.logicalSize = null;
             }
             state.payload = value;
             state.actionError = null;

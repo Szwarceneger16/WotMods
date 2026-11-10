@@ -21,6 +21,8 @@ async function paint(page) {
   }));
 }
 module.exports=async ({browser,nativeHost,check})=>{
+  require('./ui-window-settings-source.cjs')();
+  check('Actual-source account cleanup retires the previous window size before applying new preferences',true);
   const catalogs=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:1800,height:1200},viewport:{width:1800,height:1200,scale:1},realTimers:true,drag:'supported'});
   let server={...defaults};
@@ -97,9 +99,13 @@ module.exports=async ({browser,nativeHost,check})=>{
     server={background_transparency:45,maximized:false,restored_width:840,restored_height:680};
     await publish(page,server,null,'third-synthetic-account');
     await publish(page,server,{request_id:oldMaximize.request_id,saved:true});
-    check('Changing accounts retires the previous maximized logical size and restores the new account dimensions',
-      await page.locator('#ss-maximize').getAttribute('aria-pressed')==='false' && await slider.getAttribute('aria-valuenow')==='45' &&
-      await page.evaluate(()=>__nativeSize[0]===840 && __nativeSize[1]===730));
+    const accountWindow=await page.evaluate(()=>({nativeSize:__nativeSize.slice(),
+      maximized:document.getElementById('ss-maximize').getAttribute('aria-pressed'),
+      transparency:document.getElementById('ss-background-transparency').getAttribute('aria-valuenow'),
+      width:document.getElementById('grz-session-stats').style.width,height:document.getElementById('grz-session-stats').style.height}));
+    check('Changing accounts retires the previous maximized logical size and restores the new account dimensions: '+JSON.stringify(accountWindow),
+      accountWindow.maximized==='false' && accountWindow.transparency==='45' &&
+      accountWindow.nativeSize[0]===840 && accountWindow.nativeSize[1]===730);
   } finally {await page.close();}
 
   for(const scale of [1,2]) {
