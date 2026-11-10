@@ -31,7 +31,7 @@ except NameError:
 
 LOG = logging.getLogger('grz.hangarsync')
 MISSION_LOG = logging.getLogger('grz.hangarsync.missions')
-VERSION = '0.12.0'
+VERSION = '0.13.0'
 CONFIG_FILE = 'GRZ_Hangar_Sync.json'
 LOG_DIR = 'GRZ_Hangar_Sync'
 LOG_FILE = 'hangar_sync.log'
@@ -873,6 +873,61 @@ def _add_remembered_crew(snapshot, vehicles, items):
         snapshot['crewSkillCatalog'] = [catalog[key] for key in sorted(catalog)]
 
 
+def _role_text(value):
+    """Copy only resolved, bounded native role display text."""
+    if not isinstance(value, (type(''), bytes)):
+        return None
+    try:
+        if isinstance(value, bytes) and not isinstance(value, type('')):
+            value = value.decode('utf-8', 'replace')
+        value = value[:16384].replace('&zwnbsp;', '')
+        try:
+            from HTMLParser import HTMLParser
+            value = HTMLParser().unescape(value)
+        except ImportError:
+            from html import unescape
+            value = unescape(value)
+        value = re.sub(r'<[^>]*>', ' ', value)
+        value = re.sub(r'[\x00-\x1f\x7f-\x9f\ufeff\u200b\u2060]', ' ', value)
+        value = ' '.join(value.split())
+        if (not value or re.search(r'#[A-Za-z][A-Za-z0-9_]*:', value) or
+                re.search(r'%\([^)]+\)[A-Za-z]|%[sd]|\{[^{}]+\}', value)):
+            return None
+        return value[:240]
+    except Exception:
+        return None
+
+
+def _vehicle_role(vehicle):
+    """Export the native role label without inferring a role from vehicle data."""
+    try:
+        key = vehicle.roleLabel
+        if not isinstance(key, (type(''), bytes)):
+            return None
+        if isinstance(key, bytes) and not isinstance(key, type('')):
+            key = key.decode('utf-8', 'strict')
+        if not re.match(r'\Arole_[A-Za-z0-9_]{1,64}\Z', key):
+            return None
+    except Exception:
+        return None
+    role = {'key': key, 'name': None, 'groupName': None}
+    try:
+        # The native formatter supplies the groupName placeholder used by some
+        # role names. A raw localization key alone is not a display string.
+        from gui.shared.formatters import getRoleText
+        role['name'] = _role_text(getRoleText(key))
+    except Exception:
+        pass
+    try:
+        from gui.impl import backport
+        from gui.impl.gen import R
+        role['groupName'] = _role_text(backport.text(
+            R.strings.menu.roleExp.roleGroupName.dyn(key)()))
+    except Exception:
+        pass
+    return role
+
+
 def normalize_vehicle(vehicle, include_crew, artwork=None, skill_catalog=None):
     kind = _CLASSES.get(getattr(vehicle, 'type', None))
     tier = _integer(getattr(vehicle, 'level', None))
@@ -895,6 +950,9 @@ def normalize_vehicle(vehicle, include_crew, artwork=None, skill_catalog=None):
         'fieldMods': field_modifications(vehicle),
         'crew': installed_crew(vehicle, artwork, skill_catalog) if include_crew else [],
     }
+    role = _vehicle_role(vehicle)
+    if role is not None:
+        row['role'] = role
     native_name = _text(getattr(vehicle, 'name', None), 160).split(':')[-1]
     if re.match(r'\A[A-Za-z0-9_-]{1,120}\Z', native_name):
         row['iconKey'] = native_name

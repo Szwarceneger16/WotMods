@@ -25,6 +25,11 @@ The existing validated configuration is unchanged.
 - All vehicles in the account's garage inventory, independent of the in-game
   carousel filters. Includes each vehicle's name, tier, nation, class, and
   premium or elite status.
+- Native vehicle roles (from 0.13.0), including their semantic label key and
+  localized full/group names where the running client supplies them. Roles are
+  not inferred from vehicle names or account statistics. Missing role APIs leave
+  the optional field absent; unavailable translations remain null. These are
+  vehicle roles, not the separate Personal Missions role-category classifiers.
 - Saved vehicle playlists, including names and vehicle types in their saved
   order. The client can keep a sold vehicle on a list. Such entries are counted
   on the site but have no current garage loadout.

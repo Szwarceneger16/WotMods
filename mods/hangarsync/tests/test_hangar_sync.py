@@ -219,6 +219,117 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIsNone(mod.config_path(no_resmgr, '/random/executable'))
 
 
+class VehicleRoleTests(unittest.TestCase):
+    def localization(self, name, group):
+        gui = types.ModuleType('gui')
+        gui.__path__ = []
+        shared = types.ModuleType('gui.shared')
+        shared.__path__ = []
+        formatters = types.ModuleType('gui.shared.formatters')
+        formatters.getRoleText = mock.Mock(return_value=name)
+        impl = types.ModuleType('gui.impl')
+        impl.__path__ = []
+        impl.backport = types.SimpleNamespace(text=mock.Mock(return_value=group))
+        gen = types.ModuleType('gui.impl.gen')
+        dyn = mock.Mock(side_effect=lambda key: lambda: 'native-role-group:' + key)
+        gen.R = types.SimpleNamespace(strings=types.SimpleNamespace(menu=types.SimpleNamespace(
+            roleExp=types.SimpleNamespace(roleGroupName=types.SimpleNamespace(dyn=dyn)))))
+        return mock.patch.dict(sys.modules, {
+            'gui': gui, 'gui.shared': shared, 'gui.shared.formatters': formatters,
+            'gui.impl': impl, 'gui.impl.gen': gen,
+        }), formatters.getRoleText, impl.backport.text, dyn
+
+    def test_native_breakthrough_label_uses_native_localization(self):
+        vehicle = Vehicle()
+        vehicle.roleLabel = 'role_HT_break'
+        vehicle.type = 'heavyTank'
+        localization, name, group, dyn = self.localization(
+            'Breakthrough Heavy Tank', 'Breakthrough Heavy Tank')
+        with localization:
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(row['role'], {
+            'key': 'role_HT_break', 'name': 'Breakthrough Heavy Tank',
+            'groupName': 'Breakthrough Heavy Tank',
+        })
+        name.assert_called_once_with('role_HT_break')
+        dyn.assert_called_once_with('role_HT_break')
+        group.assert_called_once_with('native-role-group:role_HT_break')
+
+    def test_missing_role_api_or_localization_keeps_the_garage_available(self):
+        self.assertNotIn('role', mod.normalize_vehicle(Vehicle(), include_crew=False))
+        vehicle = Vehicle()
+        vehicle.roleLabel = 'role_SPG'
+        with mock.patch.dict(sys.modules, {'gui.shared.formatters': None,
+                                          'gui.impl': None, 'gui.impl.gen': None}):
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(row['role'], {'key': 'role_SPG', 'name': None, 'groupName': None})
+
+    def test_unknown_future_native_role_keeps_key_without_guessing_a_name(self):
+        vehicle = Vehicle()
+        vehicle.roleLabel = 'role_HT_future'
+        localization, _, _, _ = self.localization(
+            '#menu:roleExp/roleName/role_HT_future', '%(groupName)s')
+        with localization:
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(row['role'], {
+            'key': 'role_HT_future', 'name': None, 'groupName': None,
+        })
+
+    def test_invalid_native_role_keys_are_not_stringified_or_inferred(self):
+        class Unprintable:
+            def __str__(self):
+                raise AssertionError('Native objects must not be stringified')
+
+        for key in (None, 3, {'role': 'role_HT_break'}, Unprintable(), 'NotDefined',
+                    'role_HT_break\n', 'role_' + 'x' * 65, 'role_HT-break'):
+            vehicle = Vehicle()
+            vehicle.roleLabel = key
+            with self.subTest(key_type=type(key).__name__):
+                self.assertNotIn('role', mod.normalize_vehicle(vehicle, include_crew=False))
+
+        class UnavailableRole(Vehicle):
+            @property
+            def roleLabel(self):
+                raise RuntimeError('Native role metadata is unavailable')
+
+        self.assertNotIn('role', mod.normalize_vehicle(UnavailableRole(), include_crew=False))
+
+    def test_native_markup_entities_and_bounds_become_plain_display_text(self):
+        vehicle = Vehicle()
+        vehicle.roleLabel = b'role_HT_break'
+        localization, _, _, _ = self.localization(
+            '<font color="#ffd700">Prze\u0142amanie&nbsp;&amp; wsparcie</font>\x00',
+            '&lt;b&gt;Ci\u0119\u017cki&lt;/b&gt;&zwnbsp;\ufeff' + 'x' * 300)
+        with localization:
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(row['role']['name'], 'Prze\u0142amanie & wsparcie')
+        self.assertEqual(len(row['role']['groupName']), 240)
+        self.assertTrue(row['role']['groupName'].startswith('Ci\u0119\u017cki '))
+        self.assertNotIn('<', row['role']['groupName'])
+
+    def test_role_export_reads_only_the_public_role_label_and_localized_text(self):
+        class RoleOnlyVehicle(Vehicle):
+            roleLabel = 'role_HT_break'
+
+            @property
+            def role(self):
+                raise AssertionError('No numeric role or descriptor lookup is needed')
+
+            @property
+            def _descriptor(self):
+                raise AssertionError('Private native objects must not be copied')
+
+        vehicle = RoleOnlyVehicle()
+        vehicle.accountDBID = 987654321
+        vehicle.private_token = 'fixture-private-marker'
+        localization, _, _, _ = self.localization('Breakthrough Heavy Tank', None)
+        with localization:
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(set(row['role']), {'key', 'name', 'groupName'})
+        self.assertNotIn('accountDBID', json.dumps(row))
+        self.assertNotIn('fixture-private-marker', json.dumps(row))
+
+
 class SnapshotTests(unittest.TestCase):
     def test_all_schema_categories_and_active_slots(self):
         row = mod.normalize_vehicle(Vehicle(), include_crew=True)
