@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.5.1 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.6.0 (persistent data schema unchanged)
 Release date: 2026-11-10.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.5.1', account_key: string, generated_at: unix seconds,
+ version: '0.6.0', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},

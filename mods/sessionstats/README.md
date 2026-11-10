@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.5.1 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.6.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -8,7 +8,10 @@ their contents are English.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
 to filter by battle start time. Either selector also accepts **Custom date**:
-enter `YYYY-MM-DD HH:mm` in the computer's local time and choose **Apply**.
+edit the date and 24-hour time inside that same control, using the displayed
+WoT date format (for example `DD.MM.YYYY HH:mm`). Press Enter to apply a typed
+value, or open the adjacent calendar button to choose a day and time before
+applying. The separate dropdown button still offers saved time points.
 Ranges are half-open: **From** is included and **To** is excluded. The start must
 be earlier than the end. **Beginning of history** and **Now** leave the
 corresponding end open.
@@ -174,6 +177,11 @@ next available column in sorted order, so consecutive battles fill the space
 beside a tall card and their axis markers retain chronology. With all details
 closed, cards use their usual alternating layout. Refreshing or resizing preserves open cards;
 switching accounts clears their open state.
+The window has a minimum of 550 × 730 logical pixels when the game viewport can fit it.
+A smaller viewport temporarily caps the displayed surface without discarding
+saved restored-size preferences. A visible right-hand scrollbar shows position
+and supports dragging, track clicks and keyboard navigation.
+
 The three main statistics stay horizontal; the compact performance and finance
 tables wrap together as one centered group. Summary rows remain centered when
 the window cannot fit them together. Changing the period returns to the top;
@@ -209,7 +217,12 @@ Use the date dropdown between Previous and Next for newest/oldest ordering. The 
 
 Sorting covers the complete selected period before pages of 40 rows are sent to the UI, and changes return to page one. Vehicles, Maps, Battles and the new Tiers tab have independent choices in each session scope, including Installation. Tiers includes XI and preserves an unknown-tier group for incomplete metadata. WN8 Min/Avg/Max uses individual battle WN8, and credits use per-battle net earnings, including losses.
 
-The selectors use local Gameface-compatible dropdowns with keyboard navigation. See [sorting and tier behavior](docs/SORTING_AND_TIERS.md).
+The selectors use local Gameface-compatible dropdowns with keyboard navigation.
+Battles hides the aggregate Min/Avg/Max selector. When the complete control row
+fits, a separate sorting toggle replaces the Off entry and groups the active
+sorting controls; narrow layouts retain Off in the dropdown. A loading indicator
+remains visible while a projection or result page is being rebuilt.
+See [sorting and tier behavior](docs/SORTING_AND_TIERS.md).
 
 Vehicle cards provide the same paginated battle history and Show battle links as
 map cards. The selected battle keeps a visible orange frame across snapshot
@@ -220,7 +233,8 @@ still reports period totals.
 ### Continuous result pages
 
 Scrolling near either loaded edge fetches the adjacent 40-result page with a
-dashed, localized page-number separator. Earlier pages are inserted above the
+dashed, localized page-number separator. Battles also shows the first result's
+date and time beneath that boundary. Earlier pages are inserted above the
 current cards while preserving their visible position. A spinner marks its
 loading boundary; failed requests offer Retry. Previous/Next scroll to an already
 loaded page or fetch the adjacent page. The native double-chevron button returns
@@ -230,10 +244,14 @@ The grouping and sorting bar pins inside the scroll viewport. Filter changes
 retain the current pixel offset, rebuilding the loaded window atomically for
 a new ordering or index revision. New account histories start at the top.
 
-Map/vehicle history pagers update their fixed-height ten-row viewport in place,
-including cards on an earlier loaded global page. Battle navigation pulses its
+Map/vehicle history pagers update a capped ten-row viewport in place, including
+cards on an earlier loaded global page. Short single-page lists use their actual
+height; multiple pages retain a stable body height. Battle navigation adds an
+explicit localized selected-battle banner and pulses its
 overlay for five seconds, then leaves it 30% transparent. The card's solid orange
 border remains visible through native focus/blur events and any background
 transparency setting. An explicit outside click or a changed view/period clears
-the selection. Wider battle cards keep the bonus matrix
-at 308 logical pixels and assign the additional width to mission details.
+the selection. Bonus source labels sit beside aligned resource values. Ordinary
+matrices retain their compact width; additional resource columns or long amounts
+can expand the matrix from 308 to486 logical pixels. Remaining card width goes
+to mission details.

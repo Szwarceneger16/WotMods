@@ -1,5 +1,14 @@
 SESSION STATS — CHANGELOG
 
+0.6.0 • 2026-11-10
+• Edit custom dates inline and choose a date and 24-hour time from a calendar.
+• Mark the selected battle with a visible localized banner as well as its frame.
+• Show a visible scrollbar and protect the minimum usable window dimensions.
+• Display filter-loading activity; hide aggregate statistics in Battles and use
+  a separate sorting toggle when all wide-screen controls fit on one row.
+• Make short map/vehicle histories compact and align bonus labels with values.
+• Add the first battle's timestamp to page boundaries and space the dashes out.
+
 0.5.1 • 2026-11-10
 • Keep a single empty-period message across repeated panel refreshes.
 • Keep selected battle frames visible through transient native focus changes;
