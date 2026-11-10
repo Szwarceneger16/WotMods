@@ -1,5 +1,13 @@
 SESSION STATS — CHANGELOG
 
+0.5.1 • 2026-11-10
+• Keep a single empty-period message across repeated panel refreshes.
+• Keep selected battle frames visible through transient native focus changes;
+  dismiss them on an explicit outside click or a view/context change.
+• Load preceding result pages while scrolling upward from a middle page,
+  preserving the visible card position as earlier pages are inserted.
+• Make Back to top return to page one of the selected result order.
+
 0.5.0 • 2026-11-09
 • Append paged results continuously with numbered dashed boundaries, loading
   indicators, cached page navigation and a native double-chevron top action.
