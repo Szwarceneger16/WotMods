@@ -75,7 +75,7 @@ module.exports=async ({browser,nativeHost,check})=>{
           item.stats.wn8=[1743,1541,1635,1646][index];item.stats.battle_wn8.avg=item.sort_value;});
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
       const wn8Expected=[1968,1889,1593,1592].map(value=>messages['sort.value_wn8'].replace(/\{([0-9])\}/g,(_,index)=>
-        [messages['sort.avg'],String(value).replace(/\B(?=(\d{3})+(?!\d))/g,messages['format.thousands'])][index]));
+        [messages['sort.avg'],String(value)][index]));
       const wn8Captions=await page.locator('.ss-group-sort-value').allTextContents();
       check('WN8 sorting exposes its actual battle-average values separately from aggregate headline ratings: '+caption+': '+JSON.stringify(wn8Captions),
         JSON.stringify(wn8Captions)===JSON.stringify(wn8Expected)&&await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled());

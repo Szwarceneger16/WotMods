@@ -360,8 +360,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-filters-wide .ss-sort-direction { flex-basis:109rem; }
 .ss-filters-wide .ss-sort-metric { flex-basis:120rem; }
 .ss-filters-wide .ss-sort-statistic { flex-basis:65rem; }
-.ss-sort-off { position:relative; flex:0 0 52rem; width:52rem; min-width:52rem; height:30rem; min-height:30rem; margin:0 5rem 0 0; padding:0; border:0; background:none; box-shadow:none; }
-.ss-sort-off:hover, .ss-sort-off:focus, .ss-sort-off.is-active { background:none; border:0; box-shadow:none; }
+.ss-button.ss-sort-off { position:relative; flex:0 0 52rem; width:52rem; min-width:52rem; height:30rem; min-height:30rem; margin:0 5rem 0 0; padding:0; border:0; background:none; box-shadow:none; }
+.ss-button.ss-sort-off:hover, .ss-button.ss-sort-off:focus, .ss-button.ss-sort-off:active, .ss-button.ss-sort-off.is-active { background:none; border:0; box-shadow:none; }
 .ss-sort-off .ss-control-label { position:absolute; width:1rem; height:1rem; padding:0; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; }
 .ss-sort-switch-track { display:block; position:absolute; left:4rem; top:5rem; width:44rem; height:20rem; border:1rem solid {{colors.window_border}}; border-radius:{{radii.sort_switch_track}}rem; background:{{colors.group_card_background_end}}; box-shadow:inset 0 1rem 3rem {{colors.group_card_shadow}}; }
 .ss-sort-switch-thumb { display:block; position:absolute; left:2rem; top:2rem; width:14rem; height:14rem; border:1rem solid {{colors.period_text}}; border-radius:{{radii.sort_switch_thumb}}rem; background:{{colors.list_meta_text}}; box-shadow:0 1rem 2rem {{colors.group_card_shadow}}; transition:transform 0.12s ease; }

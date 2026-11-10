@@ -67,6 +67,9 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Wide sorting exposes an accessible painted switch at'+scale*100+'%',await toggle.isVisible()&&
         await toggle.getAttribute('role')==='switch'&&await toggle.getAttribute('aria-checked')==='false'&&
         await toggle.locator('.ss-sort-switch-track').evaluate(node=>getComputedStyle(node).borderRadius!=='0px'));
+      check('Shared button styles cannot restore a rectangular frame around the switch at'+scale*100+'%',
+        await toggle.evaluate((node,scale)=>{const css=getComputedStyle(node),box=node.getBoundingClientRect();
+          return Math.abs(box.width-52*scale)<=1&&css.backgroundImage==='none'&&parseFloat(css.borderTopWidth)===0&&css.boxShadow==='none';},scale));
       const start=await toggle.locator('.ss-sort-switch-thumb').boundingBox();await toggle.focus();await toggle.press('Space');
       await page.evaluate(()=>{const command=__grzCommands.filter(item=>item.action==='sort').pop();const payload=JSON.parse(model.payload);
         payload.scopes[command.scope].ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
