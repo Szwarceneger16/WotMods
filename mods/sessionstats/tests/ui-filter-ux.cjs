@@ -30,10 +30,14 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['orderKey','getOrder','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
+  for(const name of ['orderKey','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
     vm.runInContext(actual(name),context);
+  context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
   render();assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-pressed'),'true');
+  assert.strictEqual(selects.chronology.trigger.disabled,true,'Metric sorting disables the saved date ordering');
+  const chronologicalBefore=commands.length;context.changeOrder('chronology','oldest');
+  assert.strictEqual(commands.length,chronologicalBefore,'A retained chronology callback cannot reorder an active metric');
   assert.strictEqual(controls['ss-sort-off'].querySelector('.ss-control-label').textContent,'sort.on','An active metric uses the localized On label');
   controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'off');ack();
   assert.strictEqual(selects.metric.label.textContent,'sort.xp_received','Off retains the last active metric label in the wide dropdown');
@@ -43,6 +47,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-label'),'sort.label');
   assert.strictEqual(selects.metric.trigger.disabled,true,'Wide Off disables the remembered metric dropdown');
   assert.strictEqual(selects.direction.trigger.disabled,true);
+  assert.strictEqual(selects.chronology.trigger.disabled,false,'Off restores the independent date preference');
   controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'xp_received','Metric On restores the last non-Off metric');ack();
   const before=commands.length;scope.loading=true;render();controls['ss-sort-off'].onclick();context.changeOrder('metric','xp_base');
   assert.strictEqual(commands.length,before,'Busy retained toggle and selector callbacks cannot sort an unavailable projection');
@@ -61,6 +66,17 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   const battleBefore=commands.length;context.changeOrder('statistic','max');
   assert.strictEqual(commands.length,battleBefore,'Battles rejects stale aggregate-statistic callbacks');
   assert.strictEqual(statistic.style.display,'none');assert.strictEqual(selects.statistic.trigger.disabled,true);
+  context.changeOrder('metric','battles');assert.strictEqual(commands.length,battleBefore,'Battles rejects the aggregate count metric');
+  state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
+  assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
+  const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
+  const tied=[{id:'early',started_at:1,first_started_at:0,stats:{xp_base:{avg:10}}},
+    {id:'late',started_at:2,first_started_at:0,stats:{xp_base:{avg:10}}}];
+  assert.strictEqual(context.ordered(tied,{metric:'xp_base',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'late');
+  assert.strictEqual(context.ordered(tied,{metric:'off',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'early');
+  const counts=[{id:'received',started_at:1,stats:{battles:4,observed_battles:4}},{id:'pending',started_at:2,stats:{battles:3,observed_battles:5}}];
+  assert.strictEqual(context.ordered(counts,{metric:'battles',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'pending');
+  scope.ordering.vehicles.metric='xp_received';
   state.group='vehicles';state.wideFilters=false;render();const narrowBefore=commands.length;controls['ss-sort-off'].onclick();
   assert.strictEqual(commands.length,narrowBefore,'A hidden wide-only toggle cannot act in narrow mode');assert.strictEqual(selects.metric.options[0].style.display,'');
   state.wideFilters=true;render();const stale=controls['ss-sort-off'].onclick;
@@ -143,6 +159,12 @@ module.exports=async({browser,nativeHost,check})=>{
       check('A wide metric menu removes Off from its visible choices'+caption,!await page.locator('#ss-sort-metric [data-value="off"]').isVisible());
       await page.keyboard.press('Escape');
       await choose('metric','xp_received');
+      check('An active metric disables newest/oldest and rejects its retained option callback'+caption,
+        await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled()&&await page.evaluate(()=>{
+          const before=__grzCommands.filter(item=>item.action==='sort').length;
+          document.querySelector('#ss-sort-chronology [data-value="oldest"]').onclick();
+          return __grzCommands.filter(item=>item.action==='sort').length===before;
+        }));
       await page.locator('#ss-sort-off').click();await acknowledge();
       check('Off keeps the last active metric visible beside the toggle'+caption,
         await page.locator('#ss-sort-off').getAttribute('aria-pressed')==='false'&&await page.locator('#ss-sort-off').textContent()==='Off'&&

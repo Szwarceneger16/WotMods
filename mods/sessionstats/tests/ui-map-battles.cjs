@@ -30,6 +30,8 @@ async function focusReply(page,request,overrides={}) {
 module.exports=async ({browser,nativeHost,check})=>{
   require('./ui-selected-battle.cjs').assertSelectedBattleSource();
   check('Actual-source selected-battle cue survives missing decorative paint and More',true);
+  require('./ui-battle-jump.cjs').assertBattleJumpSource();
+  check('Actual-source page-three navigation survives late layout without overriding newer input',true);
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:1900,height:1300},viewport:{width:1900,height:1300,scale:1}});
   try {
@@ -145,7 +147,17 @@ module.exports=async ({browser,nativeHost,check})=>{
           panelOpacity:getComputedStyle(document.getElementById('grz-session-stats')).opacity};
         const banner=card.querySelector('.ss-battle-selection-banner'),bannerBox=banner.getBoundingClientRect();
         result.banner={text:banner.textContent,visible:bannerBox.width>0 && bannerBox.height>0,
-          opacity:getComputedStyle(banner).opacity,description:card.getAttribute('aria-describedby')===banner.id};
+          opacity:getComputedStyle(banner).opacity,position:getComputedStyle(banner).position,
+          description:card.getAttribute('aria-describedby')===banner.id};
+        const before=[...document.querySelectorAll('#ss-groups .ss-group')].map(node=>{
+          const box=node.getBoundingClientRect();return [box.left,box.top,box.width,box.height];
+        });
+        card.removeChild(banner);
+        const after=[...document.querySelectorAll('#ss-groups .ss-group')].map(node=>{
+          const box=node.getBoundingClientRect();return [box.left,box.top,box.width,box.height];
+        });
+        result.overlayOnly=JSON.stringify(before)===JSON.stringify(after);
+        card.insertBefore(banner,card.firstChild);
         card.classList.remove('ss-battle-target');const ordinary=card.getBoundingClientRect();card.classList.add('ss-battle-target');
         result.sameSize=selected.width===ordinary.width && selected.height===ordinary.height;
         outline.style.display='';outline.style.opacity='';outline.style.animation='';return result;
@@ -156,6 +168,8 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('The selected-battle text remains visible when decorative outline paint is unavailable in '+language,
         stableFrame.banner.text===messages['battle.selected'] && stableFrame.banner.visible &&
         stableFrame.banner.opacity==='1' && stableFrame.banner.description);
+      check('Selection decorations are absolute and cannot resize the card or move neighboring battles in '+language,
+        stableFrame.banner.position==='absolute' && stableFrame.overlayOnly);
       await page.evaluate(()=>{
         const payload=JSON.parse(model.payload);payload.appearance.window_settings.background_transparency=0;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
@@ -262,13 +276,13 @@ module.exports=async ({browser,nativeHost,check})=>{
     check('The dismissal regression begins with an early painted frame and a pending native retry',await page.evaluate(target=>{
       const card=document.querySelector('[data-group-id="'+target+'"]');
       return card.classList.contains('ss-battle-target') && document.activeElement!==card &&
-        [...__grzTimers].some(([,timer])=>timer.delay===50);
+        [...__grzTimers].some(([,timer])=>timer.delay===100);
     },request.id));
     await page.locator('.ss-game-mode').click();
     const dismissedAt=await page.evaluate(()=>{
       window.__dismissedMapFocus=document.activeElement;
       const before=document.getElementById('ss-scroll').scrollTop;__restoreDismissRect();
-      const retry=[...__grzTimers].find(([,timer])=>timer.delay===50);
+      const retry=[...__grzTimers].find(([,timer])=>timer.delay===100);
       if(retry){__grzTimers.delete(retry[0]);retry[1].callback();}
       return before;
     });await frames(page);
@@ -286,24 +300,25 @@ module.exports=async ({browser,nativeHost,check})=>{
         return original.call(this);
       };
       const payload=JSON.parse(model.payload),scope=payload.scopes.launch,sample=scope.battles[0];
-      scope.battles=Array.from({length:5},(_,index)=>({...sample,id:index===2?request.id:'synthetic-late-neighbor-'+index}));
-      scope.pagination.battles={page:2,pages:3,page_size:40,total:85};scope.battle_focus={id:request.id,request_id:request.request_id};
+      scope.battles=Array.from({length:40},(_,index)=>({...sample,id:index===30?request.id:'synthetic-late-neighbor-'+index}));
+      scope.pagination.battles={page:2,pages:4,page_size:40,total:160};scope.battle_focus={id:request.id,request_id:request.request_id};
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       const card=document.querySelector('[data-group-id="'+request.id+'"]');
       window.__paintedBeforeFirstLayout=card.classList.contains('ss-battle-target') && card.querySelectorAll('.ss-battle-target-outline').length===1;
       // No queued animation/layout callback has run yet. The native surface
-      // may remain unmeasurable longer than the bounded scroll retry window.
+      // may remain unmeasurable beyond the previous two-second retry window.
       Date.now=()=>started+3000;
     },request);await frames(page);
-    check('The selected frame is constructed before first layout and survives a native layout delayed beyond the scroll deadline',await page.evaluate(target=>{
+    check('The selected frame is constructed before first layout and survives a native layout delayed for three seconds',await page.evaluate(target=>{
       const card=document.querySelector('[data-group-id="'+target+'"]');
       return __paintedBeforeFirstLayout && card.classList.contains('ss-battle-target') && document.activeElement!==card &&
         getComputedStyle(card).borderTopColor==='rgb(231, 162, 59)' && card.querySelectorAll('.ss-battle-target-outline').length===1;
     },request.id));
     await page.evaluate(()=>{__restoreFirstBattleLayout();window.dispatchEvent(new Event('resize'));});await frames(page);
-    check('A late first native layout retains the selected frame without reviving expired focus',await page.evaluate(target=>{
-      const card=document.querySelector('[data-group-id="'+target+'"]');
-      return card.classList.contains('ss-battle-target') && document.activeElement!==card;
+    check('Late page-three geometry scrolls below the page divider to the exact selected battle',await page.evaluate(target=>{
+      const card=document.querySelector('[data-group-id="'+target+'"]'),box=card.getBoundingClientRect(),scroll=document.getElementById('ss-scroll').getBoundingClientRect();
+      const top=Math.max(scroll.top,document.getElementById('ss-filter-panel').getBoundingClientRect().bottom);
+      return card.classList.contains('ss-battle-target') && document.activeElement===card && box.top>=top-1 && box.top<scroll.bottom-1;
     },request.id));
     for(const limit of ['deadline','attempts']) {
       await page.locator('#ss-group-maps').click();await frames(page);await ensureOpen();
@@ -311,7 +326,7 @@ module.exports=async ({browser,nativeHost,check})=>{
       await page.evaluate(target=>{
         const original=HTMLElement.prototype.getBoundingClientRect,now=Date.now;
         const started=now();Date.now=()=>started;
-        window.__expireJumpClock=()=>{Date.now=()=>started+3000;};
+        window.__expireJumpClock=()=>{Date.now=()=>started+11000;};
         window.__restoreExpiredJump=()=>{HTMLElement.prototype.getBoundingClientRect=original;Date.now=now;};
         HTMLElement.prototype.getBoundingClientRect=function(){
           if(this.getAttribute('data-group-id')===target)return {left:0,right:0,top:0,bottom:0,width:0,height:0};
@@ -321,8 +336,8 @@ module.exports=async ({browser,nativeHost,check})=>{
       await focusReply(page,request);
       await page.evaluate(async limit=>{
         if(limit==='deadline')__expireJumpClock();
-        for(let attempt=0;attempt<45;attempt++) {
-          const retry=[...__grzTimers].find(([,timer])=>timer.delay===50);
+        for(let attempt=0;attempt<105;attempt++) {
+          const retry=[...__grzTimers].find(([,timer])=>timer.delay===100);
           if(!retry)break;
           __grzTimers.delete(retry[0]);retry[1].callback();
           await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -332,7 +347,7 @@ module.exports=async ({browser,nativeHost,check})=>{
         const card=document.querySelector('[data-group-id="'+target+'"]'),scroll=document.getElementById('ss-scroll');
         window.__expiredJumpFocus=document.activeElement;
         const result={top:scroll.scrollTop,painted:card.classList.contains('ss-battle-target'),
-          focused:document.activeElement===card,retries:[...__grzTimers].filter(([,timer])=>timer.delay===50).length};
+          focused:document.activeElement===card,retries:[...__grzTimers].filter(([,timer])=>timer.delay===100).length};
         __restoreExpiredJump();window.dispatchEvent(new Event('resize'));return result;
       },request.id);await frames(page);
       check('A battle jump retires its '+limit+' budget while preserving early target paint: '+JSON.stringify(expired),

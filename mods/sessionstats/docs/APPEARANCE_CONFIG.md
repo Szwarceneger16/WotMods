@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.6.0
+# Appearance and scrolling configuration — 0.7.0
 
 ## File placement and applying changes
 
@@ -28,7 +28,7 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-13 corner radii, four opacity settings, a scrolling multiplier, two card-width
+15 corner radii, four opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
@@ -62,6 +62,8 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.garage_spinner_border_top_color` | `"#969a9d"` | Bright spinner segment |
 | `radii.window` | `8` | Window corners |
 | `radii.control` | `5` | Button and dropdown corners |
+| `radii.sort_switch_track` | `11` | Metric-sorting switch track corners |
+| `radii.sort_switch_thumb` | `8` | Metric-sorting switch thumb corners |
 | `radii.table_header` | `5` | Table-header corners |
 | `radii.table_row` | `4` | Table-row corners |
 | `radii.group_card` | `7` | Vehicle/map/battle card corners |

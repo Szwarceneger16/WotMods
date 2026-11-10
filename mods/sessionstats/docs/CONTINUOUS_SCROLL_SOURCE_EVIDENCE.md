@@ -13,15 +13,22 @@ remove those declarations before checking the painted symbols and alignment.
 The matching native selection reply owns the highlight before any layout runs;
 card construction paints its frame before native geometry is ready. A delayed
 first layout or an expired scroll retry cannot prevent that selection paint.
-Focus/scroll retries retire after two seconds or 40 attempts; later geometry,
-snapshots or resize events cannot revive that destination. Expiry preserves the
-existing outline. Native focus/blur events do not own selection: Gameface can
+Focus/scroll retries allow up to ten seconds or 100 attempts for a selected page
+and its native geometry to arrive. The exact card keeps priority over its page
+divider and remains owned until repeated positions are stable for 500 ms.
+Later font/lane measurements or a delayed native scroll setter are corrected
+before that ownership retires. Explicit wheel, scrollbar and scrolling-key input
+cancel the correction immediately. After exhaustion, later geometry, snapshots
+or resize events cannot revive that destination. Expiry preserves the existing
+outline. Native focus/blur events do not own selection: Gameface can
 publish them during mounting or reparenting. An explicit outside click or changed
 view/context dismisses the frame. Its ordinary card border carries the solid
-orange baseline; the animated overlay is cosmetic. A separate in-flow localized
-selection banner identifies the battle even if decorative border/outline paint
-is unavailable. Removing that banner invalidates the card flow before relayout.
-The map drill-down regressions cover both retry limits and delayed geometry.
+orange baseline; the animated overlay is cosmetic. A separate localized badge
+is positioned absolutely above the card edge and identifies the battle even if
+decorative border/outline paint is unavailable. Neither adding nor removing the
+badge changes card dimensions or invalidates lane flow. The map drill-down
+regressions cover both retry limits, a late lower card on page three, native
+scroll-setter lag and newer user input.
 
 The previous 16×16 client bitmap
 `coui://gui/maps/icons/buttons/icon_arrow_formation_right_double.png` was verified in

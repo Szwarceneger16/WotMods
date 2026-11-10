@@ -334,7 +334,11 @@
       "timeline.calendar_weekdays": "Mon|Tue|Wed|Thu|Fri|Sat|Sun",
       "timeline.custom_hint": "DD.MM.YYYY HH:mm · Enter to apply",
       "timeline.point_menu": "Choose a time point",
-      "sort.on": "On"
+      "sort.on": "On",
+      "sort.battles": "Battles",
+      "sort.value_wn8": "{0} battle WN8: {1}",
+      "sort.value_battles": "Recorded battles: {0}",
+      "maps.preview": "{0} — map preview"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -669,7 +673,11 @@
       "timeline.calendar_weekdays": "Pn|Wt|Śr|Cz|Pt|So|Nd",
       "timeline.custom_hint": "DD.MM.RRRR GG:mm · Enter zatwierdza",
       "timeline.point_menu": "Wybierz punkt w czasie",
-      "sort.on": "Wł."
+      "sort.on": "Wł.",
+      "sort.battles": "Bitwy",
+      "sort.value_wn8": "{0} WN8 z bitew: {1}",
+      "sort.value_battles": "Zapisane bitwy: {0}",
+      "maps.preview": "{0} — podgląd mapy"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1004,7 +1012,11 @@
       "timeline.calendar_weekdays": "Пн|Вт|Ср|Чт|Пт|Сб|Вс",
       "timeline.custom_hint": "ДД.ММ.ГГГГ ЧЧ:мм · Enter — применить",
       "timeline.point_menu": "Выбрать точку во времени",
-      "sort.on": "Вкл."
+      "sort.on": "Вкл.",
+      "sort.battles": "Бои",
+      "sort.value_wn8": "{0} WN8 за бой: {1}",
+      "sort.value_battles": "Записанные бои: {0}",
+      "maps.preview": "{0} — просмотр карты"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1339,7 +1351,11 @@
       "timeline.calendar_weekdays": "Lun|Mar|Mer|Jeu|Ven|Sam|Dim",
       "timeline.custom_hint": "JJ/MM/AAAA HH:mm · Entrée pour appliquer",
       "timeline.point_menu": "Choisir un repère temporel",
-      "sort.on": "Activé"
+      "sort.on": "Activé",
+      "sort.battles": "Batailles",
+      "sort.value_wn8": "{0} WN8 par bataille : {1}",
+      "sort.value_battles": "Batailles enregistrées : {0}",
+      "maps.preview": "{0} — aperçu de la carte"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1674,7 +1690,11 @@
       "timeline.calendar_weekdays": "Mo|Di|Mi|Do|Fr|Sa|So",
       "timeline.custom_hint": "TT.MM.JJJJ HH:mm · Mit Eingabe anwenden",
       "timeline.point_menu": "Zeitpunkt wählen",
-      "sort.on": "Ein"
+      "sort.on": "Ein",
+      "sort.battles": "Gefechte",
+      "sort.value_wn8": "{0} Gefechts-WN8: {1}",
+      "sort.value_battles": "Erfasste Gefechte: {0}",
+      "maps.preview": "{0} — Kartenvorschau"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2009,7 +2029,11 @@
       "timeline.calendar_weekdays": "Lun|Mar|Mié|Jue|Vie|Sáb|Dom",
       "timeline.custom_hint": "DD/MM/AAAA HH:mm · Intro para aplicar",
       "timeline.point_menu": "Elegir un punto temporal",
-      "sort.on": "Activado"
+      "sort.on": "Activado",
+      "sort.battles": "Batallas",
+      "sort.value_wn8": "{0} WN8 por batalla: {1}",
+      "sort.value_battles": "Batallas registradas: {0}",
+      "maps.preview": "{0} — vista previa del mapa"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2344,7 +2368,11 @@
       "timeline.calendar_weekdays": "Пн|Вт|Ср|Чт|Пт|Сб|Нд",
       "timeline.custom_hint": "ДД.ММ.РРРР ГГ:хх · Enter — застосувати",
       "timeline.point_menu": "Вибрати часову точку",
-      "sort.on": "Увімк."
+      "sort.on": "Увімк.",
+      "sort.battles": "Бої",
+      "sort.value_wn8": "{0} WN8 за бій: {1}",
+      "sort.value_battles": "Записані бої: {0}",
+      "maps.preview": "{0} — перегляд мапи"
     }
   }
 }

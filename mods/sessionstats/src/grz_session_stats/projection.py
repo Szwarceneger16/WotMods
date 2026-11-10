@@ -25,9 +25,10 @@ def tier_name(tier):
 DEFAULT_ORDER = {'metric': 'off', 'statistic': 'avg', 'direction': 'desc', 'chronology': 'newest'}
 
 
-def valid_order(options):
+def valid_order(options, kind=None):
     return (isinstance(options, dict) and set(options) == set(DEFAULT_ORDER) and
-            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'battle_wn8') and
+            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'battle_wn8', 'battles') and
+            (options.get('metric') != 'battles' or kind is None or kind in ('vehicles', 'maps')) and
             options.get('statistic') in ('min', 'avg', 'max') and
             options.get('direction') in ('asc', 'desc') and
             options.get('chronology') in ('newest', 'oldest'))
@@ -366,6 +367,9 @@ class ScopeIndex(object):
     @staticmethod
     def _group_sort_value(group, options):
         metric = options['metric']
+        if metric == 'battles':
+            # Count recorded battles, including results that are still pending.
+            return group.totals.counts['observed_battles']
         series = (group.totals.money['credits']['net'] if metric == 'credits_net' else
                   group.totals.series.get(metric))
         return series.snapshot().get(options['statistic']) if series else None
@@ -376,7 +380,9 @@ class ScopeIndex(object):
         if cached and cached[0] == signature:
             return cached[1]
         metric = options['metric']
-        ascending_time = options['chronology'] == 'oldest'
+        # Metric ordering uses one deterministic tie-breaker. The saved date
+        # preference applies again only after metric sorting is switched off.
+        ascending_time = metric == 'off' and options['chronology'] == 'oldest'
         def key(entry):
             if kind == 'battles':
                 record, item = self.records[entry[1]]
@@ -401,7 +407,7 @@ class ScopeIndex(object):
         return ordered
 
     def battle_page(self, identifier, options=None):
-        options = options if valid_order(options) else DEFAULT_ORDER
+        options = options if valid_order(options, 'battles') else DEFAULT_ORDER
         pair = self.records.get(identifier)
         if pair is None:
             return None
@@ -445,7 +451,7 @@ class ScopeIndex(object):
                   'period_id': self.identifier, 'data_revision': self.data_revision}
         for kind in ('vehicles', 'maps', 'battles', 'tiers'):
             options = orders.get(kind, DEFAULT_ORDER)
-            options = options if valid_order(options) else DEFAULT_ORDER
+            options = options if valid_order(options, kind) else DEFAULT_ORDER
             result['ordering'][kind] = dict(options)
             # Default battle chronology uses the existing time index without a full copy.
             direct = kind == 'battles' and options['metric'] == 'off'

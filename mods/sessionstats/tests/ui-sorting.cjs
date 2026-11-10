@@ -19,11 +19,26 @@ module.exports=async ({browser,nativeHost,check})=>{
     });
   }
   await choose('metric','xp_received');
+  check('Metric sorting disables the independent date selector',await page.locator('#ss-sort-chronology [role=combobox]').isDisabled());
   await choose('statistic','max');
   await choose('direction','asc');
   check('All three selectors dispatch their values with native account and period ownership',await page.evaluate(()=>{
     const c=__grzCommands.filter(c=>c.action==='sort').pop(),s=JSON.parse(model.payload);
     return c.metric==='xp_received' && c.statistic==='max' && c.direction==='asc' && c.chronology==='newest' && c.group==='tiers' && c.scope==='launch' && c.account_key===s.account_key && c.period_id===s.scopes.launch.period_id;
+  }));
+  for(const group of ['vehicles','maps']){
+    await page.locator('#ss-group-'+group).click();
+    await choose('metric','battles');
+    check('Recorded battle counts are available without Avg/Min/Max for '+group,
+      !await page.locator('.ss-sort-statistic').isVisible()&&await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
+      await page.locator('#ss-sort-chronology [role=combobox]').isDisabled()&&await page.locator('.ss-group-sort-value').count()>0);
+  }
+  await page.locator('#ss-group-tiers').click();
+  check('Tiers hides the recorded battle count metric',await page.locator('#ss-sort-metric [data-value="battles"]').evaluate(node=>node.style.display==='none'));
+  check('A retained unsupported count option cannot dispatch',await page.evaluate(()=>{
+    const before=__grzCommands.filter(command=>command.action==='sort').length;
+    document.querySelector('#ss-sort-metric [data-value="battles"]').onclick();
+    return __grzCommands.filter(command=>command.action==='sort').length===before;
   }));
   await choose('metric','off');
   await choose('chronology','oldest');
@@ -47,7 +62,7 @@ module.exports=async ({browser,nativeHost,check})=>{
         const boxes=triggers.map(n=>n.getBoundingClientRect());
         const overflow=[];
         for(const trigger of triggers){const label=trigger.querySelector('.ss-control-label'),range=document.createRange(),original=label.textContent,available=label.getBoundingClientRect().width;
-          for(const option of trigger.parentNode.querySelectorAll('[role=option]')){label.textContent=option.textContent;range.selectNodeContents(label);
+          for(const option of trigger.parentNode.querySelectorAll('[role=option]')){if(option.style.display==='none')continue;label.textContent=option.textContent;range.selectNodeContents(label);
             const measured=range.getBoundingClientRect().width;if(measured>available+1)overflow.push({field:trigger.parentNode.id,text:option.textContent,measured,available});}
           label.textContent=original;
         }

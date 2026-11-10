@@ -160,6 +160,15 @@ module.exports=async({browser,check:reportCheck})=>{
     check('Confirmed zero renders as0 while the label remains exactly WN8',
       await value.textContent()==='0' && await widget.locator('.grz-postbattle-wn8-label').textContent()==='WN8' &&
       await spinner.isHidden() && await widget.getAttribute('aria-busy')==='false');
+    for(const [rating,color] of [[0,'rgb(0, 0, 0)'],[300,'rgb(205, 51, 51)'],[600,'rgb(215, 121, 0)'],
+      [900,'rgb(215, 182, 0)'],[1250,'rgb(109, 149, 33)'],[1600,'rgb(76, 118, 46)'],
+      [1900,'rgb(74, 146, 183)'],[2350,'rgb(131, 87, 157)'],[2900,'rgb(90, 49, 117)']]){
+      await setRating(page,{state:'ready',value:rating});
+      const colors=await widget.evaluate(node=>[...node.querySelectorAll('.grz-postbattle-wn8-label,.grz-postbattle-wn8-value')].map(item=>({
+        color:getComputedStyle(item).color,background:item.style.background,value:item.getAttribute('data-wn8-value')})));
+      check('Native battle WN8 label and number use the text-only WoT-Life band at '+rating+': '+JSON.stringify(colors),
+        colors.length===2&&colors.every(item=>item.color===color&&item.background===''&&item.value===String(rating)));
+    }
     await setRating(page,{state:'ready',value:1234567.6,labels:{'format.thousands':'.'}},true);
     check('Wrapped native subviews and rating properties render rounded localized thousands',
       await value.textContent()==='1.234.568' && await widget.getAttribute('aria-label')==='WN8 1.234.568');
@@ -171,6 +180,9 @@ module.exports=async({browser,check:reportCheck})=>{
       await value.textContent()==='—' && await value.isVisible() && await spinner.isHidden() &&
       await spinner.evaluate(node=>getComputedStyle(node).animationName==='none') &&
       await widget.getAttribute('aria-busy')==='false');
+    check('Unavailable native WN8 clears a previously colored label and value',await widget.evaluate(node=>
+      [...node.querySelectorAll('.grz-postbattle-wn8-label,.grz-postbattle-wn8-value')].every(item=>
+        item.style.color===''&&item.style.textShadow===''&&!item.hasAttribute('data-wn8-value'))));
     for(const bad of ['{broken','{"state":"ready","value":1e400}',null,{}, {state:'ready',value:true},{state:'ready',value:-1},
       {state:'ready',value:'1565'},{state:'other',value:1565}]) {
       await setRating(page,bad);

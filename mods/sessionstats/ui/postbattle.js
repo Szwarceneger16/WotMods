@@ -11,6 +11,25 @@
         'footer.processing':'Processing results',
         'coverage.wn8.battle':'Insufficient data to calculate this battle\u2019s WN8.'};
 
+    // The same published WoT-Life text palette as the statistics panel.
+    function wn8Color(value) {
+        if (typeof value !== 'number' || !isFinite(value) || value < 0) { return null; }
+        value = Math.round(value);
+        var limits = [300, 600, 900, 1250, 1600, 1900, 2350, 2900];
+        var colors = ['#000000', '#cd3333', '#d77900', '#d7b600', '#6d9521', '#4c762e', '#4a92b7', '#83579d', '#5a3175'];
+        for (var index = 0; index < limits.length; index += 1) {
+            if (value < limits[index]) { return colors[index]; }
+        }
+        return colors[colors.length - 1];
+    }
+    function paintWN8(node, value) {
+        var color = wn8Color(value);
+        node.style.color = color || '';
+        node.style.textShadow = color === '#000000' ? '0 0 1rem #d4ccb0, 0 0 1rem #d4ccb0' : '';
+        if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
+        else { node.removeAttribute('data-wn8-value'); }
+        return node;
+    }
     function report(stage) {
         if (reported[stage]) { return; }
         reported[stage] = true;
@@ -158,6 +177,9 @@
         if (widget.className !== className) { widget.className = className; }
         var output = widget.querySelector('.grz-postbattle-wn8-value');
         if (output.textContent !== value) { output.textContent = value; }
+        var numeric = rating.state === 'ready' ? rating.value : null;
+        paintWN8(widget.querySelector('.grz-postbattle-wn8-label'), numeric);
+        paintWN8(output, numeric);
         if (widget.getAttribute('aria-label') !== label) { widget.setAttribute('aria-label', label); }
         if (widget.getAttribute('aria-busy') !== String(pending)) { widget.setAttribute('aria-busy', String(pending)); }
     }

@@ -83,6 +83,15 @@ async function audit(page,mode,group) {
       // text node so a wrapped paragraph is not mistaken for a clipped value.
       const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
       const box=node.getBoundingClientRect(),style=getComputedStyle(node);
+      if(node.matches('#ss-sort-off > .ss-control-label[aria-hidden="true"]')) {
+        const button=node.parentElement,track=button.querySelector('.ss-sort-switch-track'),thumb=button.querySelector('.ss-sort-switch-thumb');
+        if(button.getAttribute('role')!=='switch' || !(button.getAttribute('aria-label') || '').trim() ||
+          !['true','false'].includes(button.getAttribute('aria-checked')) || !track || !thumb ||
+          track.getBoundingClientRect().width<40*scale || thumb.getBoundingClientRect().width<12*scale) {
+          issues.push({kind:'unpainted-sort-switch'});
+        }
+        continue;
+      }
       if(node.matches('#ss-close > .ss-control-label[aria-hidden="true"]')) {
         const button=node.parentElement,color=getComputedStyle(button).color;
         const strokes=[':before',':after'].map(pseudo=>getComputedStyle(node,pseudo));

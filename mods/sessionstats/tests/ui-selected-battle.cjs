@@ -41,7 +41,7 @@ function assertSelectedBattleSource(source=fs.readFileSync(path.join(__dirname,'
   assert.strictEqual(card.querySelector('.ss-battle-selection-banner'),null,'An explicit outside click dismisses its text cue');
   assert.strictEqual(card.querySelector('.ss-battle-target-outline'),null);
   assert.strictEqual(card.getAttribute('aria-describedby'),null,'Dismissal removes only the owned description');
-  assert.strictEqual(state.highlightedBattle,null);assert(layoutChanges>0,'Removing an in-flow cue requests layout recovery');
+  assert.strictEqual(state.highlightedBattle,null);assert.strictEqual(layoutChanges,0,'Removing selection overlays does not invalidate card heights or lane layout');
 }
 module.exports={assertSelectedBattleSource};
 if(require.main===module){assertSelectedBattleSource();console.log('Actual-source selected-battle text, exact identity, More and dismissal regressions passed.');}

@@ -574,7 +574,7 @@ class StatsService(object):
 
     def set_order(self, scope, group, options, period_id):
         from .projection import valid_order
-        if (not valid_order(options) or not self.ready or self._closed or
+        if (not valid_order(options, group) or not self.ready or self._closed or
                 group not in ('battles', 'vehicles', 'maps', 'tiers')):
             return False
         index = self._view_index(scope)

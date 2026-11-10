@@ -60,6 +60,61 @@ class SortingTests(NativePaginationTests):
         self.assertEqual(service._orders,{})
         self.assertEqual(service._pages,{})
 
+    def test_active_metric_ties_ignore_saved_chronology_in_every_group(self):
+        # Each recorded result has equal XP; changing the saved date preference
+        # must not silently reorder the active metric's tied groups/battles.
+        for identifier, vehicle, tier, started in (('time-old', 1001, 6, 125), ('time-new', 1002, 9, 185)):
+            self.assertTrue(self.mod.active_service.record_result(result(identifier, vehicle_id=vehicle,
+                vehicle_tier=tier, map_id=identifier, started_at=started, ended_at=195)))
+        for group in ('battles', 'vehicles', 'maps', 'tiers'):
+            first = self.sort(group=group, metric='xp_base', chronology='newest')
+            second = self.sort(group=group, metric='xp_base', chronology='oldest')
+            self.assertEqual([item['id'] for item in first[group]],
+                             [item['id'] for item in second[group]], group)
+        # The preference is retained and remains effective in date-only mode.
+        newest = self.sort(metric='off', chronology='newest')['battles'][0]['id']
+        oldest = self.sort(metric='off', chronology='oldest')['battles'][0]['id']
+        self.assertNotEqual(newest, oldest)
+
+    def test_recorded_battle_count_sorts_vehicle_and_map_totals_without_a_statistic(self):
+        service = self.mod.active_service
+        for index in range(3):
+            self.assertTrue(service.record_result(result('count-' + str(index), vehicle_id=2,
+                                                         map_id='recorded-count-map', started_at=150 + index)))
+        # The pending result counts as a recorded battle, matching the
+        # denominator shown beside the three received results.
+        self.assertTrue(service.record_result(result('count-pending', vehicle_id=2,
+                                                     map_id='recorded-count-map', outcome=None,
+                                                     complete=False, started_at=160)))
+        for group, identifier in (('vehicles', '2'), ('maps', 'recorded-count-map')):
+            for statistic in ('min', 'avg', 'max'):
+                scope = self.sort(group=group, metric='battles', statistic=statistic)
+                self.assertEqual(scope[group][0]['id'], identifier)
+                row = scope[group][0]
+                expected = 5 if group == 'vehicles' else 4
+                self.assertEqual(row['sort_value'], expected)
+                self.assertEqual(row['stats']['observed_battles'], expected)
+                self.assertEqual(row['stats']['battles'], expected - 1)
+                ascending = self.sort(group=group, metric='battles', statistic=statistic, direction='asc')
+                self.assertEqual(ascending[group][0]['sort_value'], 1)
+
+    def test_battle_count_sort_is_rejected_for_battles_and_tiers(self):
+        service = self.mod.active_service
+        for group in ('battles', 'tiers'):
+            self.sort(group=group, metric='battles')
+        self.assertEqual(service._orders, {})
+
+    def test_wn8_average_sort_uses_battle_average_instead_of_period_formula(self):
+        service = self.mod.active_service
+        for identifier, damage, kills in (('wn8-a', 0, 0), ('wn8-b', 4000, 4)):
+            self.assertTrue(service.record_result(result(identifier, vehicle_id=1,
+                                                         damage=damage, frags=kills, spots=kills,
+                                                         defense=kills, outcome='win' if kills else 'loss')))
+        scope = self.sort(group='vehicles', metric='battle_wn8', statistic='avg')
+        row = next(item for item in scope['vehicles'] if item['id'] == '1')
+        self.assertAlmostEqual(row['sort_value'], row['stats']['battle_wn8']['avg'])
+        self.assertNotAlmostEqual(row['sort_value'], row['stats']['wn8'])
+
 
 if __name__ == '__main__':
     import unittest
