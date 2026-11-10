@@ -90,7 +90,8 @@ class PrBuildScopingTests(unittest.TestCase):
                          original)
 
     def test_shared_inputs_validate_both_mods(self):
-        for path in ('scripts/release_installers.py', 'scripts/release_snapshot.sh',
+        for path in ('scripts/release_installers.py', 'tests/test_hangar_release_installers.py',
+                     'scripts/release_snapshot.sh',
                      'scripts/release_version.py', 'scripts/privacy_audit.py',
                      'scripts/release_coordinator.py', 'scripts/release_ruleset.py',
                      'scripts/release_modules.json',

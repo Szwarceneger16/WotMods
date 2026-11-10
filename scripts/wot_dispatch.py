@@ -22,11 +22,12 @@ def needs_rebuild(target, installed):
         raise ValueError('Missing exact EU mods directory')
     wanted = tuple(map(int, target.split('.')))
     versions = [tuple(map(int, value.split('.'))) for value in installed]
-    if not versions or len(versions) > len(release_installers.KINDS):
+    expected_count = len(release_installers.registered_kinds())
+    if not versions or len(versions) > expected_count:
         raise ValueError('Invalid previous module count')
     if any(v > wanted for v in versions):
         raise ValueError('Refusing to downgrade an installer')
-    return len(versions) < len(release_installers.KINDS) or any(v != wanted for v in versions)
+    return len(versions) < expected_count or any(v != wanted for v in versions)
 
 
 def main():
@@ -52,7 +53,7 @@ def main():
             if digest != asset.get('digest'):
                 raise ValueError('Downloaded immutable asset digest mismatch')
         reports = release_installers.verify_directory(Path(tmp), expected_kinds=previous_mods)
-        # verify_directory validates both installers and cross-mod paths/resources.
+        # Validate the historical registered set and cross-mod paths/resources.
         versions = [report[2] for report in reports]
         if not needs_rebuild(target, versions):
             print('All verified installers already target ' + target)
