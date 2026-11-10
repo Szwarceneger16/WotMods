@@ -20,6 +20,18 @@ The snapshot replaces previous season data on each capture; it is not an archive
 of historical seasons. No purchases, rewards claims or chapter selection occur.
 The existing validated configuration is unchanged.
 
+## Personal campaigns and operations
+
+With `include_missions: true`, version 0.14.0 includes a bounded native campaign,
+operation and mission-chain catalog. Stored quest selection is separate from
+current campaign activity, pause and disabled state. A remembered selection in
+an inactive campaign is never marked active. Unknown native states remain null.
+The current mission in each chain comes from the client's `getActualQuests`,
+with its native completion count, chain length and operation points where
+available. Locked and unselected operations remain distinguishable. Existing
+flat mission data stays compatible, with current summary quests emitted first.
+See [the native API evidence](docs/PERSONAL_OPERATIONS_SOURCE_EVIDENCE.md).
+
 ## Data included
 
 - All vehicles in the account's garage inventory, independent of the in-game
@@ -30,6 +42,9 @@ The existing validated configuration is unchanged.
   not inferred from vehicle names or account statistics. Missing role APIs leave
   the optional field absent; unavailable translations remain null. These are
   vehicle roles, not the separate Personal Missions role-category classifiers.
+  From 0.14.0, resolved native role characteristics are also included as bounded
+  plain text when available. Role artwork stays bundled in the Site; no role
+  images are uploaded by the game client.
 - Saved vehicle playlists, including names and vehicle types in their saved
   order. The client can keep a sold vehicle on a list. Such entries are counted
   on the site but have no current garage loadout.

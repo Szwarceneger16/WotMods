@@ -31,7 +31,7 @@ except NameError:
 
 LOG = logging.getLogger('grz.hangarsync')
 MISSION_LOG = logging.getLogger('grz.hangarsync.missions')
-VERSION = '0.13.0'
+VERSION = '0.14.0'
 CONFIG_FILE = 'GRZ_Hangar_Sync.json'
 LOG_DIR = 'GRZ_Hangar_Sync'
 LOG_FILE = 'hangar_sync.log'
@@ -873,7 +873,7 @@ def _add_remembered_crew(snapshot, vehicles, items):
         snapshot['crewSkillCatalog'] = [catalog[key] for key in sorted(catalog)]
 
 
-def _role_text(value):
+def _role_text(value, limit=240):
     """Copy only resolved, bounded native role display text."""
     if not isinstance(value, (type(''), bytes)):
         return None
@@ -893,7 +893,7 @@ def _role_text(value):
         if (not value or re.search(r'#[A-Za-z][A-Za-z0-9_]*:', value) or
                 re.search(r'%\([^)]+\)[A-Za-z]|%[sd]|\{[^{}]+\}', value)):
             return None
-        return value[:240]
+        return value[:limit]
     except Exception:
         return None
 
@@ -923,6 +923,15 @@ def _vehicle_role(vehicle):
         from gui.impl.gen import R
         role['groupName'] = _role_text(backport.text(
             R.strings.menu.roleExp.roleGroupName.dyn(key)()))
+    except Exception:
+        pass
+    try:
+        from gui.impl import backport
+        from gui.impl.gen import R
+        description = _role_text(backport.text(
+            R.strings.menu.roleExp.roleDescr.dyn(key)()), 1400)
+        if description is not None:
+            role['description'] = description
     except Exception:
         pass
     return role
@@ -1443,7 +1452,67 @@ def _daily_epic_row(quest):
     return row
 
 
-def _personal_missions(cache):
+def _personal_id(value):
+    if type(value) in _INTEGER_TYPES:
+        value = type('')(value)
+    if isinstance(value, bytes) and not isinstance(value, type('')):
+        try:
+            value = value.decode('ascii')
+        except UnicodeError:
+            return None
+    if (isinstance(value, type('')) and re.match(r'\A[0-9]{1,12}\Z', value)
+            and int(value) > 0):
+        return value
+    return None
+
+
+def _personal_call(target, name, *args):
+    try:
+        return _mission_call(target, name, *args)
+    except Exception:
+        return None
+
+
+def _personal_bool(value):
+    if type(value) is bool or type(value) in _INTEGER_TYPES and value in (0, 1):
+        return bool(value)
+    return None
+
+
+def _personal_flag(target, name):
+    return _personal_bool(_personal_call(target, name))
+
+
+def _personal_disabled(quest, operation):
+    flags = [_personal_flag(target, 'isDisabled') for target in (quest, operation)]
+    if True in flags:
+        return True
+    return False if flags == [False, False] else None
+
+
+def _personal_paused(quest, operation):
+    try:
+        quest_paused = _personal_bool(getattr(quest, 'isOnPause', None))
+    except Exception:
+        quest_paused = None
+    operation_paused = _personal_flag(operation, 'isPaused')
+    if quest_paused is True or operation_paused is True:
+        return True
+    if quest_paused is False and operation_paused is False:
+        return False
+    return None
+
+
+def _personal_branch(target, quest=False):
+    value = _mission_text(_personal_call(target, 'getQuestBranchName' if quest else 'getBranchName'))
+    return value if re.match(r'\A[A-Za-z][A-Za-z0-9_]{0,47}\Z', value) else ''
+
+
+def _personal_campaign_active(personal, branch):
+    return _personal_bool(_personal_call(personal, 'isCampaignActive', branch)) if branch else None
+
+
+def _personal_context(cache):
     from personal_missions import PM_BRANCH
     personal = cache.getPersonalMissions()
     if personal is None or not personal.isQuestsProgressSynced():
@@ -1451,21 +1520,122 @@ def _personal_missions(cache):
     branches = PM_BRANCH.ALL_NAMES
     operations = personal.getAllOperations(branches)
     campaigns = personal.getAllCampaigns(branches)
+    quests = personal.getAllQuests(branches)
+    if not all(isinstance(value, dict) for value in (operations, campaigns, quests)):
+        raise ValueError('personal_metadata_unavailable')
+    actual = {}
+    for operation_id, operation in sorted(operations.items(), key=lambda pair: _personal_id(pair[0]) or '')[:64]:
+        identifier = _personal_id(operation_id)
+        branch_id = _personal_call(operation, 'getBranch')
+        if identifier is None or type(branch_id) not in _INTEGER_TYPES:
+            continue
+        current = _personal_call(personal, 'getActualQuests', branch_id, operation_id)
+        if isinstance(current, (list, tuple)) and len(current) <= 16:
+            actual[identifier] = [quest for quest in current
+                                  if _personal_id(_personal_call(quest, 'getID')) is not None
+                                  and _personal_id(_personal_call(quest, 'getOperationID')) == identifier]
+    return personal, operations, campaigns, quests, actual
+
+
+def _personal_operation_rows(context):
+    personal, operations, campaigns, _, actual = context
+    rows = []
+    partial = len(operations) > 64
+    for operation_id, operation in sorted(operations.items(), key=lambda pair: _personal_id(pair[0]) or '')[:64]:
+        identifier = _personal_id(operation_id)
+        campaign_id = _personal_id(_personal_call(operation, 'getCampaignID'))
+        branch = _personal_branch(operation)
+        if identifier is None or campaign_id is None or not branch:
+            partial = True
+            continue
+        campaign = campaigns.get(int(campaign_id), campaigns.get(campaign_id))
+        selected = _personal_flag(operation, 'isActive')
+        campaign_active = _personal_campaign_active(personal, branch)
+        paused = _personal_flag(operation, 'isPaused')
+        disabled = _personal_flag(operation, 'isDisabled')
+        available = _personal_call(operation, 'isAvailable')
+        try:
+            available = _personal_bool(getattr(available, 'isValid', available))
+        except Exception:
+            available = None
+        actual_quests = actual.get(identifier)
+        row = {'id': identifier, 'campaignId': campaign_id, 'branch': branch,
+               'campaign': _mission_text(_personal_call(campaign, 'getUserName'))[:240],
+               'name': _mission_text(_personal_call(operation, 'getUserName'))[:240],
+               'selected': selected, 'campaignActive': campaign_active,
+               'active': selected is True and campaign_active is True and paused is False and disabled is False,
+               'paused': paused, 'disabled': disabled, 'available': available,
+               'unlocked': _personal_flag(operation, 'isUnlocked'),
+               'completed': _personal_flag(operation, 'isCompleted'),
+               'fullCompleted': _personal_flag(operation, 'isFullCompleted'),
+               'actualQuestIds': ([_personal_id(_personal_call(quest, 'getID'))
+                                   for quest in actual_quests] if actual_quests is not None else None),
+               'chains': []}
+        row['iconKey'] = 'operation:' + identifier
+        if _personal_flag(operation, 'isWithoutAwardListBranch') is True:
+            row['points'] = {
+                'current': _mission_number(_personal_call(operation, 'getTotalPmPointsCount')),
+                'total': _mission_number(_personal_call(operation, 'getMaxPmPointsCount'))}
+        chains = _personal_call(operation, 'getQuests')
+        if not isinstance(chains, dict):
+            chains = {}
+            partial = True
+        if len(chains) > 16:
+            partial = True
+        for chain_id, chain in sorted(chains.items(), key=lambda pair: _personal_id(pair[0]) or '')[:16]:
+            chain_identifier = _personal_id(chain_id)
+            if chain_identifier is None or not isinstance(chain, dict) or len(chain) > MAX_MISSIONS:
+                partial = True
+                continue
+            flags = [_personal_flag(quest, 'isCompleted') for quest in chain.values()]
+            classifier = _personal_call(operation, 'getChainClassifier', chain_id)
+            try:
+                category = _mission_text(getattr(classifier, 'classificationAttr', None))
+            except Exception:
+                category = ''
+            if not re.match(r'\A[A-Za-z][A-Za-z0-9_]{0,47}\Z', category):
+                category = None
+            current_id = next((_personal_id(_personal_call(quest, 'getID')) for quest in actual_quests or []
+                               if _personal_id(_personal_call(quest, 'getChainID')) == chain_identifier), None)
+            row['chains'].append({
+                'id': chain_identifier,
+                'name': _mission_text(_personal_call(operation, 'getChainName', chain_id))[:240],
+                'category': category, 'total': len(chain),
+                'completed': sum(value is True for value in flags) if None not in flags else None,
+                'currentQuestId': current_id})
+        if (not row['name'] or not row['campaign'] or actual_quests is None or campaign_active is None or
+                any(row[key] is None for key in ('selected', 'paused', 'disabled', 'unlocked', 'available'))):
+            partial = True
+        rows.append(row)
+    return rows, 'partial' if partial else 'ok'
+
+
+def _personal_missions(cache, context=None):
+    personal, operations, campaigns, quests, actual = context or _personal_context(cache)
 
     def normalize(quest):
         row = _quest_row(quest, personal=True, cache=cache)
-        row['active'] = bool(quest.isInProgress())
+        selected = _personal_flag(quest, 'isInProgress')
         campaign = campaigns.get(quest.getCampaignID())
         operation = operations.get(quest.getOperationID())
+        branch = _personal_branch(quest, quest=True) or _personal_branch(operation)
+        campaign_active = _personal_campaign_active(personal, branch)
+        paused = _personal_paused(quest, operation)
+        disabled = _personal_disabled(quest, operation)
+        row.update({'selected': selected, 'campaignActive': campaign_active,
+                    'paused': paused, 'disabled': disabled,
+                    'active': selected is True and campaign_active is True and paused is False and disabled is False})
+        for name, value in (('campaignId', quest.getCampaignID()), ('operationId', quest.getOperationID()),
+                            ('chainId', quest.getChainID())):
+            identifier = _personal_id(value)
+            if identifier is not None:
+                row[name] = identifier
+        if branch:
+            row['branch'] = branch
         row['campaign'] = _mission_text(_mission_call(campaign, 'getUserName'))
         row['operation'] = _mission_text(_mission_call(operation, 'getUserName'))
-        operation_icon = _mission_call(operation, 'getIconID')
-        if _mission_number(operation_icon) is not None:
-            operation_icon = type('')(operation_icon)
-        if isinstance(operation_icon, (type(''), bytes)):
-            operation_icon = _mission_text(operation_icon)
-            if re.match(r'\A[0-9]{1,12}\Z', operation_icon):
-                row['iconKey'] = 'operation:' + operation_icon
+        if 'operationId' in row:
+            row['iconKey'] = 'operation:' + row['operationId']
         try:
             row['series'] = _mission_text(_mission_call(operation, 'getChainName', quest.getChainID()))
         except Exception:
@@ -1474,10 +1644,45 @@ def _personal_missions(cache):
             row['missing'].append('operation')
         return row
 
-    for _, quest in sorted(personal.getAllQuests(branches).items(), key=lambda item: item[0]):
+    seen = set()
+    def actual_priority(identifier):
+        operation = operations.get(int(identifier), operations.get(identifier))
+        selected = _personal_flag(operation, 'isActive')
+        active = (selected is True and _personal_campaign_active(personal, _personal_branch(operation)) is True
+                  and _personal_flag(operation, 'isPaused') is False
+                  and _personal_flag(operation, 'isDisabled') is False)
+        return not active, selected is not True, int(identifier)
+
+    for operation_id in sorted(actual, key=actual_priority):
+        for quest in actual[operation_id]:
+            identifier = _personal_id(_personal_call(quest, 'getID'))
+            if identifier not in seen:
+                seen.add(identifier)
+                yield quest, normalize
+    for _, quest in sorted(quests.items(), key=lambda item: item[0]):
+        if _personal_id(_personal_call(quest, 'getID')) in seen:
+            continue
         if (not quest.isDisabled() and not quest.isFullCompleted() and
                 (quest.isInProgress() or quest.isAvailableToPerform())):
             yield quest, normalize
+
+
+def _personal_mission_bucket(cache):
+    try:
+        context = _personal_context(cache)
+    except MissionSourcePending:
+        return {'status': 'pending', 'items': [], 'failures': 0,
+                'operations': [], 'operationsStatus': 'pending'}
+    except Exception as error:
+        return {'status': 'unavailable', 'items': [], 'failures': 1,
+                'errorType': _safe_exception_type(error),
+                'operations': [], 'operationsStatus': 'unavailable'}
+    result = _mission_bucket(lambda: _personal_missions(cache, context))
+    try:
+        result['operations'], result['operationsStatus'] = _personal_operation_rows(context)
+    except Exception:
+        result['operations'], result['operationsStatus'] = [], 'unavailable'
+    return result
 
 
 def _crucible_missions(cache):
@@ -1552,7 +1757,7 @@ def collect_missions():
     for name, getter, bonus in sources:
         categories[name] = _mission_bucket(
             lambda getter=getter, bonus=bonus: _ordinary_missions(cache, getter, bonus))
-    categories['personal'] = _mission_bucket(lambda: _personal_missions(cache))
+    categories['personal'] = _personal_mission_bucket(cache)
     categories['crucible'] = _mission_bucket(lambda: _crucible_missions(cache))
     return {'schemaVersion': 1, 'categories': categories}
 

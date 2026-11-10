@@ -329,6 +329,31 @@ class VehicleRoleTests(unittest.TestCase):
         self.assertNotIn('accountDBID', json.dumps(row))
         self.assertNotIn('fixture-private-marker', json.dumps(row))
 
+    def test_native_role_description_is_optional_sanitized_and_bounded(self):
+        vehicle = Vehicle()
+        vehicle.roleLabel = 'role_MT_support'
+        localization, _, text, _ = self.localization('Support Medium Tank', 'Support')
+        with localization:
+            node = sys.modules['gui.impl.gen'].R.strings.menu.roleExp
+            node.roleDescr = types.SimpleNamespace(dyn=lambda key: lambda: 'native-role-description:' + key)
+            text.side_effect = lambda resource: ('Support' if resource.startswith('native-role-group:')
+                                                else '<b>Native role traits</b>&nbsp;' + 'x' * 1500)
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertEqual(len(row['role']['description']), 1400)
+        self.assertTrue(row['role']['description'].startswith('Native role traits '))
+        self.assertNotIn('<', row['role']['description'])
+        self.assertIn(mock.call('native-role-description:role_MT_support'), text.call_args_list)
+
+    def test_unresolved_native_role_description_is_not_exported(self):
+        vehicle = Vehicle()
+        vehicle.roleLabel = 'role_MT_support'
+        localization, _, _, _ = self.localization('Support Medium Tank', '#menu:roleExp/roleDescr/role_MT_support')
+        with localization:
+            node = sys.modules['gui.impl.gen'].R.strings.menu.roleExp
+            node.roleDescr = types.SimpleNamespace(dyn=lambda key: lambda: key)
+            row = mod.normalize_vehicle(vehicle, include_crew=False)
+        self.assertNotIn('description', row['role'])
+
 
 class SnapshotTests(unittest.TestCase):
     def test_all_schema_categories_and_active_slots(self):
