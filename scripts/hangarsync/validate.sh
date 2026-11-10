@@ -8,7 +8,7 @@ python3 -m unittest discover -s mods/hangarsync/tests -v
 (
   cd mods/hangarsync
   PYTHONPATH=source:tests "$PYTHON27" -B -m unittest -v \
-    test_hangar_crew test_perk_tooltips test_remembered_crew test_battle_pass
+    test_hangar_crew test_perk_tooltips test_remembered_crew test_battle_pass test_personal_operations
 )
 
 python3 mods/hangarsync/tools/build.py

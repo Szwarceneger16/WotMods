@@ -112,86 +112,84 @@ class HangarPipelineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.workflow = WORKFLOW.read_text(encoding='utf-8')
-        cls.build = BUILD.read_text(encoding='utf-8')
+        cls.build = (ROOT / '.github/workflows/wotmods-release.yml').read_text(encoding='utf-8')
         cls.validate = VALIDATE.read_text(encoding='utf-8')
         cls.paths = filters(cls.workflow)
-        cls.build_paths = filters(cls.build, 'push')
 
-    def test_pr19_base_and_main_both_receive_builds(self):
+    def test_feature_and_main_targets_receive_candidate_validation(self):
         branch_line = self.workflow.split('  pull_request:\n', 1)[1].split('    paths:', 1)[0]
         branches = re.search(r'branches: \[([^\]]+)\]', branch_line).group(1)
         self.assertEqual({value.strip() for value in branches.split(',')},
-                         {'main', 'feature/sessionstats-battle-details-timeline'})
+                         {'main', 'feature/sessionstats-battle-details-timeline',
+                          'feature/sessionstats-hangar-api'})
         self.assertIn('  workflow_dispatch:', self.workflow)
         self.assertNotIn('pull_request_target', self.workflow)
         self.assertNotIn('\n  push:', self.workflow)
 
-    def test_hangar_changes_and_its_dependencies_trigger_build(self):
+    def test_hangar_sources_and_shared_release_inputs_trigger_validation(self):
         for path in ('mods/hangarsync/source/hangar_crew.py', 'mods/hangarsync/VERSION',
                      'mods/hangarsync/GRZ_Hangar_Sync.json.example',
                      'scripts/hangarsync/privacy.py', 'scripts/hangarsync/bootstrap_smoke.py',
                      'tests/test_hangarsync_pipeline.py', 'tests/test_hangarsync_privacy.py',
-                     '.github/workflows/hangarsync-ci.yml', '.github/workflows/hangarsync-build.yml',
-                     'scripts/sessionstats/python27.sh',
-                     'scripts/privacy_audit.py', 'scripts/wot_updates.py'):
+                     'tests/test_hangar_release_installers.py',
+                     '.github/workflows/hangarsync-ci.yml', '.github/workflows/wotmods-release.yml',
+                     'scripts/sessionstats/python27.sh', 'scripts/privacy_audit.py',
+                     'scripts/release_installers.py', 'scripts/release_coordinator.py',
+                     'scripts/release_modules.json', 'scripts/build_release_module.sh',
+                     'tests/test_release_coordinator.py', 'tests/test_unified_release_workflow.py'):
             with self.subTest(path=path):
                 self.assertTrue(matches(path, self.paths))
-                self.assertTrue(matches(path, self.build_paths))
 
-    def test_other_mods_and_unrelated_docs_do_not_trigger_hangar(self):
+    def test_other_mod_sources_and_unused_news_preflight_do_not_start_hangar(self):
         for path in ('source/mod_staysharp_medkit.py', 'assets/voices/pl.wav.b85', 'VERSION',
                      'mods/sessionstats/src/grz_session_stats/runtime.py',
                      'mods/sessionstats/ui/session_stats.js', 'scripts/sessionstats/validate.sh',
                      '.github/workflows/sessionstats-ci.yml', '.github/workflows/ci.yml',
+                     '.github/workflows/wot-updates.yml', 'scripts/wot_updates.py',
+                     'scripts/wot_dispatch.py', 'tests/test_wot_updates.py',
                      'README.md', 'docs/MULTIMOD_RELEASES.md'):
             with self.subTest(path=path):
                 self.assertFalse(matches(path, self.paths))
-                self.assertFalse(matches(path, self.build_paths))
+        self.assertEqual(set(jobs(self.workflow)), {'hangarsync'})
+        self.assertNotIn('uses: ./.github/workflows/wot-updates.yml', self.workflow)
 
-    def test_existing_mod_filters_do_not_pick_hangar_sources(self):
+    def test_existing_mod_filters_do_not_cross_build_hangar_source_changes(self):
         for workflow in ('ci.yml', 'sessionstats-ci.yml'):
             patterns = filters((ROOT / '.github/workflows' / workflow).read_text())
             for path in ('mods/hangarsync/source/mod_grz_hangar_sync.py',
                          'scripts/hangarsync/validate.sh', 'tests/test_hangarsync_pipeline.py',
-                         '.github/workflows/hangarsync-ci.yml', '.github/workflows/hangarsync-build.yml'):
+                         '.github/workflows/hangarsync-ci.yml'):
                 with self.subTest(workflow=workflow, path=path):
                     self.assertFalse(matches(path, patterns))
 
-    def test_candidate_build_has_no_publication_credentials(self):
+    def test_candidate_build_keeps_readonly_permissions_and_no_installer_upload(self):
         self.assertIn('permissions:\n  contents: read', self.workflow)
         self.assertIn('persist-credentials: false', self.workflow)
-        self.assertNotIn('contents: write', self.workflow)
-        self.assertNotIn('secrets.', self.workflow)
-        self.assertNotIn('environment:', self.workflow)
-        self.assertNotIn('gh release', self.validate)
-        self.assertNotIn('release_snapshot', self.validate)
-        self.assertNotIn('WOT_CLIENT_VERSION', self.workflow)
+        self.assertIn('ref: ${{ github.sha }}', self.workflow)
+        for forbidden in ('contents: write', 'secrets.', 'environment:', 'gh release',
+                          'workflow_run', 'actions/upload-artifact@', 'actions/download-artifact@'):
+            self.assertNotIn(forbidden, self.workflow)
+        self.assertIn('bash scripts/hangarsync/validate.sh', self.workflow)
+        self.assertIn('GITHUB_STEP_SUMMARY', self.workflow)
+        self.assertIn('Trusted release downloads', self.workflow)
 
-    def test_verified_compiler_and_pinned_actions_are_reused(self):
+    def test_verified_compiler_and_pinned_checkout_are_reused(self):
         self.assertIn('bash scripts/sessionstats/python27.sh', self.workflow)
         references = re.findall(r'uses: (actions/[^\s]+)', self.workflow)
         self.assertEqual(references, ['actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'])
-        self.assertIn('strict: false', self.workflow)
 
-    def test_pr_workflow_never_uploads_or_promotes_executable_artifacts(self):
-        self.assertNotRegex(self.workflow, r'actions/(?:upload|download)-artifact@')
-        self.assertNotIn('gh release', self.workflow)
-        self.assertNotIn('workflow_run', self.workflow)
-        self.assertIn('bash scripts/hangarsync/validate.sh', self.workflow)
-        self.assertIn('candidate', self.workflow.lower())
+    def test_standalone_hangar_publisher_is_retired(self):
+        self.assertFalse(BUILD.exists())
+        self.assertIn('name: Publish WotMods snapshot', self.build)
+        self.assertIn('  push:\n    branches: [main]', self.build)
+        self.assertNotIn('  pull_request:', self.build)
+        publishers = [path.name for path in (ROOT / '.github/workflows').glob('*.yml')
+                      if re.search(r'^\s+gh release create ', path.read_text(), re.MULTILINE)]
+        self.assertEqual(publishers, ['wotmods-release.yml'])
 
-    def test_installer_build_only_triggers_on_main_or_explicit_dispatch(self):
-        trigger = self.build.split('\npermissions:', 1)[0]
-        self.assertIn('name: Build Hangar Sync installer', trigger)
-        self.assertRegex(trigger, r'push:\n    branches: \[main\]')
-        self.assertIn('  workflow_dispatch:', trigger)
-        for forbidden in ('pull_request', 'workflow_run', 'inputs:', 'tags:'):
-            self.assertNotIn(forbidden, trigger)
-        self.assertEqual(set(self.paths), set(self.build_paths))
-
-    def test_installer_jobs_reject_untrusted_event_ref_and_repository_contexts(self):
+    def test_unified_installer_gate_rejects_untrusted_contexts_before_all_jobs(self):
         blocks = jobs(self.build)
-        self.assertEqual(set(blocks), {'updates', 'hangarsync'})
+        expression = job_condition(blocks['updates'])
         official = 'Szwarceneger16/WotMods'
         cases = [
             ('pull_request', 'refs/pull/19/merge', official, False),
@@ -207,53 +205,55 @@ class HangarPipelineTests(unittest.TestCase):
             ('push', 'refs/heads/main', official, True),
             ('workflow_dispatch', 'refs/heads/main', official, True),
         ]
-        for name, block in blocks.items():
-            expression = job_condition(block)
-            for event, ref, repository, expected in cases:
-                with self.subTest(job=name, event=event, ref=ref, repository=repository):
-                    self.assertEqual(condition_matches(expression, {
-                        'github.event_name': event, 'github.ref': ref,
-                        'github.repository': repository,
-                    }), expected)
+        for event, ref, repository, expected in cases:
+            with self.subTest(event=event, ref=ref, repository=repository):
+                self.assertEqual(condition_matches(expression, {
+                    'github.event_name': event, 'github.ref': ref,
+                    'github.repository': repository}), expected)
+        self.assertIn('needs: updates', blocks['plan'])
+        self.assertIn('needs: [plan, updates]', blocks['build'])
+        self.assertIn('needs: [plan, updates, build]', blocks['publish'])
+        for name in ('plan', 'build', 'publish'):
+            self.assertNotIn('always()', blocks[name])
+            self.assertNotIn('!cancelled()', blocks[name])
 
-    def test_trusted_build_rebuilds_exact_sha_with_read_only_permissions(self):
-        self.assertIn('permissions:\n  contents: read', self.build)
+    def test_registered_hangar_build_uses_common_planner_and_native_zip(self):
+        import json
+        registry = json.loads((ROOT / 'scripts/release_modules.json').read_text())
+        entry = next(item for item in registry['modules'] if item['id'] == 'hangarsync')
+        self.assertEqual(entry['installer_prefix'], 'GRZ_Hangar_Sync-v')
+        self.assertEqual(entry['base_version_file'], 'mods/hangarsync/VERSION')
+        self.assertEqual(entry['source_paths'], [
+            'mods/hangarsync/**', 'scripts/hangarsync/**', 'scripts/sessionstats/python27.sh'])
+        builder = (ROOT / 'scripts/build_release_module.sh').read_text()
+        hangar = builder.split('  hangarsync)', 1)[1].split('  *)', 1)[0]
+        self.assertIn('bash scripts/hangarsync/validate.sh', hangar)
+        self.assertIn("'--version', version, '--client-version', client", hangar)
+        self.assertIn('audit.scan_bytes', hangar)
+        self.assertNotIn('scripts/sessionstats/validate.sh', hangar)
+        self.assertNotIn('source/build_wotmod.py', hangar)
+        self.assertIn('fromJSON(needs.plan.outputs.matrix)', self.build)
+        self.assertIn('pattern: wotmods-installer-*', self.build)
+
+    def test_production_downloads_follow_verified_remote_bytes(self):
         self.assertIn('ref: ${{ github.sha }}', self.build)
-        self.assertIn('persist-credentials: false', self.build)
-        self.assertIn('bash scripts/sessionstats/python27.sh', self.build)
-        self.assertIn('bash scripts/hangarsync/validate.sh', self.build)
-        self.assertIn("python3 -m unittest discover -s tests -p 'test_hangarsync_*.py' -v", self.build)
-        references = re.findall(r'uses: (actions/[^\s]+)', self.build)
-        self.assertEqual(references, [
-            'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
-            'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9',
-        ])
-        for forbidden in ('contents: write', 'secrets.', 'environment:', 'download-artifact',
-                          'pull_request_target', 'workflow_run', 'gh release'):
-            self.assertNotIn(forbidden, self.build)
-        self.assertNotEqual(re.search(r'group: (.+)', self.workflow).group(1),
-                            re.search(r'group: (.+)', self.build).group(1))
+        self.assertIn('ref: ${{ needs.plan.outputs.source_sha }}', self.build)
+        self.assertIn('environment: wotmods-release', self.build)
+        self.assertIn('queue: max', self.build)
+        self.assertIn('cancel-in-progress: false', self.build)
+        self.assertLess(self.build.index('python3 scripts/release_installers.py verify "$remote"'),
+                        self.build.index('cat release-notes.md >> "$GITHUB_STEP_SUMMARY"'))
 
-    def test_trusted_installer_is_uploaded_only_after_validation_as_existing_zip(self):
-        upload = self.build.split('uses: actions/upload-artifact@', 1)[1]
-        self.assertLess(self.build.index('bash scripts/hangarsync/validate.sh'),
-                        self.build.index('uses: actions/upload-artifact@'))
-        self.assertIn('path: mods/hangarsync/dist/GRZ_Hangar_Sync-v*.zip', upload)
-        self.assertIn('archive: false', upload)
-        self.assertIn('if-no-files-found: error', upload)
-        self.assertIn('retention-days: 14', upload)
-        self.assertNotIn('path: mods/hangarsync/dist/*', upload)
-
-    def test_installation_docs_point_to_trusted_builds_not_pr_checks(self):
+    def test_installation_docs_point_to_shared_trusted_releases(self):
         readme = (ROOT / 'README.md').read_text(encoding='utf-8')
+        self.assertIn('GRZ_Hangar_Sync-v<version>.zip', readme)
+        self.assertIn('../../releases/latest', readme)
+        self.assertNotIn('Build Hangar Sync installer', readme)
         self.assertNotIn('PR build artifact:', readme)
-        self.assertNotIn('successful **Validate Hangar Sync PR** run', readme)
-        self.assertIn('Build Hangar Sync installer', readme)
 
-    def test_validator_includes_real_python27_bootstrap_and_recursive_audit(self):
+    def test_validator_keeps_native_python27_and_recursive_privacy_audits(self):
         self.assertIn('discover -s mods/hangarsync/tests -v', self.validate)
-        self.assertIn('"$PYTHON27" -B -m unittest -v', self.validate)
-        self.assertIn('test_hangar_crew test_perk_tooltips test_remembered_crew', self.validate)
+        self.assertIn('test_personal_operations', self.validate)
         self.assertIn('"$PYTHON27" -B scripts/hangarsync/bootstrap_smoke.py', self.validate)
         self.assertIn('privacy.py --python27 "$PYTHON27" --scan-dist', self.validate)
         self.assertEqual(self.validate.count('python3 mods/hangarsync/tools/build.py'), 2)
@@ -261,8 +261,12 @@ class HangarPipelineTests(unittest.TestCase):
         self.assertNotIn('mods/sessionstats/tools/build.py', self.validate)
         self.assertNotIn('source/build_wotmod.py', self.validate)
 
-    def test_shell_validator_is_syntactically_valid(self):
+    def test_shell_blocks_parse(self):
         subprocess.check_call(['bash', '-n', str(VALIDATE)])
+        for body in re.findall(r'(?m)^        run: \|\n((?:          .*\n|\n)+)', self.workflow):
+            code = '\n'.join(line[10:] if line.startswith('          ') else ''
+                             for line in body.splitlines()) + '\n'
+            subprocess.run(['bash', '-n'], input=code, text=True, check=True)
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ An unchanged Stats ZIP is copied byte-for-byte into the next shared Release.
 The Stats builder still validates all source artifacts, their checksums and
 OpenWG before packaging `Session-Stats-v<version>.zip`. Its production job has
 `contents: read`. Only the separate global publisher has `contents: write`,
-and it publishes one complete WotMods snapshot (both mods' ZIPs) after all
+and it publishes one complete WotMods snapshot (all registered mods' ZIPs) after all
 selected builds pass. No direct Stats publisher, independent tag namespace or
 API credential is required for new releases.
 

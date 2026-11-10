@@ -127,12 +127,7 @@ labels so the Site can select its originals. Image bytes are not read or uploade
 
 ## Installation
 
-1. After the changes are reviewed and merged into `main`, download
-   `GRZ_Hangar_Sync-v<version>.zip` from a successful **Build Hangar Sync installer**
-   run in this repository, checking that its branch is `main` and its event is
-   `push` or `workflow_dispatch`. PR checks build candidate packages only for
-   validation and do not upload installation ZIPs. Do not install older PR
-   artifacts even when their checks passed; their code and tests are unreviewed.
+1. Download the unmodified `GRZ_Hangar_Sync-v<version>.zip` from the repository's [latest shared WotMods Release](https://github.com/Szwarceneger16/WotMods/releases/latest). The single **Publish WotMods snapshot** workflow builds changed modules from the exact accepted `main` revision and verifies every published ZIP. Its final Actions summary links to the Release downloads. Do not install arbitrary PR artifacts even when their checks passed; candidate code and tests are unreviewed.
 2. Extract it into the **physical World of Tanks installation**. For example,
    `mods/2.4.1.1/GRZ_Hangar_Sync.wotmod` is the fixed internal package name.
    If your current game uses a different versioned `mods` directory, move the

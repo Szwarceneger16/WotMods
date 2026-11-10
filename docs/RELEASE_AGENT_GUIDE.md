@@ -10,6 +10,7 @@ publication. **Do not publish from a pull request or bypass tag protection.**
 | --- | --- | --- | --- |
 | Stay Sharp PR validation | `.github/workflows/ci.yml` | `contents: read` | Its own installable ZIP as a PR artifact |
 | Session Stats PR validation | `.github/workflows/sessionstats-ci.yml` | `contents: read` | Its own installable ZIP as a PR artifact |
+| Hangar Sync PR validation | `.github/workflows/hangarsync-ci.yml` | `contents: read` | Tested and audited candidate, without installer upload |
 | Release planning | `wotmods-release.yml` / `release_coordinator.py` | `contents: read` | A versioned plan and selected module matrix |
 | Module release builds | `wotmods-release.yml` / `build_release_module.sh` | `contents: read` | One verified installer ZIP per changed module |
 | Release publishing | `wotmods-release.yml` / `release_coordinator.py assemble` | `contents: write`, protected Environment | **One** complete immutable GitHub Release |
@@ -33,12 +34,13 @@ production registry. Supporting an additional format never silently registers
 it, permits an extra installer, or tolerates a missing registered module. Only
 the previous tagged registry may select an older historical snapshot set.
 
-Hangar Sync installer support is prepared independently of its activation. Keep
-the registry at the currently shipped modules until the Hangar source, native
-validation and registry activation have been reviewed together. Incorporate the
-accepted capability change into the Hangar feature before activating its entry.
-Its candidate PR checks do not upload installers; production artifacts and
-Releases come only from the accepted-main transaction below.
+Hangar Sync is the third registered module after its native source and release
+capability have been reviewed. Its candidate PR checks do not upload installers;
+production artifacts and Releases come only from the accepted-main transaction
+below. It has no standalone production workflow. The native installer ZIP is
+strictly verified and copied without a second archive wrapper. Its configuration
+example stays disabled; actual destinations, credentials and player allowlists
+belong only in each user's validated local configuration.
 
 ## 2. One locked transaction per accepted merge
 
@@ -149,9 +151,11 @@ The queue and verification do not certify compatibility inside World of Tanks.
    cannot be released until the complete set can be verified together. Keep
    `verify_directory` default verification strict for the **current** full
    module set. Only historical snapshots may specify their tagged older set.
-4. Add a **separate** read-only PR workflow with native `pull_request.paths`,
-   its own tests and `archive: false` installable ZIP artifact. Do not add
-   `contents: write` or public release commands to any PR workflow.
+4. Add a **separate** read-only PR workflow with native `pull_request.paths`
+   and its own tests. Where its trust policy permits candidate artifacts, use
+   `archive: false` to avoid another ZIP wrapper. Hangar keeps candidate packages
+   local to validation and obtains installable downloads only from accepted-main
+   Releases. Do not add `contents: write` or public release commands to PR checks.
 5. Extend the registry/scoping tests and complete ZIP collision, privacy,
    checksum and A→B/B→A race tests. Shared infrastructure changes should
    select each module that genuinely depends on that infrastructure.

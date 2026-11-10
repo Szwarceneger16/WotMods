@@ -196,10 +196,12 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): w.client_chain(meta, chain())
 
     def test_same_directory_and_downgrade_do_not_dispatch(self):
-        self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * 2))
-        self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0'] * 2))
-        with self.assertRaises(ValueError): needs_rebuild('2.4.1.0', ['2.4.1.1'] * 2)
-        with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * 2)
+        import release_installers
+        count = len(release_installers.registered_kinds())
+        self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * count))
+        self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0'] * count))
+        with self.assertRaises(ValueError): needs_rebuild('2.4.1.0', ['2.4.1.1'] * count)
+        with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * count)
         self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0']))
 
     def test_newly_registered_mod_requires_a_complete_new_snapshot(self):
