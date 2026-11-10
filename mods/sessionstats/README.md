@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.6.0 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.7.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -246,8 +246,11 @@ a new ordering or index revision. New account histories start at the top.
 
 Map/vehicle history pagers update a capped ten-row viewport in place, including
 cards on an earlier loaded global page. Short single-page lists use their actual
-height; multiple pages retain a stable body height. Battle navigation adds an
-explicit localized selected-battle banner and pulses its
+height; multiple pages retain a stable body height. Battle navigation waits for
+the exact card's geometry to settle, including results below a later page's
+divider; scrolling input immediately cancels that automatic correction. Its
+localized selected-battle badge is an absolute overlay that cannot resize cards
+or move neighboring rows. Navigation pulses its
 overlay for five seconds, then leaves it 30% transparent. The card's solid orange
 border remains visible through native focus/blur events and any background
 transparency setting. An explicit outside click or a changed view/period clears
