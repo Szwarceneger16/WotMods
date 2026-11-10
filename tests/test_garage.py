@@ -16,6 +16,7 @@ SPEC = importlib.util.spec_from_file_location(
     'source' / 'staysharp_medkit' / 'garage.py')
 garage = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(garage)
+MOD_VERSION = (Path(__file__).resolve().parents[1] / 'VERSION').read_text(encoding='ascii').strip()
 
 
 class Event(object):
@@ -99,7 +100,7 @@ class Component(object):
 class GarageTests(unittest.TestCase):
     def setUp(self):
         self.actions = []
-        self.payload = {'hotkeys': {'toggle_mod': ['CTRL', 'M']},
+        self.payload = {'version': MOD_VERSION, 'hotkeys': {'toggle_mod': ['CTRL', 'M']},
                         'capturing': None, 'preview': '', 'status': ''}
 
         class LobbyFooter(Component):
@@ -147,6 +148,7 @@ class GarageTests(unittest.TestCase):
         self.assertEqual(commands.counts, (1, 1))
         self.assertEqual(child.model.props[1][0], 'grzMedkitFooter')
         self.assertEqual(json.loads(commands.props[0][1]), self.payload)
+        self.assertEqual(json.loads(commands.props[0][1])['version'], MOD_VERSION)
         commands.onAction({'action': 'begin_capture', 'binding': 'toggle_voice',
                            'event': object()})
         self.assertEqual(self.actions, [{'action': 'begin_capture', 'binding': 'toggle_voice'}])

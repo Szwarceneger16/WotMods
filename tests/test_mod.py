@@ -386,6 +386,11 @@ class Tests(unittest.TestCase):
         self.assertIs(Panel._populate,self.orig_populate)
         self.assertIs(Panel._dispose,self.orig_dispose)
 
+    def test_installed_version_is_exposed_to_garage_settings(self):
+        payload = self.mod._garage_payload()
+        self.assertEqual(payload['version'], self.mod.VERSION)
+        self.assertEqual(payload['version'], (ROOT / 'VERSION').read_text(encoding='ascii').strip())
+
     def test_02_no_native_graphics_at_startup(self):
         self.state(4)
         self.assertEqual(len(self.gui.roots),0)
