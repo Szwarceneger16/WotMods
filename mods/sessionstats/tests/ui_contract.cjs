@@ -539,8 +539,8 @@ async function runFeatureSuite(file,browser) {
   await native.locator('#ss-groups .ss-group').first().waitFor();
   check('Fake native host binds model payload',(await native.evaluate(()=>GRZSessionStats.getState())).nativeBound===true);
   check('Python GUI scale takes precedence over optional rem helper',await native.evaluate(()=>document.documentElement.style.fontSize==='1.25px' && __grzHelperCalls.rem===0));
-  check('Initial one-pixel native surface does not clip the measured panel',await native.evaluate(()=>__nativeSize[0]===875 && __nativeSize[1]===775));
-  check('Native document height follows the panel instead of the initial surface',await native.evaluate(()=>document.documentElement.classList.contains('ss-native-document') && document.body.getBoundingClientRect().height===775 && document.documentElement.getBoundingClientRect().height===775));
+  check('Initial one-pixel native surface respects the minimum and parent height cap',await native.evaluate(()=>__nativeSize[0]===875 && __nativeSize[1]===880));
+  check('Native document height follows the viewport-capped panel instead of the initial surface',await native.evaluate(()=>document.documentElement.classList.contains('ss-native-document') && document.body.getBoundingClientRect().height===880 && document.documentElement.getBoundingClientRect().height===880));
   await native.setViewportSize({width:1440,height:900});
   await native.locator('#ss-titlebar h1').dispatchEvent('mousedown',{button:0});
   await native.evaluate(()=>document.dispatchEvent(new MouseEvent('mousemove',{clientX:410,clientY:250,bubbles:true})));

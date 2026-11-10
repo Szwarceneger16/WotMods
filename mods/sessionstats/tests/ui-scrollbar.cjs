@@ -72,6 +72,12 @@ function assertScrollbarSource(source=shipped()){
   state.payload.viewport={width:480,height:640};size=context.resizePanelDimensions();
   assert.strictEqual(size.width,460);assert.strictEqual(size.height,620);assert.strictEqual(state.logicalSize.width,700);
   state.payload.viewport={width:1800,height:1200};size=context.resizePanelDimensions();assert.strictEqual(size.width,700);assert.strictEqual(size.height,730);
+  root.getBoundingClientRect=()=>({top:0,width:1,height:1});state.payload.viewport={width:1440,height:900};
+  state.nativeScale=1.25;context.resizeNative();
+  assert.deepStrictEqual(nativeSizes[nativeSizes.length-1],[875,880],'A one-pixel native surface uses the minimum and physical parent cap at 125 percent');
+  state.nativeScale=1.5;context.resizeNative();
+  assert.deepStrictEqual(nativeSizes[nativeSizes.length-1],[1050,880],'A fractional scale change keeps the physical height within the same parent cap');
+  root.getBoundingClientRect=oldRootRect;state.nativeScale=1;state.payload.viewport={width:1800,height:1200};
   context.setLogicalSize(1,1,'se');assert.strictEqual(state.logicalSize.width,550);assert.strictEqual(state.logicalSize.height,730);
   state.nativeScale=2;state.payload.viewport={width:1000,height:1000};size=context.resizePanelDimensions();
   assert.strictEqual(size.width,490);assert.strictEqual(size.height,490,'A smaller scaled viewport overrides minimum display size safely');

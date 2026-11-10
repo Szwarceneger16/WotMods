@@ -361,17 +361,17 @@ module.exports = async function ({browser, nativeHost, check}) {
 
   const grip = await page.locator('#ss-resize-grip').boundingBox();
   check('4K viewport uses the resolved 200 percent game scale',
-    await page.evaluate(() => __nativeSize[0] === 1400 && __nativeSize[1] === 1240));
+    await page.evaluate(() => __nativeSize[0] === 1400 && __nativeSize[1] === 1460));
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
   await page.mouse.down();
   await page.mouse.move(grip.x + grip.width / 2 + 160, grip.y + grip.height / 2 + 120, {steps:4});
   await page.mouse.up();
-  await page.waitForFunction(() => __nativeSize[0] === 1560 && __nativeSize[1] === 1360);
+  await page.waitForFunction(() => __nativeSize[0] === 1560 && __nativeSize[1] === 1580);
   check('Resizing at 200 percent reports physical size and remembers logical size',
     await page.evaluate(() => __grzCommands.some(x => x.action === 'size_preference' &&
-      x.width === '780' && x.height === '680')));
+      x.width === '780' && x.height === '790')));
   await page.evaluate(() => __grzEvents['self.onScaleUpdated']());
-  await page.waitForFunction(() => __nativeSize[0] === 780 && __nativeSize[1] === 680);
+  await page.waitForFunction(() => __nativeSize[0] === 780 && __nativeSize[1] === 790);
   check('A change to 100 percent keeps the same logical window size',
     await page.evaluate(() => document.documentElement.style.fontSize === '1px'));
   await page.setViewportSize({width:480, height:740});
@@ -381,14 +381,18 @@ module.exports = async function ({browser, nativeHost, check}) {
     model.payload = JSON.stringify(payload);
     __grzEvents['viewEnv.onDataChanged']();
   });
-  await page.waitForFunction(() => __nativeSize[0] === 460);
+  await page.waitForFunction(() => __nativeSize[0] === 460 && __nativeSize[1] === 720);
   const narrowControls=await controlsFit(true);
   check('Title actions wrap together and timeline selectors fit in a narrow window'+(narrowControls.pass ? '' : ': '+JSON.stringify(narrowControls)),narrowControls.pass);
   await page.close();
 
-  for(const testCase of [{window:700,card:500,label:'500px battle card'},{window:320,label:'320px floating window'}]) {
+  for(const testCase of [{window:700,card:500,label:'500px battle card'},
+    {window:320,viewport:340,label:'320px window constrained by a small game viewport'}]) {
+    // The 550rem floor yields to the real game area. A saved narrow preference
+    // on a wide viewport must no longer manufacture an inaccessible 320px UI.
+    const gameWidth=testCase.viewport || 1600;
     const narrowMore=await nativeHost(browser,{
-      initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
+      initialViewport:{width:gameWidth,height:1100},viewport:{width:gameWidth,height:1100,scale:1},
     });
     try {
       await narrowMore.evaluate(width=>{
@@ -579,7 +583,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     });
     const horizontal=/[ew]/.test(edge),vertical=/[ns]/.test(edge);
     const x=edge.includes('w') ? 6 : edge.includes('e') ? 694 : 350;
-    const y=edge.includes('n') ? 6 : edge.includes('s') ? 614 : 310;
+    const y=edge.includes('n') ? 6 : edge.includes('s') ? 724 : 365;
     const selector=edge==='se' ? '#ss-resize-grip' : '[data-corner="'+edge+'"]';
     await resize.evaluate(() => {window.__resizeClock=100000;Date.now=()=>__resizeClock;});
     await resize.locator(selector).dispatchEvent('pointerdown',{button:0,pointerId:77,clientX:x,clientY:y});
@@ -590,7 +594,7 @@ module.exports = async function ({browser, nativeHost, check}) {
         clientY:y+(edge.includes('n') ? -160 : 160),bubbles:true,
       }));
     },{edge,x,y});
-    const firstWidth=horizontal ? 940 : 700,firstHeight=vertical ? 780 : 620;
+    const firstWidth=horizontal ? 940 : 700,firstHeight=vertical ? 890 : 730;
     await resize.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
       {width:firstWidth,height:firstHeight});
     const beforeBurst=await resize.evaluate(edge => {
@@ -611,7 +615,7 @@ module.exports = async function ({browser, nativeHost, check}) {
       pointerId:77,button:0,clientX:__resizeStart.x+(edge.includes('w') ? -320 : 320),
       clientY:__resizeStart.y+(edge.includes('n') ? -240 : 240),bubbles:true,
     })),edge);
-    const finalWidth=horizontal ? 1020 : 700,finalHeight=vertical ? 860 : 620;
+    const finalWidth=horizontal ? 1020 : 700,finalHeight=vertical ? 970 : 730;
     await resize.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
       {width:finalWidth,height:finalHeight});
     check('Releasing '+edge+' flushes the latest movement and preserves the unused edge dimension',
@@ -634,11 +638,12 @@ module.exports = async function ({browser, nativeHost, check}) {
       initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
     });
     const horizontal=/[ew]/.test(edge),native=edge==='w' || edge==='s';
-    const width=horizontal ? 700 : 430,height=horizontal ? 330 : 620;
+    const requestedWidth=horizontal ? 700 : 430,requestedHeight=horizontal ? 330 : 620;
+    const width=Math.max(550,requestedWidth),height=Math.max(730,requestedHeight);
     await small.evaluate(({width,height}) => {
       const payload=JSON.parse(model.payload);payload.window_size=[width,height];
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-    },{width,height});
+    },{width:requestedWidth,height:requestedHeight});
     await small.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,{width,height});
     const x=edge==='w' ? 6 : edge==='e' ? width-6 : width/2;
     const y=edge==='n' ? 6 : edge==='s' ? height-6 : height/2;
@@ -664,7 +669,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     const finalWidth=width+(horizontal ? 100 : 0),finalHeight=height+(horizontal ? 0 : 100);
     await small.waitForFunction(({width,height}) => __nativeSize[0]===width && __nativeSize[1]===height,
       {width:finalWidth,height:finalHeight});
-    check('The '+edge+' '+(native ? 'native' : 'fallback')+' gesture preserves its saved subminimum inactive dimension',
+    check('The '+edge+' '+(native ? 'native' : 'fallback')+' gesture normalizes a legacy subminimum preference and preserves its unused visible dimension',
       await small.evaluate(({width,height}) => __grzCommands.some(command=>command.action==='size_preference' &&
         command.width===String(width) && command.height===String(height)),{width:finalWidth,height:finalHeight}));
     await small.close();
@@ -674,19 +679,19 @@ module.exports = async function ({browser, nativeHost, check}) {
     initialViewport:{width:1600,height:1100},viewport:{width:1600,height:1100,scale:1},
   });
   await captured.locator('#ss-resize-grip').dispatchEvent('pointerdown',{
-    button:0,pointerId:91,clientX:694,clientY:614,
+    button:0,pointerId:91,clientX:694,clientY:724,
   });
   await captured.evaluate(() => {
     window.__gestureToken = __grzCommands.filter(command => command.action === 'resize_begin').pop().token;
-    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:860,height:700,active:true}});
+    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:860,height:810,active:true}});
   });
-  await captured.waitForFunction(() => __nativeSize[0] === 860 && __nativeSize[1] === 700);
+  await captured.waitForFunction(() => __nativeSize[0] === 860 && __nativeSize[1] === 810);
   await captured.evaluate(() => {
     document.dispatchEvent(new PointerEvent('pointercancel',{pointerId:91,bubbles:true}));
     window.dispatchEvent(new Event('blur'));
-    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:940,height:780,active:true}});
+    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:940,height:890,active:true}});
   });
-  await captured.waitForFunction(() => __nativeSize[0] === 940 && __nativeSize[1] === 780);
+  await captured.waitForFunction(() => __nativeSize[0] === 940 && __nativeSize[1] === 890);
   check('Game-level captured gestures continue after the pointer leaves the document',
     await captured.evaluate(() => !__grzCommands.some(command => command.action === 'resize_end')));
   await captured.evaluate(() => {
@@ -695,22 +700,22 @@ module.exports = async function ({browser, nativeHost, check}) {
       original.call(this,command);
       if (command.action === 'resize_end') {
         // Final cursor movement arrives during release, after the last poll.
-        GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:1010,height:850,active:false}});
+        GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:1010,height:960,active:false}});
       }
     };
     document.dispatchEvent(new PointerEvent('pointerup',{pointerId:91,button:0,bubbles:true}));
   });
-  await captured.waitForFunction(() => __nativeSize[0] === 1010 && __nativeSize[1] === 850);
+  await captured.waitForFunction(() => __nativeSize[0] === 1010 && __nativeSize[1] === 960);
   check('Releasing a native gesture saves the final game sample rather than the previous poll',
     await captured.evaluate(() => __grzCommands.some(command => command.action === 'size_preference' &&
-      command.width === '1010' && command.height === '850') && !__grzCommands.some(command =>
-        command.action === 'size_preference' && command.width === '940' && command.height === '780')));
+      command.width === '1010' && command.height === '960') && !__grzCommands.some(command =>
+        command.action === 'size_preference' && command.width === '940' && command.height === '890')));
   await captured.evaluate(() => {
-    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:1200,height:1000,active:true}});
+    GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:1200,height:1110,active:true}});
     return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
   check('A released native gesture ignores delayed snapshots with its previous token',
-    await captured.evaluate(() => __nativeSize[0] === 1010 && __nativeSize[1] === 850 &&
-      __grzCommands.some(command => command.action === 'size_preference' && command.width === '1010' && command.height === '850')));
+    await captured.evaluate(() => __nativeSize[0] === 1010 && __nativeSize[1] === 960 &&
+      __grzCommands.some(command => command.action === 'size_preference' && command.width === '1010' && command.height === '960')));
   await captured.close();
 };

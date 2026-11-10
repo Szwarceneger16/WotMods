@@ -8,7 +8,7 @@ module.exports=async ({browser,nativeHost,check})=>{
     for(const scale of [1,2]) for(const [language,messages] of Object.entries(languages)) {
       await page.evaluate(({scale,language,messages})=>{
         const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
-        payload.account_key='synthetic-sort-'+language+'-'+scale;payload.window_size=[470,1000];
+        payload.account_key='synthetic-sort-'+language+'-'+scale;payload.window_size=[550,1000];
         payload.viewport={width:3840,height:2300,scale};payload.localization={language,messages};
         payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));payload.scopes.timeline.time_points=[];
         scope.period_id='synthetic-sort-period';
@@ -36,7 +36,7 @@ module.exports=async ({browser,nativeHost,check})=>{
           activeColor:getComputedStyle(document.querySelector('#ss-sort-metric .ss-control-label')).color,
           frame:{border:parseFloat(frame.borderTopWidth)/scale,background:frame.backgroundImage,color:frame.backgroundColor}};
       },scale);
-      const caption=language+' at470logical/'+(scale*100)+'%';
+      const caption=language+' at550logical/'+(scale*100)+'%';
       check('Order, Sort by and Statistic keep the requested visual order: '+caption+': '+JSON.stringify(controls.order),
         controls.order.join('|')==='ss-sort-direction|ss-sort-metric|ss-sort-statistic');
       check('Shared control frames have one30px logical height: '+caption+': '+JSON.stringify(controls.heights),

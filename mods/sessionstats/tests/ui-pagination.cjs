@@ -64,14 +64,14 @@ module.exports=async({browser,nativeHost,check})=>{
         sent.length===before+1 && request.scope==='launch' && request.group==='battles' && request.page==='1' &&
         request.period_id==='synthetic-feed-period' && request.account_key==='synthetic-feed-'+language+'-'+scale && !!request.request_id);
       check('Pending append retains existing cards and shows one spinner: '+label,
-        await page.locator('#ss-groups .ss-group').count()===40 && await page.locator('.ss-page-spinner:visible').count()===1 &&
-        await page.locator('.ss-page-spinner:visible').getAttribute('aria-label')===messages['page.loading']);
+        await page.locator('#ss-groups .ss-group').count()===40 && await page.locator('#ss-groups .ss-page-spinner:visible').count()===1 &&
+        await page.locator('#ss-groups .ss-page-spinner:visible').getAttribute('aria-label')===messages['page.loading']);
       await page.evaluate(()=>{for(let index=0;index<3;index++)document.getElementById('ss-scroll').dispatchEvent(new Event('scroll'));});
       check('Repeated scroll notifications coalesce an outstanding request: '+label,(await requests(page)).length===before+1);
       await page.locator('#ss-scroll-top').click();await frames(page);
       check('Top supersedes a pending Next jump without cancelling its page fetch: '+label,
         await page.locator('#ss-scroll').evaluate(node=>Math.abs(node.scrollTop)<=1) &&
-        (await requests(page)).length===before+1 && await page.locator('.ss-page-spinner:visible').count()===1);
+        (await requests(page)).length===before+1 && await page.locator('#ss-groups .ss-page-spinner:visible').count()===1);
       await emit(page,1,request);
       check('A delayed Next reply appends its page without overriding the newer Top action: '+label,
         await page.locator('#ss-scroll').evaluate(node=>Math.abs(node.scrollTop)<=1) &&
@@ -79,7 +79,7 @@ module.exports=async({browser,nativeHost,check})=>{
       const ids=await page.locator('#ss-groups .ss-group').evaluateAll(cards=>cards.map(card=>card.dataset.groupId));
       check('Matching page reply appends40 unique rows while retaining page one: '+label+': '+JSON.stringify(ids),
         ids.length===80 && new Set(ids).size===80 && Array.from({length:80},(_,index)=>'synthetic-feed-'+index).every(id=>ids.includes(id)) &&
-        await page.locator('.ss-continuous-page').count()===2 && await page.locator('.ss-page-spinner:visible').count()===0);
+        await page.locator('.ss-continuous-page').count()===2 && await page.locator('#ss-groups .ss-page-spinner:visible').count()===0);
       check('Loaded dividers retain localized numbering: '+label,(await page.locator('.ss-page-divider-label').allTextContents()).join('|')===[pageLabel(1),pageLabel(2)].join('|'));
       check('Battle pages show the first result timestamp immediately below each localized divider: '+label,
         await page.locator('.ss-page-first-battle').count()===2&&
@@ -100,7 +100,7 @@ module.exports=async({browser,nativeHost,check})=>{
         Math.abs(await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)-beforeAppend)<=1);
       check('Final partial reply extends the same feed to85 rows: '+label,
         await page.locator('#ss-groups .ss-group').count()===85 && await page.locator('.ss-continuous-page[data-page-index="2"] .ss-group').count()===5 &&
-        await page.locator('.ss-page-spinner:visible').count()===0);
+        await page.locator('#ss-groups .ss-page-spinner:visible').count()===0);
       const beforeFinal=(await requests(page)).length;
       if (await page.locator('#ss-page-next').isEnabled()) { await page.locator('#ss-page-next').click(); }
       await frames(page);

@@ -206,7 +206,7 @@ async function footer(browser) {
         check('Configured table background, separators and numeric text are visible',
             changed.rowBackground==='rgb(34, 51, 68)' && changed.line==='rgb(171, 205, 239)' && changed.text==='rgb(222, 202, 254)');
         check('Configured corner radii preserve the existing panel dimensions',
-            changed.radius==='11px' && changed.rowRadius==='7px' && changed.width==='700px' && changed.height==='620px');
+            changed.radius==='11px' && changed.rowRadius==='7px' && changed.width==='700px' && changed.height==='730px');
 
         for(const speed of [0.5,1,2]){
             const down=await wheel(page,-120,speed),up=await wheel(page,120,speed);
