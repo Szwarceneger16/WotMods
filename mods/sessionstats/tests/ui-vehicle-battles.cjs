@@ -87,6 +87,9 @@ module.exports=async ({browser,nativeHost,check})=>{
         if(refresh==='more')await targetCard.locator('.ss-more-button').click();
         await frames(page);
         check('Selected battle highlighting survives '+refresh+' rendering in '+language,await targetCard.evaluate(card=>card.classList.contains('ss-battle-target')));
+        check('The selected-battle banner survives '+refresh+' rendering in '+language,
+          await targetCard.locator('.ss-battle-selection-banner').count()===1 &&
+          await targetCard.locator('.ss-battle-selection-banner').textContent()===messages['battle.selected']);
       }
       if(language==='en') {
         check('A newly selected battle starts its five-second orange pulse',await targetCard.evaluate(card=>card.classList.contains('ss-target-pulsing')));
@@ -101,7 +104,7 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('An inert outside click removes the painted outline without replacing its battle in '+language,
         await targetCard.evaluate(card=>card===__dismissedTarget && model.payload===__targetDismissPayload &&
           !card.classList.contains('ss-battle-target') && card.querySelector('.ss-battle-target-outline')===null) &&
-        await page.locator('.ss-battle-target-outline').count()===0);
+        await page.locator('.ss-battle-target-outline').count()===0 && await page.locator('.ss-battle-selection-banner').count()===0);
       if(language==='en') {
         await page.locator('#ss-group-vehicles').click();await frames(page);
         if(await more.getAttribute('aria-expanded')!=='true')await more.click();

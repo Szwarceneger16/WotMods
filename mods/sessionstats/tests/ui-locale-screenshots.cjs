@@ -61,7 +61,7 @@ async function audit(page,mode,group) {
       }
     }
     for(const row of panel.querySelectorAll('.ss-bonus-row')) {
-      const cells=[...row.children].filter(visible);
+      const cells=[...row.querySelectorAll('.ss-bonus-label,.ss-bonus-number')].filter(visible);
       for(let i=0;i<cells.length;i++) for(let j=i+1;j<cells.length;j++) {
         const a=cells[i].getBoundingClientRect(),b=cells[j].getBoundingClientRect();
         if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>limit &&
@@ -123,7 +123,9 @@ async function audit(page,mode,group) {
         const passBox=pass.getBoundingClientRect(),columnBox=columns.getBoundingClientRect(),moreBox=more.getBoundingClientRect(),
           bonusBox=bonus.getBoundingClientRect(),missionBox=missions.getBoundingClientRect();
         if(Math.abs(passBox.width-moreBox.width)>limit || passBox.bottom>columnBox.top+limit) issues.push({kind:'misplaced-point-strip'});
-        if(first.getBoundingClientRect().width/scale>=499 && !bonus.classList.contains('ss-long-bonus-values')) {
+        const requestedBonus=Number(bonus.getAttribute('data-bonus-width')) || 308;
+        const canPair=columnBox.width/scale>=requestedBonus+parseFloat(getComputedStyle(bonus).marginRight)/scale+170-1;
+        if(canPair) {
           if(Math.abs(bonusBox.top-missionBox.top)>limit || bonusBox.right>missionBox.left+limit) issues.push({kind:'stacked-wide-more-columns'});
         } else if(missionBox.top<bonusBox.bottom-limit) issues.push({kind:'unwrapped-more-columns'});
         if(!stress) {
@@ -211,7 +213,8 @@ module.exports=async function ({browser,nativeHost,check}) {
     {name:'wide',width:1800,scale:1,gameWidth:2200,gameHeight:1300,capture:true,columns:2,stress:false},
     {name:'stress-wide',width:1400,scale:1,gameWidth:2200,gameHeight:1300,capture:false,columns:2,stress:true},
     {name:'scaled-200',width:720,scale:2,gameWidth:3840,gameHeight:2560,capture:false,columns:1,stress:true},
-    {name:'floating-470',width:470,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:1,stress:true},
+    // A real small viewport exercises the allowed exception to the 550rem floor.
+    {name:'floating-470',width:470,scale:1,gameWidth:490,gameHeight:1300,capture:false,columns:1,stress:true},
     {name:'configured-480',width:1200,cardWidth:480,scale:1,gameWidth:2400,gameHeight:1300,capture:false,columns:2,stress:true},
   ];
   try {

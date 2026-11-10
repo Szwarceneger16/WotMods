@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
 """GRZ Session Stats for World of Tanks PC (Wargaming)."""
-VERSION = '0.5.1'
+VERSION = '0.6.0'

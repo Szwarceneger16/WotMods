@@ -28,6 +28,8 @@ async function focusReply(page,request,overrides={}) {
   },{request,overrides});await frames(page);
 }
 module.exports=async ({browser,nativeHost,check})=>{
+  require('./ui-selected-battle.cjs').assertSelectedBattleSource();
+  check('Actual-source selected-battle cue survives missing decorative paint and More',true);
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:1900,height:1300},viewport:{width:1900,height:1300,scale:1}});
   try {
@@ -116,6 +118,9 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('The matching reply selects and focuses the exact sorted Battles page in '+language+': '+JSON.stringify(focus),
         await page.locator('#ss-group-battles').getAttribute('aria-pressed')==='true' && focus && focus.focused && focus.tabindex==='-1' &&
         focus.page===2 && focus.top>=focus.viewportTop-1 && focus.top<focus.viewportBottom-1);
+      check('Map navigation names the selected battle with one visible localized banner in '+language,
+        await page.locator('.ss-battle-selection-banner').count()===1 &&
+        await page.locator('[data-group-id="'+target+'"] .ss-battle-selection-banner').textContent()===messages['battle.selected']);
       await page.evaluate(target=>{
         const card=document.querySelector('[data-group-id="'+target+'"]'),root=document.getElementById('grz-session-stats');
         card.blur();card.dispatchEvent(new FocusEvent('focusout',{bubbles:true,relatedTarget:null}));
@@ -138,6 +143,9 @@ module.exports=async ({browser,nativeHost,check})=>{
           transparency:document.getElementById('ss-background-transparency').getAttribute('aria-valuenow'),
           backgroundOpacity:getComputedStyle(document.getElementById('ss-window-background')).opacity,
           panelOpacity:getComputedStyle(document.getElementById('grz-session-stats')).opacity};
+        const banner=card.querySelector('.ss-battle-selection-banner'),bannerBox=banner.getBoundingClientRect();
+        result.banner={text:banner.textContent,visible:bannerBox.width>0 && bannerBox.height>0,
+          opacity:getComputedStyle(banner).opacity,description:card.getAttribute('aria-describedby')===banner.id};
         card.classList.remove('ss-battle-target');const ordinary=card.getBoundingClientRect();card.classList.add('ss-battle-target');
         result.sameSize=selected.width===ordinary.width && selected.height===ordinary.height;
         outline.style.display='';outline.style.opacity='';outline.style.animation='';return result;
@@ -145,6 +153,9 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('A committed map selection survives native null/root/body/control focus and window blur, with an opaque ordinary border at100% background transparency even when overlay paint is absent in '+language+': '+JSON.stringify(stableFrame),
         stableFrame && stableFrame.painted && stableFrame.color==='rgb(231, 162, 59)' && stableFrame.width===1 && stableFrame.opacity==='1' && stableFrame.sameSize &&
         stableFrame.transparency==='100' && stableFrame.backgroundOpacity==='0' && stableFrame.panelOpacity==='1');
+      check('The selected-battle text remains visible when decorative outline paint is unavailable in '+language,
+        stableFrame.banner.text===messages['battle.selected'] && stableFrame.banner.visible &&
+        stableFrame.banner.opacity==='1' && stableFrame.banner.description);
       await page.evaluate(()=>{
         const payload=JSON.parse(model.payload);payload.appearance.window_settings.background_transparency=0;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();

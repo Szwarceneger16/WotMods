@@ -53,7 +53,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   await zeroMeasurements.evaluate(() => {
     if (JSON.parse(model.payload).window_size) throw new Error('Fresh-open regression requires no saved size');
     const sizes = __grzCommands.filter(command => command.action === 'resize');
-    if (!sizes.length || sizes.some(command => Number(command.width) < 700 || Number(command.height) < 620)) {
+    if (!sizes.length || sizes.some(command => Number(command.width) < 700 || Number(command.height) < 730)) {
       throw new Error('An empty first layout shrank the native surface below its default size');
     }
     __restoreResizeRootRect();

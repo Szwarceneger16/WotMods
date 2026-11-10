@@ -29,7 +29,9 @@ module.exports=async ({browser,nativeHost,check})=>{
   await choose('chronology','oldest');
   check('Chronological ordering is independent when metric sorting is off',await page.evaluate(()=>__grzCommands.filter(c=>c.action==='sort').pop().chronology==='oldest'));
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  for(const width of [320,744]) {
+  // These viewports constrain the actual native panel to 300 and 320 pixels,
+  // independently of its preferred 550-pixel minimum.
+  for(const width of [320,340,744]) {
     await page.setViewportSize({width,height:820});
     for(const [language,messages] of Object.entries(languages)) {
       await page.evaluate(({language,messages,width})=>{
@@ -39,11 +41,20 @@ module.exports=async ({browser,nativeHost,check})=>{
         model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);
         document.getElementById('ss-sorting').scrollIntoView({block:'center'});
       },{language,messages,width});
-      check('Sorting fits one row in '+language+' at '+width,await page.locator('#ss-sorting').evaluate(bar=>{
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const sorting=await page.locator('#ss-sorting').evaluate(bar=>{
         const box=bar.getBoundingClientRect(),triggers=Array.from(bar.querySelectorAll('[role=combobox]'));
         const boxes=triggers.map(n=>n.getBoundingClientRect());
-        return boxes.length===3 && boxes.every(b=>b.left>=box.left-1 && b.right<=box.right+1 && Math.abs(b.top-boxes[0].top)<1) && triggers.every(trigger=>{const label=trigger.querySelector('.ss-control-label'),range=document.createRange();range.selectNodeContents(label);const original=label.textContent,available=label.getBoundingClientRect().width;const fits=Array.from(trigger.parentNode.querySelectorAll('[role=option]')).every(option=>{label.textContent=option.textContent;range.selectNodeContents(label);return range.getBoundingClientRect().width<=available+1;});label.textContent=original;return fits;});
-      }));
+        const overflow=[];
+        for(const trigger of triggers){const label=trigger.querySelector('.ss-control-label'),range=document.createRange(),original=label.textContent,available=label.getBoundingClientRect().width;
+          for(const option of trigger.parentNode.querySelectorAll('[role=option]')){label.textContent=option.textContent;range.selectNodeContents(label);
+            const measured=range.getBoundingClientRect().width;if(measured>available+1)overflow.push({field:trigger.parentNode.id,text:option.textContent,measured,available});}
+          label.textContent=original;
+        }
+        return {oneRow:boxes.length===3&&boxes.every(b=>b.left>=box.left-1&&b.right<=box.right+1&&Math.abs(b.top-boxes[0].top)<1),overflow,
+          panel:document.getElementById('grz-session-stats').getBoundingClientRect().width,row:box.width};
+      });
+      check('Sorting fits one row in '+language+' at '+width+': '+JSON.stringify(sorting),sorting.oneRow&&sorting.overflow.length===0);
       await page.locator('#ss-sort-direction [role=combobox]').click();
       check('Open menu stays inside the panel in '+language+' at '+width,await page.locator('#ss-options-direction').evaluate(menu=>{
         const m=menu.getBoundingClientRect(),p=document.getElementById('grz-session-stats').getBoundingClientRect();

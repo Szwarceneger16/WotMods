@@ -27,11 +27,15 @@ module.exports=async({browser,nativeHost,check})=>{
             card=panel.closest('.ss-group').getBoundingClientRect();
           return {card:card.width/scale,bonus:bonus.width/scale,missions:missions.width/scale,
             paired:Math.abs(bonus.top-missions.top)<=1 && bonus.right<=missions.left+1,
+            inline:[...panel.querySelectorAll('.ss-bonus-row')].every(row=>{
+              const label=row.querySelector('.ss-bonus-label').getBoundingClientRect(),values=row.querySelector('.ss-bonus-values').getBoundingClientRect();
+              return label.right<=values.left+1 && Math.min(label.bottom,values.bottom)>Math.max(label.top,values.top);
+            }),
             rows:panel.querySelectorAll('.ss-more-mission').length};
         },scale));
       }
-      check('Wide cards keep the compact bonus width and allocate their extra space to missions in '+language+' at'+(scale*100)+'%: '+JSON.stringify(sizes),
-        sizes.every((size,index)=>Math.abs(size.card-[720,900][index])<=1 && size.bonus<=309 && size.bonus>=307 && size.paired && size.rows===3) &&
+      check('Wide cards keep source labels beside fitted bonus columns and allocate extra space to missions in '+language+' at'+(scale*100)+'%: '+JSON.stringify(sizes),
+        sizes.every((size,index)=>Math.abs(size.card-[720,900][index])<=1 && size.bonus<=487 && size.bonus>=307 && size.paired && size.inline && size.rows===3) &&
         Math.abs(sizes[1].bonus-sizes[0].bonus)<=1 && sizes[1].missions>=sizes[0].missions+178);
       if(language==='en' && scale===1){
         const longSizes=[];

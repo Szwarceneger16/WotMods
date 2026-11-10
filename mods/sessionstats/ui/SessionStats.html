@@ -60,7 +60,7 @@
           <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
           <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
         </nav>
-        <div class="ss-list-controls">
+        <div id="ss-list-controls" class="ss-list-controls">
           <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
           <div id="ss-pagination" class="ss-pagination" style="display:none">
             <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
@@ -72,12 +72,15 @@
           <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
             <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
             <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
+            <button id="ss-sort-off" class="ss-control ss-button ss-sort-off" style="display:none" type="button" aria-pressed="false" aria-label="Sort results" data-i18n-aria="sort.label"><span class="ss-control-label">Off</span></button>
             <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
           </div>
+          <div id="ss-filter-loading" class="ss-filter-loading" role="status" aria-label="Loading page…" data-i18n-aria="page.loading" aria-hidden="true" style="visibility:hidden"><span class="ss-page-spinner" aria-hidden="true"></span></div>
         </div>
       </div>
       <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
     </div>
+    <div id="ss-scrollbar" class="ss-scrollbar" style="display:none" role="scrollbar" tabindex="0" aria-controls="ss-scroll" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Statistics and results" data-i18n-aria="stats.region"><span id="ss-scrollbar-thumb" class="ss-scrollbar-thumb" aria-hidden="true"></span></div>
     <button id="ss-scroll-top" class="ss-control ss-scroll-top" style="display:none" type="button" tabindex="0" aria-label="Scroll to top" data-i18n-aria="page.top" title="Scroll to top" data-i18n-title="page.top"><span class="ss-scroll-top-icon" aria-hidden="true"></span></button>
     <footer class="ss-footer">
       <span id="ss-version" class="ss-version" style="display:none"></span>

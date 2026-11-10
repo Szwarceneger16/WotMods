@@ -15,6 +15,9 @@ async function makePage(browser, native) {
     page.on('pageerror', error => errors.push(String(error)));
     const snapshot = JSON.parse(JSON.stringify(fixtures.normal));
     snapshot.viewport = {width:1440,height:950,scale:1};
+    snapshot.window_size = [700,900];
+    snapshot.appearance = snapshot.appearance || {};
+    snapshot.appearance.window_settings = {background_transparency:0,maximized:false,restored_width:700,restored_height:900};
     for (const scope of Object.values(snapshot.scopes)) {
         const sample = scope.battles[0];
         scope.battles = Array.from({length:95}, (_, index) => ({...sample,id:'wheel-'+index,started_at:1700000000-index}));
@@ -103,10 +106,27 @@ async function synthetic(page, values) {
         for (let i=0;i<3;i++) { result=await wheel(native,-40,i===0?400:undefined); }
         check('Three native wheel events traverse three quarters of the view without duplicate movement',Math.abs(result.after-400-result.page*3/4)<=3);
 
-        await native.locator('#grz-session-stats').evaluate(el=>{el.style.height='440px';});
+        const fullListHeight=result.page;
+        // Resize through the same saved settings path as the native host.
+        // Both heights fit the viewport and respect the logical minimum.
+        await native.evaluate(()=>{
+            const snapshot=JSON.parse(model.payload);snapshot.window_size=[700,730];
+            snapshot.appearance.window_settings.restored_height=730;
+            model.payload=JSON.stringify(snapshot);__events['viewEnv.onDataChanged']();
+        });
         result=await wheel(native,-1,400);
-        check('The step adapts to a shorter panel instead of a fixed pixel or device delta',result.page<350 && Math.abs(result.after-result.before-result.page/4)<=1 && result.audit.prevented);
-        await native.locator('#grz-session-stats').evaluate(el=>{el.style.height='';});
+        const shortPanel=await native.locator('#grz-session-stats').evaluate(el=>el.getBoundingClientRect().height);
+        check('The wheel step follows the shorter visible list after a supported panel resize: '+JSON.stringify({shortPanel,fullListHeight,...result}),
+            shortPanel===730 && result.page===fullListHeight-170 &&
+            Math.abs(result.after-result.before-result.page/4)<=1 && result.audit.prevented);
+        await native.evaluate(()=>{
+            const snapshot=JSON.parse(model.payload);snapshot.window_size=[700,900];
+            snapshot.appearance.window_settings.restored_height=900;
+            model.payload=JSON.stringify(snapshot);__events['viewEnv.onDataChanged']();
+        });
+        await twoFrames(native);
+        check('Restoring the panel height restores the visible list used by subsequent wheel probes',
+            await native.locator('#ss-scroll').evaluate(el=>el.clientHeight)===fullListHeight);
 
         result=await synthetic(native,{deltaY:-3,deltaMode:1});
         check('Line-mode native input uses the same readable wheel step',Math.abs(result.after-result.before-result.page/4)<=1 && result.prevented);

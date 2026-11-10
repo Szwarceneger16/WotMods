@@ -213,7 +213,7 @@ body { color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; fon
 .ss-close .ss-control-label:before { transform:rotate(45deg); }
 .ss-close .ss-control-label:after { transform:rotate(-45deg); }
 button:disabled { opacity:{{opacity.disabled_controls}}; }
-.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:620rem; max-width:100%; max-height:100%; min-width:300px; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; }
+.ss-window { position:relative; display:flex; flex-direction:column; width:700rem; height:730rem; max-width:100%; max-height:100%; min-width:550rem; min-height:730rem; border:1rem solid {{colors.window_border}}; border-radius:{{radii.window}}rem; }
 .ss-window-background { position:absolute; z-index:0; top:0; right:0; bottom:0; left:0; border-radius:{{radii.window}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:560rem 460rem; background-repeat:repeat; box-shadow:inset 0 1rem 1rem {{colors.window_shadow_1}}, inset 0 0 28rem {{colors.window_shadow_2}}; pointer-events:none; }
 /* Positioned flow children paint above the dedicated background without
    creating new stacking contexts for their existing menus and tooltips. */
@@ -259,10 +259,14 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 #ss-xp-received { min-width:112rem; }
 .ss-small-toggle.is-active { background:linear-gradient({{colors.xp_toggle_active_background_start}}, {{colors.xp_toggle_active_background_end}}); color:{{colors.xp_toggle_active_text}}; box-shadow:inset 0 1rem {{colors.xp_toggle_active_shadow}}; }
 .ss-small-toggle:hover, .ss-small-toggle:focus { color:{{colors.xp_toggle_hover_text}}; box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 0 0 5rem {{colors.button_shadow_2}}; }
-/* Reserve the same scrollbar width for empty and populated scopes. */
-.ss-scroll { flex:1; min-height:0; overflow-y:scroll; overflow-x:hidden; padding:0 12rem 10rem; }
-.ss-scroll::-webkit-scrollbar { width:8rem; background:{{colors.scrollbar_track_background}}; }
-.ss-scroll::-webkit-scrollbar-thumb { background:{{colors.scrollbar_thumb_background}}; border:1rem solid {{colors.scrollbar_thumb_border}}; border-radius:{{radii.scrollbar_thumb}}rem; }
+/* Gameface may omit native scrollbar paint. Reserve an owned visible rail. */
+.ss-scroll { flex:1; min-height:0; overflow-y:scroll; overflow-x:hidden; padding:0 24rem 10rem 12rem; }
+.ss-scroll::-webkit-scrollbar { width:0; }
+.ss-scrollbar { display:block; position:absolute; z-index:26; right:8rem; width:10rem; min-width:10rem; border:1rem solid {{colors.scrollbar_thumb_border}}; border-radius:{{radii.scrollbar_thumb}}rem; background:{{colors.scrollbar_track_background}}; cursor:pointer; touch-action:none; }
+.ss-scrollbar:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:1rem; }
+.ss-scrollbar[aria-disabled="true"] { opacity:{{opacity.disabled_controls}}; cursor:default; }
+.ss-scrollbar-thumb { display:block; position:absolute; top:0; left:0; right:0; min-height:1rem; border:1rem solid {{colors.scrollbar_thumb_border}}; border-radius:{{radii.scrollbar_thumb}}rem; background:{{colors.scrollbar_thumb_background}}; cursor:pointer; }
+.ss-scrollbar.is-dragging .ss-scrollbar-thumb, .ss-scrollbar:hover .ss-scrollbar-thumb { border-color:{{colors.session_tab_marker_background}}; }
 .ss-summary { margin:0; padding:0 0 8rem; }
 .ss-headline { display:flex; padding:4rem 0 5rem; }
 .ss-kpi { width:33.333%; text-align:center; padding:0 5rem; border-left:1rem solid {{colors.kpi_separator_border_left}}; }
@@ -344,7 +348,19 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab { width:25%; padding:4rem 3rem 6rem; min-height:30rem; border:0; border-radius:{{radii.control}}rem {{radii.control}}rem 0 0; background:{{colors.group_tab_background}}; color:{{colors.group_tab_text}}; font-size:14rem; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
-.ss-list-controls { display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding-top:5rem; }
+.ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
+.ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
+.ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
+.ss-filters-wide .ss-list-meta { flex:0 0 auto; white-space:nowrap; }
+.ss-filters-wide .ss-pagination { flex:0 0 340rem; }
+.ss-filters-wide .ss-sorting { flex:0 0 auto; width:auto; max-width:none; padding:0 5rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.group_card_background_end}}; }
+.ss-filters-wide .ss-sort-field { flex-shrink:0; }
+.ss-filters-wide .ss-sort-direction { flex-basis:109rem; }
+.ss-filters-wide .ss-sort-metric { flex-basis:120rem; }
+.ss-filters-wide .ss-sort-statistic { flex-basis:65rem; }
+.ss-sort-off { flex:0 0 auto; min-width:48rem; height:30rem; min-height:30rem; margin:0 5rem 0 0; padding:4rem 7rem; }
+.ss-sort-off.is-active { color:{{colors.group_tab_active_text}}; border-color:{{colors.session_tab_marker_background}}; background:{{colors.group_card_background_start}}; box-shadow:inset 0 -2rem {{colors.session_tab_marker_background}}; }
+.ss-sort-off:disabled { opacity:{{opacity.disabled_controls}}; cursor:default; }
 .ss-list-meta { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 auto; min-width:0; width:auto; max-width:100%; min-height:30rem; margin:0 8rem 5rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
 .ss-list-meta > span + span { margin-left:8rem; }
 .ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); border:1rem solid {{colors.group_card_shadow}}; box-shadow:inset 0 1rem {{colors.group_card_shadow}}; }
@@ -390,7 +406,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-titlebar h1 { font-size:20rem; }
   .ss-game-mode { font-size:11rem; margin-left:8rem; }
   .ss-controls { padding:0 8rem; }
-  .ss-scroll { padding-left:8rem; padding-right:8rem; }
+  .ss-scroll { padding-left:8rem; padding-right:20rem; }
   .ss-group-header { flex-wrap:wrap; }
   .ss-group-name { min-width:75%; }
   .ss-battle .ss-group-name { min-width:0; }
@@ -445,8 +461,16 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select-option .ss-control-label { font-size:12rem; line-height:18rem; text-align:left; white-space:normal; }
 @media (max-width:420px) {
   .ss-sorting .ss-control-label, .ss-page-center .ss-control-label { font-size:11rem; }
-  .ss-sorting .ss-select-trigger { padding-left:3rem; padding-right:3rem; }
+  .ss-sorting .ss-select-trigger { padding-left:2rem; padding-right:2rem; }
+  .ss-sorting .ss-select-arrow { width:5rem; height:5rem; margin-left:2rem; margin-right:1rem; }
+  .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
+  .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 }
+.ss-filters-compact .ss-sorting .ss-control-label, .ss-filters-compact .ss-page-center .ss-control-label { font-size:11rem; }
+.ss-filters-compact .ss-sorting .ss-select-trigger { padding-left:2rem; padding-right:2rem; }
+.ss-filters-compact .ss-sorting .ss-select-arrow { width:5rem; height:5rem; margin-left:2rem; margin-right:1rem; }
+.ss-filters-compact .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
+.ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
 .ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
@@ -496,9 +520,34 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-timeline-field > span { flex-shrink:0; margin-right:6rem; line-height:30rem; }
 .ss-timeline-field .ss-select { flex:1 1 0rem; width:0; }
 .ss-timeline-field .ss-select-options { top:30rem; width:100%; min-width:0; max-height:200rem; overflow-y:auto; }
-.ss-custom-date-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; width:100%; min-width:0; padding-top:4rem; }
-.ss-custom-date { display:block; flex:1 1 128rem; min-width:0; width:0; max-width:100%; height:30rem; padding:3rem 5rem; margin:0 4rem 0 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:11rem; line-height:18rem; }
-.ss-custom-date:focus { outline:none; border-color:{{colors.button_shadow_1}}; box-shadow:inset 0 0 5rem {{colors.button_shadow_2}}; }
+.ss-date-editor { display:flex; align-items:center; width:100%; min-width:0; height:30rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; }
+.ss-custom-date { display:block; flex:1 1 100rem; min-width:0; width:0; height:28rem; padding:3rem 4rem; margin:0; border:0; background:{{colors.body_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:11rem; line-height:18rem; }
+.ss-custom-date:focus { outline:none; box-shadow:inset 0 0 0 1rem {{colors.button_shadow_1}}; }
+.ss-date-editor > .ss-date-menu, .ss-date-editor > .ss-date-calendar { flex:0 0 24rem; width:24rem; min-width:24rem; height:28rem; min-height:28rem; padding:0; margin:0; border:0; border-left:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; justify-content:center; }
+.ss-date-menu .ss-control-label { display:none; }
+.ss-date-menu .ss-select-arrow { margin-left:0; margin-right:0; }
+.ss-date-calendar-icon { display:block; position:relative; width:12rem; height:12rem; border:1rem solid {{colors.button_text}}; border-top:3rem solid {{colors.button_text}}; }
+.ss-date-calendar-icon:after { content:""; position:absolute; left:2rem; right:2rem; top:3rem; height:0; border-top:2rem solid {{colors.button_text}}; }
+.ss-date-picker { position:absolute; z-index:90; display:block; width:286rem; max-width:100%; padding:8rem; overflow-y:auto; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_card}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
+.ss-date-picker-heading { display:flex; align-items:center; justify-content:space-between; min-width:0; margin-bottom:6rem; }
+.ss-date-picker-title { display:block; flex:1; min-width:0; text-align:center; font-size:14rem; line-height:20rem; }
+.ss-date-month-arrow { flex:0 0 26rem; width:26rem; min-width:26rem; height:26rem; min-height:26rem; padding:0; }
+.ss-date-month-arrow .ss-control-label { display:none; }
+.ss-date-chevron { display:block; width:7rem; height:7rem; border-right:1rem solid {{colors.button_text}}; border-bottom:1rem solid {{colors.button_text}}; transform:rotate(-45deg); }
+.ss-date-month-previous .ss-date-chevron { transform:rotate(135deg); }
+.ss-date-picker-fields { display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:6rem; }
+.ss-date-picker-field { display:flex; flex:1 1 0rem; min-width:0; margin:0 3rem; align-items:center; }
+.ss-date-picker-field > span { display:block; flex:1; min-width:0; margin-right:4rem; color:{{colors.table_header_text}}; font-size:11rem; line-height:16rem; }
+.ss-date-picker-value { display:block; flex:0 0 48rem; min-width:0; width:48rem; height:26rem; padding:3rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; text-align:center; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
+.ss-date-week { display:flex; width:100%; min-width:0; }
+.ss-date-weekday, .ss-date-day { display:flex; flex:0 0 14.2857%; width:14.2857%; min-width:0; height:26rem; min-height:26rem; margin:0; padding:2rem; align-items:center; justify-content:center; font-size:11rem; line-height:18rem; text-align:center; }
+.ss-date-weekday { color:{{colors.table_header_text}}; }
+.ss-date-day { border:1rem solid {{colors.body_background}}; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; }
+.ss-date-day[aria-selected="true"] { border-color:{{colors.session_tab_marker_background}}; color:{{colors.session_tab_active_text}}; }
+.ss-date-day .ss-control-label { font-size:12rem; line-height:18rem; }
+.ss-date-time { margin-top:7rem; }
+.ss-date-picker-actions { display:flex; justify-content:flex-end; min-width:0; margin-top:6rem; }
+.ss-date-picker-actions > .ss-control { margin-left:5rem; }
 .ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:30rem; min-height:30rem; padding:3rem 6rem; }
 .ss-custom-date-apply .ss-control-label { font-size:11rem; line-height:16rem; }
 .ss-custom-date-error { display:block; min-width:0; width:100%; padding-top:3rem; color:{{colors.negative_text}}; font-size:11rem; line-height:15rem; overflow-wrap:break-word; }
@@ -514,15 +563,16 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Map history stays a small native flex list. Each owned jump action remains
    separate from the row's name, date, rating and result text. */
 .ss-map-battles { display:block; min-width:0; width:100%; margin-top:3rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.table_row}}rem; background:{{colors.table_row_background}}; }
-.ss-history-body { display:block; min-width:0; width:100%; height:460rem; overflow-y:auto; overflow-x:hidden; }
+.ss-history-body { display:block; min-width:0; width:100%; height:auto; max-height:460rem; overflow-y:auto; overflow-x:hidden; }
+.ss-history-body.ss-history-paged { height:460rem; }
 .ss-map-battle-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:5rem 6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-map-battle-row:first-child { border-top:0; }
 .ss-map-battle-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-map-battle-info { flex:1 1 200rem; min-width:0; margin-right:8rem; }
-.ss-map-battle-name { display:block; min-width:0; color:{{colors.group_title_text}}; font-size:13rem; line-height:18rem; font-weight:normal; overflow-wrap:break-word; }
+.ss-map-battle-info { display:flex; flex-wrap:wrap; align-items:center; flex:1 1 230rem; min-width:0; margin-right:6rem; }
+.ss-map-battle-name { display:block; flex:1 1 110rem; min-width:0; margin-right:8rem; color:{{colors.group_title_text}}; font-size:13rem; line-height:18rem; font-weight:normal; overflow-wrap:break-word; }
 .ss-map-battle-row > .ss-map-battle-name { flex:1 1 120rem; margin-right:8rem; }
 .ss-map-battle-meta { display:flex; flex-wrap:wrap; align-items:center; min-width:0; }
-.ss-map-battle-date { display:block; color:{{colors.period_text}}; font-size:12rem; line-height:16rem; white-space:nowrap; }
+.ss-map-battle-date { display:block; flex:0 0 auto; color:{{colors.period_text}}; font-size:13rem; line-height:18rem; white-space:nowrap; }
 .ss-map-battle-row > .ss-map-battle-date { flex:0 0 106rem; margin-right:8rem; }
 .ss-map-battle-meta .ss-map-battle-date { margin-right:8rem; }
 .ss-map-battle-outcome { display:block; flex:0 1 90rem; min-width:0; margin-right:8rem; font-size:12rem; line-height:16rem; }
@@ -536,6 +586,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* The card's ordinary border is the native-safe selection baseline. Preserve
    its width/layout; optional overlay effects never control visibility. */
 .ss-group.ss-battle-target { outline:none; border-color:{{colors.session_tab_marker_background}}; }
+.ss-battle-selection-banner { display:block; width:100%; margin:0 0 7rem; padding:5rem 8rem; border-left:4rem solid {{colors.session_tab_marker_background}}; background:{{colors.table_header_background_start}}; color:{{colors.session_tab_marker_background}}; font-size:14rem; font-weight:bold; line-height:19rem; }
 .ss-battle-target-outline { display:block; position:absolute; z-index:3; top:-3rem; right:-3rem; bottom:-3rem; left:-3rem; border:3rem solid {{colors.session_tab_marker_background}}; border-radius:{{radii.group_card}}rem; box-shadow:0 0 9rem {{colors.session_tab_marker_background}}, inset 0 0 0 1rem {{colors.session_tab_marker_background}}; pointer-events:none; }
 .ss-target-pulsing .ss-battle-target-outline { animation:ss-battle-target-pulse 1s ease-in-out 5; }
 .ss-target-muted .ss-battle-target-outline { opacity:{{opacity.target_dimmed}}; }
@@ -588,23 +639,21 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-mission-name strong { display:block; }
 .ss-more-table .ss-more-mission-status { display:block; min-width:0; width:100%; margin-top:4rem; padding:4rem 0 0; border-top:1rem solid {{colors.details_separator_border_top}}; color:{{colors.metric_value_text}}; font-size:12rem; line-height:16rem; }
 .ss-more-mission-description { width:100%; margin-top:4rem; }
-/* 308 + 8 + 170 fits the 486rem content of a default 500rem battle card. */
-.ss-more-reward-block.ss-more-bonus-block { flex:0 1 308rem; width:308rem; margin-right:8rem; }
+/* Keep small matrices compact; richer translated columns request only the
+   width they need before the mission block receives the remaining space. */
+.ss-more-reward-block.ss-more-bonus-block { flex:0 1 auto; width:308rem; margin-right:8rem; }
 .ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
-.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { flex-basis:486rem; width:486rem; max-width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { width:486rem; max-width:100%; margin-right:0; }
 .ss-bonus-matrix { width:100%; }
-.ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 7rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
+.ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 4rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
 .ss-bonus-row:nth-child(even) { background:{{colors.table_row_following_background}}; }
-.ss-bonus-label { display:block; flex:0 0 100%; min-width:0; width:100%; padding:0 0 1rem; color:{{colors.metric_label_text}}; font-size:12rem; line-height:16rem; }
-.ss-bonus-number { display:block; flex:1 0 60rem; min-width:0; padding-left:4rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
-.ss-bonus-column-0 { flex-basis:66rem; }
-.ss-bonus-column-1 { flex-basis:39rem; }
-.ss-bonus-column-3 { flex-basis:66rem; }
+.ss-bonus-label { display:block; flex:1 1 112rem; min-width:0; max-width:100%; width:auto; padding:0 6rem 0 0; color:{{colors.metric_label_text}}; font-size:12rem; line-height:16rem; overflow-wrap:break-word; }
+.ss-bonus-values { display:flex; flex-wrap:wrap; flex:1 1 auto; min-width:0; max-width:100%; }
+.ss-bonus-number { display:block; flex:1 0 42rem; min-width:0; padding-left:3rem; color:{{colors.metric_value_text}}; text-align:right; white-space:nowrap; }
 .ss-bonus-head { min-height:23rem; background:{{colors.table_header_background_start}}; }
-.ss-bonus-head .ss-bonus-label { display:none; }
+.ss-bonus-head .ss-bonus-label { color:{{colors.table_header_cell_text}}; }
 .ss-bonus-head .ss-bonus-number { color:{{colors.table_header_cell_text}}; font-size:11rem; white-space:normal; overflow-wrap:normal; }
-.ss-long-bonus-values .ss-bonus-number { flex:1 0 84rem; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
@@ -639,8 +688,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-continuous-page { display:block; min-width:0; width:100%; }
 .ss-page-cards { display:flex; align-items:flex-start; justify-content:center; min-width:0; width:100%; }
 .ss-page-divider { position:relative; display:flex; align-items:center; justify-content:center; width:100%; min-height:32rem; margin:6rem 0 2rem; }
-.ss-page-divider:before { content:""; display:block; position:absolute; top:50%; left:0; right:0; height:1rem; background-image:linear-gradient(to right, {{colors.button_shadow_1}} 50%, {{colors.body_background}} 50%); background-size:10rem 1rem; background-repeat:repeat-x; pointer-events:none; }
+.ss-page-divider:before { content:""; display:block; position:absolute; top:50%; left:0; right:0; height:1rem; background-image:linear-gradient(to right, {{colors.button_shadow_1}} 62.5%, {{colors.body_background}} 62.5%); background-size:32rem 1rem; background-repeat:repeat-x; pointer-events:none; }
 .ss-page-divider-label { position:relative; display:block; max-width:100%; padding:3rem 10rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.list_meta_text}}; font-size:12rem; line-height:18rem; text-align:center; }
+.ss-page-first-battle { display:block; width:100%; margin:0 0 3rem; color:{{colors.group_subtitle_text}}; font-size:12rem; line-height:16rem; text-align:center; }
 .ss-page-spinner { display:flex; align-items:center; justify-content:center; width:100%; height:26rem; }
 .ss-page-spinner:before { content:""; display:block; width:16rem; height:16rem; border:2rem solid {{colors.garage_spinner_border}}; border-top-color:{{colors.session_tab_marker_background}}; border-radius:{{radii.garage_spinner}}rem; animation:ss-page-spin 1s linear infinite; pointer-events:none; }
 @keyframes ss-page-spin {

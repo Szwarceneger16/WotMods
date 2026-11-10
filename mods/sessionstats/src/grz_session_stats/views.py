@@ -22,6 +22,7 @@ import time
 LOG = logging.getLogger('grz.sessionstats')
 LAYOUT_PATH = ('mods', 'grz', 'sessionstats', 'views', 'SessionStats')
 LOGICAL_SIZE = (700, 620)
+MIN_LOGICAL_SIZE = (550, 730)
 MAX_DIMENSION = 32768
 DIAGNOSTIC_STAGES = ('dom_ready', 'model_bound', 'layout_ready')
 
@@ -389,7 +390,9 @@ class StatsWindow(object):
         scale = viewport['scale']
         if self._maximized:
             return tuple(max(1, viewport[key] - 20) for key in ('width', 'height'))
-        requested = self._reported_size or tuple(int(math.ceil(value * scale)) for value in (self._preferred_size or LOGICAL_SIZE))
+        requested = self._reported_size or tuple(
+            int(math.ceil(max(value, minimum) * scale))
+            for value, minimum in zip(self._preferred_size or LOGICAL_SIZE, MIN_LOGICAL_SIZE))
         # HTML is responsible for sizing its texture. Before its first report,
         # use our known design size instead of the native full-screen default.
         return tuple(min(value, max(1, viewport[key] - 20)) if viewport[key] > 0 else value
@@ -604,9 +607,9 @@ class StatsWindow(object):
             available_height = (gesture['position'][1] + gesture['size'][1] if north
                                 else viewport['height'] - gesture['position'][1]) - 10
             if horizontal:
-                width = max(1, min(available_width, max(470 * scale, width)))
+                width = max(1, min(available_width, max(MIN_LOGICAL_SIZE[0] * scale, width)))
             if vertical:
-                height = max(1, min(available_height, max(360 * scale, height)))
+                height = max(1, min(available_height, max(MIN_LOGICAL_SIZE[1] * scale, height)))
             width, height = width / scale, height / scale
             dimensions = (width, height)
             now = self._resize_clock()

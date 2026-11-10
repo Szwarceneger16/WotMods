@@ -93,6 +93,13 @@ module.exports=async({browser,nativeHost,check})=>{
     await frames();
     check('Repeated data updates preserve their pending position while native offsets are stale',Math.abs(await top()-retained)<=1);
 
+    await page.evaluate(()=>{
+      // Wide mode deliberately disables the metric dropdown while Off. Start
+      // from an enabled metric so this regression exercises a real sort.
+      const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+      scope.ordering.maps={metric:'xp_received',statistic:'avg',direction:'desc',chronology:'newest'};
+      model.payload=JSON.stringify(payload);GRZSessionStats.update(model.payload);
+    });await frames();
     const sortedAt=await position(150);
     await page.evaluate(()=>{
       document.querySelector('#ss-sort-metric [data-value="xp_base"]').onclick();
