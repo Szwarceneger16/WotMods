@@ -85,6 +85,19 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
   assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
   const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
+  const rateOrders=JSON.parse(JSON.stringify(scope.ordering));
+  for(const group of ['vehicles','maps','tiers','battles']){
+    state.group=group;scope.ordering[group]={metric:'win_rate',statistic:'max',direction:'desc',chronology:'newest'};render();
+    assert.strictEqual(statistic.style.display,'none','Win rate has no aggregate-statistic selector in '+group);
+    assert.strictEqual(selects.statistic.trigger.disabled,true);
+    const beforeRate=commands.length;context.changeOrder('statistic','min');assert.strictEqual(commands.length,beforeRate,'Retained statistic callbacks cannot alter win-rate sorting');
+    const option=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');
+    assert(option>=0&&selects.metric.options[option].style.display==='','Win-rate sorting is offered in '+group);
+  }
+  scope.ordering=rateOrders;state.group='vehicles';
+  const rates=[{id:'unknown',stats:{win_rate:null}},{id:'loss',stats:{win_rate:0}},{id:'win',stats:{win_rate:100}}];
+  assert.deepStrictEqual(Array.from(context.ordered(rates,{metric:'win_rate',statistic:'min',direction:'desc',chronology:'newest'}),item=>item.id),['win','loss','unknown']);
+  assert.deepStrictEqual(Array.from(context.ordered(rates,{metric:'win_rate',statistic:'max',direction:'asc',chronology:'newest'}),item=>item.id),['loss','win','unknown']);
   const tied=[{id:'early',started_at:1,first_started_at:0,stats:{xp_base:{avg:10}}},
     {id:'late',started_at:2,first_started_at:0,stats:{xp_base:{avg:10}}}];
   assert.strictEqual(context.ordered(tied,{metric:'xp_base',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'late');

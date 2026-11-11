@@ -98,7 +98,7 @@ function assertBidirectionalSource(source=shipped()){
   assert.strictEqual(scroll.scrollTop,0);assert(dismissed>=3);assert(resizes>0);
   let pinnedWrites=0;context.updatePinnedFilters=()=>{pinnedWrites++;};state.destroyed=true;
   context.loadNearEdges();flush();assert.strictEqual(commands.length,before);assert.strictEqual(pinnedWrites,0,'A retained scroll listener cannot fetch or repaint after teardown');
-  assert(source.includes("nodes.scroll.removeEventListener('scroll', loadNearEdges);"),'Cleanup removes its exact edge-loading listener');
+  assert(source.includes("nodes.scroll.removeEventListener('scroll', queueScrollEdges);"),'Cleanup removes its exact deferred edge-loading listener');
 }
 
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));

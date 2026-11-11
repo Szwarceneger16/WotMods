@@ -76,6 +76,20 @@ class HistoryNavigationTests(unittest.TestCase):
             self.assertFalse(self.service.set_timeline_range(start, end, lower, upper))
             self.assertIs(self.service._timeline_job, job)
 
+    def test_future_custom_bounds_are_rejected_without_replacing_selected_work(self):
+        self.assertTrue(self.service.set_timeline_range('__custom__', '__custom__', 120, 130))
+        job = self.service._timeline_job
+        selected = self.service._timeline_range, self.service._timeline_dates
+        for start, end, lower, upper in (
+                ('__custom__', '', 2001, None),
+                ('', '__custom__', None, 2001),
+                ('__custom__', '__custom__', 120, 2001)):
+            self.assertFalse(self.service.set_timeline_range(start, end, lower, upper))
+            self.assertIs(self.service._timeline_job, job)
+            self.assertEqual((self.service._timeline_range, self.service._timeline_dates), selected)
+        self.assertTrue(self.service.set_timeline_range('__custom__', '__custom__', 1999, 2000))
+        self.assertEqual(self.service._timeline_bounds, (1999, 2000))
+
     def test_custom_period_identity_changes_and_saved_points_mix_without_fake_points(self):
         self.clock.value = 150
         self.assertTrue(self.service.create_time_point('Fixture point'))

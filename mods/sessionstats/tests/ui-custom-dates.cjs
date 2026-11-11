@@ -22,7 +22,6 @@ async function pick(page,field,values) {
   await picker.locator('[data-date-part="hour"]').click();
   await picker.locator('[data-clock-value="'+values.hour+'"]').click();
   await picker.locator('[data-clock-value="'+values.minute+'"]').click();
-  await picker.locator('.ss-date-return').click();
   return picker;
 }
 module.exports=async ({browser,nativeHost,check})=>{
@@ -115,7 +114,15 @@ module.exports=async ({browser,nativeHost,check})=>{
         await picker.getAttribute('role')==='dialog' && await picker.locator('input').count()===0 && await picker.locator('.ss-date-weekday').count()===7 &&
         await picker.locator('.ss-date-picker-title').textContent()===messages['timeline.calendar_months'].split('|')[1]+' 2024' &&
         await picker.locator('[data-day="29"]').getAttribute('aria-selected')==='true');
+      check('Calendar and centered clock remain visible together without a return toggle in '+language,await picker.evaluate(node=>{
+        const grid=node.querySelector('.ss-date-picker-body').getBoundingClientRect(),face=node.querySelector('.ss-date-clock').getBoundingClientRect(),holder=node.querySelector('.ss-date-clock-container').getBoundingClientRect();
+        return !node.querySelector('.ss-date-return')&&grid.height>0&&face.height>0&&grid.bottom<=face.top&&Math.abs(face.left+face.width/2-holder.left-holder.width/2)<=1;
+      }));
       if(language==='en') {
+        console.log('GRZ_CALENDAR_QA_V2 '+(await picker.screenshot({type:'png'})).toString('base64'));
+        await picker.locator('.ss-date-clock-info').click();
+        check('The clock has a small working localized help tooltip',await page.locator('#ss-help-tooltip').isVisible()&&await page.locator('#ss-help-tooltip').textContent()===messages['timeline.calendar_clock_help']);
+        await picker.locator('.ss-date-clock-info').click();
         await picker.locator('[data-day="29"]').press('ArrowRight');
         check('Calendar arrows cross a leap-month boundary',await picker.locator('[data-date-part="month"] .ss-control-label').textContent()===messages['timeline.calendar_months'].split('|')[2] && await picker.locator('[data-day="1"]').getAttribute('aria-selected')==='true');
         await picker.locator('[data-day="1"]').press('PageUp');await picker.locator('[data-day="29"]').click();
@@ -171,7 +178,6 @@ module.exports=async ({browser,nativeHost,check})=>{
     await nativePicker.locator('.ss-date-clock').press('Home');await nativePicker.locator('.ss-date-clock').press('ArrowLeft');
     check('The minute clock supports every minute using the keyboard, including wraparound to 59',
       await nativePicker.locator('[data-date-part="minute"]').textContent()==='59' && await nativePicker.locator('.ss-date-clock').getAttribute('aria-valuenow')==='59');
-    await nativePicker.locator('.ss-date-return').click();
     await nativePicker.locator('[data-date-part="year"]').click();await nativePicker.locator('[data-year="2010"]').click();
     await nativePicker.locator('[data-month="1"]').click();await nativePicker.locator('[data-day="1"]').click();
     await nativePicker.locator('[data-day="1"]').press('ArrowLeft');await nativePicker.locator('[data-day="1"]').press('PageUp');
@@ -179,20 +185,48 @@ module.exports=async ({browser,nativeHost,check})=>{
       await nativePicker.locator('.ss-date-month-previous').isDisabled() && await nativePicker.locator('[data-date-part="year"]').textContent()==='2010' &&
       await nativePicker.locator('[data-day="1"]').getAttribute('aria-selected')==='true');
     await nativePicker.locator('[data-date-part="year"]').click();
-    await nativePicker.locator('[data-year="'+new Date().getFullYear()+'"]').click();await nativePicker.locator('[data-month="12"]').click();
-    await nativePicker.locator('[data-day="31"]').click();await nativePicker.locator('[data-day="31"]').press('ArrowRight');
-    check('Calendar day/month navigation cannot cross December of the current year',
-      await nativePicker.locator('.ss-date-month-next').isDisabled() && await nativePicker.locator('[data-day="31"]').getAttribute('aria-selected')==='true');
+    const current=await page.evaluate(()=>{const now=new Date();return {year:now.getFullYear(),month:now.getMonth()+1,day:now.getDate()};});
+    await nativePicker.locator('[data-year="'+current.year+'"]').click();
+    check('Calendar month choices after the present month are disabled',await nativePicker.locator('[data-month]').evaluateAll((nodes,current)=>nodes.every(node=>+node.getAttribute('data-month')<=current.month||node.disabled),current));
+    await nativePicker.locator('[data-month="'+current.month+'"]').click();
+    check('Calendar days and next-month navigation cannot enter the future',await nativePicker.locator('.ss-date-month-next').isDisabled()&&await nativePicker.locator('[data-day]').evaluateAll((nodes,current)=>nodes.every(node=>+node.getAttribute('data-day')<=current.day||node.disabled),current));
     await nativePicker.locator('[data-date-part="year"]').click();await nativePicker.locator('[data-year="2024"]').click();
     await nativePicker.locator('[data-month="2"]').click();await nativePicker.locator('[data-day="29"]').click();
+    await nativePicker.locator('[data-date-part="hour"]').click();await nativePicker.locator('[data-clock-value="7"]').click();await nativePicker.locator('.ss-date-period').nth(1).click();
+    await nativePicker.locator('.ss-date-clock').press('Home');await nativePicker.locator('.ss-date-clock').press('ArrowLeft');
     await nativePicker.locator('#ss-custom-date-apply-from').click();
     const nativeEpoch=await page.evaluate(()=>new Date(2024,1,29,19,59).getTime()/1000);
     check('The native 12-hour graphical picker applies the exact PM epoch and formatted inline value',
       (await requests(page)).pop().from_date===String(nativeEpoch) && await nativeInput.inputValue()==='02/29/2024 07:59 PM');
     await page.evaluate(messages=>{const payload=JSON.parse(model.payload);payload.localization={language:'en',messages};
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},languages.en);await frames(page);
+    const range=await page.evaluate(()=>({from:new Date(2024,1,29,20,0).getTime()/1000,to:new Date(2024,2,1,12,0).getTime()/1000}));
+    await update(page,{from_point:'__custom__',to_point:'__custom__',from_date:range.from,to_date:range.to});
+    await page.locator('#ss-custom-date-calendar-to').click();let bounded=page.locator('#ss-date-picker-to');
+    await bounded.locator('[data-date-part="year"]').click();
+    check('To year choices before the selected From year are disabled',await bounded.locator('[data-year="2023"]').isDisabled());
+    await bounded.locator('[data-year="2024"]').click();
+    check('To month choices before the selected From month are disabled',await bounded.locator('[data-month="1"]').isDisabled());
+    await bounded.locator('[data-month="2"]').click();
+    check('To cannot choose a day before From',await bounded.locator('[data-day="28"]').isDisabled()&&await bounded.locator('[data-day="29"]').isEnabled());
+    await bounded.locator('[data-date-part="hour"]').click();
+    check('To cannot choose an hour before From on the same day',await bounded.locator('[data-clock-value="19"]').isDisabled());
+    await bounded.locator('[data-clock-value="20"]').click();
+    check('To cannot choose the same minute as From',await bounded.locator('[data-clock-value="0"]').isDisabled()&&await bounded.locator('[data-clock-value="5"]').isEnabled());
+    await bounded.locator('.ss-date-picker-cancel').click();
+    await page.locator('#ss-custom-date-calendar-from').click();bounded=page.locator('#ss-date-picker-from');
+    await bounded.locator('[data-date-part="month"]').click();await bounded.locator('[data-month="3"]').click();
+    check('From cannot choose a day beyond the selected To',await bounded.locator('[data-day="2"]').isDisabled());
+    await bounded.locator('[data-day="1"]').click();await bounded.locator('[data-date-part="hour"]').click();
+    check('From cannot choose the To hour when no earlier minute remains',await bounded.locator('[data-clock-value="12"]').isDisabled());
+    await bounded.locator('.ss-date-picker-cancel').click();
     await update(page,{from_point:'',to_point:'',from_date:null,to_date:null});
-    await choose(page,'from','__custom__');await page.locator('#ss-custom-date-from').fill('25.11.2026 17:31');
+    await choose(page,'from','__custom__');
+    const beforeFuture=(await requests(page)).length;
+    const tomorrow=await page.evaluate(()=>{const day=new Date(Date.now()+86400000);const pad=n=>String(n).padStart(2,'0');return pad(day.getDate())+'.'+pad(day.getMonth()+1)+'.'+day.getFullYear()+' 00:00';});
+    await page.locator('#ss-custom-date-from').fill(tomorrow);await page.locator('#ss-custom-date-from').press('Enter');
+    check('Manual future dates show an error and never submit',(await requests(page)).length===beforeFuture&&await page.locator('#ss-custom-date-error-from').textContent()===languages.en['timeline.custom_future']);
+    await page.locator('#ss-custom-date-from').fill('25.11.2026 17:31');
     const beforeAccount=(await requests(page)).length;
     await page.evaluate(()=>{window.__retiredCustomDateApply=document.getElementById('ss-custom-date-calendar-from').onclick;
       window.__retiredCustomDateKey=document.getElementById('ss-custom-date-from').onkeydown;});
@@ -222,6 +256,10 @@ module.exports=async ({browser,nativeHost,check})=>{
           const root=document.getElementById('grz-session-stats').getBoundingClientRect(),picker=document.getElementById('ss-date-picker-'+field).getBoundingClientRect();
           return picker.width>0 && picker.height>0 && picker.left>=root.left-1 && picker.right<=root.right+1 && picker.top>=root.top-1 && picker.bottom<=root.bottom+1;
         },field));
+        check('Calendar stays above an explicitly centered clock at'+(scale*100)+'%',await page.locator('#ss-date-picker-'+field).evaluate(node=>{
+          const grid=node.querySelector('.ss-date-picker-body').getBoundingClientRect(),face=node.querySelector('.ss-date-clock').getBoundingClientRect(),holder=node.querySelector('.ss-date-clock-container').getBoundingClientRect();
+          return grid.height>0&&face.height>0&&grid.bottom<=face.top&&Math.abs(face.left+face.width/2-holder.left-holder.width/2)<=1;
+        }));
         // A native settings/model update can resize the panel without firing
         // browser window.resize; the existing open picker must follow it.
         await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.window_size=[800,800];

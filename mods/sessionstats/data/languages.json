@@ -341,7 +341,12 @@
       "maps.preview": "{0} — map preview",
       "sort.tier_desc": "Tier: highest first",
       "sort.tier_asc": "Tier: lowest first",
-      "timeline.custom_enter": "Enter to apply"
+      "timeline.custom_enter": "Enter to apply",
+      "timeline.custom_future": "Choose a date and time no later than now.",
+      "timeline.calendar_clock_help": "Choose hours or minutes above. Click or drag the clock hand; arrow keys adjust one step.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Sorting value: {0}",
+      "sort.win_rate": "Win rate"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -683,7 +688,12 @@
       "maps.preview": "{0} — podgląd mapy",
       "sort.tier_desc": "Poziom: od najwyższego",
       "sort.tier_asc": "Poziom: od najniższego",
-      "timeline.custom_enter": "Enter zatwierdza"
+      "timeline.custom_enter": "Enter zatwierdza",
+      "timeline.custom_future": "Wybierz datę i godzinę nie późniejszą niż teraz.",
+      "timeline.calendar_clock_help": "Wybierz godziny lub minuty powyżej. Kliknij lub przeciągnij wskazówkę; strzałki zmieniają wartość o jeden.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Wartość sortowania: {0}",
+      "sort.win_rate": "Zwycięstwa, %"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1025,7 +1035,12 @@
       "maps.preview": "{0} — просмотр карты",
       "sort.tier_desc": "Уровень: от высшего",
       "sort.tier_asc": "Уровень: от низшего",
-      "timeline.custom_enter": "Enter — применить"
+      "timeline.custom_enter": "Enter — применить",
+      "timeline.custom_future": "Выберите дату и время не позднее текущего момента.",
+      "timeline.calendar_clock_help": "Выберите часы или минуты выше. Нажмите или перетащите стрелку; клавиши со стрелками меняют значение на один шаг.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Значение сортировки: {0}",
+      "sort.win_rate": "Победы, %"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1367,7 +1382,12 @@
       "maps.preview": "{0} — aperçu de la carte",
       "sort.tier_desc": "Rang : décroissant",
       "sort.tier_asc": "Rang : croissant",
-      "timeline.custom_enter": "Entrée pour appliquer"
+      "timeline.custom_enter": "Entrée pour appliquer",
+      "timeline.custom_future": "Choisissez une date et une heure qui ne soient pas dans le futur.",
+      "timeline.calendar_clock_help": "Choisissez les heures ou les minutes ci-dessus. Cliquez ou faites glisser l’aiguille ; les flèches ajustent d’une unité.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Valeur de tri : {0}",
+      "sort.win_rate": "Victoires, %"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1709,7 +1729,12 @@
       "maps.preview": "{0} — Kartenvorschau",
       "sort.tier_desc": "Stufe: höchste zuerst",
       "sort.tier_asc": "Stufe: niedrigste zuerst",
-      "timeline.custom_enter": "Mit Eingabe anwenden"
+      "timeline.custom_enter": "Mit Eingabe anwenden",
+      "timeline.custom_future": "Wähle ein Datum und eine Uhrzeit, die nicht in der Zukunft liegen.",
+      "timeline.calendar_clock_help": "Wähle oben Stunden oder Minuten. Klicke oder ziehe den Zeiger; die Pfeiltasten ändern den Wert schrittweise.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Sortierwert: {0}",
+      "sort.win_rate": "Siegrate"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2051,7 +2076,12 @@
       "maps.preview": "{0} — vista previa del mapa",
       "sort.tier_desc": "Nivel: mayor primero",
       "sort.tier_asc": "Nivel: menor primero",
-      "timeline.custom_enter": "Intro para aplicar"
+      "timeline.custom_enter": "Intro para aplicar",
+      "timeline.custom_future": "Elige una fecha y hora que no sean posteriores al momento actual.",
+      "timeline.calendar_clock_help": "Elige horas o minutos arriba. Haz clic o arrastra la aguja; las flechas ajustan el valor de uno en uno.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Valor de ordenación: {0}",
+      "sort.win_rate": "Victorias, %"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2393,7 +2423,12 @@
       "maps.preview": "{0} — перегляд мапи",
       "sort.tier_desc": "Рівень: від вищого",
       "sort.tier_asc": "Рівень: від нижчого",
-      "timeline.custom_enter": "Enter — застосувати"
+      "timeline.custom_enter": "Enter — застосувати",
+      "timeline.custom_future": "Виберіть дату й час не пізніше поточного моменту.",
+      "timeline.calendar_clock_help": "Виберіть години або хвилини вище. Натисніть або перетягніть стрілку; клавіші зі стрілками змінюють значення на один крок.",
+      "sort.metric_stat": "{0} {1}",
+      "sort.active_value": "Значення сортування: {0}",
+      "sort.win_rate": "Перемоги, %"
     }
   }
 }

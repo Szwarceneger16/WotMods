@@ -1060,7 +1060,8 @@ class StatsService(object):
             dates.append(float(value) if value is not None else None)
         lower = dates[0] if start == custom else points.get(start, 0)
         upper = dates[1] if end == custom else points[end] if end else None
-        if upper is not None and lower >= upper:
+        now = self._time()
+        if lower > now or (upper is not None and (upper > now or lower >= upper)):
             return False
         selected = (start, end)
         dates = tuple(dates)

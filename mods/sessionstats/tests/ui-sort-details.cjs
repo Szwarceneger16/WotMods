@@ -2,6 +2,7 @@
 const fs=require('fs'),path=require('path');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
 module.exports=async ({browser,nativeHost,check})=>{
+  require('./ui-sort-presentation.cjs')();check('Actual-source sorting highlights reuse displayed values and preserve unknown/zero semantics',true);
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:3840,height:2300},viewport:{width:3840,height:2300,scale:1}});
   try {
@@ -69,16 +70,38 @@ module.exports=async ({browser,nativeHost,check})=>{
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.tiers.metric='xp_received';
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});
       check('Other sort metrics remove the net-credit caption: '+caption,await page.locator('.ss-group-sort-value').count()===0);
+      check('XP sorting selects the matching existing XP series and marks its selected cell: '+caption,
+        await page.locator('.ss-group .ss-performance .ss-metric-row').first().locator('.ss-metric-name').textContent()===messages['xp.received']&&
+        await page.locator('.ss-group [data-ss-sort-active="xp_received"]').count()===8);
       await page.evaluate(()=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
         scope.ordering.tiers={metric:'battle_wn8',statistic:'avg',direction:'desc',chronology:'oldest'};
         scope.tiers.forEach((item,index)=>{item.sort_value=[1968,1889,1593,1592][index];
           item.stats.wn8=[1743,1541,1635,1646][index];item.stats.battle_wn8.avg=item.sort_value;});
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
-      const wn8Expected=[1968,1889,1593,1592].map(value=>messages['sort.value_wn8'].replace(/\{([0-9])\}/g,(_,index)=>
-        [messages['sort.avg'],String(value)][index]));
-      const wn8Captions=await page.locator('.ss-group-sort-value').allTextContents();
-      check('WN8 sorting exposes its actual battle-average values separately from aggregate headline ratings: '+caption+': '+JSON.stringify(wn8Captions),
-        JSON.stringify(wn8Captions)===JSON.stringify(wn8Expected)&&await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled());
+      const wn8Values=await page.locator('.ss-group-wn8-kpi .ss-kpi-value').allTextContents();
+      const wn8Label=messages['sort.metric_stat'].replace(/\{([0-9])\}/g,(_,index)=>[messages['sort.avg'],messages['metric.wn8']][index]);
+      check('WN8 sorting uses the exact selected statistic in the existing large highlighted headline: '+caption+': '+JSON.stringify(wn8Values),
+        JSON.stringify(wn8Values)===JSON.stringify(['1968','1889','1593','1592'])&&
+        (await page.locator('.ss-group-wn8-kpi .ss-kpi-label').allTextContents()).every(text=>text===wn8Label)&&
+        await page.locator('.ss-group-wn8-kpi[data-ss-sort-active="battle_wn8"]').count()===4&&
+        await page.locator('.ss-group-sort-value').count()===0&&await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled());
+      if(language==='en'&&scale===1){
+        for(const statistic of ['min','max']){
+          await page.evaluate(statistic=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+            scope.ordering.tiers.statistic=statistic;scope.tiers.forEach((item,index)=>{
+              item.sort_value=statistic==='max'?8834-index*100:100+index;item.stats.battle_wn8[statistic]=item.sort_value;
+            });model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},statistic);await frames(page);
+          check('Changing WN8 '+statistic+' marks the existing selected distribution cell',
+            await page.locator('.ss-group').first().locator('.ss-metric-row').nth(1).locator('[data-ss-sort-active="battle_wn8"]').evaluate(node=>
+              !['transparent','rgba(0, 0, 0, 0)'].includes(getComputedStyle(node).backgroundColor)&&
+              getComputedStyle(node).boxShadow!=='none'));
+          const expectedLabel=messages['sort.metric_stat'].replace(/\{([0-9])\}/g,(_,index)=>[messages['metric.'+statistic],messages['metric.wn8']][index]);
+          check('Selected '+statistic+' is visible without a duplicate WN8 caption',
+            await page.locator('.ss-group-wn8-kpi .ss-kpi-label').first().textContent()===expectedLabel&&
+            await page.locator('.ss-group-wn8-kpi .ss-kpi-value').first().textContent()===(statistic==='max'?'8834':'100')&&
+            await page.locator('.ss-group-sort-value').count()===0);
+        }
+      }
     }
   } finally {await page.close();}
 };

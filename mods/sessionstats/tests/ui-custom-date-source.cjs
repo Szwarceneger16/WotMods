@@ -6,12 +6,14 @@ function actual(name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0 && end>start,'Missing shipped function '+name);return source.slice(start,end+7);
 }
-const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','applyTimelineRange'];
+const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','timelineDateBound','customDateBounds','applyTimelineRange'];
 const code=names.map(actual).join('\n');
 function host(messages) {
   const timeline={from_point:'',to_point:'',from_date:null,to_date:null,time_points:[]},sent=[],errors=[];
   const state={destroyed:false,payload:{account_key:'synthetic',scopes:{timeline}},customDates:{},orderIntent:null};
-  const context={state,Date,Math,Intl:undefined,hasNumber:value=>typeof value==='number' && isFinite(value),t:key=>messages[key]||key,
+  class FixtureDate extends Date {}
+  FixtureDate.now=()=>new Date(2030,0,1,12,0).getTime();
+  const context={state,Date:FixtureDate,Math,Intl:undefined,hasNumber:value=>typeof value==='number' && isFinite(value),t:key=>messages[key]||key,
     timelineError:(field,message)=>errors.push({field,message}),cancelBattleNavigation:()=>{},retireFeed:()=>{},invoke:(action,args)=>{sent.push({action,args});return true;}};
   vm.createContext(context);vm.runInContext(code,context);return {context,state,timeline,sent,errors};
 }
@@ -39,6 +41,26 @@ module.exports=async({check})=>{
     state.customDates.to.value=text('01.03.2028 16:45');state.payload.account_key='replacement';c.applyTimelineRange(timeline,'to','__custom__','synthetic');
     state.payload.account_key='synthetic';state.payload.scopes.timeline={...timeline,to_point:'replacement'};c.applyTimelineRange(timeline,'to','__custom__','synthetic');
     check('Retained date actions cannot mutate a replacement account or range: '+language,sent.length===1);
+  }
+  {
+    const {context:c,state,timeline,sent,errors}=host(catalogs.en),now=new Date(2028,1,29,12,34).getTime()/1000;
+    c.Date.now=()=>now*1000+45000;
+    state.customDates={from:{value:'29.02.2028 12:35'}};
+    c.applyTimelineRange(timeline,'from','__custom__','synthetic');
+    check('Manual future minute is rejected before any range command is sent',sent.length===0&&errors[0].message===catalogs.en['timeline.custom_future']);
+    state.customDates={from:{value:'29.02.2028 12:33'},to:{value:'29.02.2028 12:35'}};
+    c.applyTimelineRange(timeline,'to','__custom__','synthetic');
+    check('A future end date cannot bypass the same manual-entry guard',sent.length===0&&errors.length===2);
+    state.customDates={from:{value:'29.02.2028 12:33'},to:{value:'29.02.2028 12:34'}};
+    c.applyTimelineRange(timeline,'to','__custom__','synthetic');
+    check('The current minute remains available when both bounds are ordered',sent.length===1&&sent[0].args.to_date===now);
+    const from=c.customDateBounds(timeline,'from'),to=c.customDateBounds(timeline,'to');
+    check('Graphical From and To bounds exclude the opposite exact minute',from.maximum===now-60&&to.minimum===now&&to.maximum===now);
+    state.customDates={};timeline.time_points=[['other',now-120]];timeline.from_point='other';
+    check('Graphical bounds also honor saved time points',c.customDateBounds(timeline,'to').minimum===now-60);
+    timeline.from_point='';state.customDates={from:{value:'29.02.2028 12:35'}};
+    const empty=c.customDateBounds(timeline,'to');
+    check('An impossible opposite draft produces no selectable graphical interval',empty.minimum>empty.maximum);
   }
   for(const [order,separator,digits,expected] of [
     ['MDY','/','022920280705','02/29/2028 07:05'],

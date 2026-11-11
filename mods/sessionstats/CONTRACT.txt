@@ -244,7 +244,8 @@ then Vehicles | Maps | Battles switch; Vehicles default. All group details alway
 No separate Summary tab, accordions or 'more details'. Summary and aggregate group
 headline columns: Battles, Win rate, WN8. Sessions, vehicles and maps retain XP/WN8
 min/average/max. A battle row shows its outcome and exactly one XP and one WN8 value,
-without Battles=1 or Win rate=0/100%. Both XP choices work in all groupings.
+without Battles=1 or Win rate=0/100% in ordinary ordering; active win-rate
+sorting may expose its otherwise absent percentage. Both XP choices work in all groupings.
 WN8 full integer, never k/truncation/leading zeroes.
 Use Gameface-safe flex/block CSS; no grid, gap, sticky, inline-block, fit-content,
 font-feature-settings. Warhelios native font, warm cream/olive/gold.
@@ -386,7 +387,7 @@ or persisted-data migration.
 
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
-ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8,
+ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8|battles|win_rate,
                    statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
@@ -418,8 +419,12 @@ Both group histories are indexed newest-first and slice at most ten rows.
 Existing battle_select resolves the current Battles page and returns the guarded
 request identity; selecting a target retains an orange frame in the same period.
 Active aggregate metric sorting also publishes sort_value, the exact scalar
-used by its Min/Average/Max comparator (null if unavailable). Finance tables
-continue to show totals; the net-credit sort caption explicitly states / battle.
+used by its selected comparator (null if unavailable). Mark the existing matching
+value instead of repeating it below the name. Active WN8 ordering replaces the
+large headline with its selected Min/Average/Max; finance tables continue to show
+totals, so absent aggregate per-battle net-credit values retain an explicit caption.
+Win-rate ordering matches known-outcome percentages; individual wins are 100,
+losses/draws 0, and unknown results remain last in either direction.
 
 CONTINUOUS PAGE REPLIES
 The page action accepts an optional safe ASCII request_id of 1..64 characters.

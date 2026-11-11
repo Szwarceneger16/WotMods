@@ -503,7 +503,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-meta .ss-free-xp { font-size:12rem; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
 .ss-group-sort-value { display:block; flex:0 1 auto; min-width:0; max-width:100%; margin:2rem 8rem 2rem 0; padding:2rem 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.table_header_background_start}}; color:{{colors.session_tab_active_text}}; font-size:12rem; line-height:16rem; white-space:normal; overflow-wrap:normal; }
-.ss-group-sort-value.ss-group-wn8-sort-value { background:none; border:0; padding:0; }
+.ss-group .ss-sort-active-value { border-radius:{{radii.control}}rem; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
 .ss-summary-meta { margin:3rem 4rem; }
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
@@ -525,7 +525,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-time-point-name:focus { outline:none; box-shadow:inset 0 0 6rem {{colors.button_shadow_2}}; }
 .ss-time-point { flex:0 0 auto; min-width:122rem; width:auto; min-height:28rem; padding-left:7rem; padding-right:7rem; border:0; border-right:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem 0 0 {{radii.control}}rem; }
 .ss-has-help { cursor:help; }
-.ss-help-tooltip { display:none; position:absolute; z-index:60; width:320rem; padding:9rem 11rem; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
+.ss-help-tooltip { display:none; position:absolute; z-index:95; width:320rem; padding:9rem 11rem; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.body_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:17rem; white-space:pre-line; overflow:hidden; box-shadow:0 3rem 14rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; pointer-events:none; }
 .ss-info-button { display:flex; align-items:center; justify-content:center; flex:0 0 16rem; min-width:16rem; width:16rem; height:16rem; padding:0; margin:0 0 0 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.window}}rem; color:{{colors.button_text}}; background:{{colors.window_background}}; box-shadow:none; text-shadow:none; font-family:Warhelios, Arial, sans-serif; font-size:12rem; font-style:normal; font-weight:normal; line-height:14rem; cursor:help; }
 .ss-info-button:hover, .ss-info-button:focus, .ss-info-button[aria-expanded="true"] { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:1rem; color:{{colors.button_hover_text}}; border-color:{{colors.session_tab_marker_background}}; background:{{colors.table_row_hover_background}}; box-shadow:0 0 5rem {{colors.session_tab_marker_background}}; }
 /* Gameface captions need an explicit text box and individual font properties;
@@ -564,13 +564,13 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-date-picker .ss-date-day { margin:0; border:1rem solid {{colors.body_background}}; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; box-shadow:none; }
 .ss-date-weekday { color:{{colors.table_header_text}}; }
 .ss-date-picker .ss-date-day[aria-selected="true"], .ss-date-picker .ss-date-option[aria-selected="true"] { border-color:{{colors.session_tab_marker_background}}; color:{{colors.session_tab_active_text}}; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 4rem {{colors.button_shadow_2}}; }
+.ss-date-picker .ss-date-day:disabled, .ss-date-picker .ss-date-option:disabled, .ss-date-picker .ss-date-clock-number:disabled { opacity:{{opacity.disabled_controls}}; cursor:default; }
 .ss-date-day .ss-control-label { font-size:12rem; line-height:18rem; }
 .ss-date-options { display:flex; flex-wrap:wrap; width:100%; max-height:190rem; overflow-y:auto; }
 .ss-date-picker .ss-date-option { flex:0 0 33.3333%; width:33.3333%; min-width:0; height:30rem; min-height:30rem; margin:0; padding:3rem; border-color:{{colors.body_background}}; background:{{colors.body_background}}; box-shadow:none; }
 .ss-date-option .ss-control-label { font-size:12rem; line-height:18rem; }
 .ss-date-time { display:flex; align-items:center; justify-content:center; min-width:0; margin-top:5rem; padding-top:5rem; border-top:1rem solid {{colors.button_border}}; }
-.ss-date-picker .ss-date-return { flex:0 0 25rem; min-width:25rem; width:25rem; height:28rem; min-height:28rem; margin:0 8rem 0 0; padding:0; }
-.ss-date-return .ss-control-label { display:none; }
+.ss-date-clock-info { margin-left:8rem; }
 .ss-date-picker .ss-date-time-part { flex:0 0 33rem; min-width:33rem; width:33rem; min-height:28rem; height:28rem; margin:0; padding:2rem; }
 .ss-date-time-part .ss-control-label { font-size:18rem; line-height:22rem; }
 .ss-date-time-colon { margin:0 4rem; font-size:18rem; line-height:24rem; }
@@ -578,9 +578,10 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-date-periods { display:flex; flex:0 1 auto; min-width:0; margin-left:8rem; }
 .ss-date-picker .ss-date-period { flex:0 1 auto; min-width:27rem; min-height:28rem; height:28rem; margin:0; padding:2rem 3rem; }
 .ss-date-period .ss-control-label { font-size:11rem; line-height:18rem; }
-.ss-date-clock { display:block; position:relative; width:180rem; height:180rem; max-width:100%; margin:5rem auto; border:1rem solid {{colors.button_border}}; border-radius:{{radii.sort_switch_track}}em; background:{{colors.window_background}}; box-shadow:inset 0 1rem 6rem {{colors.title_text_shadow}}; cursor:pointer; }
+.ss-date-clock-container { display:block; position:relative; width:100%; height:180rem; margin:5rem 0; }
+.ss-date-clock { display:block; position:absolute; left:50%; top:0; width:180rem; height:180rem; margin:0 0 0 -90rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.sort_switch_track}}em; background:{{colors.window_background}}; box-shadow:inset 0 1rem 6rem {{colors.title_text_shadow}}; cursor:pointer; }
 .ss-date-clock:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:1rem; }
-.ss-date-clock-hand { display:block; position:absolute; z-index:1; left:50%; bottom:50%; width:2rem; background:{{colors.session_tab_marker_background}}; transform-origin:center bottom; pointer-events:none; }
+.ss-date-clock-hand { display:block; position:absolute; z-index:1; left:50%; bottom:50%; width:2rem; margin-left:-1rem; background:{{colors.session_tab_marker_background}}; transform-origin:center bottom; pointer-events:none; }
 .ss-date-clock-pivot { display:block; position:absolute; z-index:2; left:50%; top:50%; width:5rem; height:5rem; margin:-2.5rem 0 0 -2.5rem; border-radius:{{radii.sort_switch_track}}rem; background:{{colors.session_tab_marker_background}}; pointer-events:none; }
 .ss-date-picker .ss-date-clock-number { display:flex; position:absolute; z-index:3; width:26rem; min-width:26rem; height:26rem; min-height:26rem; margin:-13rem 0 0 -13rem; padding:0; border:1rem solid {{colors.body_background}}; border-radius:{{radii.sort_switch_track}}em; background:{{colors.body_background}}; box-shadow:none; }
 .ss-date-clock-number .ss-control-label { font-size:12rem; line-height:18rem; }

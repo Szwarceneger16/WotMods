@@ -5,7 +5,7 @@ function sourceFunction(source,name){const start=source.indexOf('    function '+
   const end=source.slice(start,line).endsWith('}')?line:source.indexOf('\n    }\n',start)+7;
   assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end);}
 function assertScrollbarSource(source=shipped()){
-  const listeners=new Map(),events=[];
+  const listeners=new Map(),events=[],deferred=[];
   class Node{
     constructor(){this.style={};this.attributes={};this.classList={add(){},remove(){}};}
     setAttribute(key,value){this.attributes[key]=String(value);}contains(node){return node===this;}
@@ -21,27 +21,39 @@ function assertScrollbarSource(source=shipped()){
   rail.getBoundingClientRect=()=>({top:parseFloat(rail.style.top)||102,height:parseFloat(rail.style.height)||396,width:10});
   thumb.getBoundingClientRect=()=>({top:rail.getBoundingClientRect().top+1+(parseFloat(thumb.style.top)||0),height:parseFloat(thumb.style.height)||0,width:8});
   window.innerWidth=1800;window.innerHeight=1200;window.getComputedStyle=()=>({paddingBottom:'10'});
+  window.requestAnimationFrame=callback=>deferred.push(callback);
+  window.setTimeout=callback=>deferred.push(callback);
+  const flush=()=>{while(deferred.length)deferred.shift()();};
+  let captureReads=0,focusCalls=0;
+  for(const method of ['setPointerCapture','releasePointerCapture'])Object.defineProperty(rail,method,{get(){captureReads++;return ()=>{throw Error('Unsafe native capture');};}});
   const nativeSizes=[];
   const state={destroyed:false,dialog:false,bound:true,nativeScale:1,scrollTarget:null,scrollSpeed:1,groupCards:[{}],
     payload:{viewport:{width:1800,height:1200}},logicalSize:{width:700,height:620},
     feed:{navigationPage:3,topRequested:true,prependAnchor:{},pending:{navigate:true}},pageJump:{},battleJump:{}};
   const context={state,nodes:{scroll,scrollbar:rail,'scrollbar-thumb':thumb,groups},root,document,window,
-    hasNumber:value=>typeof value==='number'&&Number.isFinite(value),focusControl(){},
+    hasNumber:value=>typeof value==='number'&&Number.isFinite(value),focusControl(){focusCalls++;},
     consumeResizeInput(){events.push('handled');},loadNearEdges(){events.push('edges');},queueResize(){events.push('resize');},
     cancelBattleNavigation(){state.battleJump=null;},nativeDiagnostic(){},invoke(action,args){if(action==='resize')nativeSizes.push([args.width,args.height]);}};
   vm.createContext(context);
-  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','onScrollIntent','scrollbarMetrics','syncScrollbar','scrollFromScrollbar',
+  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','onScrollIntent','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
     'beginScrollbar','moveScrollbar','endScrollbar','scrollbarKey','scrollbarWheel','bindScrollbar'];
   vm.runInContext(names.map(name=>sourceFunction(source,name)).join('\n'),context);
   context.syncScrollbar();assert.strictEqual(rail.style.display,'block');assert.strictEqual(rail.attributes['aria-valuenow'],'0');
   assert(Math.abs(parseFloat(thumb.style.height)-78.8)<0.01,'Thumb represents the visible loaded fraction');
   context.scrollFromScrollbar(800);assert.strictEqual(scroll.scrollTop,800);assert.strictEqual(rail.attributes['aria-valuenow'],'50');
+  assert(!events.includes('edges'),'A native rail write cannot load pages inside its input callback');
+  assert(!events.includes('resize'),'A rail write cannot resize or relayout its native surface');
+  context.scrollFromScrollbar(800);assert.strictEqual(deferred.length,1,'Repeated rail/scroll notifications share one deferred edge check');
+  flush();assert.strictEqual(events.filter(event=>event==='edges').length,1);
   assert.strictEqual(state.pageJump,null);assert.strictEqual(state.battleJump,null);assert.strictEqual(state.feed.topRequested,false);
   assert.strictEqual(state.feed.prependAnchor,null);assert.strictEqual(state.feed.pending.navigate,false);
   scroll.scrollHeight=5000;assert.strictEqual(context.scrollbarMetrics().maximum,1600,'Pinned filter overflow is excluded from the owned rail range');
   context.scrollbarKey({key:'End'});assert.strictEqual(scroll.scrollTop,1600);assert.strictEqual(rail.attributes['aria-valuenow'],'100');
   context.scrollbarKey({key:'Home'});assert.strictEqual(scroll.scrollTop,0);
-  context.beginScrollbar({button:0,target:rail,clientY:450});assert.strictEqual(scroll.scrollTop,360,'Track presses move one viewport page');
+  context.beginScrollbar({button:0,pointerId:40,target:rail,clientY:450});assert.strictEqual(scroll.scrollTop,360,'Track presses move one viewport page');
+  const beforeRelease=events.filter(event=>event==='edges').length;flush();
+  assert.strictEqual(events.filter(event=>event==='edges').length,beforeRelease,'Page replacement waits while a native rail press is held');
+  assert.strictEqual(captureReads,0,'The native capture/release bridge is never read');assert.strictEqual(focusCalls,0,'Native rail presses avoid synchronous host focus');
   context.endScrollbar();context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});
   context.moveScrollbar({clientY:10000});assert.strictEqual(scroll.scrollTop,1600,'Dragging beyond the rail clamps at its loaded end');
   context.moveScrollbar({clientY:-10000});assert.strictEqual(scroll.scrollTop,0);context.endScrollbar();
@@ -50,13 +62,33 @@ function assertScrollbarSource(source=shipped()){
   context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});
   context.moveScrollbar({type:'mousemove',buttons:0,clientY:10000});
   assert.strictEqual(scroll.scrollTop,0);assert.strictEqual(state.scrollbarDrag,null,'A missed native outside release is retired before returning movement');
+  flush();assert(events.filter(event=>event==='edges').length>beforeRelease,'Releasing the rail resumes deferred edge loading');
+  context.beginScrollbar({button:0,target:rail,clientY:NaN});assert.strictEqual(state.scrollbarDrag,null,'Invalid native coordinates cannot start a rail gesture');
+  context.scrollFromScrollbar(NaN);context.scrollFromScrollbar(Infinity);assert.strictEqual(scroll.scrollTop,0,'Non-finite native offsets cannot reach the scroll setter');
+  const oldView=state.viewKey,oldFeed=state.feed;
+  context.scrollFromScrollbar(100);const retired=state.scrollbarWork;state.viewKey='replacement-view';state.feed={};
+  context.scrollFromScrollbar(200);const current=state.scrollbarWork;assert.notStrictEqual(retired,current);
+  const edgeCount=events.filter(event=>event==='edges').length;deferred.shift()();
+  assert.strictEqual(state.scrollbarWork,current,'A stale callback cannot retire work owned by the replacement view');
+  assert.strictEqual(events.filter(event=>event==='edges').length,edgeCount);flush();
+  assert.strictEqual(events.filter(event=>event==='edges').length,edgeCount+1);
+  state.viewKey=oldView;state.feed=oldFeed;scroll.scrollTop=0;state.scrollTarget=null;
+  let nativeTop=scroll.scrollTop;
+  Object.defineProperty(scroll,'scrollTop',{configurable:true,get(){return nativeTop;},set(value){nativeTop=value;context.queueScrollEdges();}});
+  const beforeNativePress=events.filter(event=>event==='edges').length;
+  context.beginScrollbar({button:0,pointerId:77,target:rail,clientY:450});
+  assert.strictEqual(events.filter(event=>event==='edges').length,beforeNativePress,'A synchronous native scroll notification cannot reenter page loading from a press');
+  flush();assert.strictEqual(events.filter(event=>event==='edges').length,beforeNativePress);
+  context.endScrollbar({type:'pointerup',pointerId:77,button:0,clientY:450});flush();
+  assert.strictEqual(events.filter(event=>event==='edges').length,beforeNativePress+1,'A synchronous native setter still loads edges once after release');
+  Object.defineProperty(scroll,'scrollTop',{configurable:true,writable:true,value:0});state.scrollTarget=null;
   context.scrollbarWheel({deltaY:-1,deltaX:0,cancelable:true});assert.strictEqual(scroll.scrollTop,100,'Native wheel direction matches the result viewport');
   state.scrollTarget=null;scroll.scrollTop=0;contentHeight=100;context.syncScrollbar();
   assert.strictEqual(rail.attributes['aria-disabled'],'true');assert.strictEqual(rail.attributes.tabindex,'-1');
   assert.strictEqual(parseFloat(thumb.style.height),context.scrollbarMetrics().height,'Short result sets show a full disabled thumb');
   contentHeight=1990;context.bindScrollbar(true);
   const retained=(listeners.get(rail)||[]).find(item=>item[0]==='keydown')[1];
-  state.destroyed=true;context.bindScrollbar(false);const before=scroll.scrollTop,count=events.length;
+  state.destroyed=true;context.bindScrollbar(false);const before=scroll.scrollTop,count=events.length;flush();
   retained({key:'End'});context.moveScrollbar({clientY:1000});context.syncScrollbar();
   assert.strictEqual(scroll.scrollTop,before);assert.strictEqual(events.length,count);
   assert([...listeners.values()].every(list=>list.length===0),'Cleanup removes every owned rail and document input listener');
@@ -108,12 +140,15 @@ module.exports=async({browser,nativeHost,check})=>{
         return last.bottom<=scroll.bottom+2&&last.bottom>=scroll.top&&Math.abs(rail.bottom-thumb.bottom)<=3*parseFloat(document.documentElement.style.fontSize);
       }));
       await rail.press('Home');await frames(page);const track=await rail.boundingBox();
+      await rail.evaluate(node=>{window.__unsafeRailCaptureCalls=0;
+        for(const name of ['setPointerCapture','releasePointerCapture'])node[name]=()=>{window.__unsafeRailCaptureCalls++;throw Error('Unsafe native rail capture');};});
       await page.mouse.click(track.x+track.width/2,track.y+track.height-8*scale);await frames(page);
-      check('Track clicks move through the existing result list'+label,Number(await rail.getAttribute('aria-valuenow'))>0);
+      check('Track clicks move through the existing result list without native capture'+label,
+        Number(await rail.getAttribute('aria-valuenow'))>0&&await page.evaluate(()=>__unsafeRailCaptureCalls===0));
       const handle=await thumb.boundingBox();await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down();
       await page.mouse.move(track.x+track.width/2,track.y+track.height+100*scale);await page.mouse.up();await frames(page);
       check('Dragging beyond the rail clamps and leaves no captured gesture'+label,
-        await rail.getAttribute('aria-valuenow')==='100'&&!await rail.evaluate(node=>node.classList.contains('is-dragging')));
+        await rail.getAttribute('aria-valuenow')==='100'&&!await rail.evaluate(node=>node.classList.contains('is-dragging'))&&await page.evaluate(()=>__unsafeRailCaptureCalls===0));
       const grip=await page.locator('#ss-resize-grip').boundingBox(),panel=await page.locator('#grz-session-stats').boundingBox();
       await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
       await page.mouse.move(panel.x+40*scale,panel.y+40*scale);await page.mouse.up();await frames(page);

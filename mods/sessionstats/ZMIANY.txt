@@ -1,5 +1,13 @@
 SESSION STATS — CHANGELOG
 
+0.9.0 • 2026-11-11
+• Replace duplicate sorting captions with an orange mark on the existing value;
+  advanced WN8 ordering shows its exact Min/Average/Max in the main card figure.
+• Add win-rate ordering to Vehicles, Maps, Tiers and individual Battles.
+• Keep the calendar and centered graphical clock together, with short hints.
+• Disable future and inverted-range choices and validate typed bounds as well.
+• Avoid native pointer capture and defer feed work out of scrollbar mouse events.
+
 0.8.1 • 2026-11-11
 • Keep black WN8 legible on dark camouflage with a fine, light, zero-blur text
   outline in the panel and native battle results. Other rating halos are unchanged.

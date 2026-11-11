@@ -156,6 +156,17 @@ class SortingTests(NativePaginationTests):
         self.assertAlmostEqual(row['sort_value'], row['stats']['battle_wn8']['avg'])
         self.assertNotAlmostEqual(row['sort_value'], row['stats']['wn8'])
 
+    def test_win_rate_sort_is_owned_and_accepted_in_every_scope_and_tab(self):
+        for scope_name in ('launch', 'manual', 'instance'):
+            for group in ('vehicles', 'maps', 'tiers', 'battles'):
+                scope = self.sort(scope=scope_name, group=group, metric='win_rate', statistic='max')
+                self.assertEqual(scope['ordering'][group]['metric'], 'win_rate')
+                self.assertEqual(scope['pagination'][group]['page'], 0)
+                self.assertTrue(scope[group])
+                for row in scope[group]:
+                    self.assertEqual(row['sort_value'], 100.0)
+                    self.assertEqual(row['sort_value'], row['stats']['win_rate'])
+
 
 if __name__ == '__main__':
     import unittest

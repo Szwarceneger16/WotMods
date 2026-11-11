@@ -115,8 +115,9 @@ module.exports=async({browser,nativeHost,check})=>{
         card.classList.remove('ss-battle-target');const restored={rect:card.getBoundingClientRect().toJSON(),visibility:getComputedStyle(border).visibility,color:getComputedStyle(border).borderColor};
         return {original,selected,restored};
       });
-      check('The faint WN8 border is an overlay and yields to selection without moving '+group+': '+JSON.stringify(borders),
-        borders.original.position==='absolute'&&borders.original.pointer==='none'&&borders.original.color==='rgba(76, 118, 46, 0.22)'&&
+      const borderColor=group==='battles'?'rgba(76, 118, 46, 0.22)':'rgba(215, 182, 0, 0.22)';
+      check('The faint WN8 border follows the displayed headline and yields to selection without moving '+group+': '+JSON.stringify(borders),
+        borders.original.position==='absolute'&&borders.original.pointer==='none'&&borders.original.color===borderColor&&
         borders.selected.visibility==='hidden'&&borders.restored.visibility==='visible'&&borders.restored.color===borders.original.color&&
         borders.selected.color!==borders.original.color&&[borders.selected.rect,borders.restored.rect].every(rect=>rect.width===borders.original.width&&rect.height===borders.original.height));
     }

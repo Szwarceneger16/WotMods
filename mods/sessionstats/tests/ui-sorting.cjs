@@ -48,6 +48,14 @@ module.exports=async ({browser,nativeHost,check})=>{
     document.querySelector('#ss-sort-metric [data-value="battles"]').onclick();
     return __grzCommands.filter(command=>command.action==='sort').length===before;
   }));
+  for(const group of ['vehicles','maps','tiers','battles']){
+    await page.locator('#ss-group-'+group).click();await choose('metric','win_rate');
+    check('Win rate is available in '+group+' without a meaningless Min/Avg/Max selector',
+      await page.locator('#ss-sort-metric [data-value="win_rate"]').evaluate(node=>node.style.display!=='none')&&
+      !await page.locator('.ss-sort-statistic').isVisible()&&await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
+      await page.locator('.ss-group [data-ss-sort-active="win_rate"]').count()>0&&await page.locator('.ss-group-sort-value').count()===0);
+  }
+  await page.locator('#ss-group-tiers').click();
   await choose('metric','off');
   await choose('chronology','oldest');
   check('Chronological ordering is independent when metric sorting is off',await page.evaluate(()=>__grzCommands.filter(c=>c.action==='sort').pop().chronology==='oldest'));
