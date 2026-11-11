@@ -20,7 +20,14 @@ Colors follow the rounded integer actually displayed. The WN8 label and its
 value share a color; each Min/Avg/Max value has its own color, while that row's
 WN8 label follows Avg. Coverage markers follow the associated period WN8, not
 their count. Unknown or pending ratings keep the configured neutral color.
-The black band has a small neutral text halo to remain legible on dark camo.
+Every rated label and value has one subtle, translucent neutral text halo for
+legibility on dark camo. This replaces the doubled opaque halo previously used
+for black ratings, preserving the exact ink colors without obscuring glyph edges.
+
+Cards have a faint border in their headline WN8 color, drawn at 22% opacity as an
+absolute overlay. It does not change card dimensions or add a rating background.
+The orange selected-battle frame takes priority; clearing the selection restores
+the rating border. Unknown ratings retain the normal configured card border.
 
 The palette covers the period summary, group headlines, distributions,
 individual battles, expanded map/vehicle histories, WN8 sorting captions and

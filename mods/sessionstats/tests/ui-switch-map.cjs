@@ -37,6 +37,7 @@ function assertMapPreviewSource(){
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let count=6;function step(){if(--count)requestAnimationFrame(step);else resolve();}requestAnimationFrame(step);}));
 module.exports=async({browser,nativeHost,check})=>{
+  require('./ui-map-preview-quality.cjs')();check('Actual-source high-resolution and minimap previews preserve safe local fallback and geometry',true);
   assertMapPreviewSource();check('Actual-source map preview scales fourfold, stays bounded and retires on leave/Escape/blocked state',true);
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:2400*scale,height:1400*scale},viewport:{width:2400*scale,height:1400*scale,scale}});
@@ -67,16 +68,19 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Wide sorting exposes an accessible painted switch at'+scale*100+'%',await toggle.isVisible()&&
         await toggle.getAttribute('role')==='switch'&&await toggle.getAttribute('aria-checked')==='false'&&
         await toggle.locator('.ss-sort-switch-track').evaluate(node=>getComputedStyle(node).borderRadius!=='0px'));
-      check('Shared button styles cannot restore a rectangular frame around the switch at'+scale*100+'%',
+      check('The compact switch keeps a rounded button frame around its inset track at'+scale*100+'%',
         await toggle.evaluate((node,scale)=>{const css=getComputedStyle(node),box=node.getBoundingClientRect();
-          return Math.abs(box.width-52*scale)<=1&&css.backgroundImage==='none'&&parseFloat(css.borderTopWidth)===0&&css.boxShadow==='none';},scale));
+          const track=node.querySelector('.ss-sort-switch-track').getBoundingClientRect();
+          return Math.abs(box.width-46*scale)<=1&&Math.abs(track.width-34*scale)<=1&&
+            box.width-track.width>=11*scale&&box.height-track.height>=11*scale&&
+            parseFloat(css.borderRadius)>=14*scale&&css.backgroundImage!=='none'&&parseFloat(css.borderTopWidth)>=scale;},scale));
       const start=await toggle.locator('.ss-sort-switch-thumb').boundingBox();await toggle.focus();await toggle.press('Space');
       await page.evaluate(()=>{const command=__grzCommands.filter(item=>item.action==='sort').pop();const payload=JSON.parse(model.payload);
         payload.scopes[command.scope].ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);await page.waitForTimeout(160);
       const end=await toggle.locator('.ss-sort-switch-thumb').boundingBox();
       check('Space enables metric sorting and moves the switch thumb without resizing the control at'+scale*100+'%',
-        await toggle.getAttribute('aria-checked')==='true'&&end.x>start.x+20*scale&&Math.abs(end.width-start.width)<=1);
+        await toggle.getAttribute('aria-checked')==='true'&&end.x>start.x+14*scale&&Math.abs(end.width-start.width)<=1);
       await page.evaluate(()=>GRZSessionStats.destroy());
       await page.evaluate(()=>{document.getElementById('grz-session-stats').appendChild(__mapPreviewProbe);
         __mapPreviewProbe.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));});

@@ -25,7 +25,7 @@
     function paintWN8(node, value) {
         var color = wn8Color(value);
         node.style.color = color || '';
-        node.style.textShadow = color === '#000000' ? '0 0 1rem #d4ccb0, 0 0 1rem #d4ccb0' : '';
+        node.style.textShadow = color ? '0 0 0.7rem rgba(212,204,176,0.35)' : '';
         if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
         else { node.removeAttribute('data-wn8-value'); }
         return node;

@@ -45,12 +45,53 @@ class SortingTests(NativePaginationTests):
 
     def test_chronology_works_in_all_scopes_and_sorting_is_independent_of_paging(self):
         for scope in ('launch','manual','instance'):
-            for group in ('battles','vehicles','maps'):
+            for group in ('battles','vehicles','maps','tiers'):
                 sorted_scope = self.sort(scope,group,chronology='oldest')
                 self.assertEqual(sorted_scope['ordering'][group]['chronology'],'oldest')
                 self.window._model.onAction(self.command(scope,group))
-                self.assertEqual(self.payload()['scopes'][scope]['pagination'][group]['page'],1)
+                self.assertEqual(self.payload()['scopes'][scope]['pagination'][group]['page'],
+                                 0 if group == 'tiers' else 1)
                 self.assertEqual(self.sort(scope,group,chronology='newest')['pagination'][group]['page'],0)
+
+    def test_tier_order_is_numeric_defaults_highest_first_and_is_owned_by_each_scope(self):
+        for identifier, tier, started in (('tier-xi', 11, 125), ('tier-ix', 9, 145),
+                                          ('tier-ii', 2, 165), ('tier-unknown', None, 185)):
+            row = result(identifier, vehicle_tier=tier, started_at=started, ended_at=195)
+            self.assertTrue(self.mod.active_service.record_result(row))
+            self.assertTrue(self.mod._instance_session.result('EU:7', row, allow_new=True))
+        self.window.refresh()
+        for scope in ('launch', 'manual', 'instance'):
+            before = self.payload()['scopes'][scope]
+            self.assertEqual(before['ordering']['tiers']['chronology'], 'tier_desc')
+            self.assertEqual([row['tier'] for row in before['tiers']], [11, 9, 8, 2, None])
+            ascending = self.sort(scope, 'tiers', chronology='tier_asc')
+            self.assertEqual([row['tier'] for row in ascending['tiers']], [2, 8, 9, 11, None])
+            descending = self.sort(scope, 'tiers', chronology='tier_desc')
+            self.assertEqual([row['tier'] for row in descending['tiers']], [11, 9, 8, 2, None])
+            # An explicit ordinary date choice remains available when metric
+            # sorting is off, even though tier order is this tab's default.
+            newest = self.sort(scope, 'tiers', chronology='newest')
+            self.assertIsNone(newest['tiers'][0]['tier'])
+            self.assertEqual(newest['ordering']['tiers']['chronology'], 'newest')
+        # Changing one tab cannot change the ordinary date selector elsewhere.
+        for group in ('battles', 'vehicles', 'maps'):
+            self.assertEqual(self.payload()['scopes']['manual']['ordering'][group], DEFAULT_ORDER)
+
+    def test_tier_modes_are_rejected_for_other_groups_and_metric_ties_ignore_them(self):
+        service = self.mod.active_service
+        for group in ('battles', 'vehicles', 'maps'):
+            for chronology in ('tier_asc', 'tier_desc'):
+                self.sort(group=group, chronology=chronology)
+        self.assertEqual(service._orders, {})
+        for identifier, tier, started in (('tier-old', 11, 125), ('tier-new', 2, 185)):
+            self.assertTrue(service.record_result(result(identifier, vehicle_tier=tier,
+                                                         started_at=started, ended_at=195)))
+        ascending = self.sort(group='tiers', metric='xp_base', chronology='tier_asc')
+        descending = self.sort(group='tiers', metric='xp_base', chronology='tier_desc')
+        self.assertEqual([row['tier'] for row in ascending['tiers']], [2, 11, 8])
+        self.assertEqual(ascending['tiers'], descending['tiers'])
+        restored = self.sort(group='tiers', metric='off', chronology='tier_desc')
+        self.assertEqual([row['tier'] for row in restored['tiers']], [11, 8, 2])
 
     def test_invalid_and_stale_sort_commands_do_not_mutate_service(self):
         service = self.mod.active_service

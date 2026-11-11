@@ -174,7 +174,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
  'radii': {'window': 8,
            'titlebar': 7,
            'control': 5,
-           'sort_switch_track': 11,
+           'sort_switch_track': 15,
            'sort_switch_thumb': 8,
            'scrollbar_thumb': 3,
            'table_header': 5,
@@ -188,6 +188,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'garage_spinner': 5},
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7},
  'scroll': {'speed_multiplier': 1.0},
+ 'maps': {'preview_mode': 'image'},
  'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
  'wide_cards': {'battles': 720, 'vehicles': 720, 'maps': 720, 'tiers': 720},
  'window': {'background_transparency': 0, 'maximized': False,
@@ -360,19 +361,23 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-filters-wide .ss-sort-direction { flex-basis:109rem; }
 .ss-filters-wide .ss-sort-metric { flex-basis:120rem; }
 .ss-filters-wide .ss-sort-statistic { flex-basis:65rem; }
-.ss-button.ss-sort-off { position:relative; flex:0 0 52rem; width:52rem; min-width:52rem; height:30rem; min-height:30rem; margin:0 5rem 0 0; padding:0; border:0; background:none; box-shadow:none; }
-.ss-button.ss-sort-off:hover, .ss-button.ss-sort-off:focus, .ss-button.ss-sort-off:active, .ss-button.ss-sort-off.is-active { background:none; border:0; box-shadow:none; }
+.ss-button.ss-sort-off, .ss-button.ss-sort-off.is-active { position:relative; flex:0 0 46rem; width:46rem; min-width:46rem; height:30rem; min-height:30rem; margin:0 5rem 0 0; padding:0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.sort_switch_track}}rem; background:linear-gradient({{colors.button_background_start}},{{colors.button_background_middle}} 48%,{{colors.button_background_end}}); box-shadow:inset 0 1rem {{colors.button_shadow_1}}, inset 1rem 0 {{colors.button_shadow_2}}, inset -1rem 0 {{colors.button_shadow_2}}; }
+.ss-button.ss-sort-off:hover, .ss-button.ss-sort-off:focus { border-color:{{colors.button_shadow_1}}; background:linear-gradient({{colors.button_hover_background_start}},{{colors.button_background_start}} 48%,{{colors.button_hover_background_end}}); }
+.ss-button.ss-sort-off:active { background:linear-gradient({{colors.button_background_end}},{{colors.button_background_middle}}); }
 .ss-sort-off .ss-control-label { position:absolute; width:1rem; height:1rem; padding:0; overflow:hidden; clip:rect(0, 0, 0, 0); white-space:nowrap; }
-.ss-sort-switch-track { display:block; position:absolute; left:4rem; top:5rem; width:44rem; height:20rem; border:1rem solid {{colors.window_border}}; border-radius:{{radii.sort_switch_track}}rem; background:{{colors.group_card_background_end}}; box-shadow:inset 0 1rem 3rem {{colors.group_card_shadow}}; }
-.ss-sort-switch-thumb { display:block; position:absolute; left:2rem; top:2rem; width:14rem; height:14rem; border:1rem solid {{colors.period_text}}; border-radius:{{radii.sort_switch_thumb}}rem; background:{{colors.list_meta_text}}; box-shadow:0 1rem 2rem {{colors.group_card_shadow}}; transition:transform 0.12s ease; }
+.ss-sort-switch-track { display:block; position:absolute; left:5rem; top:5rem; width:34rem; height:18rem; border:1rem solid {{colors.window_border}}; border-radius:{{radii.sort_switch_track}}rem; background:{{colors.group_card_background_end}}; box-shadow:inset 0 1rem 3rem {{colors.group_card_shadow}}; }
+.ss-sort-switch-thumb { display:block; position:absolute; left:2rem; top:2rem; width:12rem; height:12rem; border:1rem solid {{colors.period_text}}; border-radius:{{radii.sort_switch_thumb}}rem; background:{{colors.list_meta_text}}; box-shadow:0 1rem 2rem {{colors.group_card_shadow}}; transition:transform 0.12s ease; }
 .ss-sort-off.is-active .ss-sort-switch-track { border-color:{{colors.session_tab_marker_background}}; background:{{colors.group_card_background_start}}; }
-.ss-sort-off.is-active .ss-sort-switch-thumb { transform:translateX(24rem); border-color:{{colors.session_tab_marker_background}}; background:{{colors.session_tab_marker_background}}; }
+.ss-sort-off.is-active .ss-sort-switch-thumb { transform:translateX(16rem); border-color:{{colors.session_tab_marker_background}}; background:{{colors.session_tab_marker_background}}; }
 .ss-sort-off:hover .ss-sort-switch-track, .ss-sort-off:focus .ss-sort-switch-track { border-color:{{colors.group_tab_active_text}}; box-shadow:0 0 3rem {{colors.session_tab_marker_background}}; }
 .ss-sort-off:disabled { opacity:{{opacity.disabled_controls}}; cursor:default; }
 @media (prefers-reduced-motion:reduce) { .ss-sort-switch-thumb { transition:none; } }
 .ss-list-meta { display:flex; flex-wrap:wrap; align-items:center; flex:0 1 auto; min-width:0; width:auto; max-width:100%; min-height:30rem; margin:0 8rem 5rem 0; font-size:12rem; color:{{colors.list_meta_text}}; }
 .ss-list-meta > span + span { margin-left:8rem; }
 .ss-group { margin-bottom:5rem; padding:5rem 6rem; border-radius:{{radii.group_card}}rem; background:linear-gradient({{colors.group_card_background_start}}, {{colors.group_card_background_end}}); border:1rem solid {{colors.group_card_shadow}}; box-shadow:inset 0 1rem {{colors.group_card_shadow}}; }
+.ss-group[data-wn8-border-value] { position:relative; }
+.ss-wn8-card-border { display:block; position:absolute; z-index:1; top:-1rem; right:-1rem; bottom:-1rem; left:-1rem; border:1rem solid {{colors.group_card_shadow}}; border-radius:{{radii.group_card}}rem; pointer-events:none; }
+.ss-group.ss-battle-target .ss-wn8-card-border { visibility:hidden; }
 .ss-group-header { display:flex; align-items:center; min-height:35rem; padding-bottom:2rem; }
 .ss-group-thumb { display:block; flex-shrink:0; width:54rem; height:32rem; margin-right:8rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
 .ss-group-thumb[data-ss-map-preview]:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:2rem; }
@@ -463,7 +468,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select { position:relative; width:100%; min-width:0; }
 .ss-select-trigger { width:100%; min-width:0; height:30rem; min-height:30rem; padding:4rem 6rem; justify-content:space-between; }
 .ss-page-center .ss-select-trigger { height:30rem; min-height:30rem; }
-.ss-sorting .ss-select-trigger:disabled, .ss-sorting .ss-select-trigger[aria-disabled="true"] { opacity:{{opacity.disabled_controls}}; color:{{colors.garage_button_text}}; border-color:{{colors.button_border}}; background:{{colors.xp_toggle_background}}; box-shadow:none; text-shadow:none; cursor:default; }
+.ss-select-trigger.ss-select-disabled, .ss-select-trigger[aria-disabled="true"] { opacity:{{opacity.disabled_controls}}; color:{{colors.garage_button_text}}; border-color:{{colors.button_border}}; background:{{colors.xp_toggle_background}}; box-shadow:none; text-shadow:none; cursor:default; }
+.ss-select-trigger.ss-select-disabled .ss-control-label, .ss-select-trigger[aria-disabled="true"] .ss-control-label { color:{{colors.garage_button_text}}; text-shadow:none; }
+.ss-select-trigger.ss-select-disabled .ss-select-arrow, .ss-select-trigger[aria-disabled="true"] .ss-select-arrow { border-right-color:{{colors.garage_button_text}}; border-bottom-color:{{colors.garage_button_text}}; }
 .ss-select-trigger .ss-control-label { flex:1; text-align:left; }
 .ss-select-arrow { display:block; flex-shrink:0; width:6rem; height:6rem; margin:-3rem 3rem 0 6rem; border-right:1rem solid currentColor; border-bottom:1rem solid currentColor; transform:rotate(45deg); }
 .ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_tabs}}rem; background:{{colors.window_background}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
@@ -541,24 +548,45 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-date-menu .ss-select-arrow { margin-left:0; margin-right:0; }
 .ss-date-calendar-icon { display:block; position:relative; width:12rem; height:12rem; border:1rem solid {{colors.button_text}}; border-top:3rem solid {{colors.button_text}}; }
 .ss-date-calendar-icon:after { content:""; position:absolute; left:2rem; right:2rem; top:3rem; height:0; border-top:2rem solid {{colors.button_text}}; }
-.ss-date-picker { position:absolute; z-index:90; display:block; width:286rem; max-width:100%; padding:8rem; overflow-y:auto; border:1rem solid {{colors.list_meta_text}}; border-radius:{{radii.group_card}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}; }
-.ss-date-picker-heading { display:flex; align-items:center; justify-content:space-between; min-width:0; margin-bottom:6rem; }
-.ss-date-picker-title { display:block; flex:1; min-width:0; text-align:center; font-size:14rem; line-height:20rem; }
-.ss-date-month-arrow { flex:0 0 26rem; width:26rem; min-width:26rem; height:26rem; min-height:26rem; padding:0; }
+.ss-date-picker { position:absolute; z-index:90; display:block; width:286rem; max-width:100%; padding:8rem; overflow-y:auto; border:1rem solid {{colors.confirmation_border}}; border-radius:{{radii.group_card}}rem; background:{{colors.window_background}}; background-image:url("session_stats_camo.png"); background-size:420rem 345rem; background-repeat:repeat; color:{{colors.button_text}}; box-shadow:0 3rem 8rem {{colors.title_text_shadow}}, inset 0 1rem {{colors.button_shadow_2}}; }
+.ss-date-picker-heading { display:flex; align-items:center; justify-content:space-between; min-width:0; margin-bottom:4rem; }
+.ss-date-picker-title { display:flex; flex:1; min-width:0; align-items:center; justify-content:center; text-align:center; font-size:14rem; line-height:20rem; }
+.ss-date-picker .ss-date-heading-month, .ss-date-picker .ss-date-heading-year { flex:0 1 auto; min-width:0; min-height:28rem; margin:0; padding:3rem 5rem; border-color:{{colors.body_background}}; background:{{colors.body_background}}; box-shadow:none; }
+.ss-date-picker .ss-date-heading-month:hover, .ss-date-picker .ss-date-heading-year:hover, .ss-date-picker .ss-date-heading-month[aria-expanded="true"], .ss-date-picker .ss-date-heading-year[aria-expanded="true"] { border-color:{{colors.button_border}}; background:{{colors.table_row_hover_background}}; color:{{colors.session_tab_active_text}}; }
+.ss-date-picker .ss-date-heading-month .ss-control-label, .ss-date-picker .ss-date-heading-year .ss-control-label { font-size:14rem; line-height:20rem; }
+.ss-date-month-arrow { flex:0 0 24rem; width:24rem; min-width:24rem; height:24rem; min-height:24rem; margin:0; padding:0; }
 .ss-date-month-arrow .ss-control-label { display:none; }
 .ss-date-chevron { display:block; width:7rem; height:7rem; border-right:1rem solid {{colors.button_text}}; border-bottom:1rem solid {{colors.button_text}}; transform:rotate(-45deg); }
 .ss-date-month-previous .ss-date-chevron { transform:rotate(135deg); }
-.ss-date-picker-fields { display:flex; align-items:center; justify-content:space-between; width:100%; margin-bottom:6rem; }
-.ss-date-picker-field { display:flex; flex:1 1 0rem; min-width:0; margin:0 3rem; align-items:center; }
-.ss-date-picker-field > span { display:block; flex:1; min-width:0; margin-right:4rem; color:{{colors.table_header_text}}; font-size:11rem; line-height:16rem; }
-.ss-date-picker-value { display:block; flex:0 0 48rem; min-width:0; width:48rem; height:26rem; padding:3rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; color:{{colors.button_text}}; text-align:center; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
+.ss-date-picker-body { min-width:0; width:100%; }
 .ss-date-week { display:flex; width:100%; min-width:0; }
-.ss-date-weekday, .ss-date-day { display:flex; flex:0 0 14.2857%; width:14.2857%; min-width:0; height:26rem; min-height:26rem; margin:0; padding:2rem; align-items:center; justify-content:center; font-size:11rem; line-height:18rem; text-align:center; }
+.ss-date-weekday, .ss-date-day { display:flex; flex:0 0 14.2857%; width:14.2857%; min-width:0; height:24rem; min-height:24rem; margin:0; padding:2rem; align-items:center; justify-content:center; font-size:11rem; line-height:18rem; text-align:center; }
+.ss-date-picker .ss-date-day { margin:0; border:1rem solid {{colors.body_background}}; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; box-shadow:none; }
 .ss-date-weekday { color:{{colors.table_header_text}}; }
-.ss-date-day { border:1rem solid {{colors.body_background}}; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; }
-.ss-date-day[aria-selected="true"] { border-color:{{colors.session_tab_marker_background}}; color:{{colors.session_tab_active_text}}; }
+.ss-date-picker .ss-date-day[aria-selected="true"], .ss-date-picker .ss-date-option[aria-selected="true"] { border-color:{{colors.session_tab_marker_background}}; color:{{colors.session_tab_active_text}}; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 4rem {{colors.button_shadow_2}}; }
 .ss-date-day .ss-control-label { font-size:12rem; line-height:18rem; }
-.ss-date-time { margin-top:7rem; }
+.ss-date-options { display:flex; flex-wrap:wrap; width:100%; max-height:190rem; overflow-y:auto; }
+.ss-date-picker .ss-date-option { flex:0 0 33.3333%; width:33.3333%; min-width:0; height:30rem; min-height:30rem; margin:0; padding:3rem; border-color:{{colors.body_background}}; background:{{colors.body_background}}; box-shadow:none; }
+.ss-date-option .ss-control-label { font-size:12rem; line-height:18rem; }
+.ss-date-time { display:flex; align-items:center; justify-content:center; min-width:0; margin-top:5rem; padding-top:5rem; border-top:1rem solid {{colors.button_border}}; }
+.ss-date-picker .ss-date-return { flex:0 0 25rem; min-width:25rem; width:25rem; height:28rem; min-height:28rem; margin:0 8rem 0 0; padding:0; }
+.ss-date-return .ss-control-label { display:none; }
+.ss-date-picker .ss-date-time-part { flex:0 0 33rem; min-width:33rem; width:33rem; min-height:28rem; height:28rem; margin:0; padding:2rem; }
+.ss-date-time-part .ss-control-label { font-size:18rem; line-height:22rem; }
+.ss-date-time-colon { margin:0 4rem; font-size:18rem; line-height:24rem; }
+.ss-date-picker .ss-date-time-part[aria-pressed="true"], .ss-date-picker .ss-date-period[aria-pressed="true"] { color:{{colors.session_tab_active_text}}; border-color:{{colors.session_tab_marker_background}}; }
+.ss-date-periods { display:flex; flex:0 1 auto; min-width:0; margin-left:8rem; }
+.ss-date-picker .ss-date-period { flex:0 1 auto; min-width:27rem; min-height:28rem; height:28rem; margin:0; padding:2rem 3rem; }
+.ss-date-period .ss-control-label { font-size:11rem; line-height:18rem; }
+.ss-date-clock { display:block; position:relative; width:180rem; height:180rem; max-width:100%; margin:5rem auto; border:1rem solid {{colors.button_border}}; border-radius:{{radii.sort_switch_track}}em; background:{{colors.window_background}}; box-shadow:inset 0 1rem 6rem {{colors.title_text_shadow}}; cursor:pointer; }
+.ss-date-clock:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:1rem; }
+.ss-date-clock-hand { display:block; position:absolute; z-index:1; left:50%; bottom:50%; width:2rem; background:{{colors.session_tab_marker_background}}; transform-origin:center bottom; pointer-events:none; }
+.ss-date-clock-pivot { display:block; position:absolute; z-index:2; left:50%; top:50%; width:5rem; height:5rem; margin:-2.5rem 0 0 -2.5rem; border-radius:{{radii.sort_switch_track}}rem; background:{{colors.session_tab_marker_background}}; pointer-events:none; }
+.ss-date-picker .ss-date-clock-number { display:flex; position:absolute; z-index:3; width:26rem; min-width:26rem; height:26rem; min-height:26rem; margin:-13rem 0 0 -13rem; padding:0; border:1rem solid {{colors.body_background}}; border-radius:{{radii.sort_switch_track}}em; background:{{colors.body_background}}; box-shadow:none; }
+.ss-date-clock-number .ss-control-label { font-size:12rem; line-height:18rem; }
+.ss-date-picker .ss-date-clock-inner { width:22rem; min-width:22rem; height:22rem; min-height:22rem; margin:-11rem 0 0 -11rem; color:{{colors.table_header_text}}; }
+.ss-date-clock-inner .ss-control-label { font-size:10rem; line-height:14rem; }
+.ss-date-picker .ss-date-clock-number[aria-pressed="true"] { border-color:{{colors.session_tab_marker_background}}; background:{{colors.button_confirm_background_end}}; color:{{colors.session_tab_active_text}}; }
 .ss-date-picker-actions { display:flex; justify-content:flex-end; min-width:0; margin-top:6rem; }
 .ss-date-picker-actions > .ss-control { margin-left:5rem; }
 .ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:30rem; min-height:30rem; padding:3rem 6rem; }
@@ -621,8 +649,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-window-maximized .ss-resize-grip { display:none; }
 .ss-resize-n, .ss-resize-s { height:6rem; cursor:ns-resize; }
 .ss-resize-e, .ss-resize-w { width:6rem; cursor:ew-resize; }
-.ss-more-columns { display:flex; flex-wrap:wrap; align-items:flex-start; width:100%; min-width:0; }
-.ss-more-mission-block { flex:1 1 170rem; min-width:0; max-width:100%; width:auto; padding:0 0 4rem; }
+.ss-more-columns { display:block; width:100%; min-width:0; }
+.ss-more-columns-paired { display:flex; flex-wrap:nowrap; align-items:flex-start; }
+.ss-more-mission-block { flex:0 0 auto; min-width:0; max-width:100%; width:100%; padding:0 0 4rem; }
 .ss-more-reward-block { flex:1 1 220rem; min-width:0; max-width:100%; padding:0 0 4rem; }
 /* The current point total stays beside its heading. Additional point sources
    wrap as complete cells, keeping the numerical strip above both columns. */
@@ -654,9 +683,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-more-mission-description { width:100%; margin-top:4rem; }
 /* Keep small matrices compact; richer translated columns request only the
    width they need before the mission block receives the remaining space. */
-.ss-more-reward-block.ss-more-bonus-block { flex:0 1 auto; width:308rem; margin-right:8rem; }
-.ss-stacked-more .ss-more-bonus-block, .ss-stacked-more .ss-more-mission-block { flex-basis:100%; width:100%; margin-right:0; }
-.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { width:486rem; max-width:100%; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block { flex:0 0 auto; width:308rem; margin-right:0; }
+.ss-more-reward-block.ss-more-bonus-block.ss-long-bonus-values { width:486rem; max-width:100%; }
 .ss-bonus-matrix { width:100%; }
 .ss-bonus-row { display:flex; flex-wrap:wrap; align-items:center; width:100%; min-height:25rem; padding:3rem 4rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-bonus-row:first-child { border-top:0; }
@@ -952,7 +980,7 @@ def validate_config(raw):
             result['language'] = value
         else:
             reporter.issue('language', 'expected_language_code')
-    for section in ('colors', 'radii', 'opacity', 'scroll', 'sessions', 'cards', 'wide_cards', 'window'):
+    for section in ('colors', 'radii', 'opacity', 'scroll', 'maps', 'sessions', 'cards', 'wide_cards', 'window'):
         if section not in raw:
             continue
         supplied = raw[section]
@@ -966,7 +994,10 @@ def validate_config(raw):
             if key not in supplied:
                 continue
             value = supplied[key]
-            if section == 'sessions':
+            if section == 'maps':
+                checked = value if isinstance(value, text_type) and value in ('image', 'minimap') else None
+                reason = 'expected_image_or_minimap'
+            elif section == 'sessions':
                 checked = value if isinstance(value, bool) else None
                 reason = 'expected_boolean'
             elif section == 'window':
@@ -1139,6 +1170,7 @@ def build_presentation(config):
         'panel_css': _expand(PANEL_TEMPLATE + PANEL_OPACITY_RULE, normalized),
         'footer_css': _expand(FOOTER_TEMPLATE + FOOTER_OPACITY_RULE, normalized),
         'scroll_speed': normalized['scroll']['speed_multiplier'],
+        'map_preview_mode': normalized['maps']['preview_mode'],
         'card_widths': copy.deepcopy(normalized['cards']),
         'wide_card_widths': copy.deepcopy(normalized['wide_cards']),
         'window_settings': copy.deepcopy(normalized['window']),

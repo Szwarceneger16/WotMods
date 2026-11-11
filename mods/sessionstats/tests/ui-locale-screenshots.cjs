@@ -87,7 +87,7 @@ async function audit(page,mode,group) {
         const button=node.parentElement,track=button.querySelector('.ss-sort-switch-track'),thumb=button.querySelector('.ss-sort-switch-thumb');
         if(button.getAttribute('role')!=='switch' || !(button.getAttribute('aria-label') || '').trim() ||
           !['true','false'].includes(button.getAttribute('aria-checked')) || !track || !thumb ||
-          track.getBoundingClientRect().width<40*scale || thumb.getBoundingClientRect().width<12*scale) {
+          track.getBoundingClientRect().width<33*scale || thumb.getBoundingClientRect().width<12*scale) {
           issues.push({kind:'unpainted-sort-switch'});
         }
         continue;

@@ -165,9 +165,9 @@ module.exports=async({browser,check:reportCheck})=>{
       [1900,'rgb(74, 146, 183)'],[2350,'rgb(131, 87, 157)'],[2900,'rgb(90, 49, 117)']]){
       await setRating(page,{state:'ready',value:rating});
       const colors=await widget.evaluate(node=>[...node.querySelectorAll('.grz-postbattle-wn8-label,.grz-postbattle-wn8-value')].map(item=>({
-        color:getComputedStyle(item).color,background:item.style.background,value:item.getAttribute('data-wn8-value')})));
+        color:getComputedStyle(item).color,halo:getComputedStyle(item).textShadow,background:item.style.background,value:item.getAttribute('data-wn8-value')})));
       check('Native battle WN8 label and number use the text-only WoT-Life band at '+rating+': '+JSON.stringify(colors),
-        colors.length===2&&colors.every(item=>item.color===color&&item.background===''&&item.value===String(rating)));
+        colors.length===2&&colors.every(item=>item.color===color&&item.background===''&&item.value===String(rating)&&item.halo.includes('0.35')));
     }
     await setRating(page,{state:'ready',value:1234567.6,labels:{'format.thousands':'.'}},true);
     check('Wrapped native subviews and rating properties render rounded localized thousands',

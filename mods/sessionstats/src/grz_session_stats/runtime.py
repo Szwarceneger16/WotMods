@@ -165,6 +165,14 @@ class GameAPI(object):
         return dict(('outcome.' + outcome, i18n.makeString('#battle_results:status/' + status))
                     for outcome, status in (('win', 'win'), ('loss', 'lose'), ('draw', 'tie')))
 
+    def date_settings(self):
+        from .date_locale import regional_date_settings
+        try:
+            from gui.impl import backport
+            return regional_date_settings(backport.getShortDateFormat, backport.getShortTimeFormat)
+        except (ImportError, AttributeError):
+            return regional_date_settings()
+
     def in_battle(self):
         player = self.player()
         return player is not None and getattr(player, 'arena', None) is not None
@@ -583,6 +591,13 @@ class Runtime(object):
             # Optional game labels must not disable configuration or collection.
             return None
 
+    def _date_settings(self):
+        try:
+            getter = getattr(self.api, 'date_settings', None)
+            return getter() if callable(getter) else None
+        except Exception:
+            return None
+
     def _load_appearance(self):
         # Read only on start, opening the panel or explicit Refresh. Never do
         # file I/O in a render/animation frame or on every result-polling tick.
@@ -596,7 +611,8 @@ class Runtime(object):
             config = load_config(path)
             self._localizer = Localizer(config['language'],
                                         client_language=self._client_language(),
-                                        native_messages=self._outcome_messages())
+                                        native_messages=self._outcome_messages(),
+                                        date_settings=self._date_settings())
             self._presentation = build_presentation(config)
             self._instance_tab_enabled = config['sessions']['instance_tab']
         except Exception:
@@ -604,7 +620,7 @@ class Runtime(object):
             # collection. Static styles and the original wheel step remain.
             self._presentation = {'panel_css': '', 'footer_css': '', 'scroll_speed': 1.0}
             self._instance_tab_enabled = False
-            self._localizer = Localizer('auto', client_language=self._client_language())
+            self._localizer = Localizer('auto', client_language=self._client_language(), date_settings=self._date_settings())
             LOG.exception('CONFIG appearance unavailable; built-in styles and scrolling remain active.')
         if not self._instance_tab_enabled:
             self.compatibility_warnings.pop('installation:identity', None)
@@ -1518,7 +1534,7 @@ class Runtime(object):
             ledger = dict((row['id'], source[row['id']]) for scope in result['scopes'].values()
                           for row in scope.get('battles', []) if row['id'] in source)
             ledger.update(instance_records)
-            enrich_snapshot(result, ledger)
+            enrich_snapshot(result, ledger, map_preview_mode=self._presentation.get('map_preview_mode', 'image'))
             self.compatibility_warnings.pop('visuals', None)
         except Exception:
             self._warn_once('visuals', message('runtime.thumbnails'), exception=True)

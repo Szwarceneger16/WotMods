@@ -1,5 +1,18 @@
 SESSION STATS — CHANGELOG
 
+0.8.0 • 2026-11-11
+• Use a subtle, consistent WN8 text halo and a faint matching card outline.
+• Keep expanded missions readable below bonus tables when side-by-side content
+  would be too narrow, including native layout and interface scaling.
+• Frame the compact sorting switch and visibly gray inactive chronology.
+• Default Tiers to highest tier first, with both tier orders in the main selector.
+• Remove the duplicate recorded-battles caption from count-sorted groups.
+• Add a compact camouflage calendar with month/year grids and a graphical clock.
+• Follow native/system date order, separator, week start and 12/24-hour preferences;
+  retain manual date entry and limit calendar selection to 2010 through this year.
+• Prefer high-resolution local map artwork for hover previews; allow a tactical
+  minimap instead through maps.preview_mode, with safe local fallback.
+
 0.7.0 • 2026-11-10
 • Replace the wide sorting button with an olive-and-orange switch.
 • Keep metric sorting independent of chronology and show its actual WN8 value.

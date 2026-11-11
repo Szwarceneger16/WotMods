@@ -145,8 +145,31 @@ def select_language(configured, client_language, catalogs):
     return base if base in SUPPORTED and base in catalogs else 'en'
 
 
+def calendar_settings(value):
+    """Bound optional native metadata before publishing it to the web view."""
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    if value.get('order') in ('DMY', 'MDY', 'YMD'):
+        result['order'] = value['order']
+    if value.get('separator') in ('.', '/', '-'):
+        result['separator'] = value['separator']
+    first = value.get('first_weekday')
+    if isinstance(first, int) and not isinstance(first, bool) and 0 <= first <= 6:
+        result['first_weekday'] = first
+    if isinstance(value.get('hour12'), bool):
+        result['hour12'] = value['hour12']
+    for key, count in (('weekdays', 7), ('months', 12), ('periods', 2)):
+        labels = value.get(key)
+        if (isinstance(labels, (list, tuple)) and len(labels) == count and
+                all(isinstance(label, text_type) and 0 < len(label) <= 64 and
+                    not any(ord(char) < 32 for char in label) for label in labels)):
+            result[key] = list(labels)
+    return result
+
+
 class Localizer(object):
-    def __init__(self, language='en', path=None, catalog=None, client_language=None, native_messages=None):
+    def __init__(self, language='en', path=None, catalog=None, client_language=None, native_messages=None, date_settings=None):
         defaults = bundled_catalog() if catalog is None else catalog
         catalogs = copy.deepcopy(defaults)
         # Retain the legacy argument for callers upgrading in place. External
@@ -157,6 +180,7 @@ class Localizer(object):
             LOG.warning('I18N selected language unavailable; using English.')
         self.messages = dict(ENGLISH)
         self.messages.update(catalogs.get(self.language, {}))
+        self.date_settings = calendar_settings(date_settings)
         native_code = client_language_code(client_language)
         if native_code and self.language in (native_code, native_code.split('-')[0]):
             for key in ('outcome.win', 'outcome.loss', 'outcome.draw'):
@@ -212,6 +236,8 @@ class Localizer(object):
     def snapshot(self, snapshot):
         """Translate presentation fields only; never IDs or game-supplied names."""
         snapshot['localization'] = {'language': self.language, 'selected': self.selected, 'messages': dict(self.messages)}
+        if self.date_settings:
+            snapshot['localization']['date_settings'] = copy.deepcopy(self.date_settings)
         # Legacy Polish and canonical English notices can describe the same
         # condition. Deduplicate after translation, without rewriting the ledger.
         warnings, seen = [], set()

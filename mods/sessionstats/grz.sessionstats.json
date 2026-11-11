@@ -147,6 +147,8 @@
     "window": 8,
     "titlebar": 7,
     "control": 5,
+    "sort_switch_track": 15,
+    "sort_switch_thumb": 8,
     "scrollbar_thumb": 3,
     "table_header": 5,
     "table_row": 4,
@@ -156,9 +158,7 @@
     "battle_outcome": 5,
     "panel_footer": 7,
     "confirmation": 8,
-    "garage_spinner": 5,
-    "sort_switch_track": 11,
-    "sort_switch_thumb": 8
+    "garage_spinner": 5
   },
   "opacity": {
     "window": 1.0,
@@ -168,6 +168,9 @@
   },
   "scroll": {
     "speed_multiplier": 1.0
+  },
+  "maps": {
+    "preview_mode": "image"
   },
   "cards": {
     "battles": 500,

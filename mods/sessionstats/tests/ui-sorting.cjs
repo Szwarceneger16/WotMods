@@ -3,10 +3,15 @@ const fs=require('fs'),path=require('path');
 module.exports=async ({browser,nativeHost,check})=>{
   const page=await nativeHost(browser,{});
   await page.locator('#ss-group-tiers').click();
-  await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',messages:{'groups.tiers.count':'Legacy count · newest first'}};GRZSessionStats.update(s);});
+  await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',messages:{'groups.tiers.count':'Legacy count · newest first'}};
+    delete s.scopes.launch.ordering.tiers;model.payload=JSON.stringify(s);GRZSessionStats.update(s);});
   check('Legacy count text cannot mislabel the current ordering',!(await page.locator('#ss-list-meta').textContent()).includes('newest first'));
   check('Tiers tab shows the real tier aggregate',await page.locator('#ss-groups .ss-group').count()===1 && await page.locator('#ss-groups .ss-group-title').textContent()==='X');
   check('Off retains chronology and disables statistic/direction only',await page.locator('#ss-sort-statistic button[role=combobox]').isDisabled() && await page.locator('#ss-sort-direction button[role=combobox]').isDisabled() && await page.locator('#ss-sort-chronology button[role=combobox]').isEnabled());
+  check('Tiers defaults to highest tier first in the ordinary date/tier selector',
+    await page.locator('#ss-sort-chronology .ss-control-label').first().textContent()==='Tier: highest first'&&
+    await page.locator('#ss-sort-chronology [data-value="tier_desc"]').evaluate(node=>node.style.display!=='none')&&
+    await page.locator('#ss-sort-chronology [data-value="tier_asc"]').evaluate(node=>node.style.display!=='none'));
   async function choose(field,value){
     await page.locator('#ss-sort-'+field+' [role=combobox]').click();
     await page.locator('#ss-sort-'+field+' [data-value="'+value+'"]').click();
@@ -24,14 +29,17 @@ module.exports=async ({browser,nativeHost,check})=>{
   await choose('direction','asc');
   check('All three selectors dispatch their values with native account and period ownership',await page.evaluate(()=>{
     const c=__grzCommands.filter(c=>c.action==='sort').pop(),s=JSON.parse(model.payload);
-    return c.metric==='xp_received' && c.statistic==='max' && c.direction==='asc' && c.chronology==='newest' && c.group==='tiers' && c.scope==='launch' && c.account_key===s.account_key && c.period_id===s.scopes.launch.period_id;
+    return c.metric==='xp_received' && c.statistic==='max' && c.direction==='asc' && c.chronology==='tier_desc' && c.group==='tiers' && c.scope==='launch' && c.account_key===s.account_key && c.period_id===s.scopes.launch.period_id;
   }));
   for(const group of ['vehicles','maps']){
     await page.locator('#ss-group-'+group).click();
     await choose('metric','battles');
     check('Recorded battle counts are available without Avg/Min/Max for '+group,
       !await page.locator('.ss-sort-statistic').isVisible()&&await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
-      await page.locator('#ss-sort-chronology [role=combobox]').isDisabled()&&await page.locator('.ss-group-sort-value').count()>0);
+      await page.locator('#ss-sort-chronology [role=combobox]').isDisabled()&&await page.locator('.ss-group-sort-value').count()===0);
+    check('Tier ordering stays out of the ordinary selector in '+group,
+      await page.locator('#ss-sort-chronology [data-value="tier_desc"]').evaluate(node=>node.style.display==='none')&&
+      await page.locator('#ss-sort-chronology [data-value="tier_asc"]').evaluate(node=>node.style.display==='none'));
   }
   await page.locator('#ss-group-tiers').click();
   check('Tiers hides the recorded battle count metric',await page.locator('#ss-sort-metric [data-value="battles"]').evaluate(node=>node.style.display==='none'));
