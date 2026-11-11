@@ -20,6 +20,20 @@ privacy checks, or release infrastructure can legitimately select both. PR ZIPs
 are retained for 14 days and are never GitHub Releases; `archive: false` avoids
 double-wrapping the installer.
 
+Session Stats browser QA runs in the official Playwright container, pinned to
+the exact package version and immutable image digest in
+`scripts/sessionstats/browser_qa.py`. Its browser, fonts and OS dependencies
+are already installed; CI must not download Ubuntu packages or substitute a
+different browser when package mirrors are unavailable. Keep all six UI suites
+enabled. Python 3/2.7 tests, compilation, packaging, privacy checks and
+reproducibility remain on the hosted runner. The container receives only the
+workspace, temporary UI tools and the host Python runtime needed by the
+appearance test; runtime mounts are read-only and report files use the runner's
+UID/GID. Do not mount the Docker socket or use privileged/host-network mode.
+Both PR and production builds use this same browser stage. Updating its image
+requires matching the npm version, verifying the vendor digest and rerunning
+the full validation; an unavailable container must fail validation.
+
 The production registry is `scripts/release_modules.json`. Its module source
 paths decide which builders run. The corresponding safe packagers and verifiers
 are in `scripts/release_installers.py`; the per-module build entry point is
