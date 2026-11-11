@@ -69,6 +69,49 @@ class SessionStatsPipelineTests(unittest.TestCase):
         self.assertIn('path: release-module/*.zip', publisher)
         self.assertNotIn('archive: false', publisher)
 
+    def test_browser_environment_is_prepared_before_compilation_without_skipping_validation(self):
+        workflow = (ROOT/'.github/workflows/sessionstats-ci.yml').read_text()
+        command = 'python3 -I scripts/sessionstats/browser_qa.py --prepare'
+        self.assertIn(command, workflow)
+        start = workflow.rfind('      - name:', 0, workflow.index(command))
+        stop = workflow.find('\n      - ', workflow.index(command))
+        preparation = workflow[start:stop]
+        self.assertIn("if: steps.source.outputs.enabled == 'true'", preparation)
+        self.assertLess(workflow.index('id: source'), start)
+        self.assertLess(start, workflow.index('run: bash scripts/sessionstats/python27.sh'))
+        self.assertIn('contents: read', workflow)
+        self.assertNotIn('contents: write', workflow)
+        self.assertNotRegex(preparation, r'\|\|\s*(?:true|:)')
+
+    def test_both_pr_and_production_keep_the_complete_validation_transaction(self):
+        validate = (ROOT/'scripts/sessionstats/validate.sh').read_text()
+        markers = (
+            'python3 -m unittest discover -s mods/sessionstats/tests -v',
+            '"$PYTHON27" -B -m unittest discover -s mods/sessionstats/tests -v',
+            'python3 mods/sessionstats/tools/make_preview.py',
+            'python3 -I scripts/sessionstats/browser_qa.py',
+            'python3 mods/sessionstats/tools/build.py',
+            'python3 scripts/sessionstats/artifacts.py snapshot',
+            'python3 mods/sessionstats/tools/build.py',
+            'python3 scripts/sessionstats/artifacts.py verify',
+            'python3 scripts/sessionstats/integration.py',
+            'python3 scripts/sessionstats/privacy.py --python27 "$PYTHON27" --scan-dist',
+        )
+        offset = 0
+        for marker in markers:
+            with self.subTest(stage=marker):
+                position = validate.find(marker, offset)
+                self.assertGreaterEqual(position, offset, 'The full validation order must remain intact')
+                offset = position + len(marker)
+        self.assertIn('set -euo pipefail', validate)
+        self.assertEqual(validate.count('python3 mods/sessionstats/tools/build.py'), 2)
+        self.assertNotIn('install --with-deps', validate)
+        self.assertNotIn('apt-get', validate)
+        builder = (ROOT/'scripts/build_release_module.sh').read_text()
+        self.assertIn('bash scripts/sessionstats/validate.sh', builder)
+        self.assertIn('run: bash scripts/sessionstats/validate.sh',
+                      (ROOT/'.github/workflows/sessionstats-ci.yml').read_text())
+
     def test_second_installer_blocks_validation_even_with_valid_checksums(self):
         (self.folder/'wot-statystyki-sesji-v0.2.8.zip').write_bytes(b'stale')
         self.checksums()
