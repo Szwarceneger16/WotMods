@@ -567,7 +567,10 @@ async function runFeatureSuite(file,browser) {
   await native.locator('#ss-refresh').click();
   check('Native commands are sent as one map',await native.evaluate(()=>__grzCommands.some(x=>x.action==='refresh' && typeof x==='object')));
   await native.evaluate(()=>__grzEvents['self.onScaleUpdated']());
-  await native.waitForFunction(()=>document.documentElement.style.fontSize==='1.5px' && __nativeSize[1]===880);
+  // Font size changes synchronously; the native resize follows two animation
+  // frames later. Height is capped at 880px at both scales, so also wait for
+  // the changed width before checking the completed native layout.
+  await native.waitForFunction(()=>document.documentElement.style.fontSize==='1.5px' && __nativeSize[0]===1050 && __nativeSize[1]===880);
   check('Scale change refreshes the viewport and stays within the parent',await native.evaluate(()=>__grzCommands.some(x=>x.action==='viewport') && __nativeSize[0]===1050 && __nativeSize[1]===880));
   check('Native diagnostics are bounded to three stages',await native.evaluate(()=>{
     const messages=__grzCommands.filter(x=>x.action==='diagnostic');
