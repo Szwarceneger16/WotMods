@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.6.0 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.8.0 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -8,10 +8,13 @@ their contents are English.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
 to filter by battle start time. Either selector also accepts **Custom date**:
-edit the date and 24-hour time inside that same control, using the displayed
-WoT date format (for example `DD.MM.YYYY HH:mm`). Press Enter to apply a typed
-value, or open the adjacent calendar button to choose a day and time before
-applying. The separate dropdown button still offers saved time points.
+edit the date and time inside that same control, using the displayed native/system
+format (for example `dd.mm.yyyy HH:mm`, or `mm/dd/yyyy hh:mm AM`). Press Enter to
+apply a typed value, or open the adjacent calendar button to choose a day and time.
+Click the month or year heading for a selection grid; the calendar covers 2010
+through the current year. Click the hour or minute to choose it on the clock,
+then apply. Regional preferences also determine the week start and calendar labels.
+The separate dropdown button still offers saved time points.
 Ranges are half-open: **From** is included and **To** is excluded. The start must
 be earlier than the end. **Beginning of history** and **Now** leave the
 corresponding end open.
@@ -20,7 +23,10 @@ The account and region determine which history and time points are shown.
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an
-expanded card.
+expanded card. Hover over its small map picture to see larger local artwork;
+`"maps": {"preview_mode": "minimap"}` selects the tactical map instead. The default
+`"image"` uses native high-resolution landscape artwork when available and falls
+back to the small picture. See [map preview sources](docs/MAP_PREVIEWS_0.8.0_SOURCE_EVIDENCE.md).
 
 In **Battles → More**, the card lists recorded daily, bonus, weekly, personal
 campaign and event missions, along with the active Crucible stage and its
@@ -258,8 +264,11 @@ a new ordering or index revision. New account histories start at the top.
 
 Map/vehicle history pagers update a capped ten-row viewport in place, including
 cards on an earlier loaded global page. Short single-page lists use their actual
-height; multiple pages retain a stable body height. Battle navigation adds an
-explicit localized selected-battle banner and pulses its
+height; multiple pages retain a stable body height. Battle navigation waits for
+the exact card's geometry to settle, including results below a later page's
+divider; scrolling input immediately cancels that automatic correction. Its
+localized selected-battle badge is an absolute overlay that cannot resize cards
+or move neighboring rows. Navigation pulses its
 overlay for five seconds, then leaves it 30% transparent. The card's solid orange
 border remains visible through native focus/blur events and any background
 transparency setting. An explicit outside click or a changed view/period clears

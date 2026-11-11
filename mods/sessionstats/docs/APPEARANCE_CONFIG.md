@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.6.0
+# Appearance and scrolling configuration — 0.8.0
 
 ## File placement and applying changes
 
@@ -28,7 +28,7 @@ Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
 The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-13 corner radii, four opacity settings, a scrolling multiplier, two card-width
+15 corner radii, four opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
@@ -62,6 +62,8 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.garage_spinner_border_top_color` | `"#969a9d"` | Bright spinner segment |
 | `radii.window` | `8` | Window corners |
 | `radii.control` | `5` | Button and dropdown corners |
+| `radii.sort_switch_track` | `15` | Rounded outer frame of the metric-sorting switch |
+| `radii.sort_switch_thumb` | `8` | Metric-sorting switch thumb corners |
 | `radii.table_header` | `5` | Table-header corners |
 | `radii.table_row` | `4` | Table-row corners |
 | `radii.group_card` | `7` | Vehicle/map/battle card corners |
@@ -71,6 +73,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `opacity.disabled_controls` | `0.45` | Disabled controls |
 | `opacity.target_dimmed` | `0.7` | Battle outline after its five-second pulse; 30% transparent |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
+| `maps.preview_mode` | `"image"` | Map hover artwork: `"image"` for the landscape picture, `"minimap"` for the tactical map |
 | `cards.battles` | `500` | Battle card width in logical pixels |
 | `cards.vehicles` | `560` | Vehicle card width in logical pixels |
 | `cards.maps` | `560` | Map card width in logical pixels |
@@ -236,8 +239,20 @@ exact agreement with the supplied JSON defaults. Future base-style changes must
 update this explicit contract.
 
 Public functions: `default_config()`, `load_config(path)`, `validate_config(object)`
-and `build_presentation(config)`. The last returns `panel_css`, `footer_css` and
-`scroll_speed` for the existing UI models.
+and `build_presentation(config)`. The last returns the styles, wheel speed, map
+preview mode, card widths and window settings for the existing UI models.
+
+## Map hover artwork
+
+`"maps": {"preview_mode": "image"}` keeps the landscape thumbnail on each map
+card and uses the client's larger loading-screen picture in its fourfold hover
+preview. Set `preview_mode` to `"minimap"` for a square tactical-map preview;
+this affects the hover only. Other values restore the `"image"` default.
+
+The resolver selects the same geometry through the client's resource registry
+and verifies its local PNG/DDS file before exposing a URL. When the requested
+artwork is absent, the existing map thumbnail remains available. No client art
+is bundled, no URLs can be configured and no images are fetched from the network.
 
 ## Language selection
 

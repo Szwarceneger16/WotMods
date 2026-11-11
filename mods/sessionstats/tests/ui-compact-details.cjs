@@ -9,7 +9,9 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     get textContent(){return this.ownText+this.children.map(node=>node.textContent).join('');}
     set textContent(value){this.ownText=String(value);this.children=[];}
     setAttribute(key,value){this.attrs[key]=String(value);}
+    removeAttribute(key){delete this.attrs[key];}
     getAttribute(key){return this.attrs[key] || null;}
+    getBoundingClientRect(){return {width:this.width || 0};}
     contains(node){return node===this || this.children.some(child=>child.contains(node));}
     querySelectorAll(selector){let result=[];for(const node of this.children){if(node.className.split(/\s+/).includes(selector.slice(1)))result.push(node);result=result.concat(node.querySelectorAll(selector));}return result;}
     querySelector(selector){return this.querySelectorAll(selector)[0] || null;}
@@ -28,7 +30,8 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     battleOutcome:outcome=>outcome,date:()=> '09.11, 18:58',focusControl(){},selectMapBattle(){},invalidateCardFlow(){},queueResize(){}};
   vm.createContext(context);
   function extract(startName,endName){const start=source.indexOf(startName),end=source.indexOf(endName,start);assert(start>=0 && end>start);return source.slice(start,end);}
-  vm.runInContext(extract('    var bonusLabels = {','    function missionProgress(')+
+  vm.runInContext(extract('    function wn8Color(value) {','    function headlineStat(')+
+    extract('    var bonusLabels = {','    function missionProgress(')+
     extract('    function renderBattleMore(panel, battle) {','    function attachBattleMore(')+
     extract('    function attachMapMore(card, header, map) {','    function appendGroupBatch('),context);
   const bonusPanel=new Node();
@@ -42,6 +45,22 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
   assert(widths.every(width=>JSON.stringify(width)===JSON.stringify(widths[0])),'Header and all sources share column widths');
   const compactPanel=new Node();context.renderBattleMore(compactPanel,{details:{bonuses:{eventCredits:240},missions:{}}});
   assert.strictEqual(compactPanel.querySelector('.ss-more-bonus-block').style.width,'308rem','Few-resource bonuses retain their compact baseline');
+  const missionPanel=new Node();context.renderBattleMore(missionPanel,{details:{
+    bonuses:{eventCredits:12345678,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96},
+    missions:{personal:{kind:'personal',name:'Synthetic personal mission with a long objective name',status:'progress'}}}});
+  const columns=missionPanel.querySelector('.ss-more-columns'),bonus=columns.querySelector('.ss-more-bonus-block'),missions=columns.querySelector('.ss-more-mission-block');
+  assert(columns.className.includes('ss-more-columns-stacked'),'New details are readable before the native layout settles');
+  assert.strictEqual(bonus.getAttribute('data-resource-count'),'4','The regression also covers a missing bond column');
+  for(const scale of [1,2]) {
+    state.nativeScale=scale;
+    for(const [available,measured,paired,expected] of [[486,486,false,486],[706,706,true,212],[886,886,true,392],[486,886,false,486],[706,706,true,212]]) {
+      columns.width=measured*scale;context.layoutMoreColumns(missionPanel,available);
+      assert.strictEqual(columns.className.includes('ss-more-columns-paired'),paired,'Pair only when actual card space fits a readable mission column');
+      assert.strictEqual(missions.style.width,expected+'rem','Missions receive explicit usable width, including after a narrow resize');
+      assert.strictEqual(missions.style.flex,'0 0 '+expected+'rem','Native flex-basis/wrap failures cannot shrink the mission column');
+      assert.strictEqual(bonus.style.width,'486rem','A long matrix remains capped instead of stretching with the card');
+    }
+  }
   for(const group of ['maps','vehicles']) {
     state.group=group;state.openMaps={};const card=append(documentRoot,new Node()),header=append(card,new Node());
     context.attachMapMore(card,header,{id:'synthetic-group'});header.querySelector('.ss-map-more-button').onclick();
@@ -51,6 +70,7 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:0,pages:1,total:4,page_size:10,items:Array.from({length:4},(_,index)=>item(index))}});
     assert(!body.className.includes('ss-history-paged'),'A known short single page releases the fixed viewport');
     assert.strictEqual(body.querySelectorAll('.ss-map-battle-row').length,4);
+    assert(body.querySelectorAll('.ss-map-battle-wn8').every(node=>node.style.color==='#4c762e'),'Nested history uses the shipped WN8 text palette');
     assert(body.querySelector('.ss-map-battle-info').querySelector('.ss-map-battle-date'),'Name and date share the same flex identity');
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:0,pages:2,total:13,page_size:10,items:Array.from({length:10},(_,index)=>item(index))}});
     assert(body.className.includes('ss-history-paged'),'A multi-page history reserves its stable viewport');next.onclick();

@@ -147,6 +147,8 @@
     "window": 8,
     "titlebar": 7,
     "control": 5,
+    "sort_switch_track": 15,
+    "sort_switch_thumb": 8,
     "scrollbar_thumb": 3,
     "table_header": 5,
     "table_row": 4,
@@ -166,6 +168,9 @@
   },
   "scroll": {
     "speed_multiplier": 1.0
+  },
+  "maps": {
+    "preview_mode": "image"
   },
   "cards": {
     "battles": 500,

@@ -53,6 +53,27 @@ module.exports=async({browser,nativeHost,check})=>{
           longSizes.every(size=>size.long && Math.abs(size.bonus-486)<=1 && size.paired) &&
           Math.abs(longSizes[1].bonus-longSizes[0].bonus)<=1 && longSizes[1].missions>=longSizes[0].missions+178);
       }
+      // Reproduce native engines that fail to wrap a rich bonus matrix and
+      // resolve the mission flex basis to zero in a regular 500rem card.
+      await page.evaluate(()=>{
+        const payload=JSON.parse(model.payload),battle=payload.scopes.launch.battles[0];payload.window_size=[700,1100];payload.account_key+='-narrow';
+        battle.details.bonuses.eventCredits=12345678;delete battle.details.bonuses.eventCrystal;
+        battle.details.missions.personal.name='A long personal mission objective with several readable words';
+        const style=document.createElement('style');style.id='synthetic-native-more-flex';
+        style.textContent='.ss-more-columns{flex-wrap:nowrap!important}.ss-more-mission-block{flex-basis:0!important}';document.head.appendChild(style);
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      });await page.locator('.ss-battle .ss-more-button').click();await frames(page);
+      const narrow=await page.locator('.ss-more-panel').evaluate((panel,scale)=>{
+        const bonus=panel.querySelector('.ss-more-bonus-block').getBoundingClientRect(),missions=panel.querySelector('.ss-more-mission-block').getBoundingClientRect(),card=panel.closest('.ss-group').getBoundingClientRect();
+        const name=panel.querySelector('.ss-more-mission-name strong'),range=document.createRange();range.selectNodeContents(name);
+        const lines=[...range.getClientRects()];
+        return {card:card.width/scale,missions:missions.width/scale,stacked:missions.top>=bonus.bottom-1,
+          within:missions.left>=card.left-1 && missions.right<=card.right+1 && bonus.right<=card.right+1,
+          readable:lines.length>0 && lines.every(line=>line.width/scale>20),resources:panel.querySelector('.ss-more-bonus-block').getAttribute('data-resource-count')};
+      },scale);
+      check('A 500rem card stacks long bonuses above readable missions without a bond column in '+language+' at'+(scale*100)+'%: '+JSON.stringify(narrow),
+        Math.abs(narrow.card-500)<=1 && narrow.missions>=480 && narrow.stacked && narrow.within && narrow.readable && narrow.resources==='4');
+      await page.evaluate(()=>{document.getElementById('synthetic-native-more-flex').remove();});
       await page.locator('#ss-background-transparency').focus();await page.locator('#ss-background-transparency').press('End');
       const percentage=await page.locator('#ss-background-transparency-value').evaluate((node,scale)=>{
         const box=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);const text=range.getBoundingClientRect();

@@ -838,6 +838,8 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-scrollbar.cjs',browser);
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
+  await runFeatureSuite('./ui-switch-map.cjs',browser);
+  await runFeatureSuite('./ui-wn8-colors.cjs',browser);
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);
   await runFeatureSuite('./ui-history-inplace.cjs',browser);
   await runFeatureSuite('./ui-detail-widths.cjs',browser);

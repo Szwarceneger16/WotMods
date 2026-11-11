@@ -22,7 +22,7 @@
         resizeSequence: 0, timePointAccount: null, timePointCount: null, timePointEdited: false,
         resizeQueued: false, resizeTimer: null, resizeLast: 0, resizeMeasureToken: 0 };
     // BEGIN GENERATED ENGLISH
-    var english = {"battle.selected": "Selected battle", "cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "help.info": "Information", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "maps.battles": "Battles on this map", "maps.empty": "No battles available", "maps.loading": "Loading battles\u2026", "maps.open_battle": "Show battle", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.column.crew_xp": "Crew XP", "more.column.free_xp": "Free XP", "more.column.xp": "XP", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.less": "Less", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.change": "{0}: {1}", "more.progress.none": "No progress recorded", "more.progress.range": "{0}: {1} \u2192 {2} ({3})", "more.progress.target": "{0}: {1}/{2}", "more.progress.unavailable": "Battle progress unavailable", "more.progress.unit.battles": "Battles", "more.progress.unit.counter": "Progress", "more.progress.unit.damage": "Damage", "more.progress.unit.kills": "Vehicles destroyed", "more.progress.unit.seconds": "Seconds", "more.progress.unit.vehicles": "Vehicles", "more.progress.unit.xp": "XP", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.error": "Could not load this page.", "page.loading": "Loading page\u2026", "page.next": "Next", "page.previous": "Previous", "page.retry": "Retry", "page.status": "Page {0} of {1}", "page.top": "Back to top", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.on": "On", "sort.statistic": "Statistic", "sort.value_per_battle": "{0} {1} / battle: {2}", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.calendar": "Choose date and time", "timeline.calendar_hour": "Hour", "timeline.calendar_minute": "Minute", "timeline.calendar_month": "Month", "timeline.calendar_months": "January|February|March|April|May|June|July|August|September|October|November|December", "timeline.calendar_next": "Next month", "timeline.calendar_previous": "Previous month", "timeline.calendar_weekdays": "Mon|Tue|Wed|Thu|Fri|Sat|Sun", "timeline.calendar_year": "Year", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.custom": "Custom date", "timeline.custom_apply": "Apply", "timeline.custom_hint": "DD.MM.YYYY HH:mm \u00b7 Enter to apply", "timeline.custom_invalid": "Enter a valid date and time: DD.MM.YYYY HH:mm.", "timeline.custom_order": "From must be earlier than To.", "timeline.custom_placeholder": "DD.MM.YYYY HH:mm", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.point_menu": "Choose a time point", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "vehicles.battles": "Battles in this vehicle", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.background": "Transparency", "window.background_transparency": "Background transparency", "window.maximize": "Maximize window", "window.resize": "Resize window (drag or use arrow keys)", "window.restore": "Restore window", "window.save_error": "Could not save window settings. Your configuration was preserved.", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
+    var english = {"battle.selected": "Selected battle", "cancel": "Cancel", "close": "Close", "close.symbol": "\u00d7", "core.account": "This save belongs to another account or region. Overwrite refused.", "core.battle": "Invalid battle record. Overwrite refused.", "core.boundaries": "Invalid session boundaries. Overwrite refused.", "core.closed": "This launch identifier is already closed. Reload data in a new process.", "core.create": "Could not create a session.", "core.current": "Invalid current period. Overwrite refused.", "core.invalid_id": "Invalid battle identifier.", "core.ledger": "Invalid ledger structure. Overwrite refused.", "core.load": "Could not safely load or initialize statistics. Data remains read-only.", "core.loading": "Loading history. New battle results are being saved.", "core.loading_timer": "History loading could not be scheduled. Restart the client; pending results remain saved.", "core.membership": "Some results have no known period: a reliable battle start time is missing.", "core.missing_id": "Missing battle identifier.", "core.more_notices": "Additional data notices are retained in local history.", "core.periods": "Saved periods are missing. Overwrite refused.", "core.reset_time": "Invalid reset time.", "core.result": "Invalid result record.", "core.time": "Invalid time.", "core.wn8": "No valid WN8 table. Other statistics remain available.", "coverage.battles": "{0} battles", "coverage.legend": "x/y: battles with this value / recorded battles.", "coverage.missing": "Incomplete statistics: results for {0} of {1} recorded battles. Percentages, averages and totals use received data.", "coverage.partial": "Incomplete data in {0} results. Missing values are marked beside each statistic.", "coverage.value": "Data available for {0} of {1} recorded battles.", "coverage.wn8.battle": "Insufficient data to calculate this battle\u2019s WN8.", "coverage.wn8.period": "Period WN8: data for {0} battles.", "error.action": "Could not complete the action. Try again.", "error.connection": "No connection to the game.", "error.snapshot": "Could not read statistics data.", "explain.costs": "Costs include settled battle expenses.", "explain.wn8": "Average battle WN8 may differ from period WN8.", "finance.battle": "Battle finances", "finance.bonds": "Bonds", "finance.costs": "Costs", "finance.credits": "Credits", "finance.currency": "Currency", "finance.gold": "Gold", "finance.income": "Income", "finance.net": "Net", "finance.period": "Battle finances", "footer.idle": "Session statistics: battles, win rate and WN8", "footer.processing": "Processing results", "footer.waiting": "Waiting for results: {0}", "format.date": "{0}.{1}.{2}, {3}:{4}", "format.date.short": "{0}.{1}, {2}:{3}", "format.decimal": ".", "format.missing": "\u2014", "format.thousands": "\u00a0", "groups.battles": "Battles", "groups.battles.aria": "Battle results", "groups.battles.count": "{0} battles", "groups.battles.total": "{0} battles", "groups.empty": "No recorded battles in this period. Results appear after a battle ends.", "groups.label": "Group results", "groups.maps": "Maps", "groups.maps.aria": "Results by map", "groups.maps.count": "{0} maps", "groups.maps.total": "{0} maps", "groups.tiers": "Tiers", "groups.tiers.aria": "Results by tier", "groups.tiers.count": "{0} tiers", "groups.tiers.total": "{0} tiers", "groups.vehicles": "Vehicles", "groups.vehicles.aria": "Results by vehicle", "groups.vehicles.count": "{0} vehicles", "groups.vehicles.total": "{0} vehicles", "health.log": "game.log (dedicated log unavailable)", "health.notice": "Session statistics: the compatibility check detected an unsupported or incomplete data format, or a result read error. Some statistics may be incomplete. Fields: {0}. Details: {1}", "health.warning": "A result format or read problem was detected during this launch. See the mod log.", "help.info": "Information", "installation.save": "Installation history could not be saved; previous data was preserved.", "installation.unavailable": "Shared installation statistics are unavailable; account statistics remain active.", "language.auto": "Automatic", "language.de": "Deutsch", "language.en": "English", "language.es": "Espa\u00f1ol", "language.fr": "Fran\u00e7ais", "language.label": "Language", "language.pl": "Polski", "language.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439", "language.save_error": "Could not save the language. Your configuration was preserved.", "language.uk": "\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", "log.close": "Could not close the mod log ({0}).", "log.prepare": "Could not prepare a log entry ({0}).", "log.start": "Could not start the mod log ({0}).", "log.write": "Could not write the mod log ({0}).", "maps.battles": "Battles on this map", "maps.empty": "No battles available", "maps.loading": "Loading battles\u2026", "maps.open_battle": "Show battle", "maps.preview": "{0} \u2014 map preview", "metric.avg": "Average", "metric.battle_wn8": "WN8", "metric.battles": "Battles", "metric.confirmed": "Results received", "metric.draws": "Draws", "metric.losses": "Losses", "metric.max": "Max", "metric.min": "Min", "metric.period_wn8": "Period WN8", "metric.win_rate": "Win rate", "metric.wins": "Wins", "metric.wn8": "WN8", "mode.random": "Random battles", "more.active": "Active in this battle", "more.bonus.additional": "Applied post-battle bonus: \u00d7{0} XP", "more.bonus.applied": "Post-battle XP bonus applied", "more.bonus.clan.credits": "Clan reserve: +{0} credits", "more.bonus.clan.crew_xp": "Clan reserve: +{0} Crew XP", "more.bonus.clan.free_xp": "Clan reserve: +{0} Free XP", "more.bonus.clan.xp": "Clan reserve: +{0} XP", "more.bonus.daily": "First victory: \u00d7{0} XP", "more.bonus.event.bonds": "Mission or event reward: +{0} bonds", "more.bonus.event.credits": "Event: +{0} credits", "more.bonus.event.free_xp": "Event: +{0} Free XP", "more.bonus.event.xp": "Event: +{0} XP", "more.bonus.platoon.xp": "Platoon: +{0} XP", "more.bonus.plus.credits": "WoT Plus: +{0} credits", "more.bonus.plus.crew_xp": "WoT Plus: +{0} Crew XP", "more.bonus.plus.free_xp": "WoT Plus: +{0} Free XP", "more.bonus.plus.xp": "WoT Plus: +{0} XP", "more.bonus.premium.credits": "Premium account: \u00d7{0} credits", "more.bonus.premium.xp": "Premium account: \u00d7{0} XP", "more.bonus.premium_vehicle.xp": "Premium vehicle: +{0} XP", "more.bonus.reserve.credits": "Personal reserve: +{0} credits", "more.bonus.reserve.crew_xp": "Personal reserve: +{0} Crew XP", "more.bonus.reserve.free_xp": "Personal reserve: +{0} Free XP", "more.bonus.reserve.xp": "Personal reserve: +{0} XP", "more.bonuses": "Bonuses", "more.button": "More", "more.column.crew_xp": "Crew XP", "more.column.free_xp": "Free XP", "more.column.xp": "XP", "more.empty": "No mission or bonus details are available for this battle.", "more.kind.battle_matters": "Battle Matters", "more.kind.crucible": "Crucible", "more.kind.daily": "Daily mission", "more.kind.daily_bonus": "Bonus daily mission", "more.kind.daily_epic": "Epic daily reward", "more.kind.other": "Mission", "more.kind.personal": "Personal mission", "more.kind.premium": "Premium mission", "more.kind.weekly": "Weekly mission", "more.less": "Less", "more.mission.completed": "Completed", "more.mission.failed": "Failed \u00b7 shield used", "more.mission.honors": "Completed with honors", "more.mission.observed": "No confirmed result", "more.mission.progress": "Progress recorded", "more.mission.reset": "Streak reset", "more.missions": "Missions", "more.pass": "Battle Pass", "more.pass.battle": "Battle result: +{0}", "more.pass.missions": "Missions: +{0}", "more.pass.total": "{0} points earned", "more.pass.vehicle": "Vehicle limit bonus: +{0}", "more.progress": "Battle counter: {0} \u2192 {1}", "more.progress.change": "{0}: {1}", "more.progress.none": "No progress recorded", "more.progress.range": "{0}: {1} \u2192 {2} ({3})", "more.progress.target": "{0}: {1}/{2}", "more.progress.unavailable": "Battle progress unavailable", "more.progress.unit.battles": "Battles", "more.progress.unit.counter": "Progress", "more.progress.unit.damage": "Damage", "more.progress.unit.kills": "Vehicles destroyed", "more.progress.unit.seconds": "Seconds", "more.progress.unit.vehicles": "Vehicles", "more.progress.unit.xp": "XP", "more.progress.vehicles": "Unique vehicles: {0} \u2192 {1}", "more.stage": "Stage {0}", "more.suicide": "The game recorded a suicide violation.", "normalize.costs": "Inconsistent consumable/directive cost breakdown.", "normalize.factor": "Incomplete credits: the deduction multiplier is missing.", "normalize.finance": "Some financial data is not yet available.", "normalize.map": "Map name is unavailable in this client version.", "normalize.platoon": "Incomplete credits: platoon deductions are missing.", "normalize.reserve": "Deferred credits do not increase this balance.", "normalize.vehicle": "Vehicle name is unavailable in this client version.", "outcome.draw": "Draw", "outcome.loss": "Defeat", "outcome.unknown": "Unknown result", "outcome.win": "Victory", "page.error": "Could not load this page.", "page.loading": "Loading page\u2026", "page.next": "Next", "page.previous": "Previous", "page.retry": "Retry", "page.status": "Page {0} of {1}", "page.top": "Back to top", "performance.battle": "Battle performance", "performance.period": "Battle performance", "period.installation": "All accounts \u00b7 Since {0}", "period.since": "Since {0}", "preview.label": "Preview \u00b7 synthetic data", "preview.open": "Open panel", "preview.restore": "Restore example", "refresh": "Refresh", "reset": "Reset period", "reset.instance.body": "A new shared period starts for this installation and persists across game restarts. Account histories and their manual resets remain unchanged.", "reset.instance.title": "Reset \u201cInstallation\u201d?", "reset.manual.body": "A new period starts now for the current account. Other accounts keep their history.", "reset.manual.title": "Reset \u201cSince reset\u201d?", "runtime.account_wait": "Waiting for account data.", "runtime.backlog": "Incomplete earlier battle results: {0}. History is preserved; recovery continues in the background. You can also select Refresh.", "runtime.begin": "Could not read a battle beginning; some results may remain pending.", "runtime.bonus": "Post-battle bonus XP cannot be read; received XP may be incomplete.", "runtime.bonus_refresh": "Automatic bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.bonus_timer": "Bonus XP refresh is unavailable; select Refresh after using a bonus.", "runtime.cache": "Pending results cannot be read; missing battles remain pending.", "runtime.data_dir": "Local user data directory was not found.", "runtime.diagnostics": "Some mod diagnostics are unavailable; check game.log.", "runtime.direct": "Direct result events are unavailable; some results may be delayed.", "runtime.events": "Some client events could not be handled; statistics may be incomplete.", "runtime.garage": "Session statistics will be available after the account loads in the garage.", "runtime.hotkey": "Keyboard shortcut is unavailable; use the garage statistics button.", "runtime.late": "Could not complete a late result; the battle remains pending.", "runtime.log_failed": "Cannot write the dedicated mod log. Diagnostics remain in game.log.", "runtime.log_notice": "Session statistics: cannot write the dedicated mod log. Check access to the data directory; details remain in game.log.", "runtime.log_unavailable": "Dedicated mod log is unavailable.", "runtime.observer": "Additional client result reads are unavailable; events and recovery queue remain active.", "runtime.open_files": "Could not open session statistics. Check mod files and game.log.", "runtime.open_log": "Could not open session statistics. Details were recorded in game.log.", "runtime.panel": "Statistics panel is unavailable; result collection remains active.", "runtime.panel_update": "Could not update the panel; saved results remain available.", "runtime.pending": "Could not read a pending result; the battle remains pending.", "runtime.polling": "Periodic backlog reads are unavailable; client result events remain active.", "runtime.posted": "Processed result notifications are unavailable; bonus XP may require Refresh.", "runtime.processed": "Could not read a processed result; the raw result remains available.", "runtime.results": "Could not read some battle results; statistics may be incomplete.", "runtime.saved": "Could not open saved statistics.", "runtime.thumbnails": "Thumbnails are unavailable in this client version; results remain available.", "runtime.tick": "Periodic result reading failed; statistics may be incomplete.", "runtime.wn8_invalid": "Bundled WN8 table is invalid.", "runtime.wn8_load": "Could not load the WN8 table; other statistics remain available.", "runtime.wn8_missing": "Bundled WN8 expected values table is missing.", "scope.group": "Session period", "scope.instance": "Installation", "scope.instance.title": "All accounts in this installation; saved until manual reset", "scope.launch": "Since launch", "scope.launch.short": "Since launch", "scope.launch.title": "Since game launch \u2014 current account", "scope.manual": "Since reset", "scope.manual.title": "Since manual reset \u2014 current account", "scope.timeline": "Timeline", "scope.timeline.title": "Filter this account\u2019s battle history between saved time points", "sort.asc": "Ascending", "sort.avg": "Avg", "sort.battles": "Battles", "sort.chronology": "Battle date", "sort.credits": "Credits (net)", "sort.desc": "Descending", "sort.direction": "Order", "sort.label": "Sort results", "sort.metric": "Sort by", "sort.newest": "Newest first", "sort.off": "Off", "sort.oldest": "Oldest first", "sort.on": "On", "sort.statistic": "Statistic", "sort.tier_asc": "Tier: lowest first", "sort.tier_desc": "Tier: highest first", "sort.value_battles": "Recorded battles: {0}", "sort.value_per_battle": "{0} {1} / battle: {2}", "sort.value_wn8": "{0} battle WN8: {1}", "sort.xp_base": "Base XP", "sort.xp_received": "Received XP", "stats.period": "Whole period", "stats.region": "Statistics and results", "status.incomplete": "Incomplete data: results {0} / {1}", "status.notes": "Data notices: {0}", "status.pending": "Pending: {0}", "status.settled": "{0} completed battles", "storage.busy": "Data is in use by another process or the file lock is unavailable.", "storage.changed": "Another process changed the data. Reload it before saving.", "storage.collision": "Save generation conflict; previous data is preserved.", "storage.corrupt": "No valid save was found. Corrupted files were not overwritten.", "storage.failed": "Could not save statistics durably. The previous valid save is preserved.", "storage.format": "Unsupported storage format. Data remains read-only.", "storage.no_lock": "System file locking is unavailable; process protection and generation conflict detection remain active. Use one client to write this data.", "storage.readonly": "Saving is blocked: data is read-only.", "storage.recovered": "Recovered the previous valid save; the latest save was corrupted. Some recent results may need to be retrieved again.", "storage.schema": "Unsupported storage schema. Data remains read-only.", "storage.unsupported_write": "Cannot write an unsupported schema.", "timeline.beginning": "Beginning of history", "timeline.calendar": "Choose date and time", "timeline.calendar_hour": "Hour", "timeline.calendar_minute": "Minute", "timeline.calendar_month": "Month", "timeline.calendar_months": "January|February|March|April|May|June|July|August|September|October|November|December", "timeline.calendar_next": "Next month", "timeline.calendar_previous": "Previous month", "timeline.calendar_weekdays": "Mon|Tue|Wed|Thu|Fri|Sat|Sun", "timeline.calendar_year": "Year", "timeline.create": "Create time point", "timeline.create_error": "Could not save a time point.", "timeline.custom": "Custom date", "timeline.custom_apply": "Apply", "timeline.custom_enter": "Enter to apply", "timeline.custom_hint": "DD.MM.YYYY HH:mm \u00b7 Enter to apply", "timeline.custom_invalid": "Enter a valid date and time.", "timeline.custom_order": "From must be earlier than To.", "timeline.custom_placeholder": "dd.mm.yyyy HH:mm", "timeline.from": "From", "timeline.name": "Time point name", "timeline.now": "Now", "timeline.point_menu": "Choose a time point", "timeline.to": "To", "title": "Session statistics", "unknown": "Unknown", "unknown.map": "Unknown map", "unknown.map_id": "Map {0}", "unknown.tier": "Unknown tier", "unknown.vehicle": "Unknown vehicle", "unknown.vehicle_id": "Vehicle {0}", "vehicle.AT_SPG": "Tank destroyer", "vehicle.SPG": "SPG", "vehicle.heavyTank": "Heavy tank", "vehicle.lightTank": "Light tank", "vehicle.mediumTank": "Medium tank", "vehicles.battles": "Battles in this vehicle", "visual.map": "Map", "visual.vehicle": "Vehicle", "waiting.data": "Waiting for data", "waiting.game": "Waiting for game data.", "waiting.results": "Waiting for battle results\u2026", "window.background": "Transparency", "window.background_transparency": "Background transparency", "window.maximize": "Maximize window", "window.resize": "Resize window (drag or use arrow keys)", "window.restore": "Restore window", "window.save_error": "Could not save window settings. Your configuration was preserved.", "xp.base": "Base XP", "xp.free": "Free XP:", "xp.group": "Experience type", "xp.received": "Received XP"};
     // END GENERATED ENGLISH
     var translations = english;
     function t(key, args) {
@@ -229,6 +229,11 @@
         if (!hasNumber(value)) { return t('format.missing'); }
         var d = new Date(value * 1000);
         if (!isFinite(d.getTime())) { return t('format.missing'); }
+        if (state.payload && state.payload.localization && state.payload.localization.date_settings) {
+            var formatted = customDateText(value), year = String(d.getFullYear());
+            if (shortDate) { formatted = formatted.replace(new RegExp('(^' + year + '[./-]|[./-]' + year + '(?= ))'), ''); }
+            return formatted;
+        }
         return shortDate ? t('format.date.short', [pad(d.getDate()), pad(d.getMonth() + 1), pad(d.getHours()), pad(d.getMinutes())]) :
             t('format.date', [pad(d.getDate()), pad(d.getMonth() + 1), d.getFullYear(), pad(d.getHours()), pad(d.getMinutes())]);
     }
@@ -576,28 +581,69 @@
     function quantityClass(value) {
         return !hasNumber(value) ? ' ss-unknown' : (value > 0 ? ' ss-positive' : (value < 0 ? ' ss-negative' : ''));
     }
-    function headlineStat(parent, label, value, wn8, compact) {
+    // WoT-Life's published WN8 thresholds and swatches, applied to text only.
+    function wn8Color(value) {
+        if (typeof value !== 'number' || !isFinite(value) || value < 0) { return null; }
+        value = Math.round(value);
+        var limits = [300, 600, 900, 1250, 1600, 1900, 2350, 2900];
+        var colors = ['#000000', '#cd3333', '#d77900', '#d7b600', '#6d9521', '#4c762e', '#4a92b7', '#83579d', '#5a3175'];
+        for (var index = 0; index < limits.length; index += 1) {
+            if (value < limits[index]) { return colors[index]; }
+        }
+        return colors[colors.length - 1];
+    }
+    function paintWN8(node, value) {
+        var color = wn8Color(value);
+        node.style.color = color || '';
+        // One translucent halo separates every rating from the dark camo
+        // without the doubled opaque glow that obscured black glyph edges.
+        node.style.textShadow = color ? '0 0 0.7rem rgba(212,204,176,0.35)' : '';
+        if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
+        else { node.removeAttribute('data-wn8-value'); }
+        return node;
+    }
+    function paintWN8Card(card, value) {
+        var color = wn8Color(value), border = card.querySelector('.ss-wn8-card-border');
+        if (!color) {
+            if (border && border.parentNode) { border.parentNode.removeChild(border); }
+            card.removeAttribute('data-wn8-border-value');
+            return card;
+        }
+        if (!border) {
+            border = append(card, element('span', 'ss-wn8-card-border'));
+            border.setAttribute('aria-hidden', 'true');
+        }
+        border.style.borderColor = 'rgba(' + parseInt(color.slice(1, 3), 16) + ',' +
+            parseInt(color.slice(3, 5), 16) + ',' + parseInt(color.slice(5, 7), 16) + ',0.22)';
+        card.setAttribute('data-wn8-border-value', String(Math.round(value)));
+        return card;
+    }
+    function headlineStat(parent, label, value, wn8, compact, rating) {
         var holder = append(parent, element('div', compact ? 'ss-group-kpi' : 'ss-kpi'));
-        append(holder, element('span', 'ss-kpi-label', label));
-        append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
+        var name = append(holder, element('span', 'ss-kpi-label', label));
+        var output = append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
+        if (wn8) { paintWN8(name, rating); paintWN8(output, rating); }
         return holder;
     }
     function measureRow(parent, label, data, wn8, total, sharedCoverage) {
         var row = append(parent, element('div', 'ss-metric-row'));
         var name = append(row, element('div', 'ss-metric-name'));
-        append(name, element('span', 'ss-cell-value', label));
+        var text = append(name, element('span', 'ss-cell-value', label));
         var partial = coverage(data.count, total);
         if (partial && !sharedCoverage) { explainCoverage(append(name, element('span', 'ss-cell-coverage',
             ' (' + partial + ')')), data.count, total); }
-        append(row, element('div', 'ss-metric-number', wn8 ? integer(data.min) : number(data.min)));
-        append(row, element('div', 'ss-metric-number', wn8 ? integer(data.avg) : number(data.avg)));
-        append(row, element('div', 'ss-metric-number', wn8 ? integer(data.max) : number(data.max)));
+        if (wn8) { paintWN8(text, data.avg); }
+        ['min', 'avg', 'max'].forEach(function (field) {
+            var output = append(row, element('div', 'ss-metric-number', wn8 ? integer(data[field]) : number(data[field])));
+            if (wn8) { paintWN8(output, data[field]); }
+        });
     }
     function battleMeasure(parent, label, value, wn8) {
         var row = append(parent, element('div', 'ss-battle-measure'));
-        append(row, element('span', 'ss-battle-label', label));
-        append(row, element('strong', 'ss-battle-value' + (wn8 ? ' ss-wn8' : ''),
+        var name = append(row, element('span', 'ss-battle-label', label));
+        var output = append(row, element('strong', 'ss-battle-value' + (wn8 ? ' ss-wn8' : ''),
             wn8 ? integer(value) : number(value)));
+        if (wn8) { paintWN8(name, value); paintWN8(output, value); }
     }
     function moneyCell(parent, data, field, total, sharedCoverage) {
         var value = data[field];
@@ -635,7 +681,7 @@
         while (section.parentNode && section !== nodes.summary &&
                 !/(^|\s)ss-group(\s|$)/.test(section.className)) { section = section.parentNode; }
         help(section, battle ? t('coverage.wn8.battle') : t('coverage.wn8.period', [partial]));
-        if (!battle) { append(parent, element('span', 'ss-count-coverage ss-wn8-coverage', 'WN8 ' + partial)); }
+        if (!battle) { paintWN8(append(parent, element('span', 'ss-count-coverage ss-wn8-coverage', 'WN8 ' + partial)), stats.wn8); }
     }
     function details(parent, stats, global, battle) {
         stats = stats || {};
@@ -724,7 +770,7 @@
         var missing = observedTotal(stats) > (stats.battles || 0);
         headlineStat(headline, missing ? t('metric.confirmed') : t('metric.battles'), battleCount(stats), false, false);
         headlineStat(headline, missing ? t('metric.win_rate') + '*' : t('metric.win_rate'), rate(stats.win_rate), false, false);
-        headlineStat(headline, t('metric.period_wn8'), integer(stats.wn8), true, false);
+        headlineStat(headline, t('metric.period_wn8'), integer(stats.wn8), true, false, stats.wn8);
         var outcomes = append(main, element('p', 'ss-outcomes'));
         append(outcomes, element('span', '', t('metric.wins') + ' '));
         append(outcomes, element('strong', '', number(stats.wins)));
@@ -775,11 +821,12 @@
         append(badge, element('span', 'ss-outcome-label', battleOutcome(item.outcome)));
     }
     var defaultOrder = {metric:'off', statistic:'avg', direction:'desc', chronology:'newest'};
+    var defaultTierOrder = {metric:'off', statistic:'avg', direction:'desc', chronology:'tier_desc'};
     var selectOptions = {
         language:[['auto','language.auto'],['en','language.en'],['pl','language.pl'],['ru','language.ru'],['fr','language.fr'],['de','language.de'],['es','language.es'],['uk','language.uk']],
-        chronology:[['newest','sort.newest'],['oldest','sort.oldest']],
+        chronology:[['newest','sort.newest'],['oldest','sort.oldest'],['tier_desc','sort.tier_desc'],['tier_asc','sort.tier_asc']],
         statistic:[['min','metric.min'],['avg','sort.avg'],['max','metric.max']],
-        metric:[['off','sort.off'],['xp_base','sort.xp_base'],['xp_received','sort.xp_received'],['credits_net','sort.credits'],['battle_wn8','metric.wn8']],
+        metric:[['off','sort.off'],['xp_base','sort.xp_base'],['xp_received','sort.xp_received'],['credits_net','sort.credits'],['battle_wn8','metric.wn8'],['battles','sort.battles']],
         direction:[['asc','sort.asc'],['desc','sort.desc']]
     };
     function orderKey(scope) {
@@ -787,22 +834,34 @@
     }
     function getOrder(scope) {
         if (state.orderIntent && state.orderIntent.group === state.group && sameContext(state.orderIntent.context)) { return state.orderIntent.options; }
-        return (state.nativeSession && scope.ordering && scope.ordering[state.group]) || state.orders[orderKey(scope)] || defaultOrder;
+        return (state.nativeSession && scope.ordering && scope.ordering[state.group]) || state.orders[orderKey(scope)] || (state.group === 'tiers' ? defaultTierOrder : defaultOrder);
+    }
+    function groupSortValue(item, options) {
+        var stats = item.stats || {};
+        if (options.metric === 'battles') { return hasNumber(stats.observed_battles) ? stats.observed_battles : stats.battles; }
+        return ((stats[options.metric] || {})[options.statistic]);
     }
     function ordered(items, options) {
         var copy = items.slice(0);
         copy.sort(function (a, b) {
             var left, right, metric = options.metric;
             if (metric !== 'off') {
-                left = ((a.stats || {})[metric] || {})[options.statistic];
-                right = ((b.stats || {})[metric] || {})[options.statistic];
+                left = groupSortValue(a, options);
+                right = groupSortValue(b, options);
                 if (hasNumber(left) !== hasNumber(right)) { return hasNumber(left) ? -1 : 1; }
                 if (hasNumber(left) && left !== right) { return options.direction === 'asc' ? left - right : right - left; }
             }
-            left = options.chronology === 'oldest' && a.first_started_at !== undefined ? a.first_started_at : a.started_at;
-            right = options.chronology === 'oldest' && b.first_started_at !== undefined ? b.first_started_at : b.started_at;
+            if (metric === 'off' && state.group === 'tiers' && (options.chronology === 'tier_asc' || options.chronology === 'tier_desc')) {
+                left = hasNumber(a.tier) && Math.floor(a.tier) === a.tier && a.tier >= 1 && a.tier <= 11 ? a.tier : null;
+                right = hasNumber(b.tier) && Math.floor(b.tier) === b.tier && b.tier >= 1 && b.tier <= 11 ? b.tier : null;
+                if ((left === null) !== (right === null)) { return left === null ? 1 : -1; }
+                if (left !== right) { return options.chronology === 'tier_asc' ? left - right : right - left; }
+            }
+            var oldest = metric === 'off' && options.chronology === 'oldest';
+            left = oldest && a.first_started_at !== undefined ? a.first_started_at : a.started_at;
+            right = oldest && b.first_started_at !== undefined ? b.first_started_at : b.started_at;
             if (hasNumber(left) !== hasNumber(right)) { return hasNumber(left) ? -1 : 1; }
-            if (hasNumber(left) && left !== right) { return options.chronology === 'oldest' ? left - right : right - left; }
+            if (hasNumber(left) && left !== right) { return oldest ? left - right : right - left; }
             left = String(a.id || ''), right = String(b.id || '');
             return left < right ? -1 : (left > right ? 1 : 0);
         });
@@ -824,11 +883,14 @@
     }
     function changeOrder(field, value) {
         if (state.destroyed || !state.payload || !state.payload.scopes) { return; }
-        var scope = currentScope();
-        if (orderingUnavailable(scope) || (field === 'statistic' && state.group === 'battles') ||
+        var scope = currentScope(), current = getOrder(scope);
+        if (orderingUnavailable(scope) || (field === 'chronology' && current.metric !== 'off') ||
+                (field === 'chronology' && (value === 'tier_asc' || value === 'tier_desc') && state.group !== 'tiers') ||
+                (field === 'statistic' && (state.group === 'battles' || current.metric === 'battles')) ||
+                (field === 'metric' && value === 'battles' && state.group !== 'vehicles' && state.group !== 'maps') ||
                 !selectOptions[field] || !selectOptions[field].some(function (choice) { return choice[0] === value; })) { return; }
         cancelBattleNavigation();
-        var current = getOrder(scope), options = {}, key;
+        var options = {}, key;
         for (key in defaultOrder) { options[key] = current[key]; }
         options[field] = value;
         if (options.metric !== 'off') { rememberedMetric(scope, options.metric); }
@@ -942,11 +1004,12 @@
     function renderSelects(scope) {
         var options = getOrder(scope), field, index, remembered = rememberedMetric(scope, options.metric);
         var statistic = document.querySelector('.ss-sort-statistic'), off = document.getElementById('ss-sort-off');
-        if (statistic) { statistic.style.display = state.group === 'battles' ? 'none' : ''; }
+        if (statistic) { statistic.style.display = state.group === 'battles' || options.metric === 'battles' ? 'none' : ''; }
         if (off) {
             off.style.display = state.wideFilters ? 'flex' : 'none';
             off.disabled = orderingUnavailable(scope); off.setAttribute('aria-disabled', String(off.disabled));
             off.setAttribute('aria-pressed', String(options.metric !== 'off'));
+            off.setAttribute('aria-checked', String(options.metric !== 'off'));
             off.setAttribute('aria-label', t('sort.label'));
             off.querySelector('.ss-control-label').textContent = t(options.metric === 'off' ? 'sort.off' : 'sort.on');
             off.classList[options.metric !== 'off' ? 'add' : 'remove']('is-active');
@@ -957,19 +1020,23 @@
             if (field === 'language') { continue; }
             var control = selects[field], labelKey = field === 'chronology' ? 'sort.chronology' : 'sort.' + field;
             var disabled = orderingUnavailable(scope) ||
-                (field === 'statistic' && state.group === 'battles') ||
+                (field === 'chronology' && options.metric !== 'off') ||
+                (field === 'statistic' && (state.group === 'battles' || options.metric === 'battles')) ||
                 (field === 'metric' && state.wideFilters && options.metric === 'off') ||
                 (options.metric === 'off' && (field === 'statistic' || field === 'direction'));
             if (control.setOwner) { control.setOwner({context:viewContext(), group:state.group}); }
-            // Time ordering remains available as the tie-breaker for equal metric values.
+            // Saved chronology is available again when metric sorting is off.
             control.trigger.disabled = disabled;
             control.trigger.setAttribute('aria-disabled', String(disabled));
+            control.trigger.classList[disabled ? 'add' : 'remove']('ss-select-disabled');
             control.trigger.setAttribute('aria-label',t(labelKey));
             control.menu.setAttribute('aria-label',t(labelKey));
             for (index = 0; index < selectOptions[field].length; index += 1) {
                 var choice = selectOptions[field][index], caption = t(choice[1]);
                 var selectedValue = field === 'metric' && state.wideFilters && options.metric === 'off' ? remembered : options[field];
-                control.options[index].style.display = field === 'metric' && choice[0] === 'off' && state.wideFilters ? 'none' : '';
+                control.options[index].style.display = (field === 'chronology' && (choice[0] === 'tier_asc' || choice[0] === 'tier_desc') && state.group !== 'tiers') || field === 'metric' &&
+                    ((choice[0] === 'off' && state.wideFilters) ||
+                     (choice[0] === 'battles' && state.group !== 'vehicles' && state.group !== 'maps')) ? 'none' : '';
                 control.options[index].querySelector('.ss-control-label').textContent = caption;
                 control.options[index].setAttribute('aria-selected',String(choice[0] === selectedValue));
                 if (choice[0] === selectedValue) {
@@ -1025,38 +1092,77 @@
     }
     function currentScope() { return state.payload.scopes[scopeName()]; }
 
-    function customDateSeparator() {
-        var match = /^\{0\}([./])\{1\}\1\{2\}/.exec(t('format.date'));
-        return match ? match[1] : '.';
+    function dateLocale() {
+        var source = state.payload && state.payload.localization && state.payload.localization.date_settings || {};
+        var fallback = /^\{0\}([./])\{1\}\1\{2\}/.exec(t('format.date'));
+        var weekdays = t('timeline.calendar_weekdays').split('|');
+        return {order:/^(DMY|MDY|YMD)$/.test(source.order) ? source.order : 'DMY',
+            separator:/^[./-]$/.test(source.separator) ? source.separator : fallback ? fallback[1] : '.',
+            first:typeof source.first_weekday === 'number' && source.first_weekday >= 0 && source.first_weekday <= 6 ? source.first_weekday : 1,
+            hour12:source.hour12 === true, periods:source.periods && source.periods.length === 2 ? source.periods : ['AM', 'PM'],
+            weekdays:source.weekdays && source.weekdays.length === 7 ? source.weekdays : [weekdays[6]].concat(weekdays.slice(0, 6)),
+            months:source.months && source.months.length === 12 ? source.months : t('timeline.calendar_months').split('|')};
     }
-    function customDateValue(value) {
-        var pattern = customDateSeparator() === '/' ? /^(\d{2})\/(\d{2})\/(\d{4})(?:[ ](\d{2}):(\d{2}))?$/ : /^(\d{2})\.(\d{2})\.(\d{4})(?:[ ](\d{2}):(\d{2}))?$/;
+    function customDateSeparator() {
+        return dateLocale().separator;
+    }
+    function customDateValue(value, format) {
+        format = format || dateLocale();
+        var separator = '\\' + format.separator, widths = format.order === 'YMD' ? [4, 2, 2] : [2, 2, 4];
+        var pattern = new RegExp('^(\\d{' + widths[0] + '})' + separator + '(\\d{' + widths[1] + '})' + separator +
+            '(\\d{' + widths[2] + '})(?:[ ](\\d{2}):(\\d{2})(?:[ ](.+))?)?$');
         var parts = pattern.exec(String(value).trim());
         if (!parts) { return null; }
-        var year = +parts[3], month = +parts[2], day = +parts[1], hour = +(parts[4] || 0), minute = +(parts[5] || 0);
-        return customDateParts(year, month, day, hour, minute);
+        var date = {}, hour = +(parts[4] || 0), minute = +(parts[5] || 0);
+        for (var index = 0; index < 3; index += 1) { date[format.order.charAt(index)] = +parts[index + 1]; }
+        if (parts[6]) {
+            var period = String(parts[6]).toLocaleLowerCase(), am = format.periods[0].toLocaleLowerCase(), pm = format.periods[1].toLocaleLowerCase();
+            if (!format.hour12 || hour < 1 || hour > 12 || (period !== am && period !== pm)) { return null; }
+            hour = hour % 12 + (period === pm ? 12 : 0);
+        } else if (format.hour12 && parts[4]) { return null; }
+        return customDateParts(date.Y, date.M, date.D, hour, minute);
     }
     function customDateParts(year, month, day, hour, minute) {
-        if (year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59) { return null; }
+        if (year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59) { return null; }
         var parsed = new Date(year, month - 1, day, hour, minute, 0, 0);
         if (parsed.getFullYear() !== year || parsed.getMonth() !== month - 1 || parsed.getDate() !== day ||
                 parsed.getHours() !== hour || parsed.getMinutes() !== minute || !hasNumber(parsed.getTime()) || parsed.getTime() < 0) { return null; }
         return parsed.getTime() / 1000;
     }
     function datePad(number) { return number < 10 ? '0' + number : String(number); }
-    function customDateText(timestamp) {
+    function customDateText(timestamp, format) {
+        format = format || dateLocale();
         var value = new Date((hasNumber(timestamp) ? timestamp : Date.now() / 1000) * 1000);
-        var separator = customDateSeparator();
-        return datePad(value.getDate()) + separator + datePad(value.getMonth() + 1) + separator + value.getFullYear() +
-            ' ' + datePad(value.getHours()) + ':' + datePad(value.getMinutes());
+        var parts = {D:datePad(value.getDate()), M:datePad(value.getMonth() + 1), Y:String(value.getFullYear())}, output = [];
+        for (var index = 0; index < 3; index += 1) { output.push(parts[format.order.charAt(index)]); }
+        return output.join(format.separator) + ' ' + datePad(format.hour12 ? value.getHours() % 12 || 12 : value.getHours()) + ':' + datePad(value.getMinutes()) +
+            (format.hour12 ? ' ' + format.periods[value.getHours() < 12 ? 0 : 1] : '');
     }
-    function customDateMask(value) {
-        var digits = String(value).replace(/[^0-9]/g, '').slice(0, 12), output = '';
+    function customDatePlaceholder() {
+        var format = dateLocale(), parts = {D:'dd', M:'mm', Y:'yyyy'}, output = [];
+        for (var index = 0; index < 3; index += 1) { output.push(parts[format.order.charAt(index)]); }
+        return output.join(format.separator) + ' ' + (format.hour12 ? 'hh:mm ' + format.periods[0] : 'HH:mm');
+    }
+    function customDateMask(value, format) {
+        format = format || dateLocale();
+        var text = String(value), digits = text.replace(/[^0-9]/g, '').slice(0, 12), output = '';
+        var widths = format.order === 'YMD' ? [4, 6] : [2, 4];
         for (var index = 0; index < digits.length; index += 1) {
-            if (index === 2 || index === 4) { output += customDateSeparator(); }
+            if (index === widths[0] || index === widths[1]) { output += format.separator; }
             if (index === 8) { output += ' '; }
             if (index === 10) { output += ':'; }
             output += digits.charAt(index);
+        }
+        if (format.hour12) {
+            var suffix = text.replace(/^[0-9./:\- ]*/, '').trim(), normalized = suffix.replace(/[./:\- ]/g, '').toLocaleLowerCase();
+            var am = format.periods[0].replace(/[./:\- ]/g, '').toLocaleLowerCase(), pm = format.periods[1].replace(/[./:\- ]/g, '').toLocaleLowerCase();
+            var shared = 0; while (shared < am.length && shared < pm.length && am.charAt(shared) === pm.charAt(shared)) { shared += 1; }
+            if (normalized && (am.indexOf(normalized) === 0 || pm.indexOf(normalized) === 0) && normalized !== am && normalized !== pm) {
+                // Keep unfinished localized day periods editable, including
+                // labels whose first characters are shared (e.g. 오전/오후).
+            } else if (normalized.indexOf(pm.slice(0, shared + 1)) === 0) { suffix = format.periods[1]; }
+            else if (normalized.indexOf(am.slice(0, shared + 1)) === 0) { suffix = format.periods[0]; }
+            if (suffix || digits.length === 12) { output += ' ' + (suffix || format.periods[0]); }
         }
         return output;
     }
@@ -1067,10 +1173,17 @@
     }
     function maskDateInput(input) {
         var caret = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
-        var digits = input.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+        var prefix = input.value.slice(0, caret), digits = prefix.replace(/[^0-9]/g, '').length;
+        var suffixChars = prefix.replace(/[0-9./:\- ]/g, '').length;
         input.value = customDateMask(input.value);
         if (typeof input.setSelectionRange === 'function') {
-            try { var next = dateCaret(input.value, digits); input.setSelectionRange(next, next); } catch (ignored) { /* Native text input remains usable. */ }
+            try {
+                var next = dateCaret(input.value, digits);
+                if (dateLocale().hour12 && suffixChars) {
+                    while (next < input.value.length && suffixChars > 0) { if (/[^0-9./:\- ]/.test(input.value.charAt(next))) { suffixChars -= 1; } next += 1; }
+                }
+                input.setSelectionRange(next, next);
+            } catch (ignored) { /* Native text input remains usable. */ }
         }
     }
     function deleteDateSeparator(input, event) {
@@ -1078,7 +1191,8 @@
         if ((key !== 'Backspace' && key !== 8 && key !== 'Delete' && key !== 46) ||
                 typeof at !== 'number' || at !== input.selectionEnd) { return; }
         var back = key === 'Backspace' || key === 8, next = back ? at - 1 : at;
-        if (next < 0 || next >= input.value.length || /[0-9]/.test(input.value.charAt(next))) { return; }
+        var lastDigit = input.value.replace(/[^0-9]*$/, '').length - 1;
+        if (next < 0 || next >= lastDigit || !/[./:\- ]/.test(input.value.charAt(next))) { return; }
         while (next >= 0 && next < input.value.length && !/[0-9]/.test(input.value.charAt(next))) { next += back ? -1 : 1; }
         if (next < 0 || next >= input.value.length) { return; }
         event.preventDefault();
@@ -1133,6 +1247,7 @@
         if (!picker) { return; }
         datePicker = null;
         picker.button.setAttribute('aria-expanded', 'false');
+        if (picker.removeDrag) { picker.removeDrag(); }
         if (picker.node.parentNode) { picker.node.parentNode.removeChild(picker.node); }
         if (restoreFocus && root.contains(picker.input)) { focusControl(picker.input); }
     }
@@ -1162,8 +1277,11 @@
         if (datePicker && datePicker.input === input) { closeDatePicker(true); return; }
         closeSelect(false); closeDatePicker(false);
         var timestamp = customDateValue(input.value), date = new Date((timestamp === null ? Date.now() / 1000 : timestamp) * 1000);
+        var format = dateLocale(), lastYear = new Date().getFullYear();
         var picker = {field:field, holder:holder, input:input, button:button,
-            node:append(root, element('div', 'ss-date-picker')), year:date.getFullYear(), month:date.getMonth() + 1, day:date.getDate()};
+            node:append(root, element('div', 'ss-date-picker')), year:Math.max(2010, Math.min(lastYear, date.getFullYear())), month:date.getMonth() + 1, day:date.getDate(),
+            hour:date.getHours(), minute:date.getMinutes(), mode:'days'};
+        picker.day = Math.min(picker.day, new Date(picker.year, picker.month, 0).getDate());
         datePicker = picker;
         picker.node.id = 'ss-date-picker-' + field; picker.node.setAttribute('role', 'dialog');
         picker.node.setAttribute('aria-modal', 'true'); picker.node.setAttribute('aria-label', t('timeline.' + field) + ' · ' + t('timeline.calendar'));
@@ -1178,82 +1296,187 @@
         var previous = action(heading, 'ss-date-month-arrow ss-date-month-previous', t('timeline.calendar_previous'), function () { moveMonth(-1); });
         append(previous, element('span', 'ss-date-chevron')).setAttribute('aria-hidden', 'true');
         var title = append(heading, element('div', 'ss-date-picker-title')); title.setAttribute('aria-live', 'polite');
+        var monthTitle = action(title, 'ss-date-heading-month', '', function () { picker.mode = picker.mode === 'months' ? 'days' : 'months'; draw(); });
+        append(title, element('span', '', ' '));
+        var yearTitle = action(title, 'ss-date-heading-year', '', function () { picker.mode = picker.mode === 'years' ? 'days' : 'years'; draw(); });
+        monthTitle.setAttribute('data-date-part', 'month'); yearTitle.setAttribute('data-date-part', 'year');
         var next = action(heading, 'ss-date-month-arrow ss-date-month-next', t('timeline.calendar_next'), function () { moveMonth(1); });
         append(next, element('span', 'ss-date-chevron')).setAttribute('aria-hidden', 'true');
-        var selectors = append(picker.node, element('div', 'ss-date-picker-fields'));
-        function numeric(parent, name, value, length) {
-            var label = append(parent, element('label', 'ss-date-picker-field'));
-            append(label, element('span', '', t('timeline.calendar_' + name)));
-            var node = append(label, element('input', 'ss-control ss-date-picker-value'));
-            node.type = 'text'; node.maxLength = length; node.value = String(value); node.setAttribute('inputmode', 'numeric');
-            node.setAttribute('data-date-part', name); node.setAttribute('aria-label', t('timeline.calendar_' + name));
-            node.onfocus = function () { if (typeof node.select === 'function') { node.select(); } };
-            node.oninput = function () { node.value = node.value.replace(/[^0-9]/g, '').slice(0, length); };
-            return node;
-        }
-        var month = numeric(selectors, 'month', picker.month, 2), year = numeric(selectors, 'year', picker.year, 4);
-        var grid = append(picker.node, element('div', 'ss-date-grid')); grid.setAttribute('role', 'grid');
-        grid.setAttribute('aria-label', t('timeline.calendar'));
-        var time = append(picker.node, element('div', 'ss-date-picker-fields ss-date-time'));
-        var hour = numeric(time, 'hour', datePad(date.getHours()), 2), minute = numeric(time, 'minute', datePad(date.getMinutes()), 2);
+        var body = append(picker.node, element('div', 'ss-date-picker-body'));
+        var time = append(picker.node, element('div', 'ss-date-time'));
+        var calendar = action(time, 'ss-date-return', t('timeline.calendar'), function () { picker.mode = 'days'; draw(); focusDay(); });
+        append(calendar, element('span', 'ss-date-calendar-icon')).setAttribute('aria-hidden', 'true');
+        var hour = action(time, 'ss-date-time-part', '', function () { picker.mode = 'hours'; draw(); focusClock(); });
+        hour.setAttribute('data-date-part', 'hour');
+        append(time, element('span', 'ss-date-time-colon', ':'));
+        var minute = action(time, 'ss-date-time-part', '', function () { picker.mode = 'minutes'; draw(); focusClock(); });
+        minute.setAttribute('data-date-part', 'minute');
+        var periods = append(time, element('div', 'ss-date-periods'));
+        var periodButtons = [];
+        format.periods.forEach(function (label, index) {
+            periodButtons.push(action(periods, 'ss-date-period', label, function () { picker.hour = picker.hour % 12 + index * 12; draw(); }));
+        });
+        periods.style.display = format.hour12 ? 'flex' : 'none';
         var error = append(picker.node, element('div', 'ss-custom-date-error ss-date-picker-error')); error.setAttribute('role', 'alert'); error.style.display = 'none';
         var footer = append(picker.node, element('div', 'ss-date-picker-actions'));
         function fail(message) { error.textContent = message; error.style.display = 'block'; timelineError(field, message); }
-        function readMonth(report) {
-            var valid = /^[0-9]{1,2}$/.test(month.value) && /^[0-9]{4}$/.test(year.value) &&
-                +month.value >= 1 && +month.value <= 12 && +year.value >= 1970 && +year.value <= 9999;
-            if (!valid) { if (report) { fail(t('timeline.custom_invalid')); } return false; }
-            picker.year = +year.value; picker.month = +month.value;
-            picker.day = Math.min(picker.day, new Date(picker.year, picker.month, 0).getDate());
-            return true;
-        }
-        function focusDay() { var selected = grid.querySelector('[data-day="' + picker.day + '"]'); if (selected) { focusControl(selected); } }
+        function focusDay() { var selected = body.querySelector('[data-day="' + picker.day + '"]'); if (selected) { focusControl(selected); } }
+        function focusClock() { var face = body.querySelector('.ss-date-clock'); if (face) { focusControl(face); } }
         function setDate(value) {
-            if (value.getFullYear() < 1970 || value.getFullYear() > 9999) { return; }
-            picker.year = value.getFullYear(); picker.month = value.getMonth() + 1; picker.day = value.getDate();
-            month.value = String(picker.month); year.value = String(picker.year); drawDays(); focusDay();
+            if (value.getFullYear() < 2010 || value.getFullYear() > lastYear) { return; }
+            picker.year = value.getFullYear(); picker.month = value.getMonth() + 1; picker.day = value.getDate(); draw(); focusDay();
         }
         function moveMonth(direction) {
-            if (!live() || !readMonth(true)) { return; }
+            if (!live()) { return; }
             var value = new Date(picker.year, picker.month - 1 + direction, 1);
             value.setDate(Math.min(picker.day, new Date(value.getFullYear(), value.getMonth() + 1, 0).getDate())); setDate(value);
         }
+        function chooseYear(year) {
+            picker.year = year; picker.day = Math.min(picker.day, new Date(year, picker.month, 0).getDate());
+            picker.mode = 'months'; draw(); focusControl(body.querySelector('[aria-selected="true"]'));
+        }
         function drawDays() {
-            clear(grid);
-            var months = t('timeline.calendar_months').split('|'), weekdays = t('timeline.calendar_weekdays').split('|');
-            title.textContent = (months[picker.month - 1] || datePad(picker.month)) + ' ' + picker.year;
+            var grid = append(body, element('div', 'ss-date-grid')); grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', t('timeline.calendar'));
             var headers = append(grid, element('div', 'ss-date-week')); headers.setAttribute('role', 'row');
-            weekdays.forEach(function (name) { append(headers, element('span', 'ss-date-weekday', name)).setAttribute('role', 'columnheader'); });
-            var offset = (new Date(picker.year, picker.month - 1, 1).getDay() + 6) % 7;
-            var count = new Date(picker.year, picker.month, 0).getDate(), row;
-            for (var index = 0; index < 42; index += 1) {
+            for (var weekday = 0; weekday < 7; weekday += 1) {
+                append(headers, element('span', 'ss-date-weekday', format.weekdays[(weekday + format.first) % 7])).setAttribute('role', 'columnheader');
+            }
+            var offset = (new Date(picker.year, picker.month - 1, 1).getDay() - format.first + 7) % 7;
+            var count = new Date(picker.year, picker.month, 0).getDate(), row, cells = Math.ceil((offset + count) / 7) * 7;
+            for (var index = 0; index < cells; index += 1) {
                 if (index % 7 === 0) { row = append(grid, element('div', 'ss-date-week')); row.setAttribute('role', 'row'); }
                 var day = index - offset + 1;
                 if (day < 1 || day > count) { var blank = append(row, element('span', 'ss-date-day ss-date-blank')); blank.setAttribute('aria-hidden', 'true'); continue; }
                 (function (day) {
                     var chosen = day === picker.day;
-                    var separator = customDateSeparator();
-                    var node = action(row, 'ss-date-day', datePad(day) + separator + datePad(picker.month) + separator + picker.year, function () { picker.day = day; drawDays(); focusDay(); });
+                    var label = customDateText(new Date(picker.year, picker.month - 1, day).getTime() / 1000, format).split(' ')[0];
+                    var node = action(row, 'ss-date-day', label, function () { picker.day = day; draw(); focusDay(); });
                     node.querySelector('.ss-control-label').textContent = String(day);
-                    node.setAttribute('role', 'gridcell'); node.setAttribute('data-day', String(day)); node.setAttribute('tabindex', chosen ? '0' : '-1');
-                    node.setAttribute('aria-selected', String(chosen));
+                    node.setAttribute('role', 'gridcell'); node.setAttribute('data-day', String(day)); node.setAttribute('tabindex', chosen ? '0' : '-1'); node.setAttribute('aria-selected', String(chosen));
                     node.onkeydown = function (event) {
                         var key = event.key || event.keyCode, delta = key === 'ArrowLeft' || key === 37 ? -1 : key === 'ArrowRight' || key === 39 ? 1 :
                             key === 'ArrowUp' || key === 38 ? -7 : key === 'ArrowDown' || key === 40 ? 7 : null;
                         if (delta !== null) { event.preventDefault(); event.stopPropagation(); setDate(new Date(picker.year, picker.month - 1, day + delta)); }
                         if (key === 'PageUp' || key === 33 || key === 'PageDown' || key === 34) { event.preventDefault(); event.stopPropagation(); moveMonth(key === 'PageUp' || key === 33 ? -1 : 1); }
-                        if (key === 'Home' || key === 36 || key === 'End' || key === 35) { event.preventDefault(); event.stopPropagation(); picker.day = key === 'Home' || key === 36 ? 1 : count; drawDays(); focusDay(); }
+                        if (key === 'Home' || key === 36 || key === 'End' || key === 35) { event.preventDefault(); event.stopPropagation(); picker.day = key === 'Home' || key === 36 ? 1 : count; draw(); focusDay(); }
                     };
                 }(day));
             }
         }
-        month.onchange = year.onchange = function () { if (live() && readMonth(true)) { drawDays(); } };
+        function drawOptions(kind) {
+            var grid = append(body, element('div', 'ss-date-options ss-date-' + kind)); grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', t('timeline.calendar_' + (kind === 'years' ? 'year' : 'month')));
+            function option(value, label) {
+                var chosen = value === (kind === 'years' ? picker.year : picker.month);
+                var node = action(grid, 'ss-date-option', label, function () {
+                    if (kind === 'years') { chooseYear(value); }
+                    else { picker.month = value; picker.day = Math.min(picker.day, new Date(picker.year, value, 0).getDate()); picker.mode = 'days'; draw(); focusDay(); }
+                });
+                node.setAttribute('role', 'gridcell'); node.setAttribute('data-' + (kind === 'years' ? 'year' : 'month'), String(value)); node.setAttribute('aria-selected', String(chosen));
+                node.onkeydown = function (event) {
+                    var key = event.key || event.keyCode, delta = key === 'ArrowLeft' || key === 37 ? -1 : key === 'ArrowRight' || key === 39 ? 1 : key === 'ArrowUp' || key === 38 ? -3 : key === 'ArrowDown' || key === 40 ? 3 : null;
+                    if (delta !== null) { var options = grid.querySelectorAll('button'), index = Array.prototype.indexOf.call(options, node), target = options[index + delta];
+                        event.preventDefault(); event.stopPropagation(); if (target) { focusControl(target); } }
+                };
+            }
+            if (kind === 'years') { for (var year = lastYear; year >= 2010; year -= 1) { option(year, String(year)); } }
+            else { format.months.forEach(function (label, index) { option(index + 1, label); }); }
+        }
+        function setClock(value) {
+            if (picker.mode === 'hours') { picker.hour = format.hour12 ? value % 12 + (picker.hour >= 12 ? 12 : 0) : value; }
+            else { picker.minute = value; }
+            updateTime(); updateHand();
+        }
+        function updateHand() {
+            var face = body.querySelector('.ss-date-clock'), hand = body.querySelector('.ss-date-clock-hand');
+            if (!face || !hand) { return; }
+            var hours = picker.mode === 'hours', value = hours ? picker.hour : picker.minute;
+            var angle = (hours ? value % 12 * 30 : value * 6);
+            var inner = hours && !format.hour12 && (value === 0 || value > 12);
+            hand.style.height = (inner ? 25 : 38) + '%'; hand.style.transform = 'rotate(' + angle + 'deg)';
+            face.setAttribute('aria-valuenow', String(hours && format.hour12 ? value % 12 || 12 : value));
+            face.setAttribute('aria-valuetext', datePad(format.hour12 ? picker.hour % 12 || 12 : picker.hour) + ':' + datePad(picker.minute) + (format.hour12 ? ' ' + format.periods[picker.hour < 12 ? 0 : 1] : ''));
+            var numbers = face.querySelectorAll('[data-clock-value]');
+            for (var index = 0; index < numbers.length; index += 1) {
+                var number = numbers[index], selected = +number.getAttribute('data-clock-value') === (hours && format.hour12 ? value % 12 || 12 : value);
+                number.setAttribute('aria-pressed', String(selected));
+            }
+        }
+        function clockPoint(event) {
+            if (!live()) { return; }
+            var face = body.querySelector('.ss-date-clock'); if (!face) { return; }
+            var rect = face.getBoundingClientRect(), x = event.clientX - rect.left - rect.width / 2, y = event.clientY - rect.top - rect.height / 2;
+            var angle = (Math.atan2(x, -y) * 180 / Math.PI + 360) % 360;
+            if (picker.mode === 'minutes') { setClock(Math.round(angle / 6) % 60); }
+            else { var number = Math.round(angle / 30) % 12;
+                if (format.hour12) { setClock(number || 12); }
+                else { var inner = Math.sqrt(x * x + y * y) < rect.width * 0.32; setClock(inner ? number ? number + 12 : 0 : number || 12); } }
+        }
+        function drawClock() {
+            var hours = picker.mode === 'hours';
+            var face = append(body, element('div', 'ss-date-clock')); face.setAttribute('role', 'slider'); face.setAttribute('tabindex', '0');
+            face.setAttribute('aria-label', t('timeline.calendar_' + (hours ? 'hour' : 'minute')));
+            face.setAttribute('aria-valuemin', hours && format.hour12 ? '1' : '0'); face.setAttribute('aria-valuemax', hours ? format.hour12 ? '12' : '23' : '59');
+            var hand = append(face, element('span', 'ss-date-clock-hand')); hand.setAttribute('aria-hidden', 'true');
+            append(face, element('span', 'ss-date-clock-pivot')).setAttribute('aria-hidden', 'true');
+            function number(value, angle, radius, label) {
+                var node = action(face, 'ss-date-clock-number' + (radius === 25 ? ' ss-date-clock-inner' : ''), label, function () {
+                    setClock(value); if (hours) { picker.mode = 'minutes'; draw(); focusClock(); }
+                });
+                node.setAttribute('data-clock-value', String(value)); node.setAttribute('aria-label', t('timeline.calendar_' + (hours ? 'hour' : 'minute')) + ': ' + label); node.setAttribute('tabindex', '-1');
+                var radians = angle * Math.PI / 180; node.style.left = (50 + radius * Math.sin(radians)) + '%'; node.style.top = (50 - radius * Math.cos(radians)) + '%';
+            }
+            for (var index = 0; index < 12; index += 1) {
+                if (hours) { number(index || 12, index * 30, 40, String(index || 12)); if (!format.hour12) { number(index ? index + 12 : 0, index * 30, 25, datePad(index ? index + 12 : 0)); } }
+                else { number(index * 5, index * 30, 40, datePad(index * 5)); }
+            }
+            face.onmousedown = function (event) {
+                if (event.button !== 0) { return; }
+                var target = event.target; while (target && target !== face) { if (target.tagName === 'BUTTON') { return; } target = target.parentNode; }
+                event.preventDefault(); focusControl(face); picker.dragging = true; clockPoint(event);
+            };
+            face.onkeydown = function (event) {
+                var key = event.key || event.keyCode, delta = key === 'ArrowLeft' || key === 37 || key === 'ArrowDown' || key === 40 ? -1 : key === 'ArrowRight' || key === 39 || key === 'ArrowUp' || key === 38 ? 1 : null;
+                var value = hours ? picker.hour : picker.minute, max = hours ? 24 : 60;
+                if (delta !== null) {
+                    event.preventDefault(); event.stopPropagation();
+                    if (hours) { picker.hour = (value + delta + max) % max; updateTime(); updateHand(); }
+                    else { setClock((value + delta + max) % max); }
+                }
+                if (key === 'Home' || key === 36 || key === 'End' || key === 35) { event.preventDefault(); event.stopPropagation(); setClock(key === 'Home' || key === 36 ? hours && format.hour12 ? 12 : 0 : hours ? format.hour12 ? 11 : 23 : 59); }
+                if (key === 'Enter' || key === 13 || key === ' ' || key === 32) { event.preventDefault(); event.stopPropagation(); picker.mode = hours ? 'minutes' : 'days'; draw(); if (hours) { focusClock(); } else { focusDay(); } }
+            };
+            updateHand();
+        }
+        function dragClock(event) { if (live() && picker.dragging) { event.preventDefault(); clockPoint(event); } }
+        function releaseClock() { if (picker.dragging) { picker.dragging = false; if (live() && picker.mode === 'hours') { picker.mode = 'minutes'; draw(); focusClock(); } } }
+        document.addEventListener('mousemove', dragClock, true); document.addEventListener('mouseup', releaseClock, true);
+        picker.removeDrag = function () { document.removeEventListener('mousemove', dragClock, true); document.removeEventListener('mouseup', releaseClock, true); };
+        function updateTime() {
+            hour.querySelector('.ss-control-label').textContent = datePad(format.hour12 ? picker.hour % 12 || 12 : picker.hour);
+            minute.querySelector('.ss-control-label').textContent = datePad(picker.minute);
+            hour.setAttribute('aria-label', t('timeline.calendar_hour') + ': ' + hour.textContent); minute.setAttribute('aria-label', t('timeline.calendar_minute') + ': ' + minute.textContent);
+            hour.setAttribute('aria-pressed', String(picker.mode === 'hours')); minute.setAttribute('aria-pressed', String(picker.mode === 'minutes'));
+            periodButtons.forEach(function (node, index) { node.setAttribute('aria-pressed', String(index === (picker.hour < 12 ? 0 : 1))); });
+        }
+        function draw() {
+            if (!live()) { return; }
+            clear(body); picker.dragging = false;
+            monthTitle.querySelector('.ss-control-label').textContent = format.months[picker.month - 1] || datePad(picker.month);
+            yearTitle.querySelector('.ss-control-label').textContent = String(picker.year);
+            monthTitle.setAttribute('aria-label', t('timeline.calendar_month') + ': ' + monthTitle.textContent); yearTitle.setAttribute('aria-label', t('timeline.calendar_year') + ': ' + picker.year);
+            monthTitle.setAttribute('aria-expanded', String(picker.mode === 'months')); yearTitle.setAttribute('aria-expanded', String(picker.mode === 'years'));
+            previous.style.visibility = next.style.visibility = picker.mode === 'days' ? 'visible' : 'hidden';
+            previous.disabled = picker.year === 2010 && picker.month === 1;
+            next.disabled = picker.year === lastYear && picker.month === 12;
+            if (picker.mode === 'days') { drawDays(); }
+            else if (picker.mode === 'months' || picker.mode === 'years') { drawOptions(picker.mode); }
+            else { drawClock(); }
+            updateTime(); positionDatePicker();
+        }
         var apply = action(footer, 'ss-custom-date-apply', t('timeline.custom_apply'), function () {
-            if (!readMonth(true) || !/^[0-9]{1,2}$/.test(hour.value) || !/^[0-9]{1,2}$/.test(minute.value) || +hour.value > 23 || +minute.value > 59) { fail(t('timeline.custom_invalid')); return; }
-            var timestamp = customDateParts(picker.year, picker.month, picker.day, +hour.value, +minute.value);
+            var timestamp = customDateParts(picker.year, picker.month, picker.day, picker.hour, picker.minute);
             if (timestamp === null) { fail(t('timeline.custom_invalid')); return; }
-            var value = customDateText(timestamp);
-            input.value = value; input.oninput({});
+            input.value = customDateText(timestamp); input.oninput({});
             if (applyTimelineRange(timeline, field, '__custom__', account)) { closeDatePicker(true); }
             else { fail(state.actionError || t('timeline.custom_invalid')); }
         });
@@ -1261,12 +1484,12 @@
         action(footer, 'ss-date-picker-cancel', t('cancel'), function () { closeDatePicker(true); });
         picker.node.onkeydown = function (event) {
             if (event.key !== 'Tab' && event.keyCode !== 9) { return; }
-            var choices = Array.prototype.filter.call(picker.node.querySelectorAll('button,input'), function (node) { return !node.disabled && node.getAttribute('tabindex') !== '-1'; });
+            var choices = Array.prototype.filter.call(picker.node.querySelectorAll('button,[role="slider"]'), function (node) { return !node.disabled && node.getAttribute('tabindex') !== '-1' && node.offsetWidth > 0 && node.style.visibility !== 'hidden'; });
             var first = choices[0], last = choices[choices.length - 1];
             if (event.shiftKey && document.activeElement === first) { event.preventDefault(); focusControl(last); }
             else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); focusControl(first); }
         };
-        drawDays(); positionDatePicker(); focusDay();
+        draw(); focusDay();
     }
     function renderTimeline(timeline, disabled) {
         var timelineScope = !!timeline && state.scope === 'manual';
@@ -1281,10 +1504,14 @@
             if (timeline[field + '_point'] === '__custom__' && !state.customDates[field]) {
                 state.customDates[field] = {value:customDateText(timeline[field + '_date'])};
             }
-            var draft = state.customDates[field];
-            if (draft && draft.separator !== customDateSeparator()) { draft.value = customDateMask(draft.value); draft.separator = customDateSeparator(); }
+            var draft = state.customDates[field], format = dateLocale();
+            if (draft && JSON.stringify(draft.format) !== JSON.stringify(format)) {
+                var timestamp = draft.format ? customDateValue(draft.value, draft.format) : null;
+                draft.value = timestamp === null ? customDateMask(draft.value, format) : customDateText(timestamp, format);
+                draft.format = format;
+            }
         });
-        var signature = JSON.stringify([points, names, rangeKey, !!state.customDates.from, !!state.customDates.to, document.documentElement.getAttribute('lang')]);
+        var signature = JSON.stringify([points, names, rangeKey, !!state.customDates.from, !!state.customDates.to, document.documentElement.getAttribute('lang'), dateLocale()]);
         if (state.timelineSignature === signature) { return; }
         state.timelineSignature = signature;
         closeSelect(false); closeDatePicker(false);
@@ -1327,13 +1554,13 @@
                 var row = element('div', 'ss-date-editor'); holder.insertBefore(row, control.trigger);
                 var input = append(row, element('input', 'ss-control ss-custom-date'));
                 input.id = 'ss-custom-date-' + field;
-                input.type = 'text'; input.maxLength = 16; input.value = state.customDates[field].value;
-                input.setAttribute('inputmode', 'numeric'); input.setAttribute('autocomplete', 'off'); input.setAttribute('spellcheck', 'false');
-                input.setAttribute('placeholder', t('timeline.custom_placeholder'));
+                input.type = 'text'; input.maxLength = dateLocale().hour12 ? 84 : 16; input.value = state.customDates[field].value;
+                input.setAttribute('inputmode', dateLocale().hour12 ? 'text' : 'numeric'); input.setAttribute('autocomplete', 'off'); input.setAttribute('spellcheck', 'false');
+                input.setAttribute('placeholder', customDatePlaceholder());
                 input.setAttribute('aria-label', label + ' · ' + t('timeline.custom'));
                 input.setAttribute('aria-describedby', 'ss-custom-date-error-' + field);
                 input.setAttribute('role', 'combobox'); input.setAttribute('aria-haspopup', 'listbox'); input.setAttribute('aria-expanded', 'false');
-                input.setAttribute('aria-controls', control.menu.id); input.title = t('timeline.custom_hint'); control.input = input;
+                input.setAttribute('aria-controls', control.menu.id); input.title = customDatePlaceholder() + ' · ' + t('timeline.custom_enter'); control.input = input;
                 row.appendChild(control.trigger); control.trigger.className += ' ss-date-menu'; control.trigger.setAttribute('role', 'button');
                 control.trigger.setAttribute('aria-label', label + ' · ' + t('timeline.point_menu')); control.trigger.title = t('timeline.point_menu');
                 var calendar = append(row, element('button', 'ss-control ss-button ss-date-calendar')); calendar.type = 'button';
@@ -1347,7 +1574,7 @@
                 input.oninput = function (event) {
                     if (state.destroyed || state.payload.account_key !== account || !state.customDates[field] || !root.contains(input)) { return; }
                     if (!event || !event.isComposing) { maskDateInput(input); }
-                    state.customDates[field].value = input.value;
+                    state.customDates[field].value = input.value; state.customDates[field].format = dateLocale();
                     input.removeAttribute('aria-invalid'); error.textContent = ''; error.style.display = 'none';
                 };
                 calendar.onclick = function () { openDatePicker(field, holder, input, calendar, timeline, account); };
@@ -1370,20 +1597,93 @@
     document.addEventListener('mousedown', outsideDatePicker, true);
     document.addEventListener('keydown', datePickerKey, true);
     window.addEventListener('resize', positionDatePicker);
+    var mapPreviewTarget = null;
+    var mapPreview = append(root, element('div', 'ss-map-preview'));
+    mapPreview.id = 'ss-map-preview'; mapPreview.setAttribute('role', 'tooltip');
+    var mapPreviewImage = append(mapPreview, element('div', 'ss-map-preview-image'));
+    mapPreviewImage.setAttribute('role', 'img');
+    function hideMapPreview() {
+        if (mapPreviewTarget) {
+            if (mapPreviewTarget.getAttribute('aria-describedby') === mapPreview.id) { mapPreviewTarget.removeAttribute('aria-describedby'); }
+            mapPreviewTarget.setAttribute('aria-expanded', 'false');
+        }
+        mapPreviewTarget = null;
+        mapPreview.style.display = 'none'; mapPreviewImage.style.backgroundImage = '';
+    }
+    function mapPreviewAncestor(target) {
+        while (target && target !== root) {
+            if (target.nodeType === 1 && target.hasAttribute('data-ss-map-preview')) { return target; }
+            target = target.parentNode;
+        }
+        return null;
+    }
+    function showMapPreview(target) {
+        if (!target || state.destroyed || state.group !== 'maps' || state.dialog || state.resize || state.dragging || !root.contains(target)) { hideMapPreview(); return; }
+        if (target === mapPreviewTarget) { return; }
+        hideMapPreview(); hideHelp();
+        var bounds = root.getBoundingClientRect(), anchor = target.getBoundingClientRect(), scale = state.nativeScale || 1;
+        var gap = 8 * scale;
+        if (!(anchor.width > 1) || !(anchor.height > 1) || !(bounds.width > gap * 2) || !(bounds.height > gap * 2)) { return; }
+        var previewHeight = target.getAttribute('data-ss-map-preview-mode') === 'minimap' ? anchor.width : anchor.height;
+        var factor = Math.min(4, (bounds.width - gap * 2) / anchor.width, (bounds.height - gap * 2) / previewHeight);
+        var width = anchor.width * factor, height = previewHeight * factor;
+        var left = anchor.right - bounds.left + gap;
+        if (left + width > bounds.width - gap) { left = anchor.left - bounds.left - width - gap; }
+        var top = anchor.top - bounds.top;
+        mapPreviewTarget = target;
+        target.setAttribute('aria-describedby', mapPreview.id); target.setAttribute('aria-expanded', 'true');
+        var label = t('maps.preview', [target.getAttribute('aria-label') || '']);
+        mapPreview.setAttribute('aria-label', label); mapPreviewImage.setAttribute('aria-label', label);
+        mapPreviewImage.style.backgroundImage = 'url("' + target.getAttribute('data-ss-map-preview') + '")';
+        mapPreview.style.width = width + 'px'; mapPreview.style.height = height + 'px';
+        mapPreview.style.left = Math.max(gap, Math.min(left, bounds.width - width - gap)) + 'px';
+        mapPreview.style.top = Math.max(gap, Math.min(top, bounds.height - height - gap)) + 'px';
+        mapPreview.style.display = 'block';
+    }
+    function hoverMapPreview(event) { showMapPreview(mapPreviewAncestor(event.target)); }
+    function leaveMapPreview(event) {
+        if (mapPreviewAncestor(event.relatedTarget) !== mapPreviewTarget) { hideMapPreview(); }
+    }
+    function mapPreviewKey(event) {
+        if (mapPreviewTarget && (event.key === 'Escape' || event.keyCode === 27)) {
+            event.preventDefault(); event.stopPropagation(); hideMapPreview();
+        }
+    }
+    root.addEventListener('mouseover', hoverMapPreview);
+    root.addEventListener('mouseout', leaveMapPreview);
+    root.addEventListener('focusin', hoverMapPreview);
+    root.addEventListener('focusout', leaveMapPreview);
+    root.addEventListener('keydown', mapPreviewKey);
+    nodes.scroll.addEventListener('scroll', hideMapPreview);
+    window.addEventListener('blur', hideMapPreview);
+    window.addEventListener('resize', hideMapPreview);
+    function nativeVisualSource(src, kind) {
+        var prefix = kind === 'vehicle' ? 'img://gui/maps/icons/vehicle/' : 'img://gui/maps/icons/map/';
+        if (typeof src !== 'string' || src.indexOf(prefix) !== 0 || src.length <= prefix.length) { return null; }
+        var path = src.slice(prefix.length);
+        if (/[^A-Za-z0-9_./-]/.test(path) || /(^|\/)\.{1,2}(\/|$)/.test(path) ||
+                path.indexOf('//') !== -1 || !/\.(png|dds)$/i.test(path)) { return null; }
+        return src;
+    }
     function appendVisual(parent, item) {
         var visual = item.visual;
         if (!visual || (visual.kind !== 'vehicle' && visual.kind !== 'map')) { return; }
-        var src = visual.src;
-        var prefix = visual.kind === 'vehicle' ? 'img://gui/maps/icons/vehicle/' : 'img://gui/maps/icons/map/';
+        var src = nativeVisualSource(visual.src, visual.kind);
         /* URLs come from the native R/backport resolver, which checks ResMgr.isFile.
            UI accepts only these local asset families; no remote URLs or CSS escapes. */
-        if (typeof src !== 'string' || src.indexOf(prefix) !== 0 || src.length <= prefix.length ||
-                src.indexOf('..') !== -1 || /[^A-Za-z0-9_./:-]/.test(src)) { return; }
+        if (!src) { return; }
         var thumb = append(parent, element('div', 'ss-group-thumb'));
         thumb.setAttribute('role', 'img');
         thumb.setAttribute('aria-label', String(visual.alt || item.name || ''));
         /* Background contain is supported by Gameface; object-fit is not. */
         thumb.style.backgroundImage = 'url("' + src + '")';
+        if (visual.kind === 'map') {
+            var preview = nativeVisualSource(visual.preview_src, 'map');
+            thumb.setAttribute('data-ss-map-preview', preview || src);
+            thumb.setAttribute('data-ss-map-preview-mode', preview && visual.preview_mode === 'minimap' ? 'minimap' : 'image');
+            thumb.setAttribute('tabindex', '0');
+            thumb.setAttribute('aria-controls', mapPreview.id); thumb.setAttribute('aria-expanded', 'false');
+        }
     }
     var bonusLabels = {
         eventCredits:'event.credits', eventXP:'event.xp', eventFreeXP:'event.free_xp',
@@ -1476,7 +1776,7 @@
         }
         var keys = Object.keys(bonusLabels).filter(function (key) { return hasNumber(bonuses[key]); });
         var hasBonuses = keys.length || battle.xp_bonus_applied;
-        var detailColumns = ids.length || hasBonuses ? append(panel, element('div', 'ss-more-columns')) : null;
+        var detailColumns = ids.length || hasBonuses ? append(panel, element('div', 'ss-more-columns ss-more-columns-stacked')) : null;
         // Keep the reading order stable when either section is absent or wraps.
         var bonusBlock = hasBonuses ? append(detailColumns,
             element('div', 'ss-more-reward-block ss-more-bonus-block')) : null;
@@ -1589,6 +1889,32 @@
         if (data.suicide) { append(panel, element('p', 'ss-more-caption', t('more.suicide'))); }
         if (!panel.firstChild) { append(panel, element('p', '', t('more.empty'))); }
     }
+    function layoutMoreColumns(card, availableWidth) {
+        var columns = card.querySelector('.ss-more-columns');
+        if (!columns) { return; }
+        var scale = state.nativeScale || 1, measured = columns.getBoundingClientRect().width / scale;
+        // Native flex wrapping can squeeze missions to a few pixels instead of
+        // moving them below a rich bonus matrix. Resolve both widths ourselves.
+        var width = Math.max(1, availableWidth);
+        if (measured > 1) { width = Math.min(width, measured); }
+        var bonus = columns.querySelector('.ss-more-bonus-block');
+        var missions = columns.querySelector('.ss-more-mission-block');
+        var preferred = bonus ? Number(bonus.getAttribute('data-bonus-width')) || 308 : 0;
+        var bonusWidth = Math.min(width, preferred), gap = 8, minimumMissionWidth = 180;
+        var paired = bonus && missions && width >= preferred + gap + minimumMissionWidth;
+        columns.className = 'ss-more-columns ss-more-columns-' + (paired ? 'paired' : 'stacked');
+        if (bonus) {
+            bonus.style.width = bonusWidth + 'rem';
+            bonus.style.flex = '0 0 ' + bonusWidth + 'rem';
+            bonus.style.marginRight = paired ? gap + 'rem' : '0rem';
+        }
+        if (missions) {
+            var missionWidth = paired ? width - bonusWidth - gap : width;
+            missions.style.width = missionWidth + 'rem';
+            missions.style.flex = '0 0 ' + missionWidth + 'rem';
+            missions.style.minWidth = paired ? minimumMissionWidth + 'rem' : '0rem';
+        }
+    }
     function attachBattleMore(card, header, battle) {
         var button = append(header, element('button', 'ss-control ss-button ss-more-button'));
         button.type = 'button';
@@ -1637,7 +1963,9 @@
             }
             ['ss-battle-target', 'ss-target-pulsing', 'ss-target-muted'].forEach(function (name) { card.classList.remove(name); });
         });
-        invalidateCardFlow(); queueResize();
+        // Selection decorations are overlays; removing them never changes
+        // card heights or restarts the independent lane layout.
+        queueResize();
     }
     function paintBattleTarget(card) {
         var target = state.highlightedBattle;
@@ -1701,20 +2029,59 @@
             state.targetTimer = null; state.highlightedBattle.until = 0;
             (state.groupCards || []).forEach(paintBattleTarget);
         }, 5000);
-        state.battleJump = {id:pending.id, context:pending.context, attempts:0, deadline:Date.now() + 2000};
+        state.pageJump = null;
+        state.battleJump = {id:pending.id, context:pending.context, attempts:0, deadline:Date.now() + 10000,
+            lastOffset:null, settledSince:null, stable:0, target:null, focused:null, requestedOffset:null};
+    }
+    function battleLayoutOffset(node, ancestor) {
+        var offset = 0, count = 0;
+        while (node && node !== ancestor && count < 24) {
+            if (!hasNumber(node.offsetTop)) { return null; }
+            offset += node.offsetTop;
+            node = node.offsetParent; count += 1;
+            if (node && node !== ancestor && hasNumber(node.clientTop)) { offset += node.clientTop; }
+        }
+        return node === ancestor ? offset : null;
+    }
+    function battleScrollPending(jump) {
+        if (!jump || !hasNumber(jump.requestedOffset)) { return false; }
+        var scale = state.nativeScale || 1, scroll = nodes.scroll;
+        if (Math.abs(scroll.scrollTop - jump.requestedOffset) > scale) { return true; }
+        var origin = battleLayoutOffset(nodes.groups, scroll);
+        if (origin === null) { return false; }
+        var content = nodes.groups.getBoundingClientRect(), viewport = scroll.getBoundingClientRect();
+        return hasNumber(content.top) && hasNumber(viewport.top) &&
+            Math.abs(content.top - viewport.top + scroll.scrollTop - origin) > scale;
+    }
+    function retryBattleJump(jump) {
+        if (state.battleJump !== jump || state.battleJumpTimer !== null) { return; }
+        if (Date.now() >= jump.deadline || jump.attempts >= 100) { cancelBattleNavigation(); return; }
+        jump.attempts += 1;
+        var timer = window.setTimeout(function () {
+            if (state.battleJumpTimer === timer) { state.battleJumpTimer = null; }
+            if (state.battleJump === jump && !state.destroyed) { finishBattleJump(); }
+        }, 100);
+        state.battleJumpTimer = timer;
     }
     function finishBattleJump() {
         var jump = state.battleJump;
-        if (!jump || state.group !== 'battles' || !sameContext(jump.context)) { return; }
-        // A later model refresh/resize must not revive an expired destination.
-        // Keep its already-painted frame, but retire pending focus and scroll.
-        if (Date.now() >= jump.deadline || jump.attempts >= 40) {
+        if (!jump) { return; }
+        if (state.group !== 'battles' || !sameContext(jump.context)) { cancelBattleNavigation(); return; }
+        // Loading a selected page and native layout can take several seconds.
+        // Own the destination until its actual position settles, while keeping
+        // a bounded lifetime and yielding immediately to newer user input.
+        if (Date.now() >= jump.deadline || jump.attempts >= 100) {
             cancelBattleNavigation(); return;
         }
         if (!state.highlightedBattle || state.highlightedBattle.id !== jump.id) {
             cancelBattleNavigation(); return;
         }
-        if (state.cardFlowQueued) { return; }
+        if (state.cardFlowQueued || state.groupMinHeight || state.feedStaging ||
+                nodes.groups.getAttribute('aria-busy') === 'true') { retryBattleJump(jump); return; }
+        // Native rectangles and scrollTop can acknowledge a setter in either
+        // order. Never mix samples from opposite sides of that handoff.
+        if (battleScrollPending(jump)) { retryBattleJump(jump); return; }
+        jump.requestedOffset = null;
         var target = null;
         (state.groupCards || []).some(function (card) {
             if (card.getAttribute('data-group-id') === jump.id) { target = card; return true; }
@@ -1724,24 +2091,35 @@
         function validRect(rect) {
             return rect && hasNumber(rect.top) && hasNumber(rect.width) && hasNumber(rect.height) && rect.width > 1 && rect.height > 1;
         }
-        if (!validRect(box) || !validRect(container)) {
-            if (state.battleJumpTimer === null && jump.attempts < 40 && Date.now() < jump.deadline) {
-                jump.attempts += 1;
-                var timer = window.setTimeout(function () {
-                    if (state.battleJumpTimer === timer) { state.battleJumpTimer = null; }
-                    if (state.battleJump === jump && !state.destroyed && sameContext(jump.context)) { queueResize(); }
-                }, 50);
-                state.battleJumpTimer = timer;
-            }
+        if (!validRect(box) || !validRect(container)) { retryBattleJump(jump); return; }
+        var scale = state.nativeScale || 1, filterHeight = pinnedFilterHeight();
+        var layoutOffset = battleLayoutOffset(target, scroll);
+        var offset = Math.max(0, Math.min(scrollbarMetrics().maximum,
+            (layoutOffset === null ? scroll.scrollTop + box.top - container.top : layoutOffset) - filterHeight - 16 * scale));
+        var now = Date.now();
+        if (jump.target !== target || jump.lastOffset === null || Math.abs(jump.lastOffset - offset) > scale) {
+            jump.target = target; jump.lastOffset = offset; jump.settledSince = now; jump.stable = 0;
+        }
+        if (jump.focused !== target) { focusControl(target); jump.focused = target; }
+        state.pageJump = null;
+        if (state.feed) { state.feed.navigationPage = null; }
+        jump.requestedOffset = offset;
+        state.scrollTarget = offset; scroll.scrollTop = offset;
+        // A first non-zero rectangle can still precede font, lane or native
+        // surface settlement. Verify the position again instead of consuming
+        // the jump after that first paint. Scroll setters may also lag a frame.
+        var aligned = target.getBoundingClientRect(), actualTop = scroll.scrollTop;
+        var visible = validRect(aligned) && aligned.top >= container.top + filterHeight - scale && aligned.top < container.bottom - scale;
+        var acknowledged = !battleScrollPending(jump);
+        if (visible && acknowledged && Math.abs(actualTop - offset) <= scale) { jump.stable += 1; }
+        else { jump.stable = 0; jump.settledSince = now; }
+        if (acknowledged) { updatePinnedFilters(true); syncScrollbar(); }
+        if (jump.stable >= 3 && now - jump.settledSince >= 500) {
+            state.battleJump = null;
+            var retryTimer = state.battleJumpTimer; state.battleJumpTimer = null; cancelUITimer(retryTimer);
             return;
         }
-        var offset = Math.max(0, scroll.scrollTop + box.top - container.top - pinnedFilterHeight() - 8 * (state.nativeScale || 1));
-        state.battleJump = null;
-        var retryTimer = state.battleJumpTimer; state.battleJumpTimer = null; cancelUITimer(retryTimer);
-        focusControl(target);
-        state.scrollTarget = offset;
-        scroll.scrollTop = state.scrollTarget;
-        queueResize();
+        retryBattleJump(jump);
     }
     function attachMapMore(card, header, map) {
         var vehicle = state.group === 'vehicles', kind = vehicle ? 'vehicle' : 'map';
@@ -1808,7 +2186,7 @@
                     append(identity, element('strong', 'ss-map-battle-name', vehicle ? (battle.map || t('unknown.map')) : (battle.name || t('unknown.vehicle'))));
                     append(identity, element('div', 'ss-map-battle-date', date(battle.started_at, true)));
                     append(row, element('span', 'ss-map-battle-outcome', battleOutcome(battle.outcome)));
-                    append(row, element('span', 'ss-map-battle-wn8', t('metric.wn8') + ' ' + integer(battle.wn8)));
+                    paintWN8(append(row, element('span', 'ss-map-battle-wn8', t('metric.wn8') + ' ' + integer(battle.wn8))), battle.wn8);
                     var open = append(row, element('button', 'ss-control ss-button ss-map-battle-open'));
                     open.type = 'button'; open.setAttribute('data-battle-id', String(battle.id));
                     append(open, element('span', 'ss-control-label', t('maps.open_battle')));
@@ -1878,6 +2256,7 @@
             group.setAttribute('data-list-index', String(page.offset + index));
             group.setAttribute('data-layout-index', String(index));
             group.id = 'ss-card-' + state.group + '-' + (page.offset + index);
+            paintWN8Card(group, stats.wn8);
             if (battle && state.highlightedBattle && String(item.id) === state.highlightedBattle.id && sameContext(state.highlightedBattle.context)) {
                 paintBattleTarget(group);
             }
@@ -1895,17 +2274,20 @@
             if (subtitle) { append(meta, element('div', 'ss-group-subtitle', subtitle)); }
             freeXP(meta, stats);
             var sorting = getOrder(currentScope());
-            if (!battle && sorting.metric === 'credits_net') {
-                var sortValue = hasNumber(item.sort_value) ? item.sort_value : (stats.credits_net || {})[sorting.statistic];
-                append(meta, element('div', 'ss-group-sort-value', t('sort.value_per_battle', [
-                    t(sorting.statistic === 'avg' ? 'sort.avg' : 'metric.' + sorting.statistic), t('sort.credits'), signed(sortValue)])));
+            if (!battle && (sorting.metric === 'credits_net' || sorting.metric === 'battle_wn8')) {
+                var sortValue = hasNumber(item.sort_value) ? item.sort_value : groupSortValue(item, sorting);
+                var statisticLabel = t(sorting.statistic === 'avg' ? 'sort.avg' : 'metric.' + sorting.statistic);
+                var sortCaption = sorting.metric === 'battle_wn8' ? t('sort.value_wn8', [statisticLabel, integer(sortValue)]) :
+                    t('sort.value_per_battle', [statisticLabel, t('sort.credits'), signed(sortValue)]);
+                var sortNode = append(meta, element('div', 'ss-group-sort-value', sortCaption));
+                if (sorting.metric === 'battle_wn8') { sortNode.classList.add('ss-group-wn8-sort-value'); paintWN8(sortNode, sortValue); }
             }
             if (battle) {
                 appendOutcome(header, item);
             } else {
                 headlineStat(header, t('metric.battles'), battleCount(stats), false, true).className += ' ss-group-count';
                 headlineStat(header, t('metric.win_rate'), rate(stats.win_rate), false, true);
-                headlineStat(header, t('metric.wn8'), integer(stats.wn8), true, true);
+                headlineStat(header, t('metric.wn8'), integer(stats.wn8), true, true, stats.wn8);
             }
             details(group, stats, false, battle);
             if (battle) { attachBattleMore(group, header, item); }
@@ -2030,6 +2412,7 @@
         });
         var owned = [], cards = state.groupCards || [], total = state.renderedFeed ? state.renderedFeed.total : state.list.length;
         cards.forEach(function (card, index) {
+            layoutMoreColumns(card, Math.max(1, Math.min(width, cardWidth) - 14));
             card.setAttribute('aria-posinset', String(Number(card.getAttribute('data-list-index')) + 1));
             card.setAttribute('aria-setsize', String(total));
             if (index + 1 < cards.length) { card.setAttribute('aria-flowto', cards[index + 1].id); }
@@ -2342,6 +2725,10 @@
     function updatePinnedFilters(recalculate) {
         var panel = nodes['filter-panel'];
         if (!panel || state.destroyed) { return; }
+        // A native target scroll can update rectangles before its getter, or
+        // the reverse. Mixed samples would shrink the true content range and
+        // clamp the owned destination back to its page divider.
+        if (battleScrollPending(state.battleJump)) { return; }
         var viewport = nodes.scroll.getBoundingClientRect(), box = panel.getBoundingClientRect();
         if (!(box.height > 0) || !(viewport.height > 0)) { return; }
         var rawTop = nodes.scroll.scrollTop;
@@ -2389,6 +2776,13 @@
     }
     function finishPageJump() {
         var jump = state.pageJump;
+        // A battle destination is more specific than its containing page.
+        // Retire an older page jump so it cannot replace card alignment later.
+        if (state.battleJump) {
+            state.pageJump = null;
+            if (state.feed) { state.feed.navigationPage = null; }
+            return;
+        }
         if (!jump || jump.feed !== state.renderedFeed || state.cardFlowQueued) { return; }
         var target = null;
         (state.cardPages || []).some(function (page) { if (page.index === jump.page) { target = page.section; return true; } return false; });
@@ -2512,6 +2906,7 @@
     nodes.scroll.addEventListener('mousedown', onScrollIntent, true);
     nodes.scroll.addEventListener('keydown', onScrollIntent, true);
     function render() {
+        hideMapPreview();
         state.rendering = true;
         try { renderView(); } finally { state.rendering = false; }
     }
@@ -3610,6 +4005,15 @@
         invalidateCardFlow();
         hideHelp();
         root.removeEventListener('mouseover', waitForHelp);
+        hideMapPreview();
+        root.removeEventListener('mouseover', hoverMapPreview);
+        root.removeEventListener('mouseout', leaveMapPreview);
+        root.removeEventListener('focusin', hoverMapPreview);
+        root.removeEventListener('focusout', leaveMapPreview);
+        root.removeEventListener('keydown', mapPreviewKey);
+        nodes.scroll.removeEventListener('scroll', hideMapPreview);
+        window.removeEventListener('blur', hideMapPreview);
+        window.removeEventListener('resize', hideMapPreview);
         root.removeEventListener('mousemove', waitForHelp);
         root.removeEventListener('mouseout', leaveHelp);
         root.removeEventListener('focusin', focusHelp);
