@@ -30,10 +30,28 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['orderKey','getOrder','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
+  for(const name of ['orderKey','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
     vm.runInContext(actual(name),context);
+  context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
+  state.group='tiers';render();
+  assert.strictEqual(context.getOrder(scope).chronology,'tier_desc','An unconfigured Tiers tab defaults to highest tier first');
+  assert.strictEqual(selects.chronology.label.textContent,'sort.tier_desc');
+  assert(selects.chronology.options.every(option=>option.style.display===''),'Tiers exposes numeric and chronological choices in its ordinary selector');
+  const tiers=[{id:'XI',tier:11,started_at:1},{id:'IX',tier:9,started_at:2},{id:'II',tier:2,started_at:3},{id:'unknown',tier:null,started_at:4}];
+  const tierOrder=chronology=>Array.from(context.ordered(tiers,{metric:'off',statistic:'avg',direction:'desc',chronology}),item=>item.id);
+  assert.deepStrictEqual(tierOrder('tier_desc'),['XI','IX','II','unknown'],'Numeric ordering keeps XI above IX and unknown last');
+  assert.deepStrictEqual(tierOrder('tier_asc'),['II','IX','XI','unknown'],'Unknown remains last when tier order is ascending');
+  assert.deepStrictEqual(tierOrder('newest'),['unknown','II','IX','XI'],'Tiers still permits an explicit ordinary date preference');
+  state.group='vehicles';render();
+  assert(selects.chronology.options.slice(2).every(option=>option.style.display==='none'),'Tier choices are hidden from other tabs');
+  const tierRejected=commands.length;context.changeOrder('chronology','tier_desc');
+  assert.strictEqual(commands.length,tierRejected,'Another tab rejects a retained tier-order callback');
   render();assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-pressed'),'true');
+  assert.strictEqual(selects.chronology.trigger.disabled,true,'Metric sorting disables the saved date ordering');
+  assert(selects.chronology.trigger.classList.contains('ss-select-disabled'),'Metric sorting assigns explicit native-safe disabled paint to ordinary ordering');
+  const chronologicalBefore=commands.length;context.changeOrder('chronology','oldest');
+  assert.strictEqual(commands.length,chronologicalBefore,'A retained chronology callback cannot reorder an active metric');
   assert.strictEqual(controls['ss-sort-off'].querySelector('.ss-control-label').textContent,'sort.on','An active metric uses the localized On label');
   controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'off');ack();
   assert.strictEqual(selects.metric.label.textContent,'sort.xp_received','Off retains the last active metric label in the wide dropdown');
@@ -43,6 +61,8 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-label'),'sort.label');
   assert.strictEqual(selects.metric.trigger.disabled,true,'Wide Off disables the remembered metric dropdown');
   assert.strictEqual(selects.direction.trigger.disabled,true);
+  assert.strictEqual(selects.chronology.trigger.disabled,false,'Off restores the independent date preference');
+  assert(!selects.chronology.trigger.classList.contains('ss-select-disabled'),'Off clears the disabled paint from ordinary ordering');
   controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'xp_received','Metric On restores the last non-Off metric');ack();
   const before=commands.length;scope.loading=true;render();controls['ss-sort-off'].onclick();context.changeOrder('metric','xp_base');
   assert.strictEqual(commands.length,before,'Busy retained toggle and selector callbacks cannot sort an unavailable projection');
@@ -61,6 +81,17 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   const battleBefore=commands.length;context.changeOrder('statistic','max');
   assert.strictEqual(commands.length,battleBefore,'Battles rejects stale aggregate-statistic callbacks');
   assert.strictEqual(statistic.style.display,'none');assert.strictEqual(selects.statistic.trigger.disabled,true);
+  context.changeOrder('metric','battles');assert.strictEqual(commands.length,battleBefore,'Battles rejects the aggregate count metric');
+  state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
+  assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
+  const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
+  const tied=[{id:'early',started_at:1,first_started_at:0,stats:{xp_base:{avg:10}}},
+    {id:'late',started_at:2,first_started_at:0,stats:{xp_base:{avg:10}}}];
+  assert.strictEqual(context.ordered(tied,{metric:'xp_base',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'late');
+  assert.strictEqual(context.ordered(tied,{metric:'off',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'early');
+  const counts=[{id:'received',started_at:1,stats:{battles:4,observed_battles:4}},{id:'pending',started_at:2,stats:{battles:3,observed_battles:5}}];
+  assert.strictEqual(context.ordered(counts,{metric:'battles',statistic:'avg',direction:'desc',chronology:'oldest'})[0].id,'pending');
+  scope.ordering.vehicles.metric='xp_received';
   state.group='vehicles';state.wideFilters=false;render();const narrowBefore=commands.length;controls['ss-sort-off'].onclick();
   assert.strictEqual(commands.length,narrowBefore,'A hidden wide-only toggle cannot act in narrow mode');assert.strictEqual(selects.metric.options[0].style.display,'');
   state.wideFilters=true;render();const stale=controls['ss-sort-off'].onclick;
@@ -143,6 +174,21 @@ module.exports=async({browser,nativeHost,check})=>{
       check('A wide metric menu removes Off from its visible choices'+caption,!await page.locator('#ss-sort-metric [data-value="off"]').isVisible());
       await page.keyboard.press('Escape');
       await choose('metric','xp_received');
+      check('An active metric disables newest/oldest and rejects its retained option callback'+caption,
+        await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled()&&await page.evaluate(()=>{
+          const before=__grzCommands.filter(item=>item.action==='sort').length;
+          document.querySelector('#ss-sort-chronology [data-value="oldest"]').onclick();
+          return __grzCommands.filter(item=>item.action==='sort').length===before;
+        }));
+      check('Disabled ordinary ordering explicitly dims its label, arrow and background'+caption,
+        await page.locator('#ss-sort-chronology .ss-select-trigger').evaluate(node=>{
+          const css=getComputedStyle(node),label=getComputedStyle(node.querySelector('.ss-control-label')),
+            arrow=getComputedStyle(node.querySelector('.ss-select-arrow')),
+            active=getComputedStyle(document.querySelector('#ss-sort-metric .ss-control-label'));
+          return node.classList.contains('ss-select-disabled')&&node.getAttribute('aria-disabled')==='true'&&
+            parseFloat(css.opacity)<0.9&&css.backgroundImage==='none'&&label.color!==active.color&&
+            arrow.borderRightColor===label.color&&arrow.borderBottomColor===label.color;
+        }));
       await page.locator('#ss-sort-off').click();await acknowledge();
       check('Off keeps the last active metric visible beside the toggle'+caption,
         await page.locator('#ss-sort-off').getAttribute('aria-pressed')==='false'&&await page.locator('#ss-sort-off').textContent()==='Off'&&

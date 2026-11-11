@@ -148,6 +148,23 @@ class RuntimeAppearanceTests(unittest.TestCase):
         self.refresh()
         self.assertEqual(self.mod.snapshot()['localization']['language'], 'en')
 
+    def test_calendar_settings_reload_from_native_api_without_changing_ui_language(self):
+        self.api.date_settings = lambda: {'order': 'MDY', 'separator': '/', 'first_weekday': 0, 'hour12': True}
+        self.write({'language': 'pl'})
+        self.start()
+        payload = self.mod.snapshot()['localization']
+        self.assertEqual(payload['language'], 'pl')
+        self.assertEqual(payload['date_settings'], self.api.date_settings())
+        self.api.date_settings = lambda: {'order': 'YMD', 'separator': '-', 'first_weekday': 1, 'hour12': False}
+        self.refresh()
+        self.assertEqual(self.mod.snapshot()['localization']['date_settings'], self.api.date_settings())
+        def unavailable():
+            raise RuntimeError('fixture native regional settings unavailable')
+        self.api.date_settings = unavailable
+        self.refresh()
+        self.assertNotIn('date_settings', self.mod.snapshot()['localization'])
+        self.assertEqual(self.mod.snapshot()['localization']['language'], 'pl')
+
     def test_malformed_edit_reverts_entire_presentation_and_logs_after_start(self):
         self.write({'scroll': {'speed_multiplier': 4}})
         self.start()

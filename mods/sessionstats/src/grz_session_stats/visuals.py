@@ -112,6 +112,7 @@ class NativeVisualResolver(object):
         self._file_exists = file_exists
         self._vehicles = {}
         self._maps = {}
+        self._map_previews = {}
         self._outcomes = {}
 
     def _resource_url(self, node, kind):
@@ -198,6 +199,35 @@ class NativeVisualResolver(object):
         except Exception:
             return None
 
+    def map_preview(self, geometry, mode='image'):
+        """Resolve a larger native hover image without changing card artwork.
+
+        The screen branch supplies landscape loading art (2560x1600 in the
+        reviewed catalogue). The default map branch is the native lobby's
+        300x300 minimap. Both are selected through R, never a guessed URL.
+        """
+        if not isinstance(geometry, (bytes, text_type)) or mode not in ('image', 'minimap'):
+            return None
+        geometry = _text(geometry)
+        if not _SAFE_GEOMETRY.match(geometry):
+            return None
+        key = (mode, geometry)
+        if key in self._map_previews:
+            return {'src': self._map_previews[key], 'mode': mode}
+        try:
+            root = self._resources.images.gui.maps.icons.map
+            node = root.num(geometry) if mode == 'minimap' else root.dyn('screen').num(geometry)
+            source = self._resource_url(node, 'map')
+        except Exception:
+            source = None
+        if source:
+            self._map_previews[key] = source
+            return {'src': source, 'mode': mode}
+        # Do not cache a fallback as a permanently successful large preview:
+        # the registry or texture can become available on a later snapshot.
+        source = self.map_src(geometry)
+        return {'src': source, 'mode': 'image'} if source else None
+
 
 def _get_native_resolver():
     global _DEFAULT_RESOLVER
@@ -211,7 +241,7 @@ def _get_native_resolver():
     return _DEFAULT_RESOLVER
 
 
-def enrich_snapshot(payload, battle_records=None, resolver=None):
+def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mode='image'):
     """Add row.visual to a fresh snapshot; read the existing ledger only for IDs.
 
     Existing tank/map rows already carry the stable group ID. A battle row has
@@ -223,6 +253,8 @@ def enrich_snapshot(payload, battle_records=None, resolver=None):
     resolver = resolver if resolver is not None else _get_native_resolver()
     records = battle_records if isinstance(battle_records, dict) else {}
     cache = {}
+    if map_preview_mode not in ('image', 'minimap'):
+        map_preview_mode = 'image'
 
     def visual(kind, identifier, name):
         if resolver is None or identifier is None:
@@ -260,6 +292,19 @@ def enrich_snapshot(payload, battle_records=None, resolver=None):
                     image = visual('vehicle', row.get('id'), row.get('name'))
                 elif grouping == 'maps':
                     image = visual('map', row.get('id'), row.get('name'))
+                    if image is not None:
+                        key = ('map_preview', _text(row.get('id')))
+                        if key not in cache:
+                            try:
+                                cache[key] = resolver.map_preview(row.get('id'), map_preview_mode)
+                            except Exception:
+                                cache[key] = None
+                        preview = cache[key]
+                        if (isinstance(preview, dict) and preview.get('src') and
+                                preview.get('mode') in ('image', 'minimap') and
+                                (preview['src'] != image['src'] or preview['mode'] == 'minimap')):
+                            image['preview_src'] = preview['src']
+                            image['preview_mode'] = preview['mode']
                 else:
                     record = records.get(_text(row.get('id')), {})
                     if not isinstance(record, dict):

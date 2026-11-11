@@ -190,6 +190,94 @@ class RecoveryRuntimeTests(unittest.TestCase):
         self.tick()
         self.assertEqual(str(self.api.cache.requests[0][0]), ARENA_ID)
 
+    def test_eight_restored_results_are_requested_without_opening_notifications(self):
+        identifiers = [str(int(ARENA_ID) + index) for index in range(8)]
+        original_launch = self.mod.active_service.launch_id
+        for index, arena_id in enumerate(identifiers):
+            self.mod.active_service.begin_battle(arena_id, started_at=START + index, mode='random')
+        self.mod.stop()
+        self.clock.value += 86400
+        self.api.cache = NativeCache()
+        old_launch = runtime.LAUNCH_ID
+        try:
+            runtime.LAUNCH_ID = 'synthetic-eight-result-restart'
+            self.mod = self.new_runtime()
+        finally:
+            runtime.LAUNCH_ID = old_launch
+        self.assertEqual(len(self.mod.active_service.pending_arena_ids()), 8)
+        requested = []
+        for unused in identifiers:
+            self.tick()
+            self.assertEqual(len(self.api.cache.requests), 1)
+            arena_id = str(self.api.cache.requests[0][0])
+            requested.append(self.receive(1, raw_result(arena_id=arena_id)))
+        self.assertEqual(requested, list(reversed(identifiers)))
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+        self.assertEqual(self.summary()['battles'], 8)
+        self.assertEqual(self.mod.snapshot()['scopes']['launch']['summary']['battles'], 0)
+        self.assertTrue(all(self.mod.active_service._state['battles'][arena_id]['_launch_id'] == original_launch
+                            for arena_id in identifiers))
+
+    def test_missing_cache_at_login_does_not_disable_later_backlog_recovery(self):
+        self.mod.active_service.begin_battle(ARENA_ID, started_at=START, mode='random')
+        self.mod.stop()
+        self.api.cache = None
+        self.mod = self.new_runtime()
+        self.tick()
+        self.assertEqual(self.mod.inflight, {})
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
+        self.api.cache = NativeCache()
+        self.api.events.onAccountShowGUI()
+        self.tick()
+        self.assertIsNotNone(self.mod._cache_observer)
+        self.assertEqual(self.receive(1, raw_result()), ARENA_ID)
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+
+    def test_native_cache_read_discovers_unknown_old_result_without_current_launch_membership(self):
+        arena_id = str(int(ARENA_ID) - 86400)
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+        self.api.cache.get(int(arena_id), None)
+        self.receive(1, raw_result(arena_id=arena_id))
+        row = self.mod.active_service._state['battles'][arena_id]
+        self.assertTrue(row['complete'])
+        self.assertIsNone(row['_launch_id'])
+        self.assertIsNone(row['_manual_id'])
+        self.assertEqual(self.mod.snapshot()['scopes']['launch']['summary']['battles'], 0)
+        self.api.cache.get(int(arena_id), None)
+        self.receive(1, raw_result(arena_id=arena_id))
+        self.assertEqual(len(self.mod.active_service._state['battles']), 1)
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+
+    def test_partial_or_unavailable_result_does_not_starve_other_restored_results(self):
+        identifiers = [str(int(ARENA_ID) + index) for index in range(8)]
+        for index, arena_id in enumerate(identifiers):
+            self.mod.active_service.begin_battle(arena_id, started_at=START + index, mode='random')
+        self.tick()
+        unavailable = self.receive(-10, None)
+        self.tick()
+        partial_id = str(self.api.cache.requests[0][0])
+        partial = raw_result(arena_id=partial_id)
+        partial['personal'][1]['originalXP'] = None
+        self.receive(1, partial)
+        self.assertIn(partial_id, self.mod.active_service.pending_arena_ids())
+        recovered = []
+        for unused in range(6):
+            self.tick()
+            arena_id = str(self.api.cache.requests[0][0])
+            recovered.append(self.receive(1, raw_result(arena_id=arena_id)))
+        self.assertEqual(set(recovered), set(identifiers) - {unavailable, partial_id})
+        self.assertEqual(set(self.mod.active_service.pending_arena_ids()), {unavailable, partial_id})
+        self.assertEqual(self.summary()['battles'], 7)
+        self.assertEqual(self.summary()['missing_results'], 1)
+        self.tick(seconds=300)
+        requested = str(self.api.cache.requests[0][0])
+        self.receive(1, raw_result(arena_id=requested))
+        self.tick(seconds=300)
+        requested = str(self.api.cache.requests[0][0])
+        self.receive(1, raw_result(arena_id=requested))
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+        self.assertEqual(self.summary()['battles'], 8)
+
     def test_untried_backlog_is_not_starved_by_the_first_failed_record(self):
         first = str(int(ARENA_ID) - 100)
         second = str(int(ARENA_ID) - 200)

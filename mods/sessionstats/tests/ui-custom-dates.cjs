@@ -15,12 +15,14 @@ async function update(page,values) {
 async function pick(page,field,values) {
   await page.locator('#ss-custom-date-calendar-'+field).click();
   const picker=page.locator('#ss-date-picker-'+field);
-  for(const part of ['month','year']) {
-    await picker.locator('[data-date-part="'+part+'"]').fill(String(values[part]));
-    await picker.locator('[data-date-part="'+part+'"]').press('Tab');
-  }
+  await picker.locator('[data-date-part="year"]').click();
+  await picker.locator('[data-year="'+values.year+'"]').click();
+  await picker.locator('[data-month="'+values.month+'"]').click();
   await picker.locator('[data-day="'+values.day+'"]').click();
-  for(const part of ['hour','minute'])await picker.locator('[data-date-part="'+part+'"]').fill(String(values[part]));
+  await picker.locator('[data-date-part="hour"]').click();
+  await picker.locator('[data-clock-value="'+values.hour+'"]').click();
+  await picker.locator('[data-clock-value="'+values.minute+'"]').click();
+  await picker.locator('.ss-date-return').click();
   return picker;
 }
 module.exports=async ({browser,nativeHost,check})=>{
@@ -108,24 +110,24 @@ module.exports=async ({browser,nativeHost,check})=>{
         check('A typed noon time retains its local24-hour meaning',command.from_date===String(noon));
       }
       await update(page,{from_point:'',to_point:'',from_date:null,to_date:null});await choose(page,'from','__custom__');
-      let picker=await pick(page,'from',{month:2,year:2028,day:29,hour:7,minute:5});
+      let picker=await pick(page,'from',{month:2,year:2024,day:29,hour:7,minute:5});
       check('The localized calendar exposes leap-day/month/year/time controls in '+language,
-        await picker.getAttribute('role')==='dialog' && await picker.locator('.ss-date-weekday').count()===7 &&
-        await picker.locator('.ss-date-picker-title').textContent()===messages['timeline.calendar_months'].split('|')[1]+' 2028' &&
+        await picker.getAttribute('role')==='dialog' && await picker.locator('input').count()===0 && await picker.locator('.ss-date-weekday').count()===7 &&
+        await picker.locator('.ss-date-picker-title').textContent()===messages['timeline.calendar_months'].split('|')[1]+' 2024' &&
         await picker.locator('[data-day="29"]').getAttribute('aria-selected')==='true');
       if(language==='en') {
         await picker.locator('[data-day="29"]').press('ArrowRight');
-        check('Calendar arrows cross a leap-month boundary',await picker.locator('[data-date-part="month"]').inputValue()==='3' && await picker.locator('[data-day="1"]').getAttribute('aria-selected')==='true');
+        check('Calendar arrows cross a leap-month boundary',await picker.locator('[data-date-part="month"] .ss-control-label').textContent()===messages['timeline.calendar_months'].split('|')[2] && await picker.locator('[data-day="1"]').getAttribute('aria-selected')==='true');
         await picker.locator('[data-day="1"]').press('PageUp');await picker.locator('[data-day="29"]').click();
       }
       await picker.locator('#ss-custom-date-apply-from').click();await frames(page);
-      const leap=await page.evaluate(()=>new Date(2028,1,29,7,5).getTime()/1000);command=(await requests(page)).pop();
+      const leap=await page.evaluate(()=>new Date(2024,1,29,7,5).getTime()/1000);command=(await requests(page)).pop();
       check('Calendar Apply sends an exact epoch and the locale-formatted inline text in '+language,
-        command.from_date===String(leap) && await from.inputValue()===local('29.02.2028 07:05') && await page.locator('#ss-date-picker-from').count()===0);
+        command.from_date===String(leap) && await from.inputValue()===local('29.02.2024 07:05') && await page.locator('#ss-date-picker-from').count()===0);
       await update(page,{from_point:'__custom__',from_date:leap});await choose(page,'to','__custom__');
-      picker=await pick(page,'to',{month:3,year:2028,day:1,hour:16,minute:45});
+      picker=await pick(page,'to',{month:3,year:2024,day:1,hour:16,minute:45});
       await picker.locator('#ss-custom-date-apply-to').click();await frames(page);
-      const end=await page.evaluate(()=>new Date(2028,2,1,16,45).getTime()/1000);command=(await requests(page)).pop();
+      const end=await page.evaluate(()=>new Date(2024,2,1,16,45).getTime()/1000);command=(await requests(page)).pop();
       check('To has the symmetric date/time picker and preserves custom From in '+language,command.from_date===String(leap) && command.to_date===String(end));
       await update(page,{to_point:'__custom__',to_date:end});
       await page.locator('#ss-custom-date-calendar-from').click();await page.locator('#ss-date-picker-from [aria-selected="true"]').press('Escape');
@@ -134,6 +136,61 @@ module.exports=async ({browser,nativeHost,check})=>{
       await page.locator('#ss-custom-date-calendar-to').click();await page.locator('.ss-game-mode').click();
       check('An outside click closes the date picker in '+language,await page.locator('#ss-date-picker-to').count()===0);
     }
+    await page.evaluate(messages=>{const payload=JSON.parse(model.payload);
+      payload.localization={language:'en',messages,date_settings:{order:'MDY',separator:'/',first_weekday:0,hour12:true,
+        weekdays:['SystemSu','SystemMo','SystemTu','SystemWe','SystemTh','SystemFr','SystemSa'],
+        months:['SystemJan','SystemFeb','SystemMar','SystemApr','SystemMay','SystemJun','SystemJul','SystemAug','SystemSep','SystemOct','SystemNov','SystemDec'],periods:['AM','PM']}};
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},languages.en);await frames(page);
+    await update(page,{from_point:'',to_point:'',from_date:null,to_date:null});await choose(page,'from','__custom__');
+    const nativeInput=page.locator('#ss-custom-date-from');await nativeInput.fill('');await nativeInput.pressSequentially('022920240705PM');
+    check('Native MDY/12-hour settings govern the inline editor independently of English catalog defaults',
+      await nativeInput.inputValue()==='02/29/2024 07:05 PM' && await nativeInput.getAttribute('placeholder')==='mm/dd/yyyy hh:mm AM');
+    await page.locator('#ss-custom-date-calendar-from').click();let nativePicker=page.locator('#ss-date-picker-from');
+    check('Calendar weekdays, month names and Sunday-first layout come from native regional metadata',
+      await nativePicker.locator('.ss-date-weekday').first().textContent()==='SystemSu' &&
+      await nativePicker.locator('[data-date-part="month"]').textContent()==='SystemFeb' &&
+      await nativePicker.locator('.ss-date-week').nth(1).locator('[aria-hidden="true"]').count()===4);
+    await nativePicker.locator('[data-date-part="year"]').click();
+    const years=await nativePicker.locator('[data-year]').evaluateAll(nodes=>nodes.map(node=>+node.getAttribute('data-year')));
+    check('The same popover offers descending years from the current year to 2010',
+      years[0]===new Date().getFullYear() && years[years.length-1]===2010 && years.every((year,index)=>index===0||year===years[index-1]-1));
+    await nativePicker.locator('[data-year="2024"]').click();
+    check('Choosing a year opens a compact twelve-month grid within the original popover',
+      await page.locator('#ss-date-picker-from').count()===1 && await nativePicker.locator('[data-month]').count()===12);
+    await nativePicker.locator('[data-month="2"]').click();await nativePicker.locator('[data-date-part="hour"]').click();
+    check('Hour selection presents a graphical, keyboard-accessible clock instead of numeric fields',
+      await nativePicker.locator('.ss-date-clock').getAttribute('role')==='slider' &&
+      await nativePicker.locator('[data-clock-value]').count()===12 && await nativePicker.locator('input').count()===0);
+    await nativePicker.locator('.ss-date-clock').press('End');await nativePicker.locator('.ss-date-clock').press('ArrowRight');
+    check('The hour clock crosses 11 PM to midnight and updates the selected day period',
+      await nativePicker.locator('[data-date-part="hour"]').textContent()==='12' && await nativePicker.locator('.ss-date-period[aria-pressed="true"]').textContent()==='AM');
+    await nativePicker.locator('.ss-date-clock').press('ArrowLeft');
+    check('The hour clock crosses midnight backwards to 11 PM',
+      await nativePicker.locator('[data-date-part="hour"]').textContent()==='11' && await nativePicker.locator('.ss-date-period[aria-pressed="true"]').textContent()==='PM');
+    await nativePicker.locator('[data-clock-value="7"]').click();
+    await nativePicker.locator('.ss-date-clock').press('Home');await nativePicker.locator('.ss-date-clock').press('ArrowLeft');
+    check('The minute clock supports every minute using the keyboard, including wraparound to 59',
+      await nativePicker.locator('[data-date-part="minute"]').textContent()==='59' && await nativePicker.locator('.ss-date-clock').getAttribute('aria-valuenow')==='59');
+    await nativePicker.locator('.ss-date-return').click();
+    await nativePicker.locator('[data-date-part="year"]').click();await nativePicker.locator('[data-year="2010"]').click();
+    await nativePicker.locator('[data-month="1"]').click();await nativePicker.locator('[data-day="1"]').click();
+    await nativePicker.locator('[data-day="1"]').press('ArrowLeft');await nativePicker.locator('[data-day="1"]').press('PageUp');
+    check('Calendar day/month keyboard navigation cannot cross the January 2010 lower bound',
+      await nativePicker.locator('.ss-date-month-previous').isDisabled() && await nativePicker.locator('[data-date-part="year"]').textContent()==='2010' &&
+      await nativePicker.locator('[data-day="1"]').getAttribute('aria-selected')==='true');
+    await nativePicker.locator('[data-date-part="year"]').click();
+    await nativePicker.locator('[data-year="'+new Date().getFullYear()+'"]').click();await nativePicker.locator('[data-month="12"]').click();
+    await nativePicker.locator('[data-day="31"]').click();await nativePicker.locator('[data-day="31"]').press('ArrowRight');
+    check('Calendar day/month navigation cannot cross December of the current year',
+      await nativePicker.locator('.ss-date-month-next').isDisabled() && await nativePicker.locator('[data-day="31"]').getAttribute('aria-selected')==='true');
+    await nativePicker.locator('[data-date-part="year"]').click();await nativePicker.locator('[data-year="2024"]').click();
+    await nativePicker.locator('[data-month="2"]').click();await nativePicker.locator('[data-day="29"]').click();
+    await nativePicker.locator('#ss-custom-date-apply-from').click();
+    const nativeEpoch=await page.evaluate(()=>new Date(2024,1,29,19,59).getTime()/1000);
+    check('The native 12-hour graphical picker applies the exact PM epoch and formatted inline value',
+      (await requests(page)).pop().from_date===String(nativeEpoch) && await nativeInput.inputValue()==='02/29/2024 07:59 PM');
+    await page.evaluate(messages=>{const payload=JSON.parse(model.payload);payload.localization={language:'en',messages};
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},languages.en);await frames(page);
     await update(page,{from_point:'',to_point:'',from_date:null,to_date:null});
     await choose(page,'from','__custom__');await page.locator('#ss-custom-date-from').fill('25.11.2026 17:31');
     const beforeAccount=(await requests(page)).length;

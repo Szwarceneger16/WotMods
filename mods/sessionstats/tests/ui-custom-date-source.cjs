@@ -6,7 +6,7 @@ function actual(name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0 && end>start,'Missing shipped function '+name);return source.slice(start,end+7);
 }
-const names=['customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','applyTimelineRange'];
+const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','applyTimelineRange'];
 const code=names.map(actual).join('\n');
 function host(messages) {
   const timeline={from_point:'',to_point:'',from_date:null,to_date:null,time_points:[]},sent=[],errors=[];
@@ -39,6 +39,55 @@ module.exports=async({check})=>{
     state.customDates.to.value=text('01.03.2028 16:45');state.payload.account_key='replacement';c.applyTimelineRange(timeline,'to','__custom__','synthetic');
     state.payload.account_key='synthetic';state.payload.scopes.timeline={...timeline,to_point:'replacement'};c.applyTimelineRange(timeline,'to','__custom__','synthetic');
     check('Retained date actions cannot mutate a replacement account or range: '+language,sent.length===1);
+  }
+  for(const [order,separator,digits,expected] of [
+    ['MDY','/','022920280705','02/29/2028 07:05'],
+    ['YMD','-','202802290705','2028-02-29 07:05'],
+    ['DMY','-','290220280705','29-02-2028 07:05']]) {
+    const {context:c,state}=host(catalogs.pl),epoch=new Date(2028,1,29,7,5).getTime()/1000;
+    state.payload.localization={date_settings:{order,separator,first_weekday:0,hour12:false}};
+    check('Native regional '+order+' format overrides UI language in parsing, rendering, digit masks and placeholder',
+      c.customDateValue(expected)===epoch && c.customDateText(epoch)===expected && c.customDateMask(digits)===expected &&
+      c.customDatePlaceholder().startsWith(order==='YMD'?'yyyy':order==='MDY'?'mm':'dd'));
+    check('A native Sunday-first week is retained independently of Polish UI language: '+order,c.dateLocale().first===0);
+  }
+  {
+    const {context:c,state}=host(catalogs.en),epoch=new Date(2028,1,29,19,5).getTime()/1000;
+    state.payload.localization={date_settings:{order:'MDY',separator:'/',hour12:true,periods:['AM','PM'],first_weekday:0}};
+    check('Twelve-hour native formatting preserves exact afternoon epochs without Intl',
+      c.customDateText(epoch)==='02/29/2028 07:05 PM' && c.customDateValue('02/29/2028 07:05 PM')===epoch &&
+      c.customDateMask('022920280705PM')==='02/29/2028 07:05 PM');
+    check('Twelve-hour midnight/noon and invalid/absent day periods are unambiguous',
+      c.customDateValue('02/29/2028 12:00 AM')===new Date(2028,1,29,0,0).getTime()/1000 &&
+      c.customDateValue('02/29/2028 12:00 PM')===new Date(2028,1,29,12,0).getTime()/1000 &&
+      c.customDateValue('02/29/2028 00:00 AM')===null && c.customDateValue('02/29/2028 13:00 PM')===null &&
+      c.customDateValue('02/29/2028 07:05')===null && c.customDateValue('02/29/2028')===new Date(2028,1,29).getTime()/1000);
+    function typed(text) {
+      const input={value:'',selectionStart:0,selectionEnd:0,setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end;}};
+      for(const char of text) { const at=input.selectionStart;input.value=input.value.slice(0,at)+char+input.value.slice(input.selectionEnd);input.selectionStart=input.selectionEnd=at+char.length;c.maskDateInput(input); }
+      return input;
+    }
+    const input=typed('022920280705PM');
+    check('Sequential PM typing keeps the suffix caret and exact afternoon meaning',
+      input.value==='02/29/2028 07:05 PM' && input.selectionStart===19 && c.customDateValue(input.value)===epoch);
+    let intercepted=false;input.oninput=()=>c.maskDateInput(input);
+    c.deleteDateSeparator(input,{key:'Backspace',preventDefault(){intercepted=true;}});
+    const suffixAt=input.selectionStart;input.value=input.value.slice(0,suffixAt-1)+input.value.slice(suffixAt);input.selectionStart=input.selectionEnd=suffixAt-1;c.maskDateInput(input);
+    check('Backspace within a day-period suffix edits letters rather than deleting minute digits',
+      !intercepted && input.value==='02/29/2028 07:05 P' && input.value.replace(/[^0-9]/g,'').length===12);
+    input.value='02/29/2028 07:05 PM';input.selectionStart=input.selectionEnd=16;
+    input.value=input.value.slice(0,15)+input.value.slice(16);input.selectionStart=input.selectionEnd=15;c.maskDateInput(input);
+    check('Editing a minute digit keeps a pre-existing PM period in the unfinished draft',input.value==='02/29/2028 07:0 PM');
+    for(const periods of [['오전','오후'],['π.μ.','μ.μ.']]) {
+      state.payload.localization.date_settings.periods=periods;
+      const localized=typed('022920280705'+periods[1]);
+      check('Sequential localized PM entry survives shared prefixes and punctuation: '+periods[1],
+        localized.value==='02/29/2028 07:05 '+periods[1] && c.customDateValue(localized.value)===epoch);
+    }
+    state.payload.localization.date_settings.periods=['AM','PM'];
+    const old=c.dateLocale();state.payload.localization.date_settings={order:'YMD',separator:'-',hour12:false};
+    check('A complete regional date draft can be reformatted without changing its timestamp',
+      c.customDateText(c.customDateValue('02/29/2028 07:05 PM',old))==='2028-02-29 19:05');
   }
   const c=host(catalogs.en).context;
   const input={value:'011120260915',selectionStart:12,setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end;}};
