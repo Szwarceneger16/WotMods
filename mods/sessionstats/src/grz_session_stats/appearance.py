@@ -490,7 +490,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 }
 .ss-filters-compact .ss-sorting .ss-control-label, .ss-filters-compact .ss-page-center .ss-control-label { font-size:11rem; }
-.ss-filters-compact .ss-sorting .ss-select-trigger { padding-left:2rem; padding-right:2rem; }
+.ss-filters-compact .ss-sorting .ss-select-trigger { padding-left:1rem; padding-right:1rem; }
 .ss-filters-compact .ss-sorting .ss-select-arrow { width:5rem; height:5rem; margin-left:2rem; margin-right:1rem; }
 .ss-filters-compact .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
 .ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
