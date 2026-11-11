@@ -20,9 +20,13 @@ Colors follow the rounded integer actually displayed. The WN8 label and its
 value share a color; each Min/Avg/Max value has its own color, while that row's
 WN8 label follows Avg. Coverage markers follow the associated period WN8, not
 their count. Unknown or pending ratings keep the configured neutral color.
-Every rated label and value has one subtle, translucent neutral text halo for
-legibility on dark camo. This replaces the doubled opaque halo previously used
-for black ratings, preserving the exact ink colors without obscuring glyph edges.
+Colored labels and values have one subtle, translucent neutral text halo.
+Black ratings instead have a fine, light outline made of four zero-blur text
+shadows at 0.75 logical pixels in the cardinal directions. This gives small black
+labels and digits a visible edge against dark camouflage without a fuzzy glow.
+It scales with the native interface and preserves the exact black ink, cell
+background and dimensions. Both the panel and native battle-results cell use
+this treatment; changing rating bands or becoming unknown clears the old effect.
 
 Cards have a faint border in their headline WN8 color, drawn at 22% opacity as an
 absolute overlay. It does not change card dimensions or add a rating background.

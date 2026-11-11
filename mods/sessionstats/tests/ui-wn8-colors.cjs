@@ -4,6 +4,18 @@ const root=path.resolve(__dirname,'..');
 const read=name=>fs.readFileSync(path.join(root,'ui',name),'utf8');
 const bands=[[0,'#000000'],[300,'#cd3333'],[600,'#d77900'],[900,'#d7b600'],[1250,'#6d9521'],
   [1600,'#4c762e'],[1900,'#4a92b7'],[2350,'#83579d'],[2900,'#5a3175']];
+function hasBlackOutline(shadow){
+  const parts=String(shadow).split(/,(?![^()]*\))/),directions=[];
+  if(parts.length!==4)return false;
+  for(const part of parts){
+    if(!/rgba\(224,\s*216,\s*191,\s*0\.85\)/.test(part))return false;
+    const offsets=part.replace(/rgba\([^)]+\)/,'').match(/-?\d+(?:\.\d+)?(?:px|rem)?/g)||[];
+    const values=offsets.map(parseFloat);
+    if(values.length!==3||values[2]!==0||Math.abs(values[0])+Math.abs(values[1])!==0.75)return false;
+    directions.push(values.slice(0,2).join(','));
+  }
+  return new Set(directions).size===4;
+}
 function sourceFunction(source,name){const start=source.indexOf('    function '+name+'('),line=source.indexOf('\n',start);
   const end=source.slice(start,line).endsWith('}')?line:source.indexOf('\n    }\n',start)+7;
   assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end);}
@@ -20,7 +32,8 @@ function assertWN8Source(){
       const [minimum,color]=bands[index];assert.strictEqual(context.wn8Color(minimum),color,file+' lower boundary '+minimum);
       if(index)assert.strictEqual(context.wn8Color(minimum-1),bands[index-1][1],file+' previous band '+minimum);
       const node=new Node('span');context.paintWN8(node,minimum);assert.strictEqual(node.style.color,color);
-      assert.strictEqual(node.style.textShadow,'0 0 0.7rem rgba(212,204,176,0.35)',file+' uses one quiet halo for every rating band');
+      if(color==='#000000')assert(hasBlackOutline(node.style.textShadow),file+' gives black ink a fine zero-blur light outline');
+      else assert.strictEqual(node.style.textShadow,'0 0 0.7rem rgba(212,204,176,0.35)',file+' keeps colored rating halos unchanged');
       assert.strictEqual(node.attributes['data-wn8-value'],String(minimum));
       assert(!Object.keys(node.style).some(key=>/background|border|padding|width|height/i.test(key)),'Rating paint cannot change fill or geometry');
       context.paintWN8(node,null);assert.strictEqual(node.style.color,'');assert.strictEqual(node.style.textShadow,'');
@@ -28,6 +41,10 @@ function assertWN8Source(){
     }
     for(const value of [null,undefined,NaN,Infinity,-1,true,'1600'])assert.strictEqual(context.wn8Color(value),null,file+' rejects nonratings');
     assert.strictEqual(context.wn8Color(299.49),'#000000');assert.strictEqual(context.wn8Color(299.5),'#cd3333','Color follows the rounded displayed WN8');
+    const correction=new Node('span');
+    for(const value of [0,245,299.49]){context.paintWN8(correction,value);assert(hasBlackOutline(correction.style.textShadow),file+' outlines small black values including '+value);}
+    context.paintWN8(correction,299.5);assert.strictEqual(correction.style.textShadow,'0 0 0.7rem rgba(212,204,176,0.35)',file+' retires the outline at the displayed red boundary');
+    context.paintWN8(correction,0);context.paintWN8(correction,null);assert.strictEqual(correction.style.textShadow,'',file+' clears a stale black outline for unknown results');
     assert.strictEqual(context.wn8Color(2899.5),'#5a3175');
     if(file==='session_stats.js')panel=context;
   }
@@ -78,11 +95,18 @@ module.exports=async({browser,nativeHost,check})=>{
         1250:'rgb(109, 149, 33)',1600:'rgb(76, 118, 46)',1900:'rgb(74, 146, 183)',2350:'rgb(131, 87, 157)',
         2450:'rgb(131, 87, 157)',299:'rgb(0, 0, 0)',2900:'rgb(90, 49, 117)'};
       check('WN8 labels, headlines and distribution values use exact text-only colors in '+group+': '+JSON.stringify(audit),
-        audit.length>3&&audit.every(item=>rgb[item.value]===item.color&&item.styleBackground===''&&item.halo!=='none'&&item.halo.includes('0.35')));
+        audit.length>3&&audit.every(item=>rgb[item.value]===item.color&&item.styleBackground===''&&
+          (item.value<300?hasBlackOutline(item.halo):item.halo.includes('0.35'))));
+      check('Black WN8 has a visible crisp edge without changing text bounds in '+group,await page.locator('[data-wn8-value="299"]').first().evaluate(node=>{
+        const before=node.getBoundingClientRect(),shadow=node.style.textShadow;node.style.textShadow='none';
+        const after=node.getBoundingClientRect();node.style.textShadow=shadow;
+        return before.width===after.width&&before.height===after.height;
+      }));
       check('The visible WN8 label carries the same color as its headline value in '+group,
         await page.locator('.ss-headline .ss-kpi').last().evaluate(node=>getComputedStyle(node.children[0]).color===getComputedStyle(node.children[1]).color));
       if(group==='vehicles'||group==='maps')check('Every nested history rating is colored without a badge fill in '+group,
         await page.locator('.ss-map-battles').first().locator('.ss-map-battle-wn8[data-wn8-value]').count()===bands.length);
+      if(group==='vehicles')console.log('GRZ_BLACK_WN8_QA_V1 '+(await page.locator('.ss-map-battles').first().screenshot({type:'png'})).toString('base64'));
       const borders=await page.locator('.ss-group').first().evaluate(card=>{
         const border=card.querySelector('.ss-wn8-card-border'),rect=card.getBoundingClientRect();
         const original={width:rect.width,height:rect.height,color:getComputedStyle(border).borderColor,
@@ -99,4 +123,5 @@ module.exports=async({browser,nativeHost,check})=>{
   }finally{await page.close();}
 };
 module.exports.assertWN8Source=assertWN8Source;
+module.exports.hasBlackOutline=hasBlackOutline;
 if(require.main===module){assertWN8Source();console.log('Actual-source text-only WN8 palette and semantic rendering regressions passed.');}

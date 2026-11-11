@@ -1,5 +1,9 @@
 SESSION STATS — CHANGELOG
 
+0.8.1 • 2026-11-11
+• Keep black WN8 legible on dark camouflage with a fine, light, zero-blur text
+  outline in the panel and native battle results. Other rating halos are unchanged.
+
 0.8.0 • 2026-11-11
 • Use a subtle, consistent WN8 text halo and a faint matching card outline.
 • Keep expanded missions readable below bonus tables when side-by-side content
