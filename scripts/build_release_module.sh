@@ -31,6 +31,59 @@ case "$module" in
     python3 scripts/sessionstats/release.py --verify-directory mods/sessionstats/dist --version "$version"
     source_dir=mods/sessionstats/dist
     ;;
+  hangarsync)
+    bash scripts/sessionstats/python27.sh
+    export PYTHON27="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/sessionstats-cpython27/Python-2.7.18/python"
+    [[ -x "$PYTHON27" ]] || { echo 'Verified Python 2.7 interpreter missing' >&2; exit 1; }
+    bash scripts/hangarsync/validate.sh
+    # The native harness first tests its reviewed baseline. The release planner
+    # can allocate a later independent version or a newer WoT target directory.
+    python3 - "$version" "$client" "$PYTHON27" <<'PY'
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+version, client, python27 = sys.argv[1:]
+directory = Path('mods/hangarsync/dist')
+baseline = Path('mods/hangarsync/VERSION').read_text(encoding='ascii').strip()
+baseline_zip = directory / ('GRZ_Hangar_Sync-v' + baseline + '.zip')
+baseline_zip.unlink()
+expected = {'GRZ_Hangar_Sync.wotmod', 'GRZ_Hangar_Sync-v' + version + '.zip'}
+command = [sys.executable, 'mods/hangarsync/tools/build.py',
+           '--version', version, '--client-version', client]
+digests = None
+for _ in range(2):
+    built = subprocess.run(command, check=True, capture_output=True, text=True)
+    report = json.loads(built.stdout)
+    entries = list(directory.iterdir())
+    if ({entry.name for entry in entries} != expected or
+            any(not entry.is_file() or entry.is_symlink() for entry in entries) or
+            report['client_version'] != client):
+        raise SystemExit('Unexpected planned Hangar build output')
+    actual = {entry.name: hashlib.sha256(entry.read_bytes()).hexdigest() for entry in entries}
+    if digests is not None and actual != digests:
+        raise SystemExit('Planned Hangar build is not reproducible')
+    digests = actual
+
+subprocess.run([python27, '-B', 'scripts/hangarsync/bootstrap_smoke.py',
+                str(directory / 'GRZ_Hangar_Sync.wotmod')], check=True)
+spec = importlib.util.spec_from_file_location('hangar_release_privacy',
+                                            'scripts/hangarsync/privacy.py')
+audit = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(audit)
+problems = []
+for entry in sorted(directory.iterdir()):
+    problems.extend(audit.scan_bytes(entry.name, entry.read_bytes(), python27))
+if problems:
+    labels = sorted({label for _, found in problems for label in found})
+    raise SystemExit('Planned Hangar privacy audit blocked: ' + ','.join(labels))
+print('Planned Hangar version/client build is reproducible and privacy-audited')
+PY
+    source_dir=mods/hangarsync/dist
+    ;;
   *)
     echo "Unknown module builder: $module" >&2
     exit 2

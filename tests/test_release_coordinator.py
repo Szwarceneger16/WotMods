@@ -15,15 +15,24 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 import release_coordinator as coordinator
 import release_installers as installers
 from test_release_installers import build
+from test_hangar_release_installers import build_hangar
 
 
 SHA = 'a' * 40
 PREVIOUS = {'staysharp': '1.8.22', 'sessionstats': '0.3.15'}
 
 
+def two_module_registry():
+    """Keep historical fixtures explicit after the production set grows."""
+    configured = json.loads(json.dumps(coordinator.registry()))
+    configured['modules'] = [entry for entry in configured['modules']
+                             if entry['id'] in PREVIOUS]
+    return configured
+
+
 class PlanTests(unittest.TestCase):
     def setUp(self):
-        self.registry = coordinator.registry()
+        self.registry = two_module_registry()
 
     def make(self, paths, previous=PREVIOUS, tag='sessionstats-v0.3.15',
              client=installers.CLIENT, previous_client=installers.CLIENT):
@@ -157,6 +166,16 @@ class PlanTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'not registered'):
                 coordinator.registry(path)
 
+    def test_supported_hangar_format_does_not_register_or_build_absent_source(self):
+        self.assertIn('hangarsync', installers.KINDS)
+        self.assertEqual({entry['id'] for entry in self.registry['modules']}, set(PREVIOUS))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'modules.json'
+            path.write_text(json.dumps(self.registry))
+            self.assertEqual(coordinator.registry(path), self.registry)
+        with self.assertRaisesRegex(ValueError, 'Unregistered mod'):
+            self.make(['mods/hangarsync/source/mod_grz_hangar_sync.py'])
+
     def test_new_third_module_is_built_while_two_prior_zips_are_carried(self):
         extended = json.loads(json.dumps(self.registry))
         extended['modules'].append({'id': 'thirdmod', 'display_name': 'Third',
@@ -224,6 +243,13 @@ class PlanTests(unittest.TestCase):
 
 class AssemblyTests(unittest.TestCase):
     def setUp(self):
+        configured = two_module_registry()
+        for scoped_patch in (
+            patch.object(coordinator, 'registry', return_value=configured),
+            patch.object(installers, 'registered_kinds', return_value=set(PREVIOUS)),
+        ):
+            scoped_patch.start()
+            self.addCleanup(scoped_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -302,6 +328,177 @@ class AssemblyTests(unittest.TestCase):
             self.assertEqual([report[0] for report in reports], ['staysharp'])
             with self.assertRaises(ValueError):
                 installers.verify_directory(only_old)
+
+
+class HangarMigrationTests(unittest.TestCase):
+    """Exercise a real third installer while old Releases retain their own set."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.config = two_module_registry()
+        self.config['modules'].append({
+            'id': 'hangarsync', 'display_name': 'Hangar Sync',
+            'base_version_file': 'mods/hangarsync/VERSION',
+            'installer_prefix': 'GRZ_Hangar_Sync-v',
+            'source_paths': ['mods/hangarsync/**', 'scripts/hangarsync/**',
+                             'scripts/sessionstats/python27.sh'],
+        })
+        self.current = dict(PREVIOUS, hangarsync='0.14.0')
+        for entry in self.config['modules']:
+            path = self.root / entry['base_version_file']
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(self.current[entry['id']] + '\n')
+        registry_path = self.root / 'scripts/release_modules.json'
+        registry_path.parent.mkdir(parents=True, exist_ok=True)
+        registry_path.write_text(json.dumps(self.config))
+        self.previous = self.root / 'previous'
+        self.previous.mkdir()
+        for kind, version in PREVIOUS.items():
+            source = self.root / ('source-' + kind)
+            build(source, kind, version)
+            installers.package(source, self.previous, kind)
+        installers.verify_directory(self.previous, expected_kinds=set(PREVIOUS))
+        self.built = self.root / 'built'
+        self.built.mkdir()
+        self.output_count = 0
+        for scoped_patch in (
+            patch.object(coordinator, 'ROOT', self.root),
+            patch.object(coordinator, 'registry', return_value=self.config),
+            patch.object(installers, 'registered_kinds', return_value=set(self.current)),
+        ):
+            scoped_patch.start()
+            self.addCleanup(scoped_patch.stop)
+
+    def plan(self, paths, previous=None, client=installers.CLIENT):
+        return coordinator.make_plan(
+            self.config, paths, PREVIOUS if previous is None else previous,
+            'wotmods-v1.0.300', SHA, 312, client, installers.CLIENT)
+
+    def hangar(self, directory, version='0.14.0', client=installers.CLIENT):
+        source = self.root / ('native-hangar-' + str(self.output_count) + '-' + version)
+        candidate = build_hangar(source, version=version, client=client)
+        target = directory / candidate.name
+        shutil.copy2(candidate, target)
+        return target
+
+    def assemble(self, result, previous=None, built=None):
+        self.output_count += 1
+        output = self.root / ('release-' + str(self.output_count))
+        planned = self.root / ('plan-' + str(self.output_count) + '.json')
+        notes = self.root / ('notes-' + str(self.output_count) + '.md')
+        planned.write_text(json.dumps(result))
+        coordinator.assemble(SimpleNamespace(
+            plan=planned, previous_dir=self.previous if previous is None else previous,
+            built_dir=self.built if built is None else built, output=output,
+            notes=notes, repository='example/fixture'))
+        return output, notes
+
+    def introduction(self):
+        self.hangar(self.built)
+        return self.assemble(self.plan([]))[0]
+
+    def test_first_introduction_builds_only_hangar_and_preserves_previous_zips(self):
+        before = {path.name: path.read_bytes() for path in self.previous.iterdir()}
+        candidate = self.hangar(self.built)
+        native_bytes = candidate.read_bytes()
+        result = self.plan(['mods/hangarsync/source/mod_grz_hangar_sync.py'])
+        self.assertEqual(result['changed'], ['hangarsync'])
+        self.assertEqual(result['previous_modules'], sorted(PREVIOUS))
+        self.assertEqual(result['versions'], self.current)
+        output, notes = self.assemble(result)
+        for name, data in before.items():
+            self.assertEqual((output / name).read_bytes(), data)
+        self.assertEqual((output / candidate.name).read_bytes(), native_bytes)
+        self.assertEqual({report[0] for report in installers.verify_directory(output)}, set(self.current))
+        self.assertIn('Hangar Sync', notes.read_text())
+        self.assertIn('requires a validated local configuration', notes.read_text())
+        self.assertIn(installers.digest(native_bytes), notes.read_text())
+
+    def test_newly_registered_hangar_is_required_even_without_matching_diff(self):
+        result = self.plan([])
+        self.assertTrue(result['publish'])
+        self.assertEqual(result['changed'], ['hangarsync'])
+        self.assertEqual(result['matrix'], [{'mod': 'hangarsync', 'version': '0.14.0'}])
+        with self.assertRaisesRegex(ValueError, 'Build artifacts mismatch'):
+            self.assemble(result)
+
+    def test_hangar_only_update_carries_both_other_installers(self):
+        previous = self.introduction()
+        before = {path.name: path.read_bytes() for path in previous.iterdir()
+                  if not path.name.startswith('GRZ_Hangar_Sync-v')}
+        for path in self.built.iterdir():
+            path.unlink()
+        self.hangar(self.built, version='0.14.1')
+        result = self.plan(['scripts/hangarsync/privacy.py'], previous=self.current)
+        self.assertEqual(result['changed'], ['hangarsync'])
+        self.assertEqual(result['versions'], dict(self.current, hangarsync='0.14.1'))
+        output, _ = self.assemble(result, previous=previous)
+        for name, data in before.items():
+            self.assertEqual((output / name).read_bytes(), data)
+
+    def test_stats_only_update_carries_the_hangar_native_zip_unchanged(self):
+        previous = self.introduction()
+        original = (previous / 'GRZ_Hangar_Sync-v0.14.0.zip').read_bytes()
+        for path in self.built.iterdir():
+            path.unlink()
+        source = self.root / 'updated-stats'
+        build(source, 'sessionstats', '0.3.16')
+        installers.package(source, self.built, 'sessionstats')
+        result = self.plan(['mods/sessionstats/src/main.py'], previous=self.current)
+        self.assertEqual(result['changed'], ['sessionstats'])
+        output, _ = self.assemble(result, previous=previous)
+        self.assertEqual((output / 'GRZ_Hangar_Sync-v0.14.0.zip').read_bytes(), original)
+
+    def test_client_retarget_moves_all_three_installers_without_rebuilding_binaries(self):
+        previous = self.introduction()
+        binaries = {kind: {name.split('/', 2)[2]: data for name, data in files.items()
+                          if name.startswith('mods/' + client + '/')}
+                    for kind, _, client, files, _ in installers.verify_directory(previous)}
+        for path in self.built.iterdir():
+            path.unlink()
+        self.built.rmdir()
+        result = self.plan([], previous=self.current, client='2.5.0.0')
+        self.assertEqual(result['changed'], [])
+        self.assertTrue(result['publish'])
+        output, _ = self.assemble(result, previous=previous)
+        for kind, _, client, files, _ in installers.verify_directory(output):
+            self.assertEqual(client, '2.5.0.0')
+            self.assertEqual({name.split('/', 2)[2]: data for name, data in files.items()
+                              if name.startswith('mods/' + client + '/')}, binaries[kind])
+
+    def test_missing_old_installer_cannot_be_excused_as_a_new_module_migration(self):
+        self.hangar(self.built)
+        (self.previous / 'Session-Stats-v0.3.15.zip').unlink()
+        with self.assertRaisesRegex(ValueError, 'exactly'):
+            self.assemble(self.plan([]))
+
+    def test_extra_built_installer_cannot_be_published_with_hangar_only_update(self):
+        previous = self.introduction()
+        for path in self.built.iterdir():
+            path.unlink()
+        self.hangar(self.built, version='0.14.1')
+        shutil.copy2(previous / 'Session-Stats-v0.3.15.zip', self.built)
+        with self.assertRaisesRegex(ValueError, 'Build artifacts mismatch'):
+            self.assemble(self.plan(['mods/hangarsync/source/feature.py'], previous=self.current),
+                          previous=previous)
+
+    def test_hangar_and_stats_rapid_merges_preserve_independent_versions(self):
+        first = self.plan(['mods/hangarsync/source/feature.py'], previous=self.current)
+        second = self.plan(['mods/sessionstats/src/feature.py'], previous=first['versions'])
+        reverse_first = self.plan(['mods/sessionstats/src/feature.py'], previous=self.current)
+        reverse_second = self.plan(['mods/hangarsync/source/feature.py'], previous=reverse_first['versions'])
+        expected = dict(self.current, hangarsync='0.14.1', sessionstats='0.3.16')
+        self.assertEqual(second['versions'], expected)
+        self.assertEqual(reverse_second['versions'], expected)
+        compiler = self.plan(['scripts/sessionstats/python27.sh'], previous=self.current)
+        self.assertEqual(compiler['changed'], ['sessionstats', 'hangarsync'])
+
+    def test_removed_registered_hangar_is_rejected_after_it_has_been_published(self):
+        old_registry = dict(self.config, modules=self.config['modules'][:2])
+        with self.assertRaisesRegex(ValueError, 'removed or unknown'):
+            coordinator.make_plan(old_registry, [], self.current, 'wotmods-v1.0.300',
+                                  SHA, 312, installers.CLIENT, installers.CLIENT)
 
 
 if __name__ == '__main__':

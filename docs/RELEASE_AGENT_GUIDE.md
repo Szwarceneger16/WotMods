@@ -26,6 +26,20 @@ are in `scripts/release_installers.py`; the per-module build entry point is
 `scripts/build_release_module.sh`. No module is silently discovered from an
 unverified or unspecified directory.
 
+Installer-format support and production registration are separate. The verifier
+may support a pending module before that module's source reaches `main`; the
+default complete-snapshot check still requires exactly the IDs in the current
+production registry. Supporting an additional format never silently registers
+it, permits an extra installer, or tolerates a missing registered module. Only
+the previous tagged registry may select an older historical snapshot set.
+
+Hangar Sync installer support is prepared independently of its activation. Keep
+the registry at the currently shipped modules until the Hangar source, native
+validation and registry activation have been reviewed together. Incorporate the
+accepted capability change into the Hangar feature before activating its entry.
+Its candidate PR checks do not upload installers; production artifacts and
+Releases come only from the accepted-main transaction below.
+
 ## 2. One locked transaction per accepted merge
 
 `Publish WotMods snapshot` runs on relevant `main` pushes or an explicit manual
@@ -50,6 +64,8 @@ none of the registered sources can silently miss a production run.
 The source commit is the immutable `github.sha` associated with the accepted
 workflow invocation. Do **not** check out a moving `main` after selecting a
 workflow version: it could run a different CI harness against newer source.
+The initial dependency job also rejects manual invocations on another branch,
+pull-request events and fork repositories before planning or building artifacts.
 
 1. Read the current repository-wide Latest published full Release and verify
    `isImmutable`; fail if Releases exist but none is marked Latest.
