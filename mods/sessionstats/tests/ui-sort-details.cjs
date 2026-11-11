@@ -85,6 +85,17 @@ module.exports=async ({browser,nativeHost,check})=>{
         (await page.locator('.ss-group-wn8-kpi .ss-kpi-label').allTextContents()).every(text=>text===wn8Label)&&
         await page.locator('.ss-group-wn8-kpi[data-ss-sort-active="battle_wn8"]').count()===4&&
         await page.locator('.ss-group-sort-value').count()===0&&await page.locator('#ss-sort-chronology .ss-select-trigger').isDisabled());
+      const centeredHighlights=await page.locator('.ss-group-kpi.ss-sort-active-value').evaluateAll((nodes,scale)=>nodes.map(node=>{
+        const box=node.getBoundingClientRect(),css=getComputedStyle(node);
+        const middle=(box.left+parseFloat(css.paddingLeft)+box.right-parseFloat(css.paddingRight))/2;
+        return [...node.querySelectorAll('.ss-kpi-label,.ss-kpi-value')].every(child=>{
+          const range=document.createRange();range.selectNodeContents(child);const ink=range.getBoundingClientRect();
+          return getComputedStyle(child).textAlign==='center'&&Math.abs((ink.left+ink.right)/2-middle)<=1.5*scale&&
+            ink.left>=box.left+parseFloat(css.paddingLeft)-scale&&ink.right<=box.right-parseFloat(css.paddingRight)+scale;
+        });
+      }),scale);
+      check('Highlighted KPI labels and values are centered inside symmetric padding: '+caption,
+        centeredHighlights.length===4&&centeredHighlights.every(Boolean));
       if(language==='en'&&scale===1){
         for(const statistic of ['min','max']){
           await page.evaluate(statistic=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;

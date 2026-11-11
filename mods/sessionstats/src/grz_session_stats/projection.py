@@ -30,6 +30,7 @@ def valid_order(options, kind=None):
     return (isinstance(options, dict) and set(options) == set(DEFAULT_ORDER) and
             options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'battle_wn8', 'battles', 'win_rate') and
             (options.get('metric') != 'battles' or kind is None or kind in ('vehicles', 'maps')) and
+            (options.get('metric') != 'win_rate' or kind is None or kind in ('vehicles', 'maps', 'tiers')) and
             options.get('statistic') in ('min', 'avg', 'max') and
             options.get('direction') in ('asc', 'desc') and
             options.get('chronology') in ('newest', 'oldest', 'tier_asc', 'tier_desc') and
@@ -397,8 +398,7 @@ class ScopeIndex(object):
                 known = record.get('mode') == 'random' and record.get('outcome') in _OUTCOMES
                 value = None
                 if known:
-                    value = ((100.0 if record['outcome'] == 'win' else 0.0) if metric == 'win_rate' else
-                             item[1] if metric == 'battle_wn8' else
+                    value = (item[1] if metric == 'battle_wn8' else
                              record.get('currencies', {}).get('credits', {}).get('net') if metric == 'credits_net' else
                              record.get(metric))
             else:
@@ -494,8 +494,6 @@ class ScopeIndex(object):
                         row['details'] = record['details']
                     if record.get('xp_bonus_applied'):
                         row['xp_bonus_applied'] = True
-                    if options['metric'] == 'win_rate':
-                        row['sort_value'] = row['stats']['win_rate']
                     rows.append(row)
             else:
                 visible = ordered[start:start + PAGE_SIZE]

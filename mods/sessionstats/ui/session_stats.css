@@ -155,6 +155,7 @@ button:disabled { opacity:0.45; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:#252614; color:#eaddb4; }
 .ss-group-tab.is-active { color:#f1d195; background:linear-gradient(#292614, #35301b); box-shadow:inset 0 -2rem #b17d2b, inset 0 1rem #646149; }
 .ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
+.ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
 .ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
 .ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
 .ss-filters-wide .ss-list-meta { flex:0 0 auto; white-space:nowrap; }
@@ -295,7 +296,12 @@ button:disabled { opacity:0.45; }
 .ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:#e8debf; background:#111309; box-shadow:inset 2rem 0 #b3b69a; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
-.ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
+.ss-outcome-image { display:block; position:relative; overflow:hidden; flex-shrink:0; width:64rem; height:38rem; border:1rem solid #555944; border-radius:5rem; background:#293020; }
+.ss-outcome-win .ss-outcome-image { border-color:#cedc9d; background:#2a351d; }
+.ss-outcome-loss .ss-outcome-image { border-color:#dfb493; background:#352b1e; }
+.ss-outcome-draw .ss-outcome-image { border-color:#c4c1a7; background:#2c2e23; }
+.ss-outcome-image-layer { display:block; position:absolute; left:0; right:0; top:0; bottom:0; background-repeat:no-repeat; background-position:center; background-size:contain; pointer-events:none; }
+.ss-battle-map-thumb { margin:0 0 0 8rem; border:1rem solid #555944; border-radius:5rem; background-color:#111309; }
 .ss-outcome-label { display:block; text-align:center; }
 .ss-outcome-art .ss-outcome-label { min-width:0; padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
@@ -307,6 +313,8 @@ button:disabled { opacity:0.45; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
 .ss-group-sort-value { display:block; flex:0 1 auto; min-width:0; max-width:100%; margin:2rem 8rem 2rem 0; padding:2rem 5rem; border:1rem solid #555944; border-radius:5rem; background:#292e1f; color:#f0d392; font-size:12rem; line-height:16rem; white-space:normal; overflow-wrap:normal; }
 .ss-group .ss-sort-active-value { border-radius:5rem; background:#3d2e13; box-shadow:inset 0 0 0 1rem #e7a23b; }
+.ss-group-kpi.ss-sort-active-value { padding:0 5rem; text-align:center; }
+.ss-group-kpi.ss-sort-active-value .ss-kpi-label, .ss-group-kpi.ss-sort-active-value .ss-kpi-value { text-align:center; }
 .ss-summary-meta { margin:3rem 4rem; }
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
@@ -315,7 +323,8 @@ button:disabled { opacity:0.45; }
 @media (max-width:560px) {
   .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
   .ss-battle .ss-group-name { width:0; flex:1; }
-  .ss-outcome-image { width:36rem; height:25rem; }
+  .ss-outcome-image { width:48rem; height:29rem; }
+  .ss-battle-map-thumb { width:42rem; height:26rem; margin-left:4rem; }
   .ss-battle-outcome { margin-left:4rem; }
   .ss-outcome-label { font-size:11rem; }
 }
@@ -367,7 +376,6 @@ button:disabled { opacity:0.45; }
 .ss-date-picker .ss-date-day { margin:0; border:1rem solid transparent; border-radius:5rem; background:transparent; box-shadow:none; }
 .ss-date-weekday { color:#c4c1a7; }
 .ss-date-picker .ss-date-day[aria-selected="true"], .ss-date-picker .ss-date-option[aria-selected="true"] { border-color:#e7a23b; color:#f0d392; background:#3d2e13; box-shadow:inset 0 0 4rem rgba(213,191,132,0.12); }
-.ss-date-picker .ss-date-day:disabled, .ss-date-picker .ss-date-option:disabled, .ss-date-picker .ss-date-clock-number:disabled { opacity:0.45; cursor:default; }
 .ss-date-day .ss-control-label { font-size:12rem; line-height:18rem; }
 .ss-date-options { display:flex; flex-wrap:wrap; width:100%; max-height:190rem; overflow-y:auto; }
 .ss-date-picker .ss-date-option { flex:0 0 33.3333%; width:33.3333%; min-width:0; height:30rem; min-height:30rem; margin:0; padding:3rem; border-color:transparent; background:transparent; box-shadow:none; }
@@ -391,6 +399,11 @@ button:disabled { opacity:0.45; }
 .ss-date-picker .ss-date-clock-inner { width:22rem; min-width:22rem; height:22rem; min-height:22rem; margin:-11rem 0 0 -11rem; color:#c4c1a7; }
 .ss-date-clock-inner .ss-control-label { font-size:10rem; line-height:14rem; }
 .ss-date-picker .ss-date-clock-number[aria-pressed="true"] { border-color:#e7a23b; background:#3d2e13; color:#f0d392; }
+/* Explicit neutral paint survives native disabled-button rendering. Keep the
+   numbers readable; opacity alone can leave an unavailable date looking live. */
+.ss-date-picker .ss-date-unavailable { opacity:1; color:#969c96; border-color:#464c46; background:#2b302b; box-shadow:none; text-shadow:none; cursor:default; }
+.ss-date-picker .ss-date-unavailable .ss-control-label { color:#969c96; text-shadow:none; }
+.ss-date-picker .ss-date-unavailable .ss-date-chevron { border-color:#969c96; }
 .ss-date-picker-actions { display:flex; justify-content:flex-end; min-width:0; margin-top:6rem; }
 .ss-date-picker-actions > .ss-control { margin-left:5rem; }
 .ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:30rem; min-height:30rem; padding:3rem 6rem; }

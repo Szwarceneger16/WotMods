@@ -6,7 +6,7 @@ function actual(name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0 && end>start,'Missing shipped function '+name);return source.slice(start,end+7);
 }
-const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','timelineDateBound','customDateBounds','applyTimelineRange'];
+const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','timelineDateBound','customDateBounds','boundedDateTime','applyTimelineRange'];
 const code=names.map(actual).join('\n');
 function host(messages) {
   const timeline={from_point:'',to_point:'',from_date:null,to_date:null,time_points:[]},sent=[],errors=[];
@@ -61,6 +61,24 @@ module.exports=async({check})=>{
     timeline.from_point='';state.customDates={from:{value:'29.02.2028 12:35'}};
     const empty=c.customDateBounds(timeline,'to');
     check('An impossible opposite draft produces no selectable graphical interval',empty.minimum>empty.maximum);
+  }
+  {
+    const {context:c,state,timeline}=host(catalogs.en),now=new Date(2028,1,29,12,34).getTime()/1000;
+    c.Date.now=()=>now*1000+45000;
+    let bounds=c.customDateBounds(timeline,'from');
+    check('Selecting today with a later clock from yesterday clamps to the current minute instead of midnight',
+      c.boundedDateTime(2028,2,29,23,55,bounds)===now);
+    check('Selecting today also clamps future minutes in the current hour',c.boundedDateTime(2028,2,29,12,59,bounds)===now);
+    const yesterday=new Date(2028,1,28,23,55).getTime()/1000;
+    check('Changing to a past day preserves an already valid clock',c.boundedDateTime(2028,2,28,23,55,bounds)===yesterday);
+    state.customDates={to:{value:'29.02.2028 12:30'}};bounds=c.customDateBounds(timeline,'from');
+    check('The From clock clamps below the opposite To minute as well as below now',
+      c.boundedDateTime(2028,2,29,23,55,bounds)===now-5*60);
+    state.customDates={from:{value:'29.02.2028 12:33'}};bounds=c.customDateBounds(timeline,'to');
+    check('The To clock clamps above the opposite From minute without changing the chosen day',
+      c.boundedDateTime(2028,2,29,0,15,bounds)===now);
+    check('A day with no valid minute is rejected instead of silently moving to another day',
+      c.boundedDateTime(2028,2,28,23,55,bounds)===null);
   }
   for(const [order,separator,digits,expected] of [
     ['MDY','/','022920280705','02/29/2028 07:05'],

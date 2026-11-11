@@ -19,10 +19,11 @@ function run() {
   root.contains = node => root.children.includes(node);
   const context = { root, mapPreview: preview, mapPreviewImage: image, mapPreviewTarget: null,
     state: {group: 'maps', nativeScale: 1}, hideHelp() {}, t: (key, args) => key + args[0],
-    element: () => new Node(), append(parent, node) { parent.children.push(node); node.parentNode = parent; return node; } };
+    element: (tag, className) => { const node = new Node(); node.className = className || ''; return node; },
+    append(parent, node) { parent.children.push(node); node.parentNode = parent; return node; } };
   vm.createContext(context);
   const source = fs.readFileSync(path.join(__dirname, '../ui/session_stats.js'), 'utf8');
-  vm.runInContext(['nativeVisualSource', 'appendVisual', 'hideMapPreview', 'showMapPreview']
+  vm.runInContext(['nativeVisualSource', 'appendVisual', 'appendBattleMap', 'hideMapPreview', 'showMapPreview']
     .map(name => sourceFunction(source, name)).join('\n'), context);
   const small = 'img://gui/maps/icons/map/small/synthetic.png';
   const screen = 'img://gui/maps/icons/map/screen/synthetic.dds';
@@ -62,6 +63,22 @@ function run() {
   const count = root.children.length;
   context.appendVisual(root, {visual: {kind: 'map', src: 'https://example.test/map.png', preview_src: screen}});
   assert.strictEqual(root.children.length, count, 'Invalid base image cannot create a thumbnail');
+  context.state.group = 'battles'; bounds = {left: 40, top: 30, width: 700, height: 730};
+  context.appendBattleMap(root, {map: 'Synthetic map', map_visual: {
+    kind: 'map', src: small, preview_src: screen, preview_mode: 'image'}});
+  target = root.children[root.children.length - 1];
+  target.getBoundingClientRect = () => ({left: 60, top: 90, right: 114, width: 54, height: 32});
+  assert(target.className.includes('ss-battle-map-thumb'), 'Battle map reuses the native thumbnail renderer');
+  context.showMapPreview(target);
+  assert.strictEqual(image.style.backgroundImage, 'url("' + screen + '")', 'Battles share the high-resolution hover');
+  assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '128px');
+  const battleCount = root.children.length;
+  context.appendBattleMap(root, {map_visual: {kind: 'vehicle', src: small}});
+  context.appendBattleMap(root, {map_visual: {kind: 'map', src: 'https://example.test/map.png'}});
+  context.appendBattleMap(root, {map: 'Unresolved map'});
+  assert.strictEqual(root.children.length, battleCount, 'Missing or unsafe battle map metadata creates no invented image');
+  context.state.group = 'vehicles'; context.showMapPreview(target);
+  assert.strictEqual(preview.style.display, 'none', 'Battle hover cannot leak into another group');
   console.log('Map preview quality: verified screen selection, unchanged thumbnails, square bounded minimap and safe fallback passed.');
 }
 module.exports = run;

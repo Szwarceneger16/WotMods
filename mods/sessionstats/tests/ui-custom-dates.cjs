@@ -271,5 +271,51 @@ module.exports=async ({browser,nativeHost,check})=>{
         await page.locator('#ss-date-picker-'+field+' .ss-date-picker-cancel').click();
       }
     }
+    await page.setViewportSize({width:1800,height:1200});
+    const today=await page.evaluate(messages=>{
+      const NativeDate=Date,now=new NativeDate(2028,10,11,12,34,45).getTime();
+      window.Date=class extends NativeDate {
+        constructor(...args){super(...(args.length?args:[now]));}
+        static now(){return now;}
+      };
+      const payload=JSON.parse(model.payload);payload.account_key='synthetic-today-clock';
+      payload.viewport={width:1800,height:1200,scale:1};payload.window_size=[1200,950];
+      payload.localization={language:'en',messages,date_settings:{order:'DMY',separator:'.',hour12:false}};
+      const scope=payload.scopes.timeline;scope.period_id='synthetic-today-clock-period';scope.time_points=[];
+      scope.from_point=scope.to_point='';scope.from_date=scope.to_date=null;
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      return {yesterday:new Date(2028,10,10,23,55).getTime()/1000,now:Math.floor(now/60000)*60};
+    },languages.en);await frames(page);
+    for(const field of ['from','to']) {
+      const values={from_point:'',to_point:'',from_date:null,to_date:null};
+      values[field+'_point']='__custom__';values[field+'_date']=today.yesterday;
+      await update(page,values);await page.locator('#ss-custom-date-calendar-'+field).click();
+      const currentPicker=page.locator('#ss-date-picker-'+field);
+      await currentPicker.locator('[data-day="11"]').click();
+      check('Choosing today clamps a stale later '+field+' clock to the current minute',
+        await currentPicker.locator('[data-date-part="hour"]').textContent()==='12' &&
+        await currentPicker.locator('[data-date-part="minute"]').textContent()==='34' &&
+        await currentPicker.locator('#ss-custom-date-apply-'+field).isEnabled());
+      check('Future dates in the '+field+' picker have explicit neutral disabled paint',
+        await currentPicker.locator('[data-day="12"]').evaluate(node=>{
+          const style=getComputedStyle(node),label=getComputedStyle(node.querySelector('.ss-control-label'));
+          return node.disabled && node.getAttribute('aria-disabled')==='true' && node.classList.contains('ss-date-unavailable') &&
+            style.opacity==='1' && style.backgroundColor==='rgb(43, 48, 43)' && label.color==='rgb(150, 156, 150)';
+        }));
+      check('Every future hour is disabled on the '+field+' clock',
+        await currentPicker.locator('[data-clock-value]').evaluateAll(nodes=>nodes.every(node=>+node.getAttribute('data-clock-value')<=12 ||
+          node.disabled && node.classList.contains('ss-date-unavailable'))));
+      await currentPicker.locator('[data-date-part="minute"]').click();
+      check('Future minutes in the current hour are visibly disabled for '+field,
+        await currentPicker.locator('[data-clock-value="35"]').evaluate(node=>node.disabled&&node.classList.contains('ss-date-unavailable')&&getComputedStyle(node).backgroundColor==='rgb(43, 48, 43)') &&
+        await currentPicker.locator('[data-clock-value="30"]').isEnabled());
+      const prior=(await requests(page)).length;
+      await currentPicker.locator('[data-clock-value="35"]').evaluate(node=>node.onclick());
+      check('A retained future-minute callback cannot bypass the clock limit for '+field,
+        await currentPicker.locator('[data-date-part="minute"]').textContent()==='34' && (await requests(page)).length===prior);
+      if(field==='from')console.log('GRZ_CALENDAR_DISABLED_QA_V1 '+(await currentPicker.screenshot({type:'png'})).toString('base64'));
+      await currentPicker.locator('#ss-custom-date-apply-'+field).click();
+      check('Applying the clamped '+field+' clock sends exactly the current minute',(await requests(page)).pop()[field+'_date']===String(today.now));
+    }
   } finally {await page.close();}
 };

@@ -48,13 +48,22 @@ module.exports=async ({browser,nativeHost,check})=>{
     document.querySelector('#ss-sort-metric [data-value="battles"]').onclick();
     return __grzCommands.filter(command=>command.action==='sort').length===before;
   }));
-  for(const group of ['vehicles','maps','tiers','battles']){
+  for(const group of ['vehicles','maps','tiers']){
     await page.locator('#ss-group-'+group).click();await choose('metric','win_rate');
     check('Win rate is available in '+group+' without a meaningless Min/Avg/Max selector',
       await page.locator('#ss-sort-metric [data-value="win_rate"]').evaluate(node=>node.style.display!=='none')&&
       !await page.locator('.ss-sort-statistic').isVisible()&&await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
       await page.locator('.ss-group [data-ss-sort-active="win_rate"]').count()>0&&await page.locator('.ss-group-sort-value').count()===0);
   }
+  await page.locator('#ss-group-battles').click();
+  check('Battles omits win-rate sorting and rejects retained option callbacks',await page.locator('#ss-sort-metric [data-value="win_rate"]').evaluate(node=>{
+    const before=__grzCommands.filter(command=>command.action==='sort').length;
+    node.onclick();return node.style.display==='none' && __grzCommands.filter(command=>command.action==='sort').length===before;
+  }));
+  await page.evaluate(()=>{const snapshot=JSON.parse(model.payload);snapshot.scopes.launch.ordering.battles={metric:'win_rate',statistic:'max',direction:'desc',chronology:'newest'};
+    model.payload=JSON.stringify(snapshot);GRZSessionStats.update(snapshot);});
+  check('A legacy Battles win-rate selection restores ordinary date sorting',await page.locator('#ss-sort-chronology [role=combobox]').isEnabled()&&
+    await page.locator('[data-ss-sort-active="win_rate"]').count()===0);
   await page.locator('#ss-group-tiers').click();
   await choose('metric','off');
   await choose('chronology','oldest');

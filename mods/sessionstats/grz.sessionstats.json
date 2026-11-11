@@ -141,7 +141,10 @@
     "garage_wn8_text_shadow": "#000",
     "garage_wn8_hover_text": "#eee6c9",
     "garage_spinner_border": "rgba(150,154,157,0.25)",
-    "garage_spinner_border_top_color": "#969a9d"
+    "garage_spinner_border_top_color": "#969a9d",
+    "date_unavailable_text": "#969c96",
+    "date_unavailable_border": "#464c46",
+    "date_unavailable_background": "#2b302b"
   },
   "radii": {
     "window": 8,
@@ -164,7 +167,8 @@
     "window": 1.0,
     "garage_button": 1.0,
     "disabled_controls": 0.45,
-    "target_dimmed": 0.7
+    "target_dimmed": 0.7,
+    "date_unavailable": 1.0
   },
   "scroll": {
     "speed_multiplier": 1.0

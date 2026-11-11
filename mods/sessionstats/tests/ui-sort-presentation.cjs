@@ -41,7 +41,8 @@ function run(){
   assert.strictEqual(f.kpis[0].getAttribute('data-ss-sort-active'),'battles');assert.strictEqual(f.meta.children.length,0);
   for(const battle of [false,true]){
     f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'win_rate'},battle);
-    assert.strictEqual(f.kpis[battle?0:1].getAttribute('data-ss-sort-active'),'win_rate');assert.strictEqual(f.meta.children.length,0);
+    assert.strictEqual(f.kpis[1].getAttribute('data-ss-sort-active'),battle?null:'win_rate','Only aggregate cards support win-rate highlighting');
+    assert.strictEqual(f.kpis[0].getAttribute('data-ss-sort-active'),null);assert.strictEqual(f.meta.children.length,0);
   }
   f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric:'credits_net',statistic:'avg'},false);
   assert.strictEqual(f.meta.children.length,1,'Per-battle credit statistics have no equivalent in the aggregate finance table');

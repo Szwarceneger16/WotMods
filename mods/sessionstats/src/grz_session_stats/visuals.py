@@ -272,6 +272,24 @@ def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mod
         return {'kind': kind, 'src': source,
                 'alt': _text(name) if name else (message('visual.vehicle') if kind == 'vehicle' else message('visual.map'))}
 
+    def map_visual(identifier, name):
+        image = visual('map', identifier, name)
+        if image is None:
+            return None
+        key = ('map_preview', _text(identifier))
+        if key not in cache:
+            try:
+                cache[key] = resolver.map_preview(identifier, map_preview_mode)
+            except Exception:
+                cache[key] = None
+        preview = cache[key]
+        if (isinstance(preview, dict) and preview.get('src') and
+                preview.get('mode') in ('image', 'minimap') and
+                (preview['src'] != image['src'] or preview['mode'] == 'minimap')):
+            image['preview_src'] = preview['src']
+            image['preview_mode'] = preview['mode']
+        return image
+
     for scope in payload['scopes'].values():
         if not isinstance(scope, dict):
             continue
@@ -283,6 +301,7 @@ def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mod
                 if not isinstance(row, dict):
                     continue
                 row.pop('visual', None)
+                row.pop('map_visual', None)
                 row.pop('outcome_visual', None)
                 if grouping == 'battles' and row.get('outcome') in ('win', 'loss', 'draw'):
                     outcome = visual('outcome', row['outcome'], message('outcome.' + row['outcome']))
@@ -291,27 +310,15 @@ def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mod
                 if grouping == 'vehicles':
                     image = visual('vehicle', row.get('id'), row.get('name'))
                 elif grouping == 'maps':
-                    image = visual('map', row.get('id'), row.get('name'))
-                    if image is not None:
-                        key = ('map_preview', _text(row.get('id')))
-                        if key not in cache:
-                            try:
-                                cache[key] = resolver.map_preview(row.get('id'), map_preview_mode)
-                            except Exception:
-                                cache[key] = None
-                        preview = cache[key]
-                        if (isinstance(preview, dict) and preview.get('src') and
-                                preview.get('mode') in ('image', 'minimap') and
-                                (preview['src'] != image['src'] or preview['mode'] == 'minimap')):
-                            image['preview_src'] = preview['src']
-                            image['preview_mode'] = preview['mode']
+                    image = map_visual(row.get('id'), row.get('name'))
                 else:
                     record = records.get(_text(row.get('id')), {})
                     if not isinstance(record, dict):
                         continue
                     image = visual('vehicle', record.get('vehicle_id'), row.get('name'))
-                    if image is None:
-                        image = visual('map', record.get('map_id'), record.get('map_name') or row.get('map'))
+                    map_image = map_visual(record.get('map_id'), record.get('map_name') or row.get('map'))
+                    if map_image is not None:
+                        row['map_visual'] = map_image
                 if image is not None:
                     row['visual'] = image
     return payload

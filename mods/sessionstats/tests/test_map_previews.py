@@ -80,7 +80,7 @@ class MapPreviewTests(unittest.TestCase):
         fixture.files.clear()
         self.assertIsNone(fixture.resolver.map_preview('01_karelia'))
 
-    def test_snapshot_attaches_large_preview_only_to_map_rows_without_persistence_changes(self):
+    def test_snapshot_attaches_large_preview_to_maps_and_battle_maps_without_persistence_changes(self):
         fixture = ResolverFixture()
         add_screen(fixture)
         payload, records = snapshot(), ledger()
@@ -89,12 +89,25 @@ class MapPreviewTests(unittest.TestCase):
         for scope in payload['scopes'].values():
             self.assertEqual(scope['maps'][0]['visual']['preview_src'], 'img://' + SCREEN_PATH)
             self.assertEqual(scope['maps'][0]['visual']['preview_mode'], 'image')
+            self.assertEqual(scope['battles'][0]['map_visual'], scope['maps'][0]['visual'])
+            scope['battles'][0].pop('map_visual')
             for grouping in ('vehicles', 'battles'):
                 self.assertNotIn('preview_src', scope[grouping][0]['visual'])
             for grouping in ('vehicles', 'maps', 'battles'):
                 scope[grouping][0].pop('visual')
         self.assertEqual(payload, original)
         self.assertEqual(records, saved)
+
+    def test_battle_map_preview_obeys_the_same_minimap_configuration(self):
+        fixture = ResolverFixture()
+        add_screen(fixture)
+        payload, records = snapshot(), ledger()
+        visuals.enrich_snapshot(payload, records, fixture.resolver, map_preview_mode='minimap')
+        for scope in payload['scopes'].values():
+            image = scope['battles'][0]['map_visual']
+            self.assertEqual(image['src'], 'img://' + MAP_PATH)
+            self.assertEqual(image['preview_src'], 'img://' + MAP_DEFAULT_PATH)
+            self.assertEqual(image['preview_mode'], 'minimap')
 
     def test_snapshot_fallback_omits_extra_metadata_and_invalid_mode_uses_default(self):
         fixture = ResolverFixture()

@@ -269,6 +269,9 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(scope['maps'][0]['visual'],
                              {'kind': 'map', 'src': 'img://' + MAP_PATH, 'alt': 'Karelia'})
             self.assertEqual(scope['battles'][0]['visual']['src'], 'img://' + VEHICLE_PATH)
+            self.assertEqual(scope['battles'][0]['map_visual'],
+                             {'kind': 'map', 'src': 'img://' + MAP_PATH, 'alt': 'Karelia'})
+            scope['battles'][0].pop('map_visual')
             for group in ('vehicles', 'maps', 'battles'):
                 scope[group][0].pop('visual')
         self.assertEqual(payload, before)
@@ -282,13 +285,27 @@ class SnapshotTests(unittest.TestCase):
         self.assertNotIn('visual', payload['scopes']['launch']['battles'][0])
         self.assertEqual(payload['scopes']['launch']['vehicles'][0]['name'], 'Conqueror GC')
 
-    def test_missing_battle_vehicle_can_use_its_confirmed_map(self):
+    def test_missing_battle_vehicle_keeps_its_separate_confirmed_map(self):
         payload = snapshot()
         records = ledger()
         records[ARENA_ID]['vehicle_id'] = None
         enrich_snapshot(payload, records, self.fixture.resolver)
-        self.assertEqual(payload['scopes']['launch']['battles'][0]['visual'],
+        self.assertNotIn('visual', payload['scopes']['launch']['battles'][0])
+        self.assertEqual(payload['scopes']['launch']['battles'][0]['map_visual'],
                          {'kind': 'map', 'src': 'img://' + MAP_PATH, 'alt': 'Karelia'})
+
+    def test_battle_map_is_not_guessed_and_stale_maps_are_removed(self):
+        payload = snapshot()
+        row = payload['scopes']['launch']['battles'][0]
+        row['map_visual'] = {'kind': 'map', 'src': 'old'}
+        enrich_snapshot(payload, {}, self.fixture.resolver)
+        self.assertNotIn('map_visual', row)
+        self.assertEqual(row['map'], 'Karelia')
+        records = ledger()
+        records[ARENA_ID]['map_id'] = '../01_karelia'
+        enrich_snapshot(payload, records, self.fixture.resolver)
+        self.assertNotIn('map_visual', row)
+        self.assertEqual(row['visual']['src'], 'img://' + VEHICLE_PATH)
 
     def test_one_bad_row_does_not_break_neighboring_rows_or_leave_stale_visuals(self):
         payload = snapshot()

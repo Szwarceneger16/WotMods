@@ -1,5 +1,14 @@
 SESSION STATS — CHANGELOG
 
+0.9.1 • 2026-11-11
+• Make verified native result illustrations clearer on opaque outcome frames.
+• Add battle-card map thumbnails with the same hover previews as Maps.
+• Remove individual-battle win-rate sorting; keep it for aggregate groups.
+• Center highlighted card figures and every wrapped filter row.
+• Keep shared Min/Average/Max WN8 captions neutral and color each value.
+• Visibly gray unavailable calendar/clock choices and clamp today to the
+  current valid minute when a previous day retained a later clock time.
+
 0.9.0 • 2026-11-11
 • Replace duplicate sorting captions with an orange mark on the existing value;
   advanced WN8 ordering shows its exact Min/Average/Max in the main card figure.

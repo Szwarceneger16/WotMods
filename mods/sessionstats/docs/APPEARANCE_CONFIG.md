@@ -1,11 +1,11 @@
-# Appearance and scrolling configuration — 0.9.0
+# Appearance and scrolling configuration — 0.9.1
 
 ## File placement and applying changes
 
 Place **`grz.sessionstats.json`** in the game installation's **`mods/configs`** directory:
 
 ```text
-mods/2.4.1.0/grz_sessions_stats.wotmod
+mods/2.4.1.1/grz_sessions_stats.wotmod
 mods/configs/grz.sessionstats.json
 ```
 
@@ -27,8 +27,8 @@ are logged as `CONFIG_SETUP` without stopping collection or modifying source fil
 Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
-The full supplied JSON contains **the current appearance as defaults**: 140 colors,
-15 corner radii, four opacity settings, a scrolling multiplier, two card-width
+The full supplied JSON contains **the current appearance as defaults**: 143 colors,
+15 corner radii, five opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
@@ -71,6 +71,10 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `opacity.window` | `1.0` | Entire panel, including text |
 | `opacity.garage_button` | `1.0` | Entire garage button |
 | `opacity.disabled_controls` | `0.45` | Disabled controls |
+| `colors.date_unavailable_text` | `"#969c96"` | Unavailable calendar/clock numbers |
+| `colors.date_unavailable_border` | `"#464c46"` | Unavailable calendar/clock border |
+| `colors.date_unavailable_background` | `"#2b302b"` | Neutral unavailable calendar/clock fill |
+| `opacity.date_unavailable` | `1.0` | Calendar choices use explicit gray paint instead of fading into camouflage |
 | `opacity.target_dimmed` | `0.7` | Battle outline after its five-second pulse; 30% transparent |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
 | `maps.preview_mode` | `"image"` | Map hover artwork: `"image"` for the landscape picture, `"minimap"` for the tactical map |

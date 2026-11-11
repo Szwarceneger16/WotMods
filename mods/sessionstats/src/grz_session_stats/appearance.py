@@ -148,6 +148,9 @@ DEFAULT_CONFIG = {'schema_version': 1,
             'button_hover_background_end': '#3a412e',
             'button_quiet_border_color': '#3b4026',
             'button_quiet_background': '#1c2412',
+            'date_unavailable_text': '#969c96',
+            'date_unavailable_border': '#464c46',
+            'date_unavailable_background': '#2b302b',
             'button_confirm_background_start': '#68542f',
             'button_confirm_background_end': '#3d2e13',
             'button_confirm_text': '#ffe1a4',
@@ -186,7 +189,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'panel_footer': 7,
            'confirmation': 8,
            'garage_spinner': 5},
- 'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7},
+ 'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7, 'date_unavailable': 1.0},
  'scroll': {'speed_multiplier': 1.0},
  'maps': {'preview_mode': 'image'},
  'cards': {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520},
@@ -352,6 +355,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
 .ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
+.ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
 .ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
 .ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
 .ss-filters-wide .ss-list-meta { flex:0 0 auto; white-space:nowrap; }
@@ -492,7 +496,12 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
-.ss-outcome-image { display:block; flex-shrink:0; width:52rem; height:30rem; background-repeat:no-repeat; background-position:center; background-size:contain; }
+.ss-outcome-image { display:block; position:relative; overflow:hidden; flex-shrink:0; width:64rem; height:38rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.battle_outcome_background}}; }
+.ss-outcome-win .ss-outcome-image { border-color:{{colors.win_text}}; background:{{colors.win_background}}; }
+.ss-outcome-loss .ss-outcome-image { border-color:{{colors.loss_text}}; background:{{colors.loss_background}}; }
+.ss-outcome-draw .ss-outcome-image { border-color:{{colors.draw_text}}; background:{{colors.draw_background}}; }
+.ss-outcome-image-layer { display:block; position:absolute; left:0; right:0; top:0; bottom:0; background-repeat:no-repeat; background-position:center; background-size:contain; pointer-events:none; }
+.ss-battle-map-thumb { margin:0 0 0 8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background-color:{{colors.window_background}}; }
 .ss-outcome-label { display:block; text-align:center; }
 .ss-outcome-art .ss-outcome-label { min-width:0; padding:2rem 4rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
@@ -504,6 +513,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
 .ss-group-sort-value { display:block; flex:0 1 auto; min-width:0; max-width:100%; margin:2rem 8rem 2rem 0; padding:2rem 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.table_header_background_start}}; color:{{colors.session_tab_active_text}}; font-size:12rem; line-height:16rem; white-space:normal; overflow-wrap:normal; }
 .ss-group .ss-sort-active-value { border-radius:{{radii.control}}rem; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+.ss-group-kpi.ss-sort-active-value { padding:0 5rem; text-align:center; }
+.ss-group-kpi.ss-sort-active-value .ss-kpi-label, .ss-group-kpi.ss-sort-active-value .ss-kpi-value { text-align:center; }
 .ss-summary-meta { margin:3rem 4rem; }
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
@@ -512,7 +523,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 @media (max-width:560px) {
   .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
   .ss-battle .ss-group-name { width:0; flex:1; }
-  .ss-outcome-image { width:36rem; height:25rem; }
+  .ss-outcome-image { width:48rem; height:29rem; }
+  .ss-battle-map-thumb { width:42rem; height:26rem; margin-left:4rem; }
   .ss-battle-outcome { margin-left:4rem; }
   .ss-outcome-label { font-size:11rem; }
 }
@@ -564,7 +576,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-date-picker .ss-date-day { margin:0; border:1rem solid {{colors.body_background}}; border-radius:{{radii.control}}rem; background:{{colors.body_background}}; box-shadow:none; }
 .ss-date-weekday { color:{{colors.table_header_text}}; }
 .ss-date-picker .ss-date-day[aria-selected="true"], .ss-date-picker .ss-date-option[aria-selected="true"] { border-color:{{colors.session_tab_marker_background}}; color:{{colors.session_tab_active_text}}; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 4rem {{colors.button_shadow_2}}; }
-.ss-date-picker .ss-date-day:disabled, .ss-date-picker .ss-date-option:disabled, .ss-date-picker .ss-date-clock-number:disabled { opacity:{{opacity.disabled_controls}}; cursor:default; }
 .ss-date-day .ss-control-label { font-size:12rem; line-height:18rem; }
 .ss-date-options { display:flex; flex-wrap:wrap; width:100%; max-height:190rem; overflow-y:auto; }
 .ss-date-picker .ss-date-option { flex:0 0 33.3333%; width:33.3333%; min-width:0; height:30rem; min-height:30rem; margin:0; padding:3rem; border-color:{{colors.body_background}}; background:{{colors.body_background}}; box-shadow:none; }
@@ -588,6 +599,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-date-picker .ss-date-clock-inner { width:22rem; min-width:22rem; height:22rem; min-height:22rem; margin:-11rem 0 0 -11rem; color:{{colors.table_header_text}}; }
 .ss-date-clock-inner .ss-control-label { font-size:10rem; line-height:14rem; }
 .ss-date-picker .ss-date-clock-number[aria-pressed="true"] { border-color:{{colors.session_tab_marker_background}}; background:{{colors.button_confirm_background_end}}; color:{{colors.session_tab_active_text}}; }
+/* Explicit neutral paint survives native disabled-button rendering. Keep the
+   numbers readable; opacity alone can leave an unavailable date looking live. */
+.ss-date-picker .ss-date-unavailable { opacity:{{opacity.date_unavailable}}; color:{{colors.date_unavailable_text}}; border-color:{{colors.date_unavailable_border}}; background:{{colors.date_unavailable_background}}; box-shadow:none; text-shadow:none; cursor:default; }
+.ss-date-picker .ss-date-unavailable .ss-control-label { color:{{colors.date_unavailable_text}}; text-shadow:none; }
+.ss-date-picker .ss-date-unavailable .ss-date-chevron { border-color:{{colors.date_unavailable_text}}; }
 .ss-date-picker-actions { display:flex; justify-content:flex-end; min-width:0; margin-top:6rem; }
 .ss-date-picker-actions > .ss-control { margin-left:5rem; }
 .ss-custom-date-apply { flex:0 0 auto; min-width:40rem; max-width:100%; height:30rem; min-height:30rem; padding:3rem 6rem; }

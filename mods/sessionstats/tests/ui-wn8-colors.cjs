@@ -54,7 +54,9 @@ function assertWN8Source(){
   const parent=new Node('div'),headline=panel.headlineStat(parent,'WN8','1 550',true,true,1550);
   assert(headline.children.every(node=>node.style.color==='#6d9521'),'The WN8 headline label and value share the rating color');
   panel.measureRow(parent,'WN8',{count:3,min:250,avg:1600,max:3000},true,3,false);
-  const row=parent.children[1];assert.strictEqual(row.children[0].children[0].style.color,'#4c762e','A distribution label follows its average');
+  const row=parent.children[1],label=row.children[0].children[0];
+  assert.strictEqual(label.style.color,undefined,'A shared Min/Avg/Max WN8 label retains its neutral configured color');
+  assert.strictEqual(label.attributes['data-wn8-value'],undefined,'A distribution label cannot imply one of its several rating values');
   assert.deepStrictEqual(row.children.slice(1).map(node=>node.style.color),['#000000','#4c762e','#5a3175'],'Min/Avg/Max retain their individual rating colors');
   panel.battleMeasure(parent,'WN8',2380,true);assert(parent.children[2].children.every(node=>node.style.color==='#83579d'));
   panel.battleMeasure(parent,'Base XP',2380,false);assert(parent.children[3].children.every(node=>node.style.color===undefined),'Other statistics retain their configured text colors');
@@ -94,9 +96,11 @@ module.exports=async({browser,nativeHost,check})=>{
       const rgb={0:'rgb(0, 0, 0)',300:'rgb(205, 51, 51)',600:'rgb(215, 121, 0)',900:'rgb(215, 182, 0)',
         1250:'rgb(109, 149, 33)',1600:'rgb(76, 118, 46)',1900:'rgb(74, 146, 183)',2350:'rgb(131, 87, 157)',
         2450:'rgb(131, 87, 157)',299:'rgb(0, 0, 0)',2900:'rgb(90, 49, 117)'};
-      check('WN8 labels, headlines and distribution values use exact text-only colors in '+group+': '+JSON.stringify(audit),
+      check('Single-value WN8 labels, headlines and distribution values use exact text-only colors in '+group+': '+JSON.stringify(audit),
         audit.length>3&&audit.every(item=>rgb[item.value]===item.color&&item.styleBackground===''&&
           (item.value<300?hasBlackOutline(item.halo):item.halo.includes('0.35'))));
+      check('Shared distribution WN8 labels retain neutral configured paint in '+group,await page.locator('.ss-performance .ss-metric-row:last-child .ss-metric-name .ss-cell-value').evaluateAll(nodes=>
+        nodes.length>0 && nodes.every(node=>!node.hasAttribute('data-wn8-value') && node.style.color==='' && node.style.textShadow==='')));
       check('Black WN8 has a visible crisp edge without changing text bounds in '+group,await page.locator('[data-wn8-value="299"]').first().evaluate(node=>{
         const before=node.getBoundingClientRect(),shadow=node.style.textShadow;node.style.textShadow='none';
         const after=node.getBoundingClientRect();node.style.textShadow=shadow;

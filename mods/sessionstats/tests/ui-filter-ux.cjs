@@ -86,7 +86,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
   const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
   const rateOrders=JSON.parse(JSON.stringify(scope.ordering));
-  for(const group of ['vehicles','maps','tiers','battles']){
+  for(const group of ['vehicles','maps','tiers']){
     state.group=group;scope.ordering[group]={metric:'win_rate',statistic:'max',direction:'desc',chronology:'newest'};render();
     assert.strictEqual(statistic.style.display,'none','Win rate has no aggregate-statistic selector in '+group);
     assert.strictEqual(selects.statistic.trigger.disabled,true);
@@ -94,7 +94,17 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     const option=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');
     assert(option>=0&&selects.metric.options[option].style.display==='','Win-rate sorting is offered in '+group);
   }
-  scope.ordering=rateOrders;state.group='vehicles';
+  state.group='battles';scope.ordering.battles={metric:'win_rate',statistic:'max',direction:'asc',chronology:'oldest'};render();
+  const rateOption=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');
+  assert.strictEqual(selects.metric.options[rateOption].style.display,'none','Battles hides the meaningless per-result win-rate metric');
+  assert.strictEqual(context.getOrder(scope).metric,'off','A legacy native Battles win-rate snapshot falls back to ordinary chronology');
+  const rejectedRate=commands.length;context.changeOrder('metric','win_rate');
+  assert.strictEqual(commands.length,rejectedRate,'A retained hidden win-rate callback cannot sort Battles');
+  context.rememberedMetric(scope,'win_rate');controls['ss-sort-off'].onclick();
+  assert.strictEqual(commands.at(-1).metric,'xp_base','The Battles toggle replaces a remembered legacy win-rate metric with XP');ack();
+  state.nativeSession=false;state.orders[context.orderKey(scope)]={metric:'win_rate',statistic:'min',direction:'desc',chronology:'newest'};
+  assert.strictEqual(context.getOrder(scope).metric,'off','A legacy preview Battles win-rate preference also falls back safely');
+  state.nativeSession=true;scope.ordering=rateOrders;state.group='vehicles';
   const rates=[{id:'unknown',stats:{win_rate:null}},{id:'loss',stats:{win_rate:0}},{id:'win',stats:{win_rate:100}}];
   assert.deepStrictEqual(Array.from(context.ordered(rates,{metric:'win_rate',statistic:'min',direction:'desc',chronology:'newest'}),item=>item.id),['win','loss','unknown']);
   assert.deepStrictEqual(Array.from(context.ordered(rates,{metric:'win_rate',statistic:'max',direction:'asc',chronology:'newest'}),item=>item.id),['loss','win','unknown']);
@@ -221,6 +231,20 @@ module.exports=async({browser,nativeHost,check})=>{
       await width(500);
       check('A narrow panel retains the original metric dropdown despite the wide game viewport'+caption,
         !await page.locator('#ss-sort-off').isVisible()&&!await page.locator('.ss-list-controls').evaluate(node=>node.classList.contains('ss-filters-wide')));
+      const centeredRows=await page.locator('.ss-list-controls').evaluate((node,scale)=>{
+        const box=node.getBoundingClientRect(),rows=[];
+        for(const child of node.children){
+          if(child.id==='ss-filter-loading')continue;
+          const rect=child.getBoundingClientRect();if(!(rect.width>0&&rect.height>0))continue;
+          let row=rows.find(row=>Math.abs(row.bottom-rect.bottom)<=scale);
+          if(!row)rows.push(row={bottom:rect.bottom,left:rect.left,right:rect.right});
+          else{row.left=Math.min(row.left,rect.left);row.right=Math.max(row.right,rect.right);}
+        }
+        return {wrapped:node.classList.contains('ss-filters-wrapped'),count:rows.length,
+          offsets:rows.map(row=>Math.abs((row.left+row.right-box.left-box.right)/2)/scale)};
+      },scale);
+      check('Every wrapped filter row stays centered in the panel'+caption+': '+JSON.stringify(centeredRows),
+        centeredRows.wrapped&&centeredRows.count>=2&&centeredRows.offsets.every(offset=>offset<=5));
       await page.locator('#ss-sort-metric .ss-select-trigger').click();
       check('The narrow metric menu still exposes Off'+caption,await page.locator('#ss-sort-metric [data-value="off"]').isVisible());
       await page.keyboard.press('Home');await page.keyboard.press('Enter');

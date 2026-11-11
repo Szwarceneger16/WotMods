@@ -630,11 +630,10 @@
     function measureRow(parent, label, data, wn8, total, sharedCoverage) {
         var row = append(parent, element('div', 'ss-metric-row'));
         var name = append(row, element('div', 'ss-metric-name'));
-        var text = append(name, element('span', 'ss-cell-value', label));
+        append(name, element('span', 'ss-cell-value', label));
         var partial = coverage(data.count, total);
         if (partial && !sharedCoverage) { explainCoverage(append(name, element('span', 'ss-cell-coverage',
             ' (' + partial + ')')), data.count, total); }
-        if (wn8) { paintWN8(text, data.avg); }
         ['min', 'avg', 'max'].forEach(function (field) {
             var output = append(row, element('div', 'ss-metric-number', wn8 ? integer(data[field]) : number(data[field])));
             if (wn8) { paintWN8(output, data[field]); }
@@ -820,7 +819,14 @@
             badge.className += ' ss-outcome-art';
             var art = append(badge, element('span', 'ss-outcome-image'));
             art.setAttribute('aria-hidden', 'true');
-            art.style.backgroundImage = 'url("' + src + '")';
+            // WG's notification backgrounds have intrinsic alpha (the PNG
+            // peaks below 40%). Composite the unchanged texture in a finite
+            // stack on an opaque frame; CSS opacity=1 alone cannot undo that
+            // fade. Positioned layers do not change layout or accessibility.
+            for (var layer = 0; layer < 12; layer += 1) {
+                var paint = append(art, element('span', 'ss-outcome-image-layer'));
+                paint.style.backgroundImage = 'url("' + src + '")';
+            }
         }
         append(badge, element('span', 'ss-outcome-label', battleOutcome(item.outcome)));
     }
@@ -837,8 +843,12 @@
         return String((state.payload || {}).account_key) + '/' + state.scope + '/' + String(scope.period_id || scope.started_at) + '/' + state.group;
     }
     function getOrder(scope) {
-        if (state.orderIntent && state.orderIntent.group === state.group && sameContext(state.orderIntent.context)) { return state.orderIntent.options; }
-        return (state.nativeSession && scope.ordering && scope.ordering[state.group]) || state.orders[orderKey(scope)] || (state.group === 'tiers' ? defaultTierOrder : defaultOrder);
+        var options = state.orderIntent && state.orderIntent.group === state.group && sameContext(state.orderIntent.context) ?
+            state.orderIntent.options : (state.nativeSession && scope.ordering && scope.ordering[state.group]) ||
+            state.orders[orderKey(scope)] || (state.group === 'tiers' ? defaultTierOrder : defaultOrder);
+        // Retire legacy per-battle win-rate preferences even before the next
+        // native snapshot; a single result has no useful percentage order.
+        return state.group === 'battles' && options.metric === 'win_rate' ? defaultOrder : options;
     }
     function groupSortValue(item, options) {
         var stats = item.stats || {};
@@ -893,6 +903,7 @@
                 (field === 'chronology' && (value === 'tier_asc' || value === 'tier_desc') && state.group !== 'tiers') ||
                 (field === 'statistic' && (state.group === 'battles' || current.metric === 'battles' || current.metric === 'win_rate')) ||
                 (field === 'metric' && value === 'battles' && state.group !== 'vehicles' && state.group !== 'maps') ||
+                (field === 'metric' && value === 'win_rate' && state.group === 'battles') ||
                 !selectOptions[field] || !selectOptions[field].some(function (choice) { return choice[0] === value; })) { return; }
         cancelBattleNavigation();
         var options = {}, key;
@@ -916,7 +927,7 @@
     function rememberedMetric(scope, metric) {
         var values = state.lastSortMetrics || (state.lastSortMetrics = {}), key = orderKey(scope);
         if (metric && metric !== 'off') { values[key] = metric; }
-        return values[key] || 'xp_base';
+        return values[key] && !(state.group === 'battles' && values[key] === 'win_rate') ? values[key] : 'xp_base';
     }
     function toggleMetricOrder() {
         if (state.destroyed || !state.payload || !state.wideFilters || orderingUnavailable(currentScope())) { return; }
@@ -1041,7 +1052,8 @@
                 var selectedValue = field === 'metric' && state.wideFilters && options.metric === 'off' ? remembered : options[field];
                 control.options[index].style.display = (field === 'chronology' && (choice[0] === 'tier_asc' || choice[0] === 'tier_desc') && state.group !== 'tiers') || field === 'metric' &&
                     ((choice[0] === 'off' && state.wideFilters) ||
-                     (choice[0] === 'battles' && state.group !== 'vehicles' && state.group !== 'maps')) ? 'none' : '';
+                     (choice[0] === 'battles' && state.group !== 'vehicles' && state.group !== 'maps') ||
+                     (choice[0] === 'win_rate' && state.group === 'battles')) ? 'none' : '';
                 control.options[index].querySelector('.ss-control-label').textContent = caption;
                 control.options[index].setAttribute('aria-selected',String(choice[0] === selectedValue));
                 if (choice[0] === selectedValue) {
@@ -1069,6 +1081,7 @@
         controls.classList[box.width / (state.nativeScale || 1) < 340 ? 'add' : 'remove']('ss-filters-compact');
         // Gameface's document can be wider than this resizable panel. Measure
         // a nonshrinking candidate row against the panel's real content box.
+        controls.classList.remove('ss-filters-wrapped');
         controls.classList.add('ss-filters-wide');
         var off = document.getElementById('ss-sort-off');
         if (off) { off.style.display = 'flex'; }
@@ -1081,6 +1094,7 @@
             bottom = rect.bottom;
         }
         controls.classList[wide ? 'add' : 'remove']('ss-filters-wide');
+        controls.classList[wide ? 'remove' : 'add']('ss-filters-wrapped');
         if (off) { off.style.display = wide ? 'flex' : 'none'; }
         if (state.wideFilters !== wide) { state.wideFilters = wide; closeSelect(false); renderSelects(currentScope()); }
     }
@@ -1264,6 +1278,14 @@
         }
         return {minimum:minimum, maximum:maximum};
     }
+    function boundedDateTime(year, month, day, hour, minute, limits) {
+        var timestamp = customDateParts(year, month, day, hour, minute);
+        if (timestamp === null) { return null; }
+        var start = new Date(year, month - 1, day).getTime() / 1000;
+        var end = new Date(year, month - 1, day + 1).getTime() / 1000 - 60;
+        var minimum = Math.max(start, limits.minimum), maximum = Math.min(end, limits.maximum);
+        return minimum <= maximum ? Math.max(minimum, Math.min(maximum, timestamp)) : null;
+    }
     var datePicker = null;
     function closeDatePicker(restoreFocus) {
         var picker = datePicker;
@@ -1316,6 +1338,12 @@
             var result = append(parent, element('button', 'ss-control ss-button ' + className)); result.type = 'button';
             result.setAttribute('aria-label', label); result.title = label;
             append(result, element('span', 'ss-control-label', label)); result.onclick = function () { if (live() && !result.disabled) { click(); } }; return result;
+        }
+        function unavailable(node, disabled) {
+            node.disabled = !!disabled;
+            node.setAttribute('aria-disabled', String(node.disabled));
+            if (node.disabled) { node.classList.add('ss-date-unavailable'); }
+            else { node.classList.remove('ss-date-unavailable'); }
         }
         var heading = append(picker.node, element('div', 'ss-date-picker-heading'));
         var previous = action(heading, 'ss-date-month-arrow ss-date-month-previous', t('timeline.calendar_previous'), function () { moveMonth(-1); });
@@ -1388,16 +1416,18 @@
             if (selected !== null) { chooseHour(selected); }
         }
         function setDate(value, clamp) {
+            limits = customDateBounds(timeline, field);
             var year = value.getFullYear(), month = value.getMonth() + 1, day = value.getDate();
             if (year < 2010 || year > lastYear || !available(year, month, clamp ? undefined : day)) { return; }
             value = new Date(year, month - 1, day, picker.hour, picker.minute);
             if (clamp) { value = new Date(Math.max(limits.minimum, Math.min(limits.maximum, value.getTime() / 1000)) * 1000); }
+            // Retain the chosen day while moving a stale clock to its nearest
+            // permitted minute. Today must clamp to now, not to midnight.
+            var timestamp = boundedDateTime(value.getFullYear(), value.getMonth() + 1, value.getDate(), value.getHours(), value.getMinutes(), limits);
+            if (timestamp === null) { return; }
+            value = new Date(timestamp * 1000);
             picker.year = value.getFullYear(); picker.month = value.getMonth() + 1; picker.day = value.getDate();
             picker.hour = value.getHours(); picker.minute = value.getMinutes();
-            if (!chooseHour(picker.hour)) {
-                var earliest = Math.max(new Date(picker.year, picker.month - 1, picker.day).getTime() / 1000, limits.minimum);
-                value = new Date(earliest * 1000); picker.hour = value.getHours(); picker.minute = value.getMinutes();
-            }
             draw(); focusDay();
         }
         function moveMonth(direction) {
@@ -1426,8 +1456,7 @@
                     var label = customDateText(new Date(picker.year, picker.month - 1, day).getTime() / 1000, format).split(' ')[0];
                     var node = action(row, 'ss-date-day', label, function () { setDate(new Date(picker.year, picker.month - 1, day)); });
                     node.querySelector('.ss-control-label').textContent = String(day);
-                    node.disabled = !available(picker.year, picker.month, day);
-                    node.setAttribute('aria-disabled', String(node.disabled));
+                    unavailable(node, !available(picker.year, picker.month, day));
                     node.setAttribute('role', 'gridcell'); node.setAttribute('data-day', String(day)); node.setAttribute('tabindex', chosen ? '0' : '-1'); node.setAttribute('aria-selected', String(chosen));
                     node.onkeydown = function (event) {
                         var key = event.key || event.keyCode, delta = key === 'ArrowLeft' || key === 37 ? -1 : key === 'ArrowRight' || key === 39 ? 1 :
@@ -1447,7 +1476,7 @@
                     if (kind === 'years') { chooseYear(value); }
                     else { picker.mode = 'days'; setDate(new Date(picker.year, value - 1, Math.min(picker.day, new Date(picker.year, value, 0).getDate())), true); }
                 });
-                node.disabled = kind === 'years' ? !available(value) : !available(picker.year, value); node.setAttribute('aria-disabled', String(node.disabled));
+                unavailable(node, kind === 'years' ? !available(value) : !available(picker.year, value));
                 node.setAttribute('role', 'gridcell'); node.setAttribute('data-' + (kind === 'years' ? 'year' : 'month'), String(value)); node.setAttribute('aria-selected', String(chosen));
                 node.onkeydown = function (event) {
                     var key = event.key || event.keyCode, delta = key === 'ArrowLeft' || key === 37 ? -1 : key === 'ArrowRight' || key === 39 ? 1 : key === 'ArrowUp' || key === 38 ? -3 : key === 'ArrowDown' || key === 40 ? 3 : null;
@@ -1477,8 +1506,7 @@
                 var number = numbers[index], selected = +number.getAttribute('data-clock-value') === (hours && format.hour12 ? value % 12 || 12 : value);
                 number.setAttribute('aria-pressed', String(selected));
                 var clockValue = +number.getAttribute('data-clock-value');
-                number.disabled = hours ? !hourAvailable(format.hour12 ? clockValue % 12 + (picker.hour >= 12 ? 12 : 0) : clockValue) : !validTime(hourMinute(picker.hour, clockValue));
-                number.setAttribute('aria-disabled', String(number.disabled));
+                unavailable(number, hours ? !hourAvailable(format.hour12 ? clockValue % 12 + (picker.hour >= 12 ? 12 : 0) : clockValue) : !validTime(hourMinute(picker.hour, clockValue)));
             }
         }
         function clockPoint(event) {
@@ -1552,9 +1580,9 @@
             periodButtons.forEach(function (node, index) {
                 node.setAttribute('aria-pressed', String(index === (picker.hour < 12 ? 0 : 1)));
                 var usable = false; for (var value = index * 12; value < index * 12 + 12; value += 1) { usable = usable || hourAvailable(value); }
-                node.disabled = !usable; node.setAttribute('aria-disabled', String(node.disabled));
+                unavailable(node, !usable);
             });
-            apply.disabled = !validTime(hourMinute(picker.hour, picker.minute));
+            unavailable(apply, !validTime(hourMinute(picker.hour, picker.minute)));
         }
         function draw() {
             if (!live()) { return; }
@@ -1566,8 +1594,8 @@
             monthTitle.setAttribute('aria-expanded', String(picker.mode === 'months')); yearTitle.setAttribute('aria-expanded', String(picker.mode === 'years'));
             previous.style.visibility = next.style.visibility = picker.mode === 'days' ? 'visible' : 'hidden';
             var before = new Date(picker.year, picker.month - 2, 1), after = new Date(picker.year, picker.month, 1);
-            previous.disabled = !available(before.getFullYear(), before.getMonth() + 1);
-            next.disabled = !available(after.getFullYear(), after.getMonth() + 1);
+            unavailable(previous, !available(before.getFullYear(), before.getMonth() + 1));
+            unavailable(next, !available(after.getFullYear(), after.getMonth() + 1));
             if (picker.mode === 'days') { drawDays(); }
             else if (picker.mode === 'months' || picker.mode === 'years') { drawOptions(picker.mode); }
             drawClock();
@@ -1718,7 +1746,7 @@
         return null;
     }
     function showMapPreview(target) {
-        if (!target || state.destroyed || state.group !== 'maps' || state.dialog || state.resize || state.dragging || !root.contains(target)) { hideMapPreview(); return; }
+        if (!target || state.destroyed || (state.group !== 'maps' && state.group !== 'battles') || state.dialog || state.resize || state.dragging || !root.contains(target)) { hideMapPreview(); return; }
         if (target === mapPreviewTarget) { return; }
         hideMapPreview(); hideHelp();
         var bounds = root.getBoundingClientRect(), anchor = target.getBoundingClientRect(), scale = state.nativeScale || 1;
@@ -1784,6 +1812,12 @@
             thumb.setAttribute('tabindex', '0');
             thumb.setAttribute('aria-controls', mapPreview.id); thumb.setAttribute('aria-expanded', 'false');
         }
+        return thumb;
+    }
+    function appendBattleMap(parent, item) {
+        if (!item.map_visual || item.map_visual.kind !== 'map') { return; }
+        var thumb = appendVisual(parent, {name:item.map, visual:item.map_visual});
+        if (thumb) { thumb.className += ' ss-battle-map-thumb'; }
     }
     var bonusLabels = {
         eventCredits:'event.credits', eventXP:'event.xp', eventFreeXP:'event.free_xp',
@@ -2359,11 +2393,11 @@
     }
     function highlightCardSort(card, meta, item, options, battle) {
         var metric = options.metric;
-        if (metric === 'off') { return; }
+        if (metric === 'off' || (battle && metric === 'win_rate')) { return; }
         var label = sortMetricLabel(options, battle), kpis = card.querySelectorAll('.ss-group-kpi');
         var rows, row, selected = options.statistic === 'min' ? 1 : options.statistic === 'max' ? 3 : 2;
         if (metric === 'win_rate' || metric === 'battles') {
-            markSortValue(kpis[metric === 'battles' || battle ? 0 : 1], metric, label);
+            markSortValue(kpis[metric === 'battles' ? 0 : 1], metric, label);
         } else if (metric === 'battle_wn8' || metric === 'xp_base' || metric === 'xp_received') {
             if (!battle && metric === 'battle_wn8') { markSortValue(kpis[2], metric, label); }
             rows = card.querySelectorAll(battle ? '.ss-battle-measure' : '.ss-metric-row');
@@ -2423,9 +2457,7 @@
             freeXP(meta, stats);
             if (battle) {
                 appendOutcome(header, item);
-                if (sorting.metric === 'win_rate') {
-                    headlineStat(header, t('metric.win_rate'), rate(cardSortValue(item, sorting)), false, true);
-                }
+                appendBattleMap(header, item);
             } else {
                 headlineStat(header, t('metric.battles'), battleCount(stats), false, true).className += ' ss-group-count';
                 headlineStat(header, t('metric.win_rate'), rate(stats.win_rate), false, true);
