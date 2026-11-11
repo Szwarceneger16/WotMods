@@ -108,8 +108,10 @@ def registry(path=REGISTRY):
         version_parts((ROOT / entry['base_version_file']).read_text(encoding='ascii').strip())
         ids.append(mod)
         prefixes.append(entry['installer_prefix'])
-    if len(set(ids)) != len(ids) or len(set(prefixes)) != len(prefixes) or set(ids) != set(KINDS):
-        raise ValueError('Registry must match the independently verified installers')
+    # Verification capabilities can land before a new module's source tree.
+    # The registry, not every supported format, defines this snapshot's full set.
+    if len(set(ids)) != len(ids) or len(set(prefixes)) != len(prefixes):
+        raise ValueError('Registry must contain unique independently verified installers')
     for patterns in [data['shared_build_paths']] + [m['source_paths'] for m in modules]:
         if not isinstance(patterns, list) or not all(isinstance(p, str) and p and
             not p.startswith('/') and '..' not in p.split('/') for p in patterns):
@@ -251,8 +253,14 @@ def write_release_notes(reports, result, repository, output, release_directory):
                   '[Full installation and configuration guide](https://github.com/' + repository +
                   '/blob/main/docs/BUILD_RELEASE.md). '
                   'A carried-forward binary is not automatically verified as compatible '
-                  'with a newer game client.', '',
-                  '<details>', '<summary>SHA-256 installer checksums</summary>', '', '```text'])
+                  'with a newer game client.', ''])
+    if any(kind == 'hangarsync' for kind, _, _, _, _ in reports):
+        lines.extend([
+            'Hangar Sync requires a validated local configuration before reading or sending '
+            'garage data. Its included example is disabled and credential-free. '
+            'Keep your existing configuration when upgrading.', '',
+        ])
+    lines.extend(['<details>', '<summary>SHA-256 installer checksums</summary>', '', '```text'])
     for kind, version, _, _, _ in sorted(reports):
         filename = installer_name(kind, version)
         # These are release assets, not the GitHub-generated source archives.

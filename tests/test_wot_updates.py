@@ -204,8 +204,23 @@ class EvidenceTests(unittest.TestCase):
 
     def test_newly_registered_mod_requires_a_complete_new_snapshot(self):
         import release_installers
-        with patch.dict(release_installers.KINDS, {'thirdmod': ('Third-v', 'third.', 'Third')}):
+        with patch.object(release_installers, 'registered_kinds',
+                          return_value={'staysharp', 'sessionstats', 'hangarsync'}):
             self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.1', '2.4.1.1']))
+            self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * 3))
+            self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.1', '2.4.1.1', '2.4.1.0']))
+            with self.assertRaises(ValueError):
+                needs_rebuild('2.4.1.1', ['2.4.1.1'] * 4)
+
+    def test_supported_future_format_does_not_activate_a_production_module(self):
+        import release_installers
+        with patch.object(release_installers, 'registered_kinds',
+                          return_value={'staysharp', 'sessionstats'}), \
+                patch.dict(release_installers.KINDS,
+                           {'futuremod': ('Future-v', 'future.', 'Future')}):
+            self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * 2))
+            with self.assertRaises(ValueError):
+                needs_rebuild('2.4.1.1', ['2.4.1.1'] * 3)
 
 class DispatchTests(unittest.TestCase):
     def setUp(self):
@@ -250,6 +265,19 @@ class DispatchTests(unittest.TestCase):
         self.pending=True
         with patch.object(d, 'gh', side_effect=self.gh): d.main()
         self.assertEqual(self.dispatched, [])
+
+    def test_current_two_module_release_does_not_loop_for_supported_future_format(self):
+        import release_installers
+        import wot_dispatch as d
+        with patch.dict('os.environ', {'WOT_CLIENT_VERSION': release_installers.CLIENT}), \
+                patch.object(release_installers, 'registered_kinds',
+                             return_value={'staysharp', 'sessionstats'}), \
+                patch.dict(release_installers.KINDS,
+                           {'futuremod': ('Future-v', 'future.', 'Future')}), \
+                patch.object(d, 'gh', side_effect=self.gh) as gh:
+            d.main()
+        self.assertEqual(self.dispatched, [])
+        self.assertFalse(any(call.args[:2] == ('run', 'list') for call in gh.call_args_list))
 
     def test_mutable_or_corrupt_release_cannot_dispatch(self):
         import wot_dispatch as d
