@@ -22,6 +22,7 @@ on:
       - 'scripts/privacy_audit.py'
       - 'tests/test_sessionstats_*.py'
       - 'tests/test_release_installers.py'
+      - 'tests/test_hangar_release_installers.py'
       - 'tests/test_release_pipeline.py'
       - 'tests/test_release_snapshot.py'
       - 'tests/test_pr_ci_scoping.py'
@@ -56,6 +57,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_sessionstats_*.py' -v
           python3 -m unittest discover -s tests -p 'test_release_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_hangar_release_installers.py' -v
           python3 -m unittest discover -s tests -p 'test_pr_ci_scoping.py' -v
       - name: Compile verified CPython 2.7.18 for game bytecode
         if: steps.source.outputs.enabled == 'true'

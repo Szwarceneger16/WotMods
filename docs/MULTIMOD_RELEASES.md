@@ -14,14 +14,17 @@ when only the target World of Tanks client changes without a Git commit.
 - **Pull requests:** `.github/workflows/ci.yml` validates Stay Sharp;
   `.github/workflows/sessionstats-ci.yml` validates Session Statistics. They
   have separate native path filters, `contents: read`, directly downloadable
-  ZIP artifacts (14-day retention) and no public Releases. Future mods get a
-  new independent PR workflow.
+  ZIP artifacts (14-day retention) and no public Releases. Hangar Sync uses
+  `.github/workflows/hangarsync-ci.yml` for independent candidate validation
+  without installer uploads. Production installers all use the common publisher.
 - **Module selection:** `scripts/release_modules.json` enumerates exactly
   which sources belong to each module and which shared paths affect them all.
   Changes to only one mod do not invoke the other builder.
 - **Builds:** `.github/workflows/wotmods-release.yml` generates a dynamic
   matrix; `scripts/build_release_module.sh` runs a builder for one module in
-  a read-only job. Both builders run concurrently when both are needed.
+  a read-only job. Selected builders run concurrently when multiple mods change.
+  Hangar has no standalone production workflow and no redundant update-news job
+  in its candidate validation.
 - **Adding a module:** the coordinator reads the previous Release's historical
   registry, so a legitimate older two-installer snapshot can be migrated to
   a newer three-installer snapshot. The final new Release must still contain

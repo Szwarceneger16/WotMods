@@ -25,6 +25,17 @@
         "mods/sessionstats/**",
         "scripts/sessionstats/**"
       ]
+    },
+    {
+      "id": "hangarsync",
+      "display_name": "Hangar Sync",
+      "base_version_file": "mods/hangarsync/VERSION",
+      "installer_prefix": "GRZ_Hangar_Sync-v",
+      "source_paths": [
+        "mods/hangarsync/**",
+        "scripts/hangarsync/**",
+        "scripts/sessionstats/python27.sh"
+      ]
     }
   ],
   "shared_build_paths": [

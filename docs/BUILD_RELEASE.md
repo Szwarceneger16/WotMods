@@ -36,6 +36,25 @@ then produces `Session-Stats-v<version>.zip` with the installed file
 `grz_sessions_stats.wotmod`, OpenWG and configuration examples. See
 [Session Statistics source](../mods/sessionstats/README.md).
 
+## Hangar Sync builds
+
+Hangar Sync is registered in the same production matrix as the other mods. Its
+native `GRZ_Hangar_Sync-v<version>.zip` is strictly verified and copied unchanged
+into the shared Release; no extra ZIP wrapper is added. Planned release versions
+and the verified WoT client directory are passed explicitly to the native builder.
+Unchanged ZIPs retain their exact bytes across later snapshots.
+
+`Validate Hangar Sync PR` tests candidates, native Python 2.7 bootstrap modules,
+deterministic packaging and privacy boundaries without uploading an installer.
+Its summary points to the trusted Release channel. After accepted `main` builds,
+production download links appear in the publisher summary only after remote
+bytes and checksums have been independently verified.
+
+The installer contains only a disabled configuration example. Synchronization
+requires a separate validated local config with explicit destination, credentials
+and player allowlist; keep existing settings when upgrading and never publish
+your config. See [Hangar installation](../mods/hangarsync/README.md#installation).
+
 ## Production flow
 
 The only publisher is `.github/workflows/wotmods-release.yml`. It runs on
@@ -70,7 +89,7 @@ PR must not pull the other module's unrelated commits into its changelog.
 The release tag format is `wotmods-v1.0.<release-sequence>`. The first value
 is seeded from the migration commit count; after that it increments **per
 successful published Release**, even if a WoT client update reuses the same
-source commit. This is separate from the two installers' own SemVer. Legacy `staysharp-v*`, `sessionstats-v*`,
+source commit. This is separate from the registered mods' own SemVer. Legacy `staysharp-v*`, `sessionstats-v*`,
 and older `v*` tags remain preserved in history; published artifacts are not
 mutated or deleted.
 

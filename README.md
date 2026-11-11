@@ -4,9 +4,9 @@
 |---|---|---|
 | Session Stats — WN8, XP, finances, session history | [mods/sessionstats](mods/sessionstats) | `Session-Stats-v<version>.zip`, including OpenWG and configuration examples |
 | Stay Sharp — Medkit Reminder | [source](source), description below | `StaySharp-Medkit-v<version>.zip`, including installation paths and a configuration example |
-| Hangar Sync — opt-in garage, crew and mission snapshots | [mods/hangarsync](mods/hangarsync) | Accepted `main` build: `GRZ_Hangar_Sync-v<version>.zip`, including installation paths and a disabled configuration example |
+| Hangar Sync — opt-in garage, crew and mission snapshots | [mods/hangarsync](mods/hangarsync) | Shared Release: `GRZ_Hangar_Sync-v<version>.zip`, including installation paths and a disabled configuration example |
 
-Each mod can be installed independently. Medkit and Session Stats use the [latest shared release snapshot](../../releases/latest), carrying unchanged installers forward byte-for-byte unless the target game directory changes. See [release flow](docs/MULTIMOD_RELEASES.md). Hangar Sync validates PR candidates without uploading executable packages. After changes are reviewed and merged into `main`, **Build Hangar Sync installer** rebuilds the exact accepted commit, runs tests, deterministic packaging, Python 2.7 bootstrap checks and a recursive privacy audit, then uploads the installation ZIP. Download only from that workflow in this repository on `main` (a `push` or manual run). Green PR checks do not establish trust in an installer; older installer-named PR artifacts are review evidence, not installation downloads.
+Each mod can be installed independently. All three use the [latest shared release snapshot](../../releases/latest), carrying unchanged installers forward byte-for-byte unless the target game directory changes. See [release flow](docs/MULTIMOD_RELEASES.md). Hangar Sync validates PR candidates without uploading executable packages. After reviewed changes reach `main`, the single **Publish WotMods snapshot** transaction tests, builds, audits and publishes its installer with the other registered mods. Its final Actions summary contains verified Release download links. Green PR checks do not establish trust in an installer; older installer-named PR artifacts are review evidence, not installation downloads.
 Sources and tests are separate; the Session Stats license applies only to its module.
 Integration rules: [mods/sessionstats/README.md](mods/sessionstats/README.md).
 
@@ -34,7 +34,7 @@ The icons use cursor/button polling and never register native GUI input callback
 
 ## Downloads
 
-**[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip` or `Session-Stats-v<version>.zip`. Each release offers both installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the two installers.
+**[Latest release](../../releases/latest)** — choose `StaySharp-Medkit-v<version>.zip`, `Session-Stats-v<version>.zip`, or `GRZ_Hangar_Sync-v<version>.zip`. Each release offers all registered installers; GitHub also adds source archives and release attestations. The Downloads section links directly to the installer ZIPs.
 
 ## Installation
 
@@ -68,7 +68,7 @@ See [build and release documentation](docs/BUILD_RELEASE.md), [technical notes](
 
 ## Changes, reviews and releases
 
-1. Submit a PR to `main`. Each mod has its own **read-only, path-filtered PR workflow** and a downloadable, directly installable ZIP artifact. A PR for Stay Sharp does not build Session Stats and vice versa, except when truly shared build infrastructure changes.
+1. Submit a PR to `main`. Each mod has its own **read-only, path-filtered PR workflow**. Stay Sharp and Session Stats provide candidate ZIP artifacts; Hangar candidates are tested and audited without uploading an installer. Mod-specific source changes do not cross-build other mods; shared infrastructure changes validate the affected modules.
 2. After review and merge, `wotmods-release.yml` serializes the release transaction. It compares the exact merged source commit with the last immutable Latest Release and builds only changed modules in independent matrix jobs. Unchanged installers are copied byte-for-byte unless the WoT client directory must be retargeted.
 3. A single write-scoped publisher assembles and verifies the entire snapshot, creates **one protected `wotmods-v1.0.<release-sequence>` Release**, and independently downloads and checks every published ZIP. Module versions remain separate and increment only when their own module is rebuilt. A client-only update can advance the shared release sequence even without a source commit.
 
@@ -76,7 +76,7 @@ Rapid merges and retries are safe: a later commit includes earlier unshipped cha
 
 See [release architecture and race conditions](docs/MULTIMOD_RELEASES.md), [operator/agent guide](docs/RELEASE_AGENT_GUIDE.md), and [build instructions](docs/BUILD_RELEASE.md).
 
-**Required before the migration is merged:** the owner must create an active `wotmods-release-tags` ruleset protecting exactly `refs/tags/wotmods-v*` against updates/deletions without bypass actors, plus the reviewed `wotmods-release` Environment. Until then, production publishing deliberately fails closed. Historical releases and their tag protections remain untouched.
+The existing `wotmods-release-tags` Ruleset and reviewed `wotmods-release` Environment remain unchanged. Missing or stale protection evidence blocks publication. Historical releases and their tag protections remain untouched.
 
 ## Privacy and safety
 

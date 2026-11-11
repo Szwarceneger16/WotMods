@@ -2,32 +2,30 @@ name: Validate Hangar Sync PR
 
 on:
   pull_request:
-    branches: [main, feature/sessionstats-battle-details-timeline]
+    branches: [main, feature/sessionstats-battle-details-timeline, feature/sessionstats-hangar-api]
     paths:
       - 'mods/hangarsync/**'
       - 'scripts/hangarsync/**'
       - 'tests/test_hangarsync_*.py'
-      - '.github/workflows/hangarsync-ci.yml'
-      - '.github/workflows/hangarsync-build.yml'
+      - 'tests/test_hangar_release_installers.py'
       - 'scripts/sessionstats/python27.sh'
       - 'scripts/privacy_audit.py'
-      - '.github/workflows/wot-updates.yml'
-      - 'scripts/wot_updates.py'
-      - 'scripts/wot_dispatch.py'
-      - 'tests/test_wot_updates.py'
+      - 'scripts/release_*.py'
+      - 'scripts/release_modules.json'
+      - 'scripts/build_release_module.sh'
+      - 'tests/test_release_*.py'
+      - 'tests/test_unified_release_workflow.py'
+      - 'tests/test_pr_ci_scoping.py'
+      - '.github/workflows/hangarsync-ci.yml'
+      - '.github/workflows/wotmods-release.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  updates:
-    uses: ./.github/workflows/wot-updates.yml
-    with:
-      strict: false
   hangarsync:
-    name: Test, build and audit Hangar Sync
-    needs: updates
+    name: Test, build and audit Hangar Sync candidate
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     concurrency:
@@ -40,10 +38,27 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Compile verified CPython 2.7.18
-        # This shared compiler helper does not build or run Session Stats.
         run: bash scripts/sessionstats/python27.sh
-      - name: Check Hangar Sync workflow and privacy boundaries
-        run: python3 -m unittest discover -s tests -p 'test_hangarsync_*.py' -v
+      - name: Check release integration and privacy boundaries
+        run: |
+          python3 -m unittest discover -s tests -p 'test_hangarsync_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_hangar_release_installers.py' -v
+          python3 -m unittest discover -s tests -p 'test_release_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_unified_release_workflow.py' -v
+          python3 -m unittest discover -s tests -p 'test_pr_ci_scoping.py' -v
       - name: Test, build, audit and reproduce Hangar Sync
-        # Candidate packages are checked locally and never uploaded for installation.
+        # Candidate packages are checked locally and never promoted to releases.
         run: bash scripts/hangarsync/validate.sh
+      - name: Explain candidate artifacts and production downloads
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          ### Hangar Sync candidate validation
+
+          Tests, deterministic packaging and privacy audits passed.
+          This PR check does not upload an installer for installation.
+          Accepted `main` revisions use the single **Publish WotMods snapshot**
+          transaction, which builds changed mods and carries unchanged ZIPs.
+
+          [Trusted release downloads](https://github.com/Szwarceneger16/WotMods/releases/latest)
+          SUMMARY
