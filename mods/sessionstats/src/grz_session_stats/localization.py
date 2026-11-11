@@ -20,7 +20,7 @@ MAX_TEXT = 4096
 LANGUAGE = re.compile(r'\A[a-z]{2,3}(?:-[A-Z]{2})?\Z')
 CLIENT_LANGUAGE = re.compile(r'\A([a-zA-Z]{2,3})(?:[-_]([a-zA-Z]{2}))?\Z')
 PRESENTATION_ONLY_TEMPLATES = frozenset(('more.progress.change', 'more.progress.range',
-                                        'more.progress.target'))
+                                        'more.progress.target', 'sort.metric_stat', 'sort.active_value'))
 try:
     text_type = unicode
 except NameError:

@@ -295,6 +295,14 @@ class LocalizationTests(unittest.TestCase):
             self.assertEqual(translator.text('more.progress.change', 'Fixture', '+2'),
                              self.catalog[language]['more.progress.change'].format('Fixture', '+2'))
 
+    def test_sort_presentation_formats_never_capture_durable_warning_text(self):
+        for language in loc.SUPPORTED:
+            translator = loc.Localizer(language, catalog=self.catalog)
+            for value in ('Unrelated two words', 'Sorting value: external notice',
+                          'Niepełne wyniki wcześniejszych bitew: 1. Historia została zachowana; mod nadal próbuje uzupełnić dane. Możesz też użyć przycisku Odśwież.'):
+                expected = self.catalog[language]['runtime.backlog'].format(1) if value.startswith('Niepełne wyniki') else value
+                self.assertEqual(translator.translate(value), expected)
+
     def test_nested_map_battle_names_translate_only_canonical_or_legacy_fallbacks(self):
         names = [loc.ENGLISH['unknown.vehicle'], loc.LEGACY_POLISH['unknown.vehicle'],
                  loc.ENGLISH['unknown.vehicle_id'].format(77), loc.LEGACY_POLISH['unknown.vehicle_id'].format(77),
