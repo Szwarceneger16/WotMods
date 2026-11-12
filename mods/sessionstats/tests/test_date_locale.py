@@ -91,7 +91,8 @@ class RegionalCalendarTests(unittest.TestCase):
         names = ('gui', 'gui.shared', 'gui.shared.formatters', 'gui.impl', 'gui.impl.gen',
                  'gui.impl.gen.view_models', 'gui.impl.gen.view_models.constants',
                  'gui.impl.gen.view_models.constants.date_time_formats')
-        modules = dict((name, types.ModuleType(name)) for name in names)
+        # Python 2.7 requires byte-str module names, even with unicode_literals.
+        modules = dict((name, types.ModuleType(str(name))) for name in names)
         for module in modules.values():
             module.__path__ = []
         class Formats(object):
@@ -101,7 +102,7 @@ class RegionalCalendarTests(unittest.TestCase):
         def regional(stamp, form):
             calls.append(form)
             return '23.11.2006' if form == Formats.SHORTDATE else '17:45'
-        native = types.ModuleType('date_time')
+        native = types.ModuleType(str('date_time'))
         native.getRegionalDateTime = regional
         native.getFormattedDateTime = lambda stamp, form: ('Day' + str(dates.time.localtime(stamp).tm_wday)
                                                            if form == '%a' else 'Month' + str(dates.time.localtime(stamp).tm_mon))
