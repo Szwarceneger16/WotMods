@@ -8,6 +8,14 @@ const root = path.resolve(__dirname, '..');
 const qaDirectory = fs.mkdtempSync(path.join(require('os').tmpdir(),'grz-session-ui-'));
 const fixtures = JSON.parse(fs.readFileSync(path.join(root,'preview/demo_snapshot.json'),'utf8'));
 const errors = [];
+let activeFeature = 'main contract';
+function collectPageErrors(page) {
+  const owner = activeFeature;
+  page.on('pageerror', error => {
+    errors.push(String(error));
+    console.error('Browser pageerror: '+JSON.stringify({owner,url:page.url(),message:String(error),stack:error.stack}));
+  });
+}
 const checks = [];
 const check = (name, pass) => { assert(pass, name); checks.push(name); };
 const captions = {
@@ -93,7 +101,7 @@ async function numericTextOverflow(page) {
 
 async function nativeHost(browser, options) {
   const native=await browser.newPage({viewport:options.initialViewport || {width:1440,height:900}});
-  native.on('pageerror',e=>errors.push(String(e)));
+  collectPageErrors(native);
   const snapshot=JSON.parse(JSON.stringify(fixtures.normal));
   snapshot.viewport=options.viewport || {width:1440,height:900};
   await native.addInitScript(({snapshot,options})=>{
@@ -201,11 +209,13 @@ async function nativeHost(browser, options) {
 const featureFailures=[];
 async function runFeatureSuite(file,browser) {
   const started=Date.now(),before=checks.length;
+  const previousFeature=activeFeature;activeFeature=file;
   console.log('UI feature started: '+file);
   try {
     await require(file)({browser,nativeHost,check});
     console.log('UI feature passed: '+file+' ('+(checks.length-before)+' checks, '+(Date.now()-started)+' ms)');
   } catch(error) { featureFailures.push(file+': '+error.message); console.error(file,error); }
+  finally {activeFeature=previousFeature;}
 }
 
 (async function () {
@@ -213,7 +223,7 @@ async function runFeatureSuite(file,browser) {
   try {
   await runFeatureSuite('./ui-locale-screenshots.cjs',browser);
   const page = await browser.newPage({viewport:{width:744,height:730},colorScheme:'dark',timezoneId:'UTC'});
-  page.on('pageerror',e=>errors.push(String(e)));
+  collectPageErrors(page);
   await serveUI(page);
   await page.goto('http://grz-session.test/SessionStats.html');
   await page.waitForFunction(()=>window.GRZSessionStats);
@@ -867,7 +877,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-summary-xp-total.cjs',browser);
   await runFeatureSuite('./ui-resize-input.cjs',browser);
   check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
-  check('No browser JavaScript errors',errors.length===0);
+  check('No browser JavaScript errors: '+JSON.stringify(errors),errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};
   fs.writeFileSync(path.join(root,'tests/ui-report.json'),JSON.stringify(report,null,2)+'\n');

@@ -4,6 +4,7 @@ const frames=(page,count=6)=>page.evaluate(count=>new Promise(resolve=>{
   function next(){if(--count)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
 }),count);
 module.exports=async({browser,nativeHost,check})=>{
+  await require('./ui-pinned-raf.cjs')({browser,nativeHost,check});
   await require('./ui-filter-wide-center.cjs')({browser,nativeHost,check});
   require('./ui-pinned-filters.cjs').assertPinnedFilterSource();
   check('Actual-source pinning survives mixed scroll frames without learning a translated origin',true);

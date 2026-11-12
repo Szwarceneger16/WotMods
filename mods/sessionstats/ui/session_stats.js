@@ -3042,7 +3042,8 @@
             // Eight frames cover ordinary native settlement. A mismatched
             // getter/paint may need longer, with one bounded frame budget.
             var pending = battleScrollPending({requestedOffset:nodes.scroll.scrollTop});
-            if (work.frames < 8 || (pending && work.attempts < 60)) { window.requestAnimationFrame(settle); }
+            if ((work.frames < 8 || (pending && work.attempts < 60)) &&
+                    typeof window.requestAnimationFrame === 'function') { window.requestAnimationFrame(settle); }
             else { state.pinnedFilterWork = null; }
         }
         window.requestAnimationFrame(settle);

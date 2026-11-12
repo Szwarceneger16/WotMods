@@ -12,6 +12,8 @@ debounce remain unchanged. Pinned filter placement uses
 normal-flow offsets rather than its translated rectangle; delayed native scroll
 samples cannot move the panel's origin. Coalesced pin-only work is bounded and
 does not rebuild result cards, load pages or resize the native surface.
+Retained callbacks recheck frame-scheduler availability and retire their owned
+work if it disappears, so a restored scheduler can accept fresh scroll work.
 
 Map names and calendar month/weekday text follow the selected interface language.
 Map labels resolve by stable IDs during presentation, preserving saved native

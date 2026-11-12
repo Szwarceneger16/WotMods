@@ -66,6 +66,16 @@ function assertPinnedFilterSource(source=shipped()){
   burst.sample(800,800);burst.context.updatePinnedFilters();const retained=burst.frames.shift(),writes=burst.styles();
   burst.state.destroyed=true;burst.state.pinnedFilterWork=null;retained();
   assert.strictEqual(burst.styles(),writes,'A retained pin callback cannot mutate a destroyed view');
+  const optional=fixture(source),originalRAF=optional.context.window.requestAnimationFrame;
+  optional.sample(800,800);optional.context.updatePinnedFilters();
+  optional.context.window.requestAnimationFrame=undefined;
+  optional.tick();
+  assert.strictEqual(optional.state.pinnedFilterWork,null,'A retained pin callback retires ownership when optional RAF disappears');
+  assert.strictEqual(optional.frames.length,0,'Unavailable RAF does not leave follow-up work queued');
+  optional.context.window.requestAnimationFrame=originalRAF;
+  optional.context.updatePinnedFilters();
+  assert.strictEqual(optional.frames.length,1,'Restored RAF lets a newer scroll own fresh pin work');
+  optional.settle();assert.strictEqual(optional.state.pinnedFilterWork,null);
 }
 module.exports={assertPinnedFilterSource};
 if(require.main===module){assertPinnedFilterSource();console.log('Actual-source fast pinning, mixed native frames, normal-flow bounds and coalescing passed.');}
