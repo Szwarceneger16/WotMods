@@ -240,12 +240,12 @@ Root `window.GRZSessionStats.update(payload)` allows offline DOM QA.
 Preview data are injected ONLY by standalone preview, never silently shown inside game.
 Window title Session statistics; top session toggles; base/received XP toggle.
 Single vertically scrolling content: compact global stats + full details always visible,
-then Vehicles | Maps | Battles switch; Vehicles default. All group details always visible.
+then Vehicles | Maps | Tiers | Battles switch; Vehicles default. All group details always visible.
 No separate Summary tab, accordions or 'more details'. Summary and aggregate group
 headline columns: Battles, Win rate, WN8. Sessions, vehicles and maps retain XP/WN8
 min/average/max. A battle row shows its outcome and exactly one XP and one WN8 value,
-without Battles=1 or Win rate=0/100% in ordinary ordering; active win-rate
-sorting may expose its otherwise absent percentage. Both XP choices work in all groupings.
+without Battles=1 or Win rate=0/100%; individual Battles reject win-rate ordering.
+Both XP choices work in all groupings.
 WN8 full integer, never k/truncation/leading zeroes.
 Use Gameface-safe flex/block CSS; no grid, gap, sticky, inline-block, fit-content,
 font-feature-settings. Warhelios native font, warm cream/olive/gold.
@@ -429,8 +429,9 @@ used by its selected comparator (null if unavailable). Mark the existing matchin
 value instead of repeating it below the name. Active WN8 ordering replaces the
 large headline with its selected Min/Average/Max; finance tables continue to show
 totals, so absent aggregate per-battle net-credit values retain an explicit caption.
-Win-rate ordering matches known-outcome percentages; individual wins are 100,
-losses/draws 0, and unknown results remain last in either direction.
+Win-rate ordering is aggregate-only and matches known-outcome percentages; unknown
+results remain last in either direction. Default group headlines identify Combined
+WN8, recalculated from summed actual/expected values, separately from battle averages.
 
 CONTINUOUS PAGE REPLIES
 The page action accepts an optional safe ASCII request_id of 1..64 characters.

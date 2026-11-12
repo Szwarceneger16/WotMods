@@ -90,7 +90,7 @@ HOW THE PANEL WORKS
   reset and is hidden by default.
 • "Base XP" is selected initially. "Received XP" switches all visible experience
   statistics to the values including bonuses awarded by the game.
-• Summary and details are visible immediately. Vehicles / Maps / Battles appear
+• Summary and details are visible immediately. Vehicles / Maps / Tiers / Battles appear
   below, with Vehicles selected on opening. Scroll the whole panel vertically;
   use "More" on a battle card for missions, Battle Pass and bonuses. Wheel down
   moves toward later results; wheel up moves
@@ -106,8 +106,14 @@ HOW THE PANEL WORKS
   result is not repeated across three columns; individual battles have no win rate.
 • Every grouping includes free XP and credit/bond income, costs and net amounts.
   Gold appears when the result confirms a battle-related transaction.
-• Headline WN8 uses summed results and the expected values of each vehicle.
-  Average individual-battle WN8 is a separate detail metric.
+• The Combined WN8 headline uses summed results and expected vehicle values.
+  Average individual-battle WN8 is a separate detail metric. Active WN8 sorting
+  shows the selected Min/Average/Max instead. The card information button explains it.
+• Group date ordering offers first/last battle ascending/descending choices;
+  expanded vehicle/map histories retain the same date direction across pages.
+• Dates and clock format follow WoT client resources. Explicit date_time fields
+  in mods/configs/grz.sessionstats.json override each automatic setting;
+  see docs/CLIENT_DATE_TIME.md for the complete example.
 • WN8 is written as 1574, not 1.6k. Values such as 805 and 10420 remain unabbreviated.
 • Unknown values use a dash. Partial data shows coverage, for example 15/16.
   Partial financial totals contain only confirmed amounts.

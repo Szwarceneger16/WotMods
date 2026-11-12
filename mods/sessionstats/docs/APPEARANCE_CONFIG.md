@@ -79,10 +79,6 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.date_unavailable_border` | `"#464c46"` | Unavailable calendar/clock border |
 | `colors.date_unavailable_background` | `"#2b302b"` | Neutral unavailable calendar/clock fill |
 | `opacity.date_unavailable` | `1.0` | Calendar choices use explicit gray paint instead of fading into camouflage |
-
-Automatic date and clock formatting uses WoT's resource-backed client formatters,
-with bundled-language defaults when unavailable. Windows/system regional settings
-are not read. See [client formatting and override examples](CLIENT_DATE_TIME.md).
 | `opacity.target_dimmed` | `0.7` | Battle outline after its five-second pulse; 30% transparent |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
 | `maps.preview_mode` | `"image"` | Map hover artwork: `"image"` for the landscape picture, `"minimap"` for the tactical map |
@@ -95,6 +91,10 @@ are not read. See [client formatting and override examples](CLIENT_DATE_TIME.md)
 | `window.maximized` | `false` | Open maximized; strict boolean |
 | `window.restored_width` | `700` | Restored logical width, integer 1–32768 |
 | `window.restored_height` | `620` | Restored logical height, integer 1–32768 |
+
+Automatic date and clock formatting uses WoT's resource-backed client formatters,
+with bundled-language defaults when unavailable. Windows/system regional settings
+are not read. See [client formatting and override examples](CLIENT_DATE_TIME.md).
 
 Other full-JSON keys cover document backgrounds, title bars, period tabs, XP
 switches, metric headings/values, separators, cards, battle results, messages,
