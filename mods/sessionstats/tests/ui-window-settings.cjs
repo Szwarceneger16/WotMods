@@ -73,9 +73,15 @@ module.exports=async ({browser,nativeHost,check})=>{
       await slider.getAttribute('aria-valuenow')==='20' &&
       await page.locator('#ss-window-background').evaluate(layer=>getComputedStyle(layer).opacity==='0.8'));
     await slider.focus();
-    for(const [key,value] of [['Home',0],['ArrowRight',1],['Shift+ArrowRight',11],['PageUp',21],['PageDown',11],['ArrowLeft',10],['Shift+ArrowLeft',0],['End',100],['Home',0]]) {
-      await slider.press(key);check('Transparency keyboard '+key+' produces'+value,await slider.getAttribute('aria-valuenow')===String(value));
-    }
+    const keyboard=await slider.evaluate(node=>[
+      ['Home',0],['ArrowRight',5],['Shift+ArrowRight',15],['PageUp',25],['PageDown',15],
+      ['ArrowLeft',10],['Shift+ArrowLeft',0],['End',100],['Home',0]
+    ].map(([key,value])=>{
+      const parts=key.split('+');
+      node.dispatchEvent(new KeyboardEvent('keydown',{key:parts[parts.length-1],shiftKey:parts.length>1,bubbles:true,cancelable:true}));
+      return {key,value,actual:node.getAttribute('aria-valuenow')};
+    }));
+    for(const {key,value,actual} of keyboard)check('Transparency keyboard '+key+' produces'+value,actual===String(value));
     check('Rapid keyboard changes remain unsaved until the debounce finishes',(await commands(page)).length===1);
     await page.waitForTimeout(240);saved=await commands(page);first=saved[saved.length-1];
     check('Keyboard debounce commits only its latest value',saved.length===2 && first.background_transparency==='0');

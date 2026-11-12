@@ -1247,7 +1247,8 @@ class StatsService(object):
             scope[group_type].sort(key=lambda group: (-group['stats']['battles'], group['name'].lower(), group['id']))
         for record in sorted(records, key=lambda row: (row.get('started_at') or 0, row['arena_id']), reverse=True):
             scope['battles'].append({'id': record['arena_id'], 'name': record.get('vehicle_name') or message('unknown.vehicle'),
-                                     'map': record.get('map_name') or message('unknown.map'), 'started_at': record.get('started_at'),
+                                     'map': record.get('map_name') or message('unknown.map'), 'map_id': record.get('map_id'),
+                                     'started_at': record.get('started_at'),
                                      'outcome': record.get('outcome'), 'tier': record.get('vehicle_tier'),
                                      'stats': aggregate_stats([record], self.expected_table)})
         return scope

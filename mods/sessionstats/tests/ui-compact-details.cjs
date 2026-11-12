@@ -59,7 +59,8 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
       columns.width=measured*scale;context.layoutMoreColumns(missionPanel,available);
       assert.strictEqual(columns.className.includes('ss-more-columns-paired'),paired,'Pair only when actual card space fits a readable mission column');
       assert.strictEqual(missions.style.width,expected+'rem','Missions receive explicit usable width, including after a narrow resize');
-      assert.strictEqual(missions.style.flex,'0 0 '+expected+'rem','Native flex-basis/wrap failures cannot shrink the mission column');
+      assert.strictEqual(missions.style.flex,paired?'0 0 '+expected+'rem':'0 0 auto','Only paired missions use their width as a horizontal flex basis');
+      assert.strictEqual(bonus.style.flex,paired?'0 0 486rem':'0 0 auto','Stacked bonuses use content height even under native column flex semantics');
       assert.strictEqual(bonus.style.width,'486rem','A long matrix remains capped instead of stretching with the card');
     }
   }
@@ -72,7 +73,8 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:0,pages:1,total:4,page_size:10,items:Array.from({length:4},(_,index)=>item(index))}});
     assert(!body.className.includes('ss-history-paged'),'A known short single page releases the fixed viewport');
     assert.strictEqual(body.querySelectorAll('.ss-map-battle-row').length,4);
-    assert(body.querySelectorAll('.ss-map-battle-wn8').every(node=>node.style.color==='#4c762e'),'Nested history uses the shipped WN8 text palette');
+    assert(body.querySelectorAll('.ss-map-battle-wn8-value').every(node=>node.style.color==='#4c762e'),'Nested history values use the shipped WN8 text palette');
+    assert(body.querySelectorAll('.ss-map-battle-wn8-label').every(node=>node.style.textShadow==='none'),'Nested history captions never receive numeric halos');
     assert(body.querySelector('.ss-map-battle-info').querySelector('.ss-map-battle-date'),'Name and date share the same flex identity');
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:0,pages:2,total:13,page_size:10,items:Array.from({length:10},(_,index)=>item(index))}});
     assert(body.className.includes('ss-history-paged'),'A multi-page history reserves its stable viewport');next.onclick();

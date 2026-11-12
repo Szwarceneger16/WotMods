@@ -27,7 +27,7 @@ function assertWN8Source(){
     setAttribute(key,value){this.attributes[key]=String(value);}removeAttribute(key){delete this.attributes[key];}}
   let panel;
   for(const file of ['session_stats.js','postbattle.js']){
-    const context={};vm.createContext(context);vm.runInContext(['wn8Color','paintWN8'].map(name=>sourceFunction(read(file),name)).join('\n'),context);
+    const context={};vm.createContext(context);vm.runInContext(['wn8Color','paintWN8','paintWN8Caption'].map(name=>sourceFunction(read(file),name)).join('\n'),context);
     for(let index=0;index<bands.length;index++){
       const [minimum,color]=bands[index];assert.strictEqual(context.wn8Color(minimum),color,file+' lower boundary '+minimum);
       if(index)assert.strictEqual(context.wn8Color(minimum-1),bands[index-1][1],file+' previous band '+minimum);
@@ -36,6 +36,13 @@ function assertWN8Source(){
       else assert.strictEqual(node.style.textShadow,'0 0 0.7rem rgba(212,204,176,0.35)',file+' keeps colored rating halos unchanged');
       assert.strictEqual(node.attributes['data-wn8-value'],String(minimum));
       assert(!Object.keys(node.style).some(key=>/background|border|padding|width|height/i.test(key)),'Rating paint cannot change fill or geometry');
+      const caption=new Node('span');context.paintWN8(caption,0);context.paintWN8Caption(caption,minimum);
+      assert.strictEqual(caption.style.color,color==='#000000'?'':color,file+' black captions use their configured label color');
+      assert.strictEqual(caption.style.textShadow,'none',file+' captions never inherit a numeric halo');
+      assert.strictEqual(caption.attributes['data-wn8-caption-value'],String(minimum));
+      assert.strictEqual(caption.attributes['data-wn8-value'],undefined,'A caption is not a rating figure');
+      context.paintWN8Caption(caption,null);assert.strictEqual(caption.style.color,'');assert.strictEqual(caption.style.textShadow,'none');
+      assert.strictEqual(caption.attributes['data-wn8-caption-value'],undefined,'Unknown captions retire an earlier rating color');
       context.paintWN8(node,null);assert.strictEqual(node.style.color,'');assert.strictEqual(node.style.textShadow,'');
       assert.strictEqual(node.attributes['data-wn8-value'],undefined,'Unavailable results retire a previous rating color');
     }
@@ -78,7 +85,7 @@ module.exports=async({browser,nativeHost,check})=>{
       for(const group of ['vehicles','maps','tiers','battles'])for(const item of scope[group]){
         item.stats.wn8=1599.5;item.stats.wn8_count=1;
         item.stats.battle_wn8={count:3,min:299.4,avg:899.5,max:2899.5,sum:4098.4};
-        item.sort_value=899.5;
+        item.sort_value=2450;
         if(group==='maps'||group==='vehicles')item.battle_list={page:0,pages:1,total:bands.length,page_size:10,
           items:bands.map(([value],index)=>({id:'synthetic-color-history-'+index,name:'Synthetic tank '+index,map:'Synthetic map',
             started_at:1700000000-index,wn8:value,outcome:'win'}))};
@@ -99,6 +106,12 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Single-value WN8 labels, headlines and distribution values use exact text-only colors in '+group+': '+JSON.stringify(audit),
         audit.length>3&&audit.every(item=>rgb[item.value]===item.color&&item.styleBackground===''&&
           (item.value<300?hasBlackOutline(item.halo):item.halo.includes('0.35'))));
+      check('All WN8 captions, including coverage and nested histories, remain free of numeric halos in '+group,
+        await page.locator('[data-wn8-caption-value]').evaluateAll(nodes=>nodes.length>0&&nodes.every(node=>{
+          const css=getComputedStyle(node),black=Number(node.getAttribute('data-wn8-caption-value'))<300;
+          return css.textShadow==='none'&&!node.hasAttribute('data-wn8-value')&&
+            (!black||(node.style.color===''&&css.color!=='rgb(0, 0, 0)'));
+        })));
       check('Shared distribution WN8 labels retain neutral configured paint in '+group,await page.locator('.ss-performance .ss-metric-row:last-child .ss-metric-name .ss-cell-value').evaluateAll(nodes=>
         nodes.length>0 && nodes.every(node=>!node.hasAttribute('data-wn8-value') && node.style.color==='' && node.style.textShadow==='')));
       check('Black WN8 has a visible crisp edge without changing text bounds in '+group,await page.locator('[data-wn8-value="299"]').first().evaluate(node=>{
@@ -109,7 +122,13 @@ module.exports=async({browser,nativeHost,check})=>{
       check('The visible WN8 label carries the same color as its headline value in '+group,
         await page.locator('.ss-headline .ss-kpi').last().evaluate(node=>getComputedStyle(node.children[0]).color===getComputedStyle(node.children[1]).color));
       if(group==='vehicles'||group==='maps')check('Every nested history rating is colored without a badge fill in '+group,
-        await page.locator('.ss-map-battles').first().locator('.ss-map-battle-wn8[data-wn8-value]').count()===bands.length);
+        await page.locator('.ss-map-battles').first().locator('.ss-map-battle-wn8-value[data-wn8-value]').count()===bands.length);
+      if(group!=='battles')check('Purple WN8 stays on a neutral olive sorting fill with its orange edge in '+group,
+        await page.locator('.ss-group-wn8-kpi.ss-sort-active-value').first().evaluate(node=>{
+          const css=getComputedStyle(node),figure=node.querySelector('.ss-kpi-value');
+          return css.backgroundColor==='rgb(37, 42, 35)'&&css.boxShadow.includes('rgb(231, 162, 59)')&&
+            getComputedStyle(figure).color==='rgb(131, 87, 157)';
+        }));
       if(group==='vehicles')console.log('GRZ_BLACK_WN8_QA_V1 '+(await page.locator('.ss-map-battles').first().screenshot({type:'png'})).toString('base64'));
       const borders=await page.locator('.ss-group').first().evaluate(card=>{
         const border=card.querySelector('.ss-wn8-card-border'),rect=card.getBoundingClientRect();
@@ -119,11 +138,35 @@ module.exports=async({browser,nativeHost,check})=>{
         card.classList.remove('ss-battle-target');const restored={rect:card.getBoundingClientRect().toJSON(),visibility:getComputedStyle(border).visibility,color:getComputedStyle(border).borderColor};
         return {original,selected,restored};
       });
-      const borderColor=group==='battles'?'rgba(76, 118, 46, 0.22)':'rgba(215, 182, 0, 0.22)';
+      const borderColor=group==='battles'?'rgba(76, 118, 46, 0.22)':'rgba(131, 87, 157, 0.22)';
       check('The faint WN8 border follows the displayed headline and yields to selection without moving '+group+': '+JSON.stringify(borders),
         borders.original.position==='absolute'&&borders.original.pointer==='none'&&borders.original.color===borderColor&&
         borders.selected.visibility==='hidden'&&borders.restored.visibility==='visible'&&borders.restored.color===borders.original.color&&
         borders.selected.color!==borders.original.color&&[borders.selected.rect,borders.restored.rect].every(rect=>rect.width===borders.original.width&&rect.height===borders.original.height));
+    }
+    await page.evaluate(()=>{
+      const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+      scope.summary.wn8=0;scope.summary.wn8_count=1;scope.summary.observed_battles=scope.summary.battles+1;
+      for(const group of ['vehicles','maps','tiers','battles']){
+        scope.ordering[group]={metric:'off',statistic:'avg',direction:'desc',chronology:'newest'};
+        for(const item of scope[group]){item.stats.wn8=0;item.stats.wn8_count=1;item.stats.observed_battles=item.stats.battles+1;}
+      }
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    });
+    await page.addStyleTag({content:'.ss-kpi-label,.ss-battle-label,.ss-map-battle-wn8-label { color:#aabbcc; }'});
+    for(const group of ['vehicles','maps','tiers','battles']){
+      await page.locator('#ss-group-'+group).click();await frames(page);
+      check('Black WN8 keeps readable unoutlined captions in the summary and '+group,await page.evaluate(()=>{
+        const captions=[...document.querySelectorAll('[data-wn8-caption-value="0"]')];
+        return captions.length>1&&captions.every(node=>node.style.color===''&&getComputedStyle(node).color!=='rgb(0, 0, 0)'&&
+          getComputedStyle(node).textShadow==='none');
+      }));
+      check('Black WN8 numeric figures retain their crisp edge in '+group,
+        await page.locator('[data-wn8-value="0"]').evaluateAll(nodes=>nodes.length>1&&nodes.every(node=>
+          node.style.color==='rgb(0, 0, 0)'&&node.style.textShadow.includes('0.85'))));
+      check('Black WN8 captions honor the interface label color in '+group,
+        await page.locator('.ss-kpi-label[data-wn8-caption-value="0"],.ss-battle-label[data-wn8-caption-value="0"],.ss-map-battle-wn8-label[data-wn8-caption-value="0"]').evaluateAll(nodes=>
+          nodes.length>0&&nodes.every(node=>getComputedStyle(node).color==='rgb(170, 187, 204)')));
     }
   }finally{await page.close();}
 };

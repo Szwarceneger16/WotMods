@@ -78,6 +78,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
             'kpi_label_text': '#c2bda2',
             'kpi_value_text': '#e8e5d2',
             'kpi_wn8_text': '#d9dca4',
+            'sort_active_background': '#252a23',
             'outcome_summary_text': '#bebca3',
             'outcome_summary_value_text': '#e0dcc3',
             'details_separator_border_top': '#303421',
@@ -357,6 +358,10 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
 .ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
 .ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
+.ss-list-controls.ss-filters-wide { justify-content:center; }
+.ss-filters-wrapped .ss-list-meta, .ss-filters-wrapped .ss-pagination, .ss-filters-wrapped .ss-sorting { margin-left:4rem; margin-right:4rem; }
+.ss-filters-wrapped .ss-list-meta { justify-content:center; }
+.ss-filters-wrapped .ss-sorting { flex:0 1 auto; width:auto; justify-content:center; }
 .ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
 .ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
 .ss-filters-wide .ss-list-meta { flex:0 0 150rem; width:150rem; max-width:150rem; }
@@ -522,11 +527,13 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-meta .ss-free-xp { font-size:12rem; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
 .ss-group-sort-value { display:block; flex:0 1 auto; min-width:0; max-width:100%; margin:2rem 8rem 2rem 0; padding:2rem 5rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.table_header_background_start}}; color:{{colors.session_tab_active_text}}; font-size:12rem; line-height:16rem; white-space:normal; overflow-wrap:normal; }
-.ss-group .ss-sort-active-value { border-radius:{{radii.control}}rem; background:{{colors.button_confirm_background_end}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+.ss-group .ss-sort-active-value { border-radius:{{radii.control}}rem; background:{{colors.sort_active_background}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
 .ss-group-kpi.ss-sort-active-value { padding:0 5rem; text-align:center; }
 .ss-group-kpi.ss-sort-active-value .ss-kpi-label, .ss-group-kpi.ss-sort-active-value .ss-kpi-value { text-align:center; }
 .ss-summary-meta { margin:3rem 4rem; }
-.ss-summary-xp-total { flex:1 0 100%; width:100%; min-width:0; max-width:100%; justify-content:center; }
+.ss-summary-xp-totals { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:1 0 100%; width:100%; min-width:0; max-width:100%; }
+.ss-summary-xp-total { flex:1 1 0rem; min-width:0; max-width:100%; justify-content:center; margin:0 5rem; }
+.ss-summary-xp-total .ss-xp-total-label { flex:0 0 100%; text-align:center; }
 .ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { white-space:nowrap; }
 
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
@@ -677,6 +684,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-map-battle-meta .ss-map-battle-date { margin-right:8rem; }
 .ss-map-battle-outcome { display:block; flex:0 1 90rem; min-width:0; margin-right:8rem; font-size:12rem; line-height:16rem; }
 .ss-map-battle-wn8 { display:block; flex:0 0 auto; min-width:68rem; margin-right:8rem; color:{{colors.kpi_wn8_text}}; font-size:12rem; line-height:16rem; text-align:right; white-space:nowrap; }
+.ss-map-battle-wn8-label { color:{{colors.kpi_label_text}}; }
 .ss-map-battle-open { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
 .ss-map-battles-pagination, .ss-map-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:6rem; border-top:1rem solid {{colors.details_separator_border_top}}; }
 .ss-map-battles-pagination > .ss-control, .ss-map-pagination > .ss-control { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }

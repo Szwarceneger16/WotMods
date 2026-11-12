@@ -156,6 +156,10 @@ button:disabled { opacity:0.45; }
 .ss-group-tab.is-active { color:#f1d195; background:linear-gradient(#292614, #35301b); box-shadow:inset 0 -2rem #b17d2b, inset 0 1rem #646149; }
 .ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
 .ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
+.ss-list-controls.ss-filters-wide { justify-content:center; }
+.ss-filters-wrapped .ss-list-meta, .ss-filters-wrapped .ss-pagination, .ss-filters-wrapped .ss-sorting { margin-left:4rem; margin-right:4rem; }
+.ss-filters-wrapped .ss-list-meta { justify-content:center; }
+.ss-filters-wrapped .ss-sorting { flex:0 1 auto; width:auto; justify-content:center; }
 .ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
 .ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
 .ss-filters-wide .ss-list-meta { flex:0 0 150rem; width:150rem; max-width:150rem; }
@@ -321,11 +325,13 @@ button:disabled { opacity:0.45; }
 .ss-group-meta .ss-free-xp { font-size:12rem; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
 .ss-group-sort-value { display:block; flex:0 1 auto; min-width:0; max-width:100%; margin:2rem 8rem 2rem 0; padding:2rem 5rem; border:1rem solid #555944; border-radius:5rem; background:#292e1f; color:#f0d392; font-size:12rem; line-height:16rem; white-space:normal; overflow-wrap:normal; }
-.ss-group .ss-sort-active-value { border-radius:5rem; background:#3d2e13; box-shadow:inset 0 0 0 1rem #e7a23b; }
+.ss-group .ss-sort-active-value { border-radius:5rem; background:#252a23; box-shadow:inset 0 0 0 1rem #e7a23b; }
 .ss-group-kpi.ss-sort-active-value { padding:0 5rem; text-align:center; }
 .ss-group-kpi.ss-sort-active-value .ss-kpi-label, .ss-group-kpi.ss-sort-active-value .ss-kpi-value { text-align:center; }
 .ss-summary-meta { margin:3rem 4rem; }
-.ss-summary-xp-total { flex:1 0 100%; width:100%; min-width:0; max-width:100%; justify-content:center; }
+.ss-summary-xp-totals { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:1 0 100%; width:100%; min-width:0; max-width:100%; }
+.ss-summary-xp-total { flex:1 1 0rem; min-width:0; max-width:100%; justify-content:center; margin:0 5rem; }
+.ss-summary-xp-total .ss-xp-total-label { flex:0 0 100%; text-align:center; }
 .ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { white-space:nowrap; }
 
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
@@ -476,6 +482,7 @@ button:disabled { opacity:0.45; }
 .ss-map-battle-meta .ss-map-battle-date { margin-right:8rem; }
 .ss-map-battle-outcome { display:block; flex:0 1 90rem; min-width:0; margin-right:8rem; font-size:12rem; line-height:16rem; }
 .ss-map-battle-wn8 { display:block; flex:0 0 auto; min-width:68rem; margin-right:8rem; color:#d9dca4; font-size:12rem; line-height:16rem; text-align:right; white-space:nowrap; }
+.ss-map-battle-wn8-label { color:#c2bda2; }
 .ss-map-battle-open { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }
 .ss-map-battles-pagination, .ss-map-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; min-width:0; width:100%; padding:6rem; border-top:1rem solid #303421; }
 .ss-map-battles-pagination > .ss-control, .ss-map-pagination > .ss-control { flex:0 0 auto; min-width:64rem; max-width:100%; height:26rem; min-height:26rem; padding:3rem 7rem; }

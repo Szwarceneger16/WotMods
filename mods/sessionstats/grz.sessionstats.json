@@ -54,6 +54,7 @@
     "kpi_label_text": "#c2bda2",
     "kpi_value_text": "#e8e5d2",
     "kpi_wn8_text": "#d9dca4",
+    "sort_active_background": "#252a23",
     "outcome_summary_text": "#bebca3",
     "outcome_summary_value_text": "#e0dcc3",
     "details_separator_border_top": "#303421",

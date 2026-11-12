@@ -83,4 +83,5 @@ module.exports=async({browser,nativeHost,check})=>{
         percentage.value==='100%' && percentage.font>=14 && percentage.fits);
     }
   }finally{await page.close();}
+  await require('./ui-more-spacing.cjs')({browser,nativeHost,check});
 };

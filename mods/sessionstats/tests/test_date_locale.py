@@ -23,6 +23,17 @@ def replace(owner, name, value):
 
 
 class RegionalCalendarTests(unittest.TestCase):
+    def test_selected_ui_words_do_not_replace_client_or_config_numeric_preferences(self):
+        native = {'order': 'MDY', 'separator': '/', 'hour12': True, 'first_weekday': 0,
+                  'months': ['Polish client month'] * 12, 'weekdays': ['Polish client day'] * 7}
+        preferences = dates.resolve_date_settings('pl', native, {'hour_format': '24h', 'order': 'YMD'})
+        for language in ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'):
+            translator = Localizer(language, client_language='pl', date_settings=preferences)
+            payload = translator.snapshot({'warnings': [], 'scopes': {}})['localization']
+            self.assertEqual(payload['date_settings'], {'order': 'YMD', 'separator': '/', 'hour12': False, 'first_weekday': 0})
+            self.assertEqual(payload['messages']['timeline.calendar_months'], translator.messages['timeline.calendar_months'])
+            self.assertEqual(payload['language'], language)
+
     def test_numeric_windows_and_posix_patterns_preserve_regional_order(self):
         for pattern, order, separator in (("dd'.'MM'.'yyyy", 'DMY', '.'),
                                           ('M/d/yyyy', 'MDY', '/'),
@@ -78,8 +89,11 @@ class RegionalCalendarTests(unittest.TestCase):
         translator = Localizer('pl', date_settings=source)
         source['months'][0] = 'Changed'
         snapshot = translator.snapshot({'warnings': [], 'scopes': {}})
-        self.assertEqual(snapshot['localization']['date_settings']['months'][0], 'Month')
-        snapshot['localization']['date_settings']['months'][0] = 'Changed again'
+        self.assertNotIn('months', snapshot['localization']['date_settings'])
+        self.assertNotIn('weekdays', snapshot['localization']['date_settings'])
+        self.assertEqual(snapshot['localization']['date_settings']['order'], 'MDY')
+        snapshot['localization']['date_settings']['order'] = 'YMD'
+        self.assertEqual(translator.date_settings['order'], 'MDY')
         self.assertEqual(translator.date_settings['months'][0], 'Month')
         self.assertEqual(calendar_settings({'order': 'DYM', 'separator': '<', 'hour12': 1,
                                             'first_weekday': True, 'months': ['x'] * 13,

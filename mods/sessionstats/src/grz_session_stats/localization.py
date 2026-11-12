@@ -181,6 +181,8 @@ class Localizer(object):
         self.messages = dict(ENGLISH)
         self.messages.update(catalogs.get(self.language, {}))
         self.date_settings = calendar_settings(date_settings)
+        from .map_names import MapNames
+        self.map_names = MapNames(self.language)
         native_code = client_language_code(client_language)
         if native_code and self.language in (native_code, native_code.split('-')[0]):
             for key in ('outcome.win', 'outcome.loss', 'outcome.draw'):
@@ -234,10 +236,14 @@ class Localizer(object):
         return value
 
     def snapshot(self, snapshot):
-        """Translate presentation fields only; never IDs or game-supplied names."""
+        """Translate fresh presentation fields; retain stable IDs and saved names."""
         snapshot['localization'] = {'language': self.language, 'selected': self.selected, 'messages': dict(self.messages)}
         if self.date_settings:
             snapshot['localization']['date_settings'] = copy.deepcopy(self.date_settings)
+            # Numeric/date preferences belong to the client and config. Words
+            # belong to the selected UI language, including explicit overrides.
+            for key in ('months', 'weekdays'):
+                snapshot['localization']['date_settings'].pop(key, None)
         # Legacy Polish and canonical English notices can describe the same
         # condition. Deduplicate after translation, without rewriting the ledger.
         warnings, seen = [], set()
@@ -260,6 +266,9 @@ class Localizer(object):
                         value = battle.get(field)
                         if is_fallback(value):
                             battle[field] = self.translate(value)
+                    localized_map = self.map_names.name(battle.get('map_id'), battle.get('map'))
+                    if localized_map is not None:
+                        battle['map'] = localized_map
         for name, scope in snapshot.get('scopes', {}).items():
             scope['label'] = self.text('scope.' + name)
             history = scope.get('battle_history')
@@ -271,10 +280,23 @@ class Localizer(object):
                         value = row.get(field)
                         if is_fallback(value):
                             row[field] = self.translate(row[field])
+                    if grouping == 'maps':
+                        localized_map = self.map_names.name(row.get('id'), row.get('name'))
+                        if localized_map is not None:
+                            row['name'] = localized_map
+                    elif grouping == 'battles':
+                        localized_map = self.map_names.name(row.get('map_id'), row.get('map'))
+                        if localized_map is not None:
+                            row['map'] = localized_map
                     battle_list = row.get('battle_list') if grouping in ('maps', 'vehicles') else None
                     translate_battle_list(battle_list)
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
+                    if grouping == 'maps' and isinstance(visual, dict):
+                        visual['alt'] = row.get('name') or self.text('visual.map')
+                    map_visual = row.get('map_visual')
+                    if grouping == 'battles' and isinstance(map_visual, dict):
+                        map_visual['alt'] = row.get('map') or self.text('visual.map')
                     if isinstance(outcome_visual, dict) and row.get('outcome') in ('win', 'loss', 'draw'):
                         outcome_visual['alt'] = self.text('outcome.' + row['outcome'])
                     visual_names = (ENGLISH['visual.vehicle'], ENGLISH['visual.map'],

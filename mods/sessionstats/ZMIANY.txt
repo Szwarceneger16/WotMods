@@ -1,5 +1,16 @@
 SESSION STATS — CHANGELOG
 
+0.9.4 • 2026-11-12
+• Use a neutral sorting-highlight fill while preserving rating colors.
+• Paint WN8 captions like interface labels; retain numeric rating outlines.
+• Center wrapped filter rows and keep pinned filters at their normal-flow
+  origin through fast scrolling and delayed native geometry.
+• Resolve map display names and calendar text in the selected UI language,
+  preserving client/config numeric date formatting and saved history.
+• Show Base XP and Received XP totals together with independent coverage.
+• Size stacked battle details by content instead of horizontal flex bases.
+• Snap transparency pointer and keyboard input to five-percent ticks.
+
 0.9.3 • 2026-11-12
 • Put midnight on the outer 24-hour clock ring and noon on the inner ring,
   with consistent hand position, pointer selection and keyboard navigation.

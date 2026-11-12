@@ -29,8 +29,8 @@ def snapshots():
         {'IDNum':202, 'expDamage':1650, 'expFrag':0.95, 'expSpot':1.2, 'expDef':0.8, 'expWinRate':51},
         {'IDNum':303, 'expDamage':1750, 'expFrag':1.0, 'expSpot':1.6, 'expDef':0.75, 'expWinRate':51}]}
     tanks = [(101, 'Leopard 1'), (202, 'E 50 M'), (303, 'Bat.-Châtillon 25 t')]
-    maps = [('malinovka','Malinovka'), ('murovanka','Murovanka'), ('prokhorovka','Prokhorovka'),
-            ('himmelsdorf','Himmelsdorf'), ('redshire','Redshire')]
+    maps = [('02_malinovka','Malinovka'), ('11_murovanka','Murovanka'), ('05_prohorovka','Prokhorovka'),
+            ('04_himmelsdorf','Himmelsdorf'), ('34_redshire','Redshire')]
     start = datetime(2026,10,20,16,10,tzinfo=timezone.utc).timestamp()
     clock = [start-86400]
     def make_record(i, offset):
@@ -85,6 +85,10 @@ def main():
     localizer.date_settings = resolve_date_settings(localizer.language, overrides=config['date_time'])
     fixtures = {'normal':normal,'reset':reset}
     (output/'demo_snapshot.json').write_text(json.dumps(fixtures,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
+    localized = {}
+    for language in ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'):
+        translator = Localizer(language, date_settings=localizer.date_settings)
+        localized[language] = dict((key, translator.snapshot(copy.deepcopy(snapshot))) for key, snapshot in fixtures.items())
     # Keep regression fixtures canonical; localize the generated preview itself.
     for snapshot in fixtures.values():
         localizer.snapshot(snapshot)
@@ -99,7 +103,7 @@ def main():
     html = re.sub(r'<script(?: type="module")? src="session_stats.js"></script>',
                   lambda m:'<script>\n'+js+'\n</script>', html)
     controller = (output/'controller.js').read_text(encoding='utf-8')
-    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
+    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';window.GRZ_DEMO_LOCALIZED = '+json.dumps(localized,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
     html = html.replace('<body>', '<body>\n<div class="demo-toolbar"><span data-i18n="preview.label">Preview · synthetic data</span><button id="demo-reopen" type="button" data-i18n="preview.open">Open panel</button><button id="demo-restart" type="button" data-i18n="preview.restore">Restore example</button></div>')
     html = html.replace('</body>',demo+'\n<script>\n'+controller+'\n</script>\n</body>')
     preview_css = '''

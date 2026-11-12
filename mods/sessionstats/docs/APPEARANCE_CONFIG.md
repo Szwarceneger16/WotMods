@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.3
+# Appearance and scrolling configuration — 0.9.4
 
 ## File placement and applying changes
 
@@ -58,6 +58,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.table_row_following_border_top` | `"#2e3522"` | Subtle row separator |
 | `colors.table_row_hover_background` | `"#252d1b"` | Hovered row background |
 | `colors.metric_value_text` | `"#ebe7d4"` | Performance-table numbers |
+| `colors.sort_active_background` | `"#252a23"` | Neutral fill behind the active sorting value; the orange outline remains separate |
 | `colors.positive_text` | `"#c0d889"` | Positive balance |
 | `colors.negative_text` | `"#e4ad84"` | Negative balance |
 | `colors.garage_bars_background` | `"#969a9d"` | Garage-icon bars |

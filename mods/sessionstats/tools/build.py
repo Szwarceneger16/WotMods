@@ -91,6 +91,12 @@ def check_package(path):
         languages = json.loads(package.read('res/grz_session_stats/languages.json'))
         assert set(languages['languages']) == {'en', 'ru', 'fr', 'pl', 'de', 'es', 'uk'}
         assert isinstance(languages['languages']['en'].get('title'), str)
+        map_catalog = json.loads(package.read('res/grz_session_stats/map_names.json'))
+        assert map_catalog['schema_version'] == 1
+        maps = map_catalog['maps']
+        assert len(maps) >= 68 and all(set(labels) == set(languages['languages']) for labels in maps.values())
+        assert maps['59_asia_great_wall']['en'] == "Empire's Border"
+        assert 'res/scripts/client/gui/mods/grz_session_stats/map_names.pyc' in names
     return len(names)
 
 
@@ -121,7 +127,7 @@ def main():
     source_paths = sorted((ROOT/'src').rglob('*.py'))
     expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'postbattle', 'visuals',
                         'health', 'monitor', 'diagnostics', 'appearance', 'config_path', 'config_files',
-                        'localization', 'language_defaults']
+                        'localization', 'language_defaults', 'map_names']
     for name in expected_modules:
         if not (ROOT/'src'/'grz_session_stats'/(name+'.py')).is_file():
             raise RuntimeError('Python module missing: '+name)
@@ -182,6 +188,8 @@ def main():
         'installed_package': INSTALLED_PACKAGE,
         'appearance_config': CONFIG_FILENAME, 'appearance_config_sha256': digest(config_path),
         'languages_resource': 'res/grz_session_stats/languages.json', 'languages_resource_sha256': digest(languages_path),
+        'map_names_resource': 'res/grz_session_stats/map_names.json',
+        'map_names_resource_sha256': digest(ROOT/'data/map_names.json'),
         'config_directory': 'mods/configs',
         'expected': json.loads((ROOT/'data'/'wn8-source.json').read_text()),
         'live_client_tested': False,

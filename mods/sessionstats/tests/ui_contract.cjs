@@ -613,6 +613,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-sorting.cjs',browser);
   await runFeatureSuite('./ui-filter-ux.cjs',browser);
   await runFeatureSuite('./ui-filter-layout-stable.cjs',browser);
+  await runFeatureSuite('./ui-filter-position.cjs',browser);
   await runFeatureSuite('./ui-chronology.cjs',browser);
   await runFeatureSuite('./ui-chronology-labels.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
@@ -845,9 +846,11 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-timeline-details.cjs',browser);
   await runFeatureSuite('./ui-wide-cards.cjs',browser);
   await runFeatureSuite('./ui-window-settings.cjs',browser);
+  await runFeatureSuite('./ui-transparency-steps.cjs',browser);
   await runFeatureSuite('./ui-scrollbar.cjs',browser);
   await runFeatureSuite('./ui-titlebar-locales.cjs',browser);
   await runFeatureSuite('./ui-map-battles.cjs',browser);
+  await runFeatureSuite('./ui-map-language.cjs',browser);
   await runFeatureSuite('./ui-switch-map.cjs',browser);
   await runFeatureSuite('./ui-wn8-colors.cjs',browser);
   await runFeatureSuite('./ui-vehicle-battles.cjs',browser);

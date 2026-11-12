@@ -165,10 +165,12 @@ module.exports=async({browser,check:reportCheck})=>{
       [1900,'rgb(74, 146, 183)'],[2350,'rgb(131, 87, 157)'],[2900,'rgb(90, 49, 117)']]){
       await setRating(page,{state:'ready',value:rating});
       const colors=await widget.evaluate(node=>[...node.querySelectorAll('.grz-postbattle-wn8-label,.grz-postbattle-wn8-value')].map(item=>({
-        color:getComputedStyle(item).color,halo:getComputedStyle(item).textShadow,background:item.style.background,value:item.getAttribute('data-wn8-value')})));
+        color:getComputedStyle(item).color,halo:getComputedStyle(item).textShadow,background:item.style.background,value:item.getAttribute('data-wn8-value'),caption:item.getAttribute('data-wn8-caption-value')})));
       check('Native battle WN8 label and number use the text-only WoT-Life band at '+rating+': '+JSON.stringify(colors),
-        colors.length===2&&colors.every(item=>item.color===color&&item.background===''&&item.value===String(rating)&&
-          (rating<300?require('./ui-wn8-colors.cjs').hasBlackOutline(item.halo):item.halo.includes('0.35'))));
+        colors.length===2&&colors[0].color===(rating<300?'rgb(198, 197, 191)':color)&&colors[0].halo==='none'&&
+        colors[0].value===null&&colors[0].caption===String(rating)&&colors[1].color===color&&colors[1].value===String(rating)&&
+        colors.every(item=>item.background==='')&&
+        (rating<300?require('./ui-wn8-colors.cjs').hasBlackOutline(colors[1].halo):colors[1].halo.includes('0.35')));
     }
     await setRating(page,{state:'ready',value:1234567.6,labels:{'format.thousands':'.'}},true);
     check('Wrapped native subviews and rating properties render rounded localized thousands',
@@ -183,7 +185,8 @@ module.exports=async({browser,check:reportCheck})=>{
       await widget.getAttribute('aria-busy')==='false');
     check('Unavailable native WN8 clears a previously colored label and value',await widget.evaluate(node=>
       [...node.querySelectorAll('.grz-postbattle-wn8-label,.grz-postbattle-wn8-value')].every(item=>
-        item.style.color===''&&item.style.textShadow===''&&!item.hasAttribute('data-wn8-value'))));
+        item.style.color===''&&item.style.textShadow===(item.classList.contains('grz-postbattle-wn8-label')?'none':'')&&
+        !item.hasAttribute('data-wn8-value')&&!item.hasAttribute('data-wn8-caption-value'))));
     for(const bad of ['{broken','{"state":"ready","value":1e400}',null,{}, {state:'ready',value:true},{state:'ready',value:-1},
       {state:'ready',value:'1565'},{state:'other',value:1565}]) {
       await setRating(page,bad);

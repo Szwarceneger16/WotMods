@@ -406,7 +406,7 @@
         if (!track || !hasNumber(event.clientX)) { return; }
         var box = track.getBoundingClientRect();
         if (!(box.width > 1)) { return; }
-        var value = Math.max(0, Math.min(100, Math.round((event.clientX - box.left) * 100 / box.width)));
+        var value = Math.max(0, Math.min(100, Math.round((event.clientX - box.left) * 20 / box.width) * 5));
         previewWindowSettings({background_transparency:value}, false);
     }
     function beginBackgroundDrag(event) {
@@ -440,14 +440,17 @@
     }
     function backgroundKey(event) {
         var key = event.key || ({37:'ArrowLeft',38:'ArrowUp',39:'ArrowRight',40:'ArrowDown',33:'PageUp',34:'PageDown',36:'Home',35:'End'})[event.keyCode];
-        var value = (state.windowPrefs || windowDefaults()).background_transparency, step = event.shiftKey ? 10 : 1;
+        var value = (state.windowPrefs || windowDefaults()).background_transparency, step = event.shiftKey ? 10 : 5, change = 0;
         if (key === 'Home') { value = 0; }
         else if (key === 'End') { value = 100; }
-        else if (key === 'ArrowLeft' || key === 'ArrowDown') { value -= step; }
-        else if (key === 'ArrowRight' || key === 'ArrowUp') { value += step; }
-        else if (key === 'PageDown') { value -= 10; }
-        else if (key === 'PageUp') { value += 10; }
+        else if (key === 'ArrowLeft' || key === 'ArrowDown') { change = -step; }
+        else if (key === 'ArrowRight' || key === 'ArrowUp') { change = step; }
+        else if (key === 'PageDown') { change = -10; }
+        else if (key === 'PageUp') { change = 10; }
         else { return; }
+        // Legacy arbitrary percentages stay readable until an interaction;
+        // every new user value lands on a five-percent tick.
+        if (change) { value = (change > 0 ? Math.floor(value / 5) : Math.ceil(value / 5)) * 5 + change; }
         consumeResizeInput(event);
         previewWindowSettings({background_transparency:Math.max(0, Math.min(100, value))}, false);
         cancelWindowCommit();
@@ -606,6 +609,15 @@
         else { node.removeAttribute('data-wn8-value'); }
         return node;
     }
+    function paintWN8Caption(node, value) {
+        var color = wn8Color(value);
+        node.style.color = color && color !== '#000000' ? color : '';
+        node.style.textShadow = 'none';
+        node.removeAttribute('data-wn8-value');
+        if (color) { node.setAttribute('data-wn8-caption-value', String(Math.round(value))); }
+        else { node.removeAttribute('data-wn8-caption-value'); }
+        return node;
+    }
     function paintWN8Card(card, value) {
         var color = wn8Color(value), border = card.querySelector('.ss-wn8-card-border');
         if (!color) {
@@ -626,7 +638,7 @@
         var holder = append(parent, element('div', compact ? 'ss-group-kpi' : 'ss-kpi'));
         var name = append(holder, element('span', 'ss-kpi-label', label));
         var output = append(holder, element('strong', 'ss-kpi-value' + (wn8 ? ' ss-wn8' : ''), value));
-        if (wn8) { paintWN8(name, rating); paintWN8(output, rating); }
+        if (wn8) { paintWN8Caption(name, rating); paintWN8(output, rating); }
         return holder;
     }
     function measureRow(parent, label, data, wn8, total, sharedCoverage) {
@@ -646,7 +658,7 @@
         var name = append(row, element('span', 'ss-battle-label', label));
         var output = append(row, element('strong', 'ss-battle-value' + (wn8 ? ' ss-wn8' : ''),
             wn8 ? integer(value) : number(value)));
-        if (wn8) { paintWN8(name, value); paintWN8(output, value); }
+        if (wn8) { paintWN8Caption(name, value); paintWN8(output, value); }
     }
     function moneyCell(parent, data, field, total, sharedCoverage) {
         var value = data[field];
@@ -677,8 +689,8 @@
         if (partial) { explainCoverage(append(free, element('span', 'ss-count-coverage',
             ' (' + partial + ')')), series(stats.free_xp).count, observedTotal(stats)); }
     }
-    function totalXP(parent, stats) {
-        var metric = state.xp === 'base' ? 'xp_base' : 'xp_received', data = series(stats[metric]);
+    function totalXP(parent, stats, metric) {
+        var data = series(stats[metric]);
         var total = observedTotal(stats), value = data.count > 0 ? data.sum : null;
         var holder = append(parent, element('div', 'ss-free-xp ss-summary-xp-total'));
         holder.setAttribute('data-xp-metric', metric);
@@ -695,7 +707,7 @@
         while (section.parentNode && section !== nodes.summary &&
                 !/(^|\s)ss-group(\s|$)/.test(section.className)) { section = section.parentNode; }
         help(section, battle ? t('coverage.wn8.battle') : t('coverage.wn8.period', [partial]));
-        if (!battle) { paintWN8(append(parent, element('span', 'ss-count-coverage ss-wn8-coverage', 'WN8 ' + partial)), stats.wn8); }
+        if (!battle) { paintWN8Caption(append(parent, element('span', 'ss-count-coverage ss-wn8-coverage', 'WN8 ' + partial)), stats.wn8); }
     }
     function details(parent, stats, global, battle, sorting) {
         stats = stats || {};
@@ -803,7 +815,9 @@
             help(nodes.summary, t('coverage.partial', [number(stats.partial_results)]));
         }
         var summaryMeta = append(main, element('div', 'ss-summary-meta'));
-        totalXP(summaryMeta, stats);
+        var xpTotals = append(summaryMeta, element('div', 'ss-summary-xp-totals'));
+        totalXP(xpTotals, stats, 'xp_base');
+        totalXP(xpTotals, stats, 'xp_received');
         freeXP(summaryMeta, stats);
         wn8Coverage(summaryMeta, stats, false);
         details(layout, stats, true);
@@ -1188,8 +1202,8 @@
             separator:/^[./-]$/.test(source.separator) ? source.separator : fallback ? fallback[1] : '.',
             first:typeof source.first_weekday === 'number' && source.first_weekday >= 0 && source.first_weekday <= 6 ? source.first_weekday : 1,
             hour12:source.hour12 === true, periods:source.periods && source.periods.length === 2 ? source.periods : ['AM', 'PM'],
-            weekdays:source.weekdays && source.weekdays.length === 7 ? source.weekdays : [weekdays[6]].concat(weekdays.slice(0, 6)),
-            months:source.months && source.months.length === 12 ? source.months : t('timeline.calendar_months').split('|')};
+            weekdays:[weekdays[6]].concat(weekdays.slice(0, 6)),
+            months:t('timeline.calendar_months').split('|')};
     }
     function customDateSeparator() {
         return dateLocale().separator;
@@ -2115,13 +2129,15 @@
         columns.className = 'ss-more-columns ss-more-columns-' + (paired ? 'paired' : 'stacked');
         if (bonus) {
             bonus.style.width = bonusWidth + 'rem';
-            bonus.style.flex = '0 0 ' + bonusWidth + 'rem';
+            // A stacked native block may retain vertical flex semantics. Only a
+            // paired row may use a horizontal width as its flex basis.
+            bonus.style.flex = paired ? '0 0 ' + bonusWidth + 'rem' : '0 0 auto';
             bonus.style.marginRight = paired ? gap + 'rem' : '0rem';
         }
         if (missions) {
             var missionWidth = paired ? width - bonusWidth - gap : width;
             missions.style.width = missionWidth + 'rem';
-            missions.style.flex = '0 0 ' + missionWidth + 'rem';
+            missions.style.flex = paired ? '0 0 ' + missionWidth + 'rem' : '0 0 auto';
             missions.style.minWidth = paired ? minimumMissionWidth + 'rem' : '0rem';
         }
     }
@@ -2401,7 +2417,9 @@
                     append(identity, element('strong', 'ss-map-battle-name', vehicle ? (battle.map || t('unknown.map')) : (battle.name || t('unknown.vehicle'))));
                     append(identity, element('div', 'ss-map-battle-date', date(battle.started_at, true)));
                     append(row, element('span', 'ss-map-battle-outcome', battleOutcome(battle.outcome)));
-                    paintWN8(append(row, element('span', 'ss-map-battle-wn8', t('metric.wn8') + ' ' + integer(battle.wn8))), battle.wn8);
+                    var rating = append(row, element('span', 'ss-map-battle-wn8'));
+                    paintWN8Caption(append(rating, element('span', 'ss-map-battle-wn8-label', t('metric.wn8') + ' ')), battle.wn8);
+                    paintWN8(append(rating, element('span', 'ss-map-battle-wn8-value', integer(battle.wn8))), battle.wn8);
                     var open = append(row, element('button', 'ss-control ss-button ss-map-battle-open'));
                     open.type = 'button'; open.setAttribute('data-battle-id', String(battle.id));
                     append(open, element('span', 'ss-control-label', t('maps.open_battle')));
@@ -2998,7 +3016,38 @@
         if (hidden) { nodes.groups.setAttribute('aria-hidden', 'true'); }
         else { nodes.groups.removeAttribute('aria-hidden'); }
     }
-    function updatePinnedFilters(recalculate) {
+    function normalFlowScrollMaximum() {
+        var scroll = nodes.scroll, content = nodes.groups;
+        var origin = battleLayoutOffset(content, scroll), height = content.offsetHeight;
+        if (origin === null || !hasNumber(height) || height < 0 ||
+                (height <= 1 && state.groupCards && state.groupCards.length)) { return null; }
+        var padding = 10 * (state.nativeScale || 1);
+        try {
+            var measured = parseFloat(window.getComputedStyle(scroll).paddingBottom);
+            if (hasNumber(measured)) { padding = measured; }
+        } catch (ignored) { /* Keep the shipped padding while native styles mount. */ }
+        return Math.max(0, origin + height + padding - scroll.clientHeight);
+    }
+    function queuePinnedFilters() {
+        if (state.destroyed || typeof window.requestAnimationFrame !== 'function') { return; }
+        if (state.pinnedFilterWork) { state.pinnedFilterWork.frames = 0; return; }
+        var work = {frames:0, attempts:0}; state.pinnedFilterWork = work;
+        function settle() {
+            if (state.destroyed || state.pinnedFilterWork !== work) { return; }
+            // Native scroll getters can follow the event/paint by several
+            // frames. Follow that acknowledgement without resizing the view,
+            // rebuilding cards or loading another page inside this work.
+            updatePinnedFilters(false, true);
+            work.frames += 1; work.attempts += 1;
+            // Eight frames cover ordinary native settlement. A mismatched
+            // getter/paint may need longer, with one bounded frame budget.
+            var pending = battleScrollPending({requestedOffset:nodes.scroll.scrollTop});
+            if (work.frames < 8 || (pending && work.attempts < 60)) { window.requestAnimationFrame(settle); }
+            else { state.pinnedFilterWork = null; }
+        }
+        window.requestAnimationFrame(settle);
+    }
+    function updatePinnedFilters(recalculate, settling) {
         var panel = nodes['filter-panel'];
         if (!panel || state.destroyed) { return; }
         // A native target scroll can update rectangles before its getter, or
@@ -3009,27 +3058,28 @@
         if (!(box.height > 0) || !(viewport.height > 0)) { return; }
         var rawTop = nodes.scroll.scrollTop;
         var logicalTop = state.scrollTarget === null ? rawTop : state.scrollTarget;
-        if (recalculate || !hasNumber(state.filterBase)) { state.filterBase = Math.max(0, box.top - viewport.top + rawTop - state.filterShift); }
-        var content = nodes.groups.getBoundingClientRect();
-        // The translated filter is scrollable overflow, not additional data.
-        // Derive real bounds from normal-flow content using the same sampled
-        // offset as its rectangle; a native scroll setter can lag one frame.
-        if (content.width > 0 && hasNumber(content.bottom) &&
-                (content.height > 1 || !state.groupCards || !state.groupCards.length)) {
-            var padding = 10 * state.nativeScale;
-            try {
-                var measuredPadding = parseFloat(window.getComputedStyle(nodes.scroll).paddingBottom);
-                if (hasNumber(measuredPadding)) { padding = measuredPadding; }
-            } catch (ignored) { /* Keep the shipped padding while native styles mount. */ }
-            var maximum = Math.max(0, content.bottom - viewport.top + rawTop + padding - nodes.scroll.clientHeight);
+        // offsetTop is normal-flow geometry: it excludes this panel's own
+        // translation and cannot combine a previous scroll paint with a newer
+        // getter. Never learn a new origin from a translated/scrolled rect.
+        var origin = battleLayoutOffset(panel, nodes.scroll);
+        if (origin !== null) { state.filterBase = Math.max(0, origin); }
+        else if (!hasNumber(state.filterBase) && rawTop === 0 && !state.filterShift) {
+            state.filterBase = Math.max(0, box.top - viewport.top);
+        }
+        if (!hasNumber(state.filterBase)) { if (!settling) { queuePinnedFilters(); } return; }
+        var maximum = normalFlowScrollMaximum();
+        // Translated filters add overflow but not results. Bounds come from
+        // the same normal-flow coordinate system as the filter origin.
+        if (maximum !== null) {
             logicalTop = Math.max(0, Math.min(logicalTop, maximum));
             if (state.scrollTarget !== null) { state.scrollTarget = logicalTop; }
             if (rawTop !== logicalTop) { nodes.scroll.scrollTop = logicalTop; }
         }
         var base = state.filterBase;
-        var shift = box.height < viewport.height - 30 * state.nativeScale ? Math.max(0, logicalTop - base) : 0;
-        state.filterShift = shift; panel.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
-        panel.classList[shift > 0 ? 'add' : 'remove']('is-pinned');
+        var height = hasNumber(panel.offsetHeight) && panel.offsetHeight > 0 ? panel.offsetHeight : box.height;
+        var shift = height < nodes.scroll.clientHeight - 30 * state.nativeScale ? Math.max(0, logicalTop - base) : 0;
+        if (state.filterShift !== shift) { state.filterShift = shift; panel.style.transform = shift ? 'translateY(' + shift + 'px)' : ''; }
+        if (panel.classList.contains('is-pinned') !== (shift > 0)) { panel.classList[shift > 0 ? 'add' : 'remove']('is-pinned'); }
         if (nodes['scroll-top']) {
             nodes['scroll-top'].style.display = logicalTop > 60 * state.nativeScale ? 'flex' : 'none';
             nodes['scroll-top'].style.bottom = Math.max(48 * state.nativeScale,
@@ -3039,17 +3089,20 @@
         if (feed && state.cardPages && state.cardPages.length) {
             var current = state.cardPages[0].index;
             state.cardPages.forEach(function (page) {
-                if (page.section.getBoundingClientRect().top <= viewport.top + box.height + 24 * state.nativeScale) { current = page.index; }
+                var pageOrigin = battleLayoutOffset(page.section, nodes.scroll);
+                if (pageOrigin !== null ? pageOrigin <= logicalTop + height + 24 * state.nativeScale :
+                        page.section.getBoundingClientRect().top <= viewport.top + height + 24 * state.nativeScale) { current = page.index; }
             });
             // A short final page cannot align its divider with the pinned
             // bar: the scroll range ends first. It is still the current page.
-            if (nodes.scroll.scrollTop + nodes.scroll.clientHeight >= nodes.scroll.scrollHeight - 2 * state.nativeScale) {
+            if (maximum !== null && logicalTop >= maximum - 2 * state.nativeScale) {
                 current = state.cardPages[state.cardPages.length - 1].index;
             }
             if (!state.pageJump || state.pageJump.feed !== feed) { feed.current = current; }
             updateFeedControls();
         }
         syncScrollbar();
+        if (!settling) { queuePinnedFilters(); }
     }
     function beginPageJump(feed, page, deadline) {
         cancelPageJump();
@@ -3995,16 +4048,20 @@
 
     function scrollbarMetrics() {
         var scroll = nodes.scroll, viewport = scroll.getBoundingClientRect(), scale = state.nativeScale || 1;
-        var maximum = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
-        var content = nodes.groups.getBoundingClientRect(), padding = 10 * scale;
-        try {
-            var measuredPadding = parseFloat(window.getComputedStyle(scroll).paddingBottom);
-            if (hasNumber(measuredPadding)) { padding = measuredPadding; }
-        } catch (ignored) { /* Native styles can mount after the first scroll measurement. */ }
-        // A translated pinned filter creates overflow, but is not more results.
-        if (content.width > 0 && hasNumber(content.bottom) &&
-                (content.height > 1 || !state.groupCards || !state.groupCards.length)) {
-            maximum = Math.max(0, content.bottom - viewport.top + scroll.scrollTop + padding - scroll.clientHeight);
+        var maximum = normalFlowScrollMaximum();
+        if (maximum === null) {
+            maximum = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+            var content = nodes.groups.getBoundingClientRect(), padding = 10 * scale;
+            try {
+                var measuredPadding = parseFloat(window.getComputedStyle(scroll).paddingBottom);
+                if (hasNumber(measuredPadding)) { padding = measuredPadding; }
+            } catch (ignored) { /* Native styles can mount after the first scroll measurement. */ }
+            // Older surfaces without offset-parent geometry retain their
+            // measured range; translated filters still are not more results.
+            if (content.width > 0 && hasNumber(content.bottom) &&
+                    (content.height > 1 || !state.groupCards || !state.groupCards.length)) {
+                maximum = Math.max(0, content.bottom - viewport.top + scroll.scrollTop + padding - scroll.clientHeight);
+            }
         }
         var logical = state.scrollTarget === null ? scroll.scrollTop : state.scrollTarget;
         var top = Math.max(0, Math.min(maximum, logical));
@@ -4335,6 +4392,7 @@
     function cleanup() {
         if (state.destroyed) { return; }
         state.destroyed = true;
+        state.pinnedFilterWork = null;
         cancelFilterLayout();
         cancelBattleNavigation();
         clearBattleTarget(); retireFeed(); state.renderedFeed = null;

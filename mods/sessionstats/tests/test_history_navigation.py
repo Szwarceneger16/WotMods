@@ -131,7 +131,8 @@ class HistoryNavigationTests(unittest.TestCase):
         page = row['battle_list']
         self.assertEqual((page['page'], page['pages'], page['total'], page['page_size']), (1, 7, 63, 10))
         self.assertEqual([item['started_at'] for item in page['items']], list(range(214, 195, -2)))
-        self.assertTrue(all(set(item) == {'id', 'name', 'map', 'started_at', 'outcome', 'wn8'} for item in page['items']))
+        self.assertTrue(all(set(item) == {'id', 'name', 'map', 'map_id', 'started_at', 'outcome', 'wn8'} for item in page['items']))
+        self.assertTrue(all(item['map_id'] == row['id'] for item in page['items']))
         self.assertTrue(all(item['wn8'] is not None for item in page['items']))
         self.assertNotIn('battle_list', self.service.snapshot()['scopes']['launch']['maps'][0])
         self.assertEqual(self.service._state, before)

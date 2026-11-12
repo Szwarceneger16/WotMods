@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.3 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.4 (persistent data schema unchanged)
 Release date: 2026-11-11.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.3', account_key: string, generated_at: unix seconds,
+ version: '0.9.4', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -177,7 +177,7 @@ radii, opacity and wheel behavior. Static CSS remains the fallback if this optio
 or bridge cannot be used. Successful defaults must be equivalent to both base stylesheets,
 apart from neutral opacity:1 declarations for the panel and garage button.
 
-Schema 1 contains 140 color keys, 12 radii keys, 3 opacity keys and
+Schema 1 contains 144 color keys, 12 radii keys, 3 opacity keys and
 scroll.speed_multiplier. Colors accept #RGB, #RRGGBB, #RRGGBBAA, rgb(), rgba(),
 or transparent; RGB channels are integers 0..255, alpha 0..1. Convert 8-digit hex to
 rgba() before rendering. Reject arbitrary CSS declarations, selectors, URLs and scripts.

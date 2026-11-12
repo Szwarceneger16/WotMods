@@ -34,6 +34,15 @@
         else { node.removeAttribute('data-wn8-value'); }
         return node;
     }
+    function paintWN8Caption(node, value) {
+        var color = wn8Color(value);
+        node.style.color = color && color !== '#000000' ? color : '';
+        node.style.textShadow = 'none';
+        node.removeAttribute('data-wn8-value');
+        if (color) { node.setAttribute('data-wn8-caption-value', String(Math.round(value))); }
+        else { node.removeAttribute('data-wn8-caption-value'); }
+        return node;
+    }
     function report(stage) {
         if (reported[stage]) { return; }
         reported[stage] = true;
@@ -182,7 +191,7 @@
         var output = widget.querySelector('.grz-postbattle-wn8-value');
         if (output.textContent !== value) { output.textContent = value; }
         var numeric = rating.state === 'ready' ? rating.value : null;
-        paintWN8(widget.querySelector('.grz-postbattle-wn8-label'), numeric);
+        paintWN8Caption(widget.querySelector('.grz-postbattle-wn8-label'), numeric);
         paintWN8(output, numeric);
         if (widget.getAttribute('aria-label') !== label) { widget.setAttribute('aria-label', label); }
         if (widget.getAttribute('aria-busy') !== String(pending)) { widget.setAttribute('aria-busy', String(pending)); }

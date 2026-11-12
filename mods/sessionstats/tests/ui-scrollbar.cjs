@@ -35,7 +35,7 @@ function assertScrollbarSource(source=shipped()){
     consumeResizeInput(){events.push('handled');},loadNearEdges(){events.push('edges');},queueResize(){events.push('resize');},
     cancelBattleNavigation(){state.battleJump=null;},cancelUITimer(){},nativeDiagnostic(){},invoke(action,args){if(action==='resize')nativeSizes.push([args.width,args.height]);}};
   vm.createContext(context);
-  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','cancelPageJump','onScrollIntent','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
+  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','cancelPageJump','onScrollIntent','battleLayoutOffset','normalFlowScrollMaximum','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
     'beginScrollbar','moveScrollbar','endScrollbar','scrollbarKey','scrollbarWheel','bindScrollbar'];
   vm.runInContext(names.map(name=>sourceFunction(source,name)).join('\n'),context);
   context.syncScrollbar();assert.strictEqual(rail.style.display,'block');assert.strictEqual(rail.attributes['aria-valuenow'],'0');

@@ -153,9 +153,9 @@ module.exports=async ({browser,nativeHost,check})=>{
     check('Native MDY/12-hour settings govern the inline editor independently of English catalog defaults',
       await nativeInput.inputValue()==='02/29/2024 07:05 PM' && await nativeInput.getAttribute('placeholder')==='mm/dd/yyyy hh:mm AM');
     await page.locator('#ss-custom-date-calendar-from').click();let nativePicker=page.locator('#ss-date-picker-from');
-    check('Calendar weekdays, month names and Sunday-first layout come from native regional metadata',
-      await nativePicker.locator('.ss-date-weekday').first().textContent()==='SystemSu' &&
-      await nativePicker.locator('[data-date-part="month"]').textContent()==='SystemFeb' &&
+    check('Calendar words follow English UI while native Sunday-first layout is preserved',
+      await nativePicker.locator('.ss-date-weekday').first().textContent()==='Sun' &&
+      await nativePicker.locator('[data-date-part="month"]').textContent()==='February' &&
       await nativePicker.locator('.ss-date-week').nth(1).locator('[aria-hidden="true"]').count()===4);
     await nativePicker.locator('[data-date-part="year"]').click();
     const years=await nativePicker.locator('[data-year]').evaluateAll(nodes=>nodes.map(node=>+node.getAttribute('data-year')));
