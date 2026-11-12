@@ -179,6 +179,21 @@ async function footer(browser) {
         check('Default panel raster matches within 16 antialiasing pixels and 6 channel levels',
             await sameRaster(page, baselineImage, await page.locator('#grz-session-stats').screenshot({animations:'disabled'})));
         check('Exactly one owned panel style node is used',await page.locator('#grz-session-stats-appearance').count()===1);
+        const generatedCSS=presentation.defaults.panel_css,panelCSSLimit=128*1024;
+        check('Generated panel CSS above the former 64KiB limit is applied without truncation',
+            generatedCSS.length>64*1024&&await page.locator('#grz-session-stats-appearance').textContent()===generatedCSS);
+        const boundaryCSS=generatedCSS+' '.repeat(panelCSSLimit-generatedCSS.length);
+        await pushPanel(page,{...presentation.defaults,panel_css:boundaryCSS});
+        check('The panel appearance bridge accepts exactly 128KiB of validated CSS',
+            await page.locator('#grz-session-stats-appearance').count()===1&&
+            await page.locator('#grz-session-stats-appearance').textContent()===boundaryCSS);
+        await pushPanel(page,{...presentation.defaults,panel_css:boundaryCSS+' '});
+        check('The panel appearance bridge rejects 128KiB plus one character while results remain visible',
+            await page.locator('#grz-session-stats-appearance').count()===0&&await page.locator('.ss-group').count()>0);
+        await pushPanel(page,presentation.defaults);
+        check('Valid generated defaults recover after an oversized appearance payload',
+            await page.locator('#grz-session-stats-appearance').count()===1&&
+            await page.locator('#grz-session-stats-appearance').textContent()===generatedCSS);
         await page.evaluate(()=>{
             window.testMutations=0;
             window.testStyle=document.getElementById('grz-session-stats-appearance');

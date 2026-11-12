@@ -1,5 +1,20 @@
 SESSION STATS — CHANGELOG
 
+0.9.3 • 2026-11-12
+• Put midnight on the outer 24-hour clock ring and noon on the inner ring,
+  with consistent hand position, pointer selection and keyboard navigation.
+• Align battle outcome/map artwork and More/Less in fixed caption-independent
+  slots across all interface languages, keeping compact cards readable.
+• Replace missing arrow-only chronology distinctions with explicit translated
+  boundary/direction captions, keeping the fixed filter row budget.
+• Retain explicit page navigation until native scrolling and layout settle;
+  keep cached/loaded page dividers visible below pinned filters.
+• Add selected XP totals with their own coverage below the main summary;
+  preserve the same row geometry for base and received XP.
+• Keep generated native appearance CSS within a bounded 128 KiB bridge limit.
+• Explain combined WN8 as an overall rating for the selected battle series,
+  separately from the arithmetic average of individual-battle ratings.
+
 0.9.2 • 2026-11-12
 • Make filter layout deterministic from the full control budget, preserving
   rendered cards/scroll position and coalescing resize promotion into one frame.

@@ -347,7 +347,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Sorting value: {0}",
       "sort.win_rate": "Win rate",
-      "help.wn8.combined": "Recalculated from all results in this group and their expected vehicle values. It is not the arithmetic mean of individual-battle WN8 shown below.",
+      "help.wn8.combined": "Like an account’s overall WN8, but limited to the battles in this group. Rating of this whole set of battles: damage, kills, spotting, defence and wins are combined and compared with the expected results for the vehicles used. The Average below instead averages the WN8 ratings calculated separately for each battle.",
       "metric.combined_wn8": "Combined WN8",
       "sort.first_newest": "First battle ↓",
       "sort.first_newest.description": "First battle: newest first",
@@ -356,7 +356,9 @@
       "sort.last_newest": "Last battle ↓",
       "sort.last_newest.description": "Last battle: newest first",
       "sort.last_oldest": "Last battle ↑",
-      "sort.last_oldest.description": "Last battle: oldest first"
+      "sort.last_oldest.description": "Last battle: oldest first",
+      "xp.base_total": "Total base XP:",
+      "xp.received_total": "Total received XP:"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -704,7 +706,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Wartość sortowania: {0}",
       "sort.win_rate": "Zwycięstwa, %",
-      "help.wn8.combined": "Obliczane ponownie ze wszystkich wyników tej grupy i wartości oczekiwanych dla pojazdów. To nie jest średnia arytmetyczna WN8 pojedynczych bitew widoczna poniżej.",
+      "help.wn8.combined": "To WN8 jak dla całego konta, ale ograniczone do bitew z tej grupy. Ocena całej serii bitew: łączymy obrażenia, zniszczenia, wykrycia, obronę i zwycięstwa, a następnie porównujemy je z oczekiwanymi wynikami użytych pojazdów. Średnia poniżej uśrednia natomiast gotowe oceny WN8 obliczone osobno dla każdej bitwy.",
       "metric.combined_wn8": "Łączne WN8",
       "sort.first_newest": "Pierwsza bitwa ↓",
       "sort.first_newest.description": "Pierwsza bitwa: od najnowszych",
@@ -713,7 +715,9 @@
       "sort.last_newest": "Ostatnia bitwa ↓",
       "sort.last_newest.description": "Ostatnia bitwa: od najnowszych",
       "sort.last_oldest": "Ostatnia bitwa ↑",
-      "sort.last_oldest.description": "Ostatnia bitwa: od najstarszych"
+      "sort.last_oldest.description": "Ostatnia bitwa: od najstarszych",
+      "xp.base_total": "Bazowe PD łącznie:",
+      "xp.received_total": "Otrzymane PD łącznie:"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1061,7 +1065,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Значение сортировки: {0}",
       "sort.win_rate": "Победы, %",
-      "help.wn8.combined": "Пересчитано по всем результатам этой группы и ожидаемым показателям машин. Это не среднее арифметическое WN8 отдельных боёв, показанное ниже.",
+      "help.wn8.combined": "Это аналог общего WN8 аккаунта, но только по боям этой группы. Оценка всей серии боёв: суммарные урон, уничтожения, обнаружения, защита и победы сравниваются с ожидаемыми результатами использованных машин. Среднее внизу усредняет готовые оценки WN8, рассчитанные отдельно для каждого боя.",
       "metric.combined_wn8": "Общее WN8",
       "sort.first_newest": "Первая битва ↓",
       "sort.first_newest.description": "Первая битва: новые сначала",
@@ -1070,7 +1074,9 @@
       "sort.last_newest": "Последняя битва ↓",
       "sort.last_newest.description": "Последняя битва: новые сначала",
       "sort.last_oldest": "Последняя битва ↑",
-      "sort.last_oldest.description": "Последняя битва: старые сначала"
+      "sort.last_oldest.description": "Последняя битва: старые сначала",
+      "xp.base_total": "Всего базового опыта:",
+      "xp.received_total": "Всего получено опыта:"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1418,7 +1424,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Valeur de tri : {0}",
       "sort.win_rate": "Victoires, %",
-      "help.wn8.combined": "Recalculé à partir de tous les résultats de ce groupe et des valeurs attendues des véhicules. Ce n’est pas la moyenne arithmétique des WN8 par bataille affichée ci-dessous.",
+      "help.wn8.combined": "Comme le WN8 global du compte, mais limité aux batailles de ce groupe. Note de toute cette série de batailles : les dégâts, destructions, détections, défenses et victoires cumulés sont comparés aux résultats attendus des véhicules utilisés. La moyenne ci-dessous fait la moyenne des notes WN8 calculées séparément pour chaque bataille.",
       "metric.combined_wn8": "WN8 global",
       "sort.first_newest": "Première bataille ↓",
       "sort.first_newest.description": "Première bataille : plus récentes",
@@ -1427,7 +1433,9 @@
       "sort.last_newest": "Dernière bataille ↓",
       "sort.last_newest.description": "Dernière bataille : plus récentes",
       "sort.last_oldest": "Dernière bataille ↑",
-      "sort.last_oldest.description": "Dernière bataille : plus anciennes"
+      "sort.last_oldest.description": "Dernière bataille : plus anciennes",
+      "xp.base_total": "Total d’EXP de base :",
+      "xp.received_total": "Total d’EXP reçue :"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1775,7 +1783,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Sortierwert: {0}",
       "sort.win_rate": "Siegrate",
-      "help.wn8.combined": "Aus allen Ergebnissen dieser Gruppe und den erwarteten Fahrzeugwerten neu berechnet. Es ist nicht das unten gezeigte arithmetische Mittel der WN8 einzelner Gefechte.",
+      "help.wn8.combined": "Wie der Gesamt-WN8 eines Kontos, aber nur für die Gefechte dieser Gruppe. Bewertung der gesamten Gefechtsserie: Schaden, Abschüsse, Aufklärungen, Verteidigung und Siege werden zusammengefasst und mit den erwarteten Ergebnissen der eingesetzten Fahrzeuge verglichen. Der Durchschnitt unten mittelt dagegen die einzeln berechneten WN8-Gefechtswerte.",
       "metric.combined_wn8": "Gesamt-WN8",
       "sort.first_newest": "Erstes Gefecht ↓",
       "sort.first_newest.description": "Erstes Gefecht: neueste zuerst",
@@ -1784,7 +1792,9 @@
       "sort.last_newest": "Letztes Gefecht ↓",
       "sort.last_newest.description": "Letztes Gefecht: neueste zuerst",
       "sort.last_oldest": "Letztes Gefecht ↑",
-      "sort.last_oldest.description": "Letztes Gefecht: älteste zuerst"
+      "sort.last_oldest.description": "Letztes Gefecht: älteste zuerst",
+      "xp.base_total": "Basis-EP gesamt:",
+      "xp.received_total": "Erhaltene EP gesamt:"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2132,7 +2142,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Valor de ordenación: {0}",
       "sort.win_rate": "Victorias, %",
-      "help.wn8.combined": "Recalculado a partir de todos los resultados de este grupo y los valores esperados de los vehículos. No es la media aritmética de los WN8 de batallas individuales que se muestra debajo.",
+      "help.wn8.combined": "Como el WN8 global de la cuenta, pero limitado a las batallas de este grupo. Valoración de toda esta serie de batallas: se combinan daño, destrucciones, detecciones, defensa y victorias y se comparan con los resultados esperados de los vehículos usados. La media inferior promedia las valoraciones WN8 calculadas por separado para cada batalla.",
       "metric.combined_wn8": "WN8 combinado",
       "sort.first_newest": "Primera batalla ↓",
       "sort.first_newest.description": "Primera batalla: más recientes primero",
@@ -2141,7 +2151,9 @@
       "sort.last_newest": "Última batalla ↓",
       "sort.last_newest.description": "Última batalla: más recientes primero",
       "sort.last_oldest": "Última batalla ↑",
-      "sort.last_oldest.description": "Última batalla: más antiguas primero"
+      "sort.last_oldest.description": "Última batalla: más antiguas primero",
+      "xp.base_total": "EXP base total:",
+      "xp.received_total": "EXP recibida total:"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2489,7 +2501,7 @@
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Значення сортування: {0}",
       "sort.win_rate": "Перемоги, %",
-      "help.wn8.combined": "Перераховано за всіма результатами цієї групи та очікуваними показниками машин. Це не середнє арифметичне WN8 окремих боїв, показане нижче.",
+      "help.wn8.combined": "Це аналог загального WN8 облікового запису, але лише для боїв цієї групи. Оцінка всієї серії боїв: сумарні пошкодження, знищення, виявлення, захист і перемоги порівнюються з очікуваними результатами використаних машин. Середнє нижче усереднює готові оцінки WN8, обчислені окремо для кожного бою.",
       "metric.combined_wn8": "Сумарний WN8",
       "sort.first_newest": "Перша битва ↓",
       "sort.first_newest.description": "Перша битва: нові спочатку",
@@ -2498,7 +2510,9 @@
       "sort.last_newest": "Остання битва ↓",
       "sort.last_newest.description": "Остання битва: нові спочатку",
       "sort.last_oldest": "Остання битва ↑",
-      "sort.last_oldest.description": "Остання битва: старі спочатку"
+      "sort.last_oldest.description": "Остання битва: старі спочатку",
+      "xp.base_total": "Усього базового досвіду:",
+      "xp.received_total": "Усього отримано досвіду:"
     }
   }
 }

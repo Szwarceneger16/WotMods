@@ -200,8 +200,12 @@ async function nativeHost(browser, options) {
 // still fails the job after the remaining suites have produced diagnostics.
 const featureFailures=[];
 async function runFeatureSuite(file,browser) {
-  try { await require(file)({browser,nativeHost,check}); }
-  catch(error) { featureFailures.push(file+': '+error.message); console.error(file,error); }
+  const started=Date.now(),before=checks.length;
+  console.log('UI feature started: '+file);
+  try {
+    await require(file)({browser,nativeHost,check});
+    console.log('UI feature passed: '+file+' ('+(checks.length-before)+' checks, '+(Date.now()-started)+' ms)');
+  } catch(error) { featureFailures.push(file+': '+error.message); console.error(file,error); }
 }
 
 (async function () {
@@ -610,6 +614,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-filter-ux.cjs',browser);
   await runFeatureSuite('./ui-filter-layout-stable.cjs',browser);
   await runFeatureSuite('./ui-chronology.cjs',browser);
+  await runFeatureSuite('./ui-chronology-labels.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
@@ -852,8 +857,11 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-version.cjs',browser);
   await runFeatureSuite('./ui-custom-date-source.cjs',browser);
   await runFeatureSuite('./ui-custom-dates.cjs',browser);
+  await runFeatureSuite('./ui-clock-hours-source.cjs',browser);
+  await runFeatureSuite('./ui-clock-hours.cjs',browser);
   await runFeatureSuite('./ui-mission-progress.cjs',browser);
   await runFeatureSuite('./ui-upper-layout.cjs',browser);
+  await runFeatureSuite('./ui-summary-xp-total.cjs',browser);
   await runFeatureSuite('./ui-resize-input.cjs',browser);
   check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
   check('No browser JavaScript errors',errors.length===0);

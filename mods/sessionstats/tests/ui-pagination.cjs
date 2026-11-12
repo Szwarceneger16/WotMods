@@ -32,6 +32,8 @@ async function emit(page,index,request,reverse=false){
   },{index,request,reverse});await frames(page);
 }
 module.exports=async({browser,nativeHost,check})=>{
+  require('./ui-page-jump.cjs').assertPageJumpSource();check('Actual-source page navigation waits for stable native geometry and yields to newer intent',true);
+  await require('./ui-page-navigation.cjs')({browser,nativeHost,check});
   assertPageBoundarySource();check('Actual-source page dividers show only known localized first-battle dates',true);
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:3840,height:2560},viewport:{width:3840,height:2560,scale:1}});
@@ -91,7 +93,7 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-page-next').click();await frames(page);const next=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
       check('Previous and Next revisit loaded boundaries without requests or replacement: '+label+': '+JSON.stringify({previous,next}),
         (await requests(page)).length===loaded && next>previous+100*scale && await page.locator('#ss-groups .ss-group').count()===80);
-      await page.locator('#ss-scroll').evaluate(node=>{node.scrollTop=node.scrollHeight;node.dispatchEvent(new Event('scroll'));});await frames(page);
+      await page.locator('#ss-scroll').evaluate(node=>{node.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));node.scrollTop=node.scrollHeight;node.dispatchEvent(new Event('scroll'));});await frames(page);
       sent=await requests(page);request=sent[sent.length-1];
       check('The loaded bottom requests exactly the next missing page: '+label+': '+JSON.stringify(request),sent.length===loaded+1 && request.page==='2');
       const beforeAppend=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);

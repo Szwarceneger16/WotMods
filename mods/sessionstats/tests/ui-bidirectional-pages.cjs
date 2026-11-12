@@ -27,7 +27,7 @@ function assertBidirectionalSource(source=shipped()){
   const controls={},nodes={groups,scroll,'scroll-top':new Node(),'list-meta':new Node()},scheduled=[],timers=new Map(),commands=[];
   let nextTimer=0,resizes=0,dismissed=0;
   const state={scope:'launch',group:'battles',nativeSession:true,nativeScale:1,feedSequence:0,feedForceStart:null,
-    pageJump:null,battleJump:null,scrollTarget:null,xp:'base',language:'en',appearanceCSS:'',payload:{account_key:'synthetic-midfeed'},cardPages:[],groupCards:[],list:[]};
+    pageJump:null,pageJumpTimer:null,battleJump:null,scrollTarget:null,xp:'base',language:'en',appearanceCSS:'',payload:{account_key:'synthetic-midfeed'},cardPages:[],groupCards:[],list:[]};
   let scope={period_id:'synthetic-midfeed-period',data_revision:1,summary:{battles:205},ordering:{battles:{metric:'off',statistic:'avg',direction:'desc',chronology:'newest'}}};
   const rows=index=>Array.from({length:index===5?5:40},(_,offset)=>({id:'synthetic-midfeed-'+(index*40+offset)}));
   const context={state,nodes,Date,Math,Object,JSON,Number,String,hasNumber:value=>typeof value==='number'&&isFinite(value),
@@ -47,7 +47,7 @@ function assertBidirectionalSource(source=shipped()){
     appendGroupBatch(count,page){page.cards=page.items.slice(0,count).map(()=>new Node('ss-group',20));state.groupCards=state.groupCards.concat(page.cards);},
     render(){context.renderGroups(scope);}};
   vm.createContext(context);
-  for(const name of ['feedCollectionIdentity','feedIdentity','feedContextIdentity','cancelUITimer','retireFeed','captureFeedAnchor','finishFeedAnchor',
+  for(const name of ['feedCollectionIdentity','feedIdentity','feedContextIdentity','cancelUITimer','cancelPageJump','beginPageJump','retireFeed','captureFeedAnchor','finishFeedAnchor',
     'revealFeedTop','pageBoundary','showFeedPending','requestFeedPage','prepareFeed','updateFeedControls','renderGroups','loadNearEdges','onScrollIntent','changePage'])
     vm.runInContext(sourceFunction(source,name),context);
   const topStart=source.indexOf("    if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {",source.indexOf('    function changePage('));

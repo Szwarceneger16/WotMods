@@ -6,7 +6,7 @@ function actualFunction(name) {
   assert(start>=0 && end>start,'Missing shipped function '+name);
   return source.slice(start,end+7);
 }
-const actual=['retireFeed','captureFeedAnchor','finishFeedAnchor','revealFeedTop','onScrollIntent'].map(actualFunction).join('\n');
+const actual=['cancelPageJump','retireFeed','captureFeedAnchor','finishFeedAnchor','revealFeedTop','onScrollIntent'].map(actualFunction).join('\n');
 function nativeGeometry() {
   let clock=1000,offset=300,position=500,missing=false,precedingMissing=false,owned=true,queued=0;
   const card={getBoundingClientRect:()=>({top:0,width:precedingMissing?0:600,height:precedingMissing?0:1000})};

@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.2 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.3 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -30,11 +30,13 @@ below the name. For WN8, the large figure shows the selected Min/Average/Max whi
 that sort is active; otherwise the **Combined WN8** headline recalculates a rating
 from all group results and expected vehicle values. It differs from the arithmetic
 mean of individual-battle WN8 in the table. The card information button explains
-this distinction. Win-rate sorting is available in Vehicles, Maps and Tiers;
+this distinction. A compact centered summary row shows the selected base/received
+XP sum with its own coverage; it stays separate from the WN8 distribution. Win-rate sorting is available in Vehicles, Maps and Tiers;
 unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [calendar](docs/CALENDAR_0.9.0.md), [0.9.1 UI refinements](docs/UI_POLISH_0.9.1.md),
 [native scrollbar checks](docs/SCROLLBAR_NATIVE_SAFETY.md), and
-[stable filtering and chronology](docs/FILTERING_0.9.2.md).
+[stable filtering and chronology](docs/FILTERING_0.9.2.md), and
+[0.9.3 UI refinements](docs/UI_REFINEMENTS_0.9.3.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an

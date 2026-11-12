@@ -33,7 +33,7 @@ module.exports=async ({browser,nativeHost,check})=>{
   check('Native timeline and time-order wrappers translate immediately despite a stale lang property: '+code+': '+JSON.stringify(clock),
    clock.property==='en' && clock.attribute===resolved && clock.from===catalogs[resolved]['timeline.beginning'] &&
    clock.to===catalogs[resolved]['timeline.now'] && clock.custom===catalogs[resolved]['timeline.custom'] &&
-   clock.chronology===catalogs[resolved]['sort.last_newest'] && clock.newest===catalogs[resolved]['sort.last_newest'] && clock.oldest===catalogs[resolved]['sort.first_oldest']);
+   clock.chronology===catalogs[resolved]['sort.last_newest.description'] && clock.newest===catalogs[resolved]['sort.last_newest.description'] && clock.oldest===catalogs[resolved]['sort.first_oldest.description']);
  }
  await page.evaluate(()=>{delete document.documentElement.lang;});
  for(const width of [320,744]){

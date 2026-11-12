@@ -474,6 +474,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-select { position:relative; width:100%; min-width:0; }
 .ss-select-trigger { width:100%; min-width:0; height:30rem; min-height:30rem; padding:4rem 6rem; justify-content:space-between; }
 .ss-page-center .ss-select-trigger { height:30rem; min-height:30rem; }
+/* Both the battle boundary and date direction remain visible without relying
+   on arrow glyphs in the native font. Keep the existing pagination budget. */
+#ss-sort-chronology .ss-select-trigger { padding-top:2rem; padding-bottom:2rem; }
+#ss-sort-chronology .ss-select-trigger .ss-control-label { font-size:11rem; line-height:12rem; white-space:normal; }
+#ss-sort-chronology .ss-select-options { width:260rem; }
 .ss-select-trigger.ss-select-disabled, .ss-select-trigger[aria-disabled="true"] { opacity:{{opacity.disabled_controls}}; color:{{colors.garage_button_text}}; border-color:{{colors.button_border}}; background:{{colors.xp_toggle_background}}; box-shadow:none; text-shadow:none; cursor:default; }
 .ss-select-trigger.ss-select-disabled .ss-control-label, .ss-select-trigger[aria-disabled="true"] .ss-control-label { color:{{colors.garage_button_text}}; text-shadow:none; }
 .ss-select-trigger.ss-select-disabled .ss-select-arrow, .ss-select-trigger[aria-disabled="true"] .ss-select-arrow { border-right-color:{{colors.garage_button_text}}; border-bottom-color:{{colors.garage_button_text}}; }
@@ -521,6 +526,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-kpi.ss-sort-active-value { padding:0 5rem; text-align:center; }
 .ss-group-kpi.ss-sort-active-value .ss-kpi-label, .ss-group-kpi.ss-sort-active-value .ss-kpi-value { text-align:center; }
 .ss-summary-meta { margin:3rem 4rem; }
+.ss-summary-xp-total { flex:1 0 100%; width:100%; min-width:0; max-width:100%; justify-content:center; }
+.ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { white-space:nowrap; }
+
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
 .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
@@ -537,27 +545,34 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-language-caption { margin-right:4rem; }
 }
 
-/* Result/map captions respond to their actual card, not the full game viewport.
-   Stacking the captions frees the identity column without adding a tall banner. */
+/* Result/map slots have the same footprint for every card in a caption mode.
+   Fixed artwork and caption boxes keep columns aligned across short/long
+   localized results and map names without measuring or probing their text. */
 .ss-battle .ss-group-header { flex-wrap:nowrap; }
-.ss-battle .ss-outcome-art { flex-direction:column; align-items:center; justify-content:center; flex:0 0 64rem; width:64rem; max-width:64rem; margin-left:6rem; }
+.ss-battle .ss-battle-outcome { display:flex; align-items:center; justify-content:center; flex:0 0 64rem; width:64rem; max-width:64rem; height:59rem; margin-left:6rem; padding:0; }
+.ss-battle .ss-outcome-art { flex-direction:column; background:none; }
 .ss-battle .ss-outcome-image { width:54rem; height:30rem; }
-.ss-battle .ss-outcome-art .ss-outcome-label { padding:0; margin-top:1rem; font-size:11rem; line-height:14rem; white-space:normal; overflow-wrap:normal; }
-.ss-battle-map-visual { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 84rem; width:84rem; min-width:0; max-width:84rem; margin-left:6rem; }
+.ss-battle .ss-outcome-label { width:100%; min-width:0; max-width:100%; padding:0; font-size:11rem; line-height:14rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
+.ss-battle .ss-outcome-art .ss-outcome-label { flex:0 0 28rem; height:28rem; margin-top:1rem; overflow:visible; }
+.ss-battle-map-visual { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 84rem; width:84rem; min-width:0; max-width:84rem; height:59rem; margin-left:6rem; }
 .ss-battle-map-visual .ss-battle-map-thumb { width:54rem; height:30rem; margin:0; }
-.ss-battle-map-label { display:block; min-width:0; width:100%; max-width:100%; margin-top:1rem; color:{{colors.group_subtitle_text}}; font-size:11rem; line-height:14rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
-.ss-battle.ss-battle-inline-captions .ss-outcome-art { flex-direction:row; flex:0 1 auto; width:auto; max-width:30%; }
+.ss-battle-map-label { display:block; flex:0 0 28rem; height:28rem; min-width:0; width:100%; max-width:100%; margin-top:1rem; color:{{colors.group_subtitle_text}}; font-size:11rem; line-height:14rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
+.ss-battle .ss-more-button { flex:0 0 82rem; width:82rem; min-width:82rem; max-width:82rem; padding-left:5rem; padding-right:5rem; }
+.ss-battle.ss-battle-inline-captions .ss-battle-outcome { flex:0 0 160rem; width:160rem; max-width:160rem; height:38rem; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-art { flex-direction:row; }
 .ss-battle.ss-battle-inline-captions .ss-outcome-image { width:64rem; height:38rem; }
-.ss-battle.ss-battle-inline-captions .ss-outcome-label { margin-top:0; padding:2rem 4rem; font-size:12rem; line-height:18rem; white-space:nowrap; }
-.ss-battle-inline-captions .ss-battle-map-visual { flex-direction:row; flex:0 1 auto; width:auto; max-width:28%; margin-left:8rem; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-label { display:block; width:96rem; max-width:100%; height:auto; margin-top:0; padding:0 4rem; font-size:12rem; line-height:16rem; white-space:normal; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-art .ss-outcome-label { flex:0 0 96rem; }
+.ss-battle-inline-captions .ss-battle-map-visual { flex-direction:row; flex:0 0 166rem; width:166rem; max-width:166rem; height:38rem; margin-left:8rem; }
 .ss-battle-inline-captions .ss-battle-map-thumb { width:54rem; height:32rem; }
-.ss-battle-inline-captions .ss-battle-map-label { width:auto; max-width:124rem; margin-top:0; padding-left:6rem; font-size:12rem; line-height:16rem; text-align:left; }
+.ss-battle-inline-captions .ss-battle-map-label { display:block; flex:0 0 112rem; width:112rem; max-width:112rem; height:auto; margin-top:0; padding-left:6rem; font-size:12rem; line-height:16rem; text-align:left; }
 .ss-narrow-cards .ss-battle .ss-group-header { flex-wrap:wrap; }
 .ss-narrow-cards .ss-battle .ss-group-name { flex:1 1 180rem; min-width:0; }
-.ss-narrow-cards .ss-battle .ss-outcome-art { flex-basis:64rem; width:64rem; max-width:64rem; }
-.ss-narrow-cards .ss-battle-map-visual { flex-basis:76rem; width:76rem; max-width:76rem; }
+.ss-narrow-cards .ss-battle .ss-battle-outcome { flex-basis:64rem; width:64rem; max-width:64rem; height:55rem; }
+.ss-narrow-cards .ss-battle-map-visual { flex-basis:76rem; width:76rem; max-width:76rem; height:55rem; }
 .ss-narrow-cards .ss-battle .ss-outcome-image, .ss-narrow-cards .ss-battle-map-thumb { width:48rem; height:28rem; }
 .ss-narrow-cards .ss-battle .ss-outcome-label, .ss-narrow-cards .ss-battle-map-label { font-size:11rem; line-height:13rem; }
+.ss-narrow-cards .ss-battle .ss-outcome-art .ss-outcome-label, .ss-narrow-cards .ss-battle-map-label { flex-basis:26rem; height:26rem; }
 
 .ss-time-point-controls { display:flex; align-items:center; flex:1 1 266rem; min-width:0; width:266rem; max-width:100%; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 .ss-time-point-name { display:block; flex:1 1 0rem; width:0; min-width:0; height:28rem; padding:4rem 7rem; margin:0; border:0; border-radius:0 {{radii.control}}rem {{radii.control}}rem 0; background:{{colors.close_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }

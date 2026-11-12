@@ -33,9 +33,9 @@ function assertScrollbarSource(source=shipped()){
   const context={state,nodes:{scroll,scrollbar:rail,'scrollbar-thumb':thumb,groups},root,document,window,
     hasNumber:value=>typeof value==='number'&&Number.isFinite(value),focusControl(){focusCalls++;},
     consumeResizeInput(){events.push('handled');},loadNearEdges(){events.push('edges');},queueResize(){events.push('resize');},
-    cancelBattleNavigation(){state.battleJump=null;},nativeDiagnostic(){},invoke(action,args){if(action==='resize')nativeSizes.push([args.width,args.height]);}};
+    cancelBattleNavigation(){state.battleJump=null;},cancelUITimer(){},nativeDiagnostic(){},invoke(action,args){if(action==='resize')nativeSizes.push([args.width,args.height]);}};
   vm.createContext(context);
-  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','onScrollIntent','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
+  const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','cancelPageJump','onScrollIntent','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
     'beginScrollbar','moveScrollbar','endScrollbar','scrollbarKey','scrollbarWheel','bindScrollbar'];
   vm.runInContext(names.map(name=>sourceFunction(source,name)).join('\n'),context);
   context.syncScrollbar();assert.strictEqual(rail.style.display,'block');assert.strictEqual(rail.attributes['aria-valuenow'],'0');
@@ -54,7 +54,11 @@ function assertScrollbarSource(source=shipped()){
   const beforeRelease=events.filter(event=>event==='edges').length;flush();
   assert.strictEqual(events.filter(event=>event==='edges').length,beforeRelease,'Page replacement waits while a native rail press is held');
   assert.strictEqual(captureReads,0,'The native capture/release bridge is never read');assert.strictEqual(focusCalls,0,'Native rail presses avoid synchronous host focus');
-  context.endScrollbar();context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});
+  context.endScrollbar();state.pageJump={};state.battleJump={};state.feed.navigationPage=3;state.feed.navigationDeadline=999;
+  context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});
+  assert.strictEqual(state.pageJump,null,'Pressing the scrollbar thumb retires automatic page alignment before the first movement');
+  assert.strictEqual(state.battleJump,null,'Pressing the scrollbar thumb also retires a more specific battle destination');
+  assert.strictEqual(state.feed.navigationDeadline,null,'A thumb press cannot leave staged revision navigation for a later reply');
   context.moveScrollbar({clientY:10000});assert.strictEqual(scroll.scrollTop,1600,'Dragging beyond the rail clamps at its loaded end');
   context.moveScrollbar({clientY:-10000});assert.strictEqual(scroll.scrollTop,0);context.endScrollbar();
   context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});

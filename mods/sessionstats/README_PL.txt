@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.9.2 • 2026-11-12 • target: Wargaming EU 2.4.1.1
+Version 0.9.3 • 2026-11-12 • target: Wargaming EU 2.4.1.1
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -85,6 +85,8 @@ changes the language and wheel speed while preserving all other defaults.
 
 HOW THE PANEL WORKS
 • The header shows completed battles, win rate and the full WN8 number.
+  The centered XP total below follows the Base/Received selector and retains
+  its own received-value coverage. It does not add a meaningless WN8 total.
 • Two default period tabs: "Since launch" and "Timeline". Both belong to the
   active account. The optional installation tab has its own persistent manual
   reset and is hidden by default.

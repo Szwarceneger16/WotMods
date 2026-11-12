@@ -38,7 +38,7 @@ module.exports = async ({browser,nativeHost,check}) => {
         return image.getAttribute('aria-hidden')==='true' &&
           label.getBoundingClientRect().top>=image.getBoundingClientRect().bottom &&
           Math.abs((label.getBoundingClientRect().left+label.getBoundingClientRect().right-image.getBoundingClientRect().left-image.getBoundingClientRect().right)/2)<=1 &&
-          node.getBoundingClientRect().height<=47;
+          node.getBoundingClientRect().height<=59;
       })));
   check('Battle map names sit below their own thumbnails instead of repeating in the identity',await page.evaluate(()=>
     Array.from(document.querySelectorAll('.ss-battle-map-visual')).every((node,index)=>{
@@ -161,7 +161,7 @@ module.exports = async ({browser,nativeHost,check}) => {
         const bounds=box(node),range=document.createRange();range.selectNodeContents(node);
         if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale)))issues.push('clipped:'+node.textContent);
       }
-      if(Math.abs(r.width/scale-cardWidth)>1||h.height/scale>(inline?48:64)||r.height/scale>165)issues.push('dimensions');
+      if(Math.abs(r.width/scale-cardWidth)>1||h.height/scale>64||r.height/scale>165)issues.push('dimensions');
       return {width:r.width/scale,header:h.height/scale,height:r.height/scale,inline,issues};
     }),{scale,cardWidth});
     check('Battle captions follow the actual '+cardWidth+'px card without extra height or clipped text: '+language+' at'+(scale*100)+'%'+
@@ -180,4 +180,5 @@ module.exports = async ({browser,nativeHost,check}) => {
     await page.locator('.ss-outcome-image').count()===0 &&
     (await page.locator('.ss-outcome-label').allTextContents()).join('|')==='Zwycięstwo|Porażka|Remis');
   await page.close();
+  await require('./ui-battle-header-alignment.cjs')({browser,nativeHost,check});
 };
