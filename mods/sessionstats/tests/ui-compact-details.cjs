@@ -26,6 +26,8 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     signed:value=>value>0?'+'+String(value).replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0'):String(value),
     rewardTable(parent,cls){return append(append(parent,new Node('ss-more-table '+cls)),new Node('ss-more-body'));},
     rewardRow(){},missionProgress(){},viewContext:()=>({account_key:'synthetic',scope:'launch',period_id:'synthetic-period'}),
+    currentScope:()=>({ordering:{maps:{chronology:'newest'},vehicles:{chronology:'newest'}}}),
+    getOrder:scope=>scope.ordering[state.group],
     sameContext:()=>true,invoke:(action,args)=>{commands.push({action,...args});return true;},
     battleOutcome:outcome=>outcome,date:()=> '09.11, 18:58',focusControl(){},selectMapBattle(){},invalidateCardFlow(){},queueResize(){}};
   vm.createContext(context);
