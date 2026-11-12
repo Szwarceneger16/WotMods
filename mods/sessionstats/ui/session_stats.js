@@ -1173,7 +1173,8 @@
             }
             if (current < 903 || state.resize) { state.filterLayoutQueued = false; layoutFilterControls(); return; }
             state.filterLayoutFrames += 1;
-            if (Date.now() >= state.filterLayoutDue || state.filterLayoutFrames >= 8) {
+            if (Date.now() >= state.filterLayoutDue || state.filterLayoutFrames >= 8 ||
+                    typeof window.requestAnimationFrame !== 'function') {
                 state.filterLayoutQueued = false; applyFilterLayout(controls, current, true); queueResize(); return;
             }
             window.requestAnimationFrame(settle);
@@ -2645,14 +2646,19 @@
             });
             queueCardFlow(); finishFeedAnchor(); finishBattleJump(); finishPageJump(); updatePinnedFilters();
         }
-        if (typeof window.requestAnimationFrame === 'function') {
-            window.requestAnimationFrame(function () { window.requestAnimationFrame(settle); });
-        } else {
+        function deferSettle() {
             try { state.cardFlowTimer = window.setTimeout(function () {
                 if (token !== state.cardFlowToken || state.destroyed) { return; }
                 state.cardFlowTimer = null; settle();
             }, 16); } catch (error) { state.cardFlowQueued = false; }
         }
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () {
+                if (state.destroyed || token !== state.cardFlowToken) { return; }
+                if (typeof window.requestAnimationFrame === 'function') { window.requestAnimationFrame(settle); }
+                else { deferSettle(); }
+            });
+        } else { deferSettle(); }
     }
     function layoutBattleCards() {
         if (!state.cardPages || !state.cardPages.length) { return; }
@@ -4268,7 +4274,11 @@
             syncScrollbar();
         }
         if (typeof window.requestAnimationFrame === 'function') {
-            window.requestAnimationFrame(function () { window.requestAnimationFrame(measure); });
+            window.requestAnimationFrame(function () {
+                if (state.destroyed || ticket !== state.resizeMeasureToken) { return; }
+                if (typeof window.requestAnimationFrame === 'function') { window.requestAnimationFrame(measure); }
+                else { measure(); }
+            });
         } else { measure(); }
     }
     bindResize(true);

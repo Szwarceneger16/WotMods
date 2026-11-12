@@ -876,6 +876,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-upper-layout.cjs',browser);
   await runFeatureSuite('./ui-summary-xp-total.cjs',browser);
   await runFeatureSuite('./ui-resize-input.cjs',browser);
+  await runFeatureSuite('./ui-retained-raf.cjs',browser);
   check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
   check('No browser JavaScript errors: '+JSON.stringify(errors),errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,

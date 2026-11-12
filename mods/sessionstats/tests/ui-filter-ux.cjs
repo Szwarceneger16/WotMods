@@ -157,6 +157,23 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     assert.strictEqual(state.wideFilters,false,'Six fast frames do not acknowledge the owned eight-frame promotion');
     assert.strictEqual(bar.getAttribute('data-filter-layout'),'wrapped');
     flush();assert.strictEqual(state.wideFilters,true);assert.strictEqual(bar.getAttribute('data-filter-layout'),'wide');
+    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    const retained=raf.shift(),scheduler=context.window.requestAnimationFrame;
+    context.window.requestAnimationFrame=undefined;retained();
+    assert.strictEqual(state.wideFilters,true,'A retained promotion completes through the no-RAF fallback');
+    assert.strictEqual(state.filterLayoutQueued,false,'Losing optional RAF releases promotion ownership');
+    context.window.requestAnimationFrame=scheduler;
+    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();flush();
+    assert.strictEqual(state.wideFilters,true,'Restored RAF supports a fresh narrow-to-wide promotion');
+    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    const shrinking=raf.shift();context.window.requestAnimationFrame=undefined;panelWidth=800;shrinking();
+    assert.strictEqual(state.wideFilters,false,'Losing RAF cannot bypass the current narrow-width guard');
+    assert.strictEqual(state.filterLayoutQueued,false);context.window.requestAnimationFrame=scheduler;
+    panelWidth=904;context.layoutFilterControls();const resizing=raf.shift();state.resize={};
+    context.window.requestAnimationFrame=undefined;resizing();
+    assert.strictEqual(state.wideFilters,false,'Losing RAF cannot promote during an active resize');
+    assert.strictEqual(state.filterLayoutQueued,false);context.window.requestAnimationFrame=scheduler;state.resize=null;
+    context.layoutFilterControls();flush();
     const before=queued;for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
     assert.strictEqual(queued,before,'A settled mode cannot recursively schedule layout');
     panelWidth=902;context.layoutFilterControls();assert.strictEqual(state.wideFilters,false,'Shrinking falls back immediately');
@@ -169,8 +186,48 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   }
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let remaining=10;function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
+async function retainedPromotion(browser,nativeHost,check){
+  const page=await nativeHost(browser,{initialViewport:{width:1800,height:1400},viewport:{width:1800,height:1400,scale:1}}),errors=[];
+  page.on('pageerror',error=>errors.push(error.stack||String(error)));
+  try{
+    const result=await page.evaluate(()=>new Promise((resolve,reject)=>{
+      const realRAF=window.requestAnimationFrame,realNow=Date.now,frozen=Date.now();let pending=[];
+      Date.now=()=>frozen;window.requestAnimationFrame=callback=>{pending.push(callback);return pending.length;};
+      const bar=document.getElementById('ss-list-controls');
+      function publish(width){const payload=JSON.parse(model.payload);payload.account_key='synthetic-retained-promotion';
+        payload.window_size=[width,850];payload.appearance={window_settings:{background_transparency:0,maximized:false,restored_width:width,restored_height:850}};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();}
+      function drain(findPromotion){
+        for(let count=0;pending.length&&count<100;count++){
+          const callback=pending.shift();
+          if(findPromotion&&String(callback).includes('state.filterLayoutFrames'))return callback;
+          callback(performance.now());
+        }
+        return null;
+      }
+      publish(700);drain(false);publish(1200);const retained=drain(true);
+      if(!retained){Date.now=realNow;window.requestAnimationFrame=realRAF;reject(Error('Actual filter promotion was not captured'));return;}
+      const before=bar.getAttribute('data-filter-layout');window.requestAnimationFrame=undefined;
+      realRAF.call(window,()=>retained(performance.now()));
+      realRAF.call(window,()=>realRAF.call(window,()=>{
+        try{
+          const completed=bar.getAttribute('data-filter-layout');
+          window.requestAnimationFrame=callback=>{pending.push(callback);return pending.length;};
+          publish(700);drain(false);const narrow=bar.getAttribute('data-filter-layout');
+          publish(1200);drain(false);
+          resolve({before,completed,narrow,restored:bar.getAttribute('data-filter-layout'),width:bar.getAttribute('data-filter-width')});
+        }catch(error){reject(error);}finally{Date.now=realNow;window.requestAnimationFrame=realRAF;}
+      }));
+    }));
+    check('A retained filter promotion completes without an asynchronous error when optional RAF disappears: '+JSON.stringify({result,errors}),
+      errors.length===0&&result.before==='wrapped'&&result.completed==='wide');
+    check('Restored RAF can own a fresh narrow-to-wide filter transition',
+      result.narrow==='wrapped'&&result.restored==='wide'&&result.width==='1162');
+  }finally{await page.close();}
+}
 module.exports=async({browser,nativeHost,check})=>{
   assertFilterStateSource();check('Actual-source Off memory, readiness, context ownership and loading-state regressions pass',true);
+  await retainedPromotion(browser,nativeHost,check);
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     const caption=' at '+(scale*100)+'%',count=()=>page.evaluate(()=>__grzCommands.filter(command=>command.action==='sort').length);
@@ -301,4 +358,5 @@ module.exports=async({browser,nativeHost,check})=>{
   }
 };
 module.exports.assertFilterStateSource=assertFilterStateSource;
+module.exports.retainedPromotion=retainedPromotion;
 if(require.main===module){assertFilterStateSource();console.log('Actual-source filter Off memory, projection readiness, account ownership and spinner regressions passed.');}
