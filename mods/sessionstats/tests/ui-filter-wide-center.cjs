@@ -1,7 +1,25 @@
 /* A full pager/sort row centers as one strip within its reserved activity area. */
 const fs=require('fs'),path=require('path');
-const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=6;
-  function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
+async function settledWide(page,width,scale){
+  // Promotion owns an eight-frame/120ms debounce after resize measurement.
+  // Await its published mode and width, plus the native size acknowledgement;
+  // a fixed number of earlier frames does not establish that it completed.
+  await page.waitForFunction(({width,scale})=>{
+    const bar=document.getElementById('ss-list-controls');
+    return bar.getAttribute('data-filter-layout')==='wide'&&Number(bar.getAttribute('data-filter-width'))===width-38&&
+      window.__nativeSize&&__nativeSize[0]===Math.ceil(width*scale);
+  },{width,scale});
+  await page.evaluate(({width})=>new Promise((resolve,reject)=>{let left=6;
+    function next(){
+      const bar=document.getElementById('ss-list-controls');
+      if(bar.getAttribute('data-filter-layout')!=='wide'||Number(bar.getAttribute('data-filter-width'))!==width-38||
+          !bar.classList.contains('ss-filters-wide')||bar.classList.contains('ss-filters-wrapped')){
+        reject(Error('An acknowledged full-row layout changed at the same width'));return;
+      }
+      if(--left)requestAnimationFrame(next);else resolve();
+    }requestAnimationFrame(next);
+  }),{width});
+}
 module.exports=async({browser,nativeHost,check})=>{
   const catalogs=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   for(const scale of [1,2]){
@@ -14,7 +32,7 @@ module.exports=async({browser,nativeHost,check})=>{
           payload.appearance={window_settings:{background_transparency:0,maximized:false,restored_width:width,restored_height:850}};
           scope.ordering[group]={metric:'xp_base',statistic:'avg',direction:'desc',chronology:'newest'};
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();document.getElementById('ss-group-'+group).onclick();
-        },{language,messages,width,group});await frames(page);
+        },{language,messages,width,group});await settledWide(page,width,scale);
         const geometry=await page.evaluate(()=>{
           const bar=document.getElementById('ss-list-controls'),box=bar.getBoundingClientRect(),style=getComputedStyle(bar);
           const rows=[...bar.children].filter(node=>node.id!=='ss-filter-loading').map(node=>node.getBoundingClientRect()).filter(box=>box.width>0&&box.height>0);

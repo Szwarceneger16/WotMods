@@ -133,6 +133,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   context.resizePanelDimensions=()=>({width:panelWidth+38});
   context.scrollContentInset=()=>{throw Error('Filter mode must not read a live native gutter');};
   context.queueResize=()=>queued++;context.closeSelect=()=>{};
+  context.Date={now:()=>0};
   bar.getBoundingClientRect=()=>{throw Error('Visible filter layout must never be probed');};
   vm.runInContext(['filterLayoutWidth','cancelFilterLayout','applyFilterLayout','layoutFilterControls'].map(actual).join('\n'),context);
   const flush=()=>{let count=0;while(raf.length){assert(count++<30,'Filter debounce is bounded');raf.shift()();}};
@@ -152,6 +153,9 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     assert.strictEqual(raf.length,1);
     for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
     assert.strictEqual(raf.length,1,'Same-width measurements do not restart owned work');
+    for(let frame=0;frame<6;frame++)raf.shift()();
+    assert.strictEqual(state.wideFilters,false,'Six fast frames do not acknowledge the owned eight-frame promotion');
+    assert.strictEqual(bar.getAttribute('data-filter-layout'),'wrapped');
     flush();assert.strictEqual(state.wideFilters,true);assert.strictEqual(bar.getAttribute('data-filter-layout'),'wide');
     const before=queued;for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
     assert.strictEqual(queued,before,'A settled mode cannot recursively schedule layout');
