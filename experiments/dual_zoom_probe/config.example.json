@@ -1,0 +1,10 @@
+{
+  "enable_native_renderer": false,
+  "replay_only": true,
+  "width": 400,
+  "height": 240,
+  "start_zoom": 2,
+  "max_zoom": 25,
+  "skip_frames": 0,
+  "staggered": false
+}
