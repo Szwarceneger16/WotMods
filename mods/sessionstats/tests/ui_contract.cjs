@@ -608,6 +608,8 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-language.cjs',browser);
   await runFeatureSuite('./ui-sorting.cjs',browser);
   await runFeatureSuite('./ui-filter-ux.cjs',browser);
+  await runFeatureSuite('./ui-filter-layout-stable.cjs',browser);
+  await runFeatureSuite('./ui-chronology.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);

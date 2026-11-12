@@ -16,10 +16,10 @@ function run() {
   const root = new Node(), preview = new Node(), image = new Node(); preview.id = 'ss-map-preview';
   let bounds = {left: 40, top: 30, width: 700, height: 730};
   root.getBoundingClientRect = () => bounds;
-  root.contains = node => root.children.includes(node);
+  root.contains = node => { while(node && node!==root)node=node.parentNode;return node===root; };
   const context = { root, mapPreview: preview, mapPreviewImage: image, mapPreviewTarget: null,
     state: {group: 'maps', nativeScale: 1}, hideHelp() {}, t: (key, args) => key + args[0],
-    element: (tag, className) => { const node = new Node(); node.className = className || ''; return node; },
+    element: (tag, className, text) => { const node = new Node(); node.className = className || ''; node.textContent=text||'';return node; },
     append(parent, node) { parent.children.push(node); node.parentNode = parent; return node; } };
   vm.createContext(context);
   const source = fs.readFileSync(path.join(__dirname, '../ui/session_stats.js'), 'utf8');
@@ -66,9 +66,11 @@ function run() {
   context.state.group = 'battles'; bounds = {left: 40, top: 30, width: 700, height: 730};
   context.appendBattleMap(root, {map: 'Synthetic map', map_visual: {
     kind: 'map', src: small, preview_src: screen, preview_mode: 'image'}});
-  target = root.children[root.children.length - 1];
+  const battleMap=root.children[root.children.length - 1];
+  target = battleMap.children[0];
   target.getBoundingClientRect = () => ({left: 60, top: 90, right: 114, width: 54, height: 32});
   assert(target.className.includes('ss-battle-map-thumb'), 'Battle map reuses the native thumbnail renderer');
+  assert.strictEqual(battleMap.children[1].textContent,'Synthetic map','The map has a visible caption accompanying its own thumbnail');
   context.showMapPreview(target);
   assert.strictEqual(image.style.backgroundImage, 'url("' + screen + '")', 'Battles share the high-resolution hover');
   assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '128px');

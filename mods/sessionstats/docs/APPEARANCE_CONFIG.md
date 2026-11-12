@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.1
+# Appearance and scrolling configuration — 0.9.2
 
 ## File placement and applying changes
 
@@ -45,6 +45,10 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `date_time.order` | `"auto"` | Force `DMY`, `MDY` or `YMD`; auto follows the WoT client |
+| `date_time.separator` | `"auto"` | Force `.`, `/` or `-` independently of Windows |
+| `date_time.hour_format` | `"auto"` | Force `24h` or `12h` independently of the client |
+| `date_time.first_weekday` | `"auto"` | Force Sunday `0` through Saturday `6` |
 | `colors.window_background` | `"#111309"` | Main window background |
 | `colors.window_border` | `"#646044"` | Window border |
 | `colors.table_header_background_start` | `"#292e1f"` | Table-header gradient start |
@@ -75,6 +79,10 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.date_unavailable_border` | `"#464c46"` | Unavailable calendar/clock border |
 | `colors.date_unavailable_background` | `"#2b302b"` | Neutral unavailable calendar/clock fill |
 | `opacity.date_unavailable` | `1.0` | Calendar choices use explicit gray paint instead of fading into camouflage |
+
+Automatic date and clock formatting uses WoT's resource-backed client formatters,
+with bundled-language defaults when unavailable. Windows/system regional settings
+are not read. See [client formatting and override examples](CLIENT_DATE_TIME.md).
 | `opacity.target_dimmed` | `0.7` | Battle outline after its five-second pulse; 30% transparent |
 | `scroll.speed_multiplier` | `1.0` | In-game wheel-speed multiplier |
 | `maps.preview_mode` | `"image"` | Map hover artwork: `"image"` for the landscape picture, `"minimap"` for the tactical map |

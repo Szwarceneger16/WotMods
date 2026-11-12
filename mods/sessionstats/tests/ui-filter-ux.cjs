@@ -44,7 +44,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.deepStrictEqual(tierOrder('tier_asc'),['II','IX','XI','unknown'],'Unknown remains last when tier order is ascending');
   assert.deepStrictEqual(tierOrder('newest'),['unknown','II','IX','XI'],'Tiers still permits an explicit ordinary date preference');
   state.group='vehicles';render();
-  assert(selects.chronology.options.slice(2).every(option=>option.style.display==='none'),'Tier choices are hidden from other tabs');
+  assert(context.selectOptions.chronology.every((choice,index)=>!choice[0].startsWith('tier_')||selects.chronology.options[index].style.display==='none'),'Tier choices are hidden from other tabs');
   const tierRejected=commands.length;context.changeOrder('chronology','tier_desc');
   assert.strictEqual(commands.length,tierRejected,'Another tab rejects a retained tier-order callback');
   render();assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-pressed'),'true');
@@ -82,6 +82,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(commands.length,battleBefore,'Battles rejects stale aggregate-statistic callbacks');
   assert.strictEqual(statistic.style.display,'none');assert.strictEqual(selects.statistic.trigger.disabled,true);
   context.changeOrder('metric','battles');assert.strictEqual(commands.length,battleBefore,'Battles rejects the aggregate count metric');
+  for(const chronology of ['first_desc','last_asc']){context.changeOrder('chronology',chronology);assert.strictEqual(commands.length,battleBefore,'Battles rejects a retained aggregate-date callback');}
   state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
   assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
   const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
@@ -125,39 +126,42 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   state.group='maps';render();controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'xp_base','Groups keep independent remembered metric preferences');ack();
   state.destroyed=true;const destroyed=commands.length;controls['ss-sort-off'].onclick();context.changeOrder('metric','xp_received');context.renderFilterActivity(scope);
   assert.strictEqual(commands.length,destroyed);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'hidden','Teardown retires callbacks and the activity indicator');
-  // Native fit decisions must include the candidate Off width before choosing
-  // a layout, reserve the spinner space, and measure this panel rather than
-  // the much wider game viewport. The dimensions here model one candidate row.
-  const bar=controls['ss-list-controls']=new Node(),meta=new Node(),pagination=new Node();
-  const sorting=controls['ss-sorting'],slot=controls['ss-filter-loading'];slot.id='ss-filter-loading';
-  bar.children=[meta,pagination,sorting,slot];let panelWidth=800,sortingBottom=50;
-  const bounds=(left,right,bottom=50,height=30)=>({left:(20+left)*state.nativeScale,right:(20+right)*state.nativeScale,
-    top:(bottom-height)*state.nativeScale,bottom:bottom*state.nativeScale,width:(right-left)*state.nativeScale,height:height*state.nativeScale});
-  bar.getBoundingClientRect=()=>bounds(0,panelWidth,50,50);
-  meta.getBoundingClientRect=()=>bounds(0,100);
-  pagination.getBoundingClientRect=()=>bounds(108,448);
-  sorting.getBoundingClientRect=()=>bounds(456,750+(controls['ss-sort-off'].style.display==='none'?0:48),sortingBottom);
-  // The absolute activity slot has an independent baseline. It does not
-  // participate in the row; its 28 logical pixels are reserved separately.
-  slot.getBoundingClientRect=()=>bounds(panelWidth-24,panelWidth,65,24);
-  context.closeSelect=()=>{};vm.runInContext(actual('layoutFilterControls'),context);
+  // A fixed full-row budget must ignore both stale native rectangles and
+  // selected metrics. Widening is coalesced; shrinking and cleanup retire it.
+  const bar=controls['ss-list-controls']=new Node();let panelWidth=900,queued=0;
+  const raf=[];context.window={requestAnimationFrame:callback=>raf.push(callback)};
+  context.resizePanelDimensions=()=>({width:panelWidth+38});
+  context.scrollContentInset=()=>{throw Error('Filter mode must not read a live native gutter');};
+  context.queueResize=()=>queued++;context.closeSelect=()=>{};
+  bar.getBoundingClientRect=()=>{throw Error('Visible filter layout must never be probed');};
+  vm.runInContext(['filterLayoutWidth','cancelFilterLayout','applyFilterLayout','layoutFilterControls'].map(actual).join('\n'),context);
+  const flush=()=>{let count=0;while(raf.length){assert(count++<30,'Filter debounce is bounded');raf.shift()();}};
   state.destroyed=false;state.group='vehicles';state.payload.viewport={width:3840,height:2400};
   for(const scale of [1,2]){
-    state.nativeScale=scale;state.wideFilters=false;panelWidth=800;sortingBottom=50;render();
-    for(let attempt=0;attempt<5;attempt++){
-      context.layoutFilterControls();
-      assert.strictEqual(state.wideFilters,false,'A candidate Off button is measured before fitting at '+scale+'x');
-      assert.strictEqual(bar.classList.contains('ss-filters-wide'),false,'A near-threshold panel must not alternate wide and narrow layouts');
+    state.nativeScale=scale;state.wideFilters=undefined;state.filterLayoutWidth=null;panelWidth=900;render();
+    context.layoutFilterControls();assert.strictEqual(state.wideFilters,false);
+    for(const metric of ['off','xp_base','win_rate','battles']){
+      scope.ordering.vehicles.metric=metric;render();
+      for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
+      assert.strictEqual(state.wideFilters,false,'Metric/statistic visibility cannot alter the breakpoint');
+      assert.strictEqual(bar.classList.contains('ss-filters-wide'),false);
       assert.strictEqual(controls['ss-sort-off'].style.display,'none');
     }
-    panelWidth=810;context.layoutFilterControls();
-    assert.strictEqual(state.wideFilters,false,'The candidate reserves 28 logical pixels for activity at '+scale+'x');
-    panelWidth=830;context.layoutFilterControls();
-    assert.strictEqual(state.wideFilters,true,'A truly fitting candidate uses wide controls at '+scale+'x');
-    assert.strictEqual(bar.classList.contains('ss-filters-wide'),true);assert.strictEqual(controls['ss-sort-off'].style.display,'flex');
-    sortingBottom=52;context.layoutFilterControls();
-    assert.strictEqual(state.wideFilters,false,'Candidate controls must share the same bottom edge at '+scale+'x');
-    sortingBottom=50;context.layoutFilterControls();assert.strictEqual(state.wideFilters,true,'A stable aligned row can become wide again');
+    panelWidth=903;context.layoutFilterControls();
+    assert.strictEqual(state.wideFilters,false,'Promotion waits until resizing settles');
+    assert.strictEqual(raf.length,1);
+    for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
+    assert.strictEqual(raf.length,1,'Same-width measurements do not restart owned work');
+    flush();assert.strictEqual(state.wideFilters,true);assert.strictEqual(bar.getAttribute('data-filter-layout'),'wide');
+    const before=queued;for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
+    assert.strictEqual(queued,before,'A settled mode cannot recursively schedule layout');
+    panelWidth=902;context.layoutFilterControls();assert.strictEqual(state.wideFilters,false,'Shrinking falls back immediately');
+    panelWidth=904;context.layoutFilterControls();assert.strictEqual(raf.length,1);
+    panelWidth=800;context.layoutFilterControls();flush();assert.strictEqual(state.wideFilters,false,'Stale promotion cannot undo a newer shrink');
+    panelWidth=904;context.layoutFilterControls(true);assert.strictEqual(state.wideFilters,true,'Gesture release flushes the final mode');
+    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    state.destroyed=true;context.cancelFilterLayout();flush();assert.strictEqual(state.wideFilters,false,'Destroyed views retire queued layout work');
+    state.destroyed=false;
   }
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let remaining=10;function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
@@ -250,6 +254,13 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.keyboard.press('Home');await page.keyboard.press('Enter');
       check('Narrow keyboard selection retains Off as the first option'+caption,await page.evaluate(()=>__grzCommands.filter(item=>item.action==='sort').pop().metric==='off'));
       await acknowledge();
+      check('Narrow Off keeps a selectable dropdown and an explicit gray diagonal state'+caption,
+        await page.locator('#ss-sort-metric .ss-select-trigger').evaluate(node=>{
+          const option=node.parentNode.querySelector('[data-value="off"]'),css=getComputedStyle(node);
+          return !node.disabled&&node.getAttribute('aria-disabled')==='false'&&node.classList.contains('ss-sort-off-choice')&&
+            css.backgroundImage.includes('linear-gradient')&&option.classList.contains('ss-sort-off-choice')&&
+            getComputedStyle(option).backgroundImage.includes('linear-gradient');
+        }));
       await page.locator('#ss-group-battles').click();await frames(page);
       const beforeBattleStatistic=await count();
       await page.evaluate(()=>document.querySelector('#ss-sort-statistic [data-value="max"]').onclick());

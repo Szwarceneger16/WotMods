@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT/'src'))
 from grz_session_stats.core import StatsService, aggregate_stats
 from grz_session_stats.appearance import CONFIG_FILENAME, load_config, build_presentation
 from grz_session_stats.localization import Localizer
+from grz_session_stats.date_locale import resolve_date_settings
 
 
 def snapshots():
@@ -81,6 +82,7 @@ def main():
     config = load_config(str(ROOT/CONFIG_FILENAME))
     presentation = build_presentation(config)
     localizer = Localizer(config['language'])
+    localizer.date_settings = resolve_date_settings(localizer.language, overrides=config['date_time'])
     fixtures = {'normal':normal,'reset':reset}
     (output/'demo_snapshot.json').write_text(json.dumps(fixtures,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
     # Keep regression fixtures canonical; localize the generated preview itself.

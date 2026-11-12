@@ -317,5 +317,22 @@ module.exports=async ({browser,nativeHost,check})=>{
       await currentPicker.locator('#ss-custom-date-apply-'+field).click();
       check('Applying the clamped '+field+' clock sends exactly the current minute',(await requests(page)).pop()[field+'_date']===String(today.now));
     }
+    const clientFormats=require('./ui-custom-date-source.cjs').clientDateFixtures();
+    for(const [index,settings] of clientFormats.entries()) {
+      await page.evaluate(({index,settings,messages,now})=>{
+        const payload=JSON.parse(model.payload);payload.account_key='synthetic-client-format-'+index;
+        payload.localization={language:'pl',messages,date_settings:settings};
+        const scope=payload.scopes.timeline;scope.period_id='synthetic-client-format-period-'+index;
+        scope.from_point='__custom__';scope.from_date=now;scope.to_point='';scope.to_date=null;
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },{index,settings,messages:languages.pl,now:today.now});await frames(page);
+      await page.locator('#ss-custom-date-calendar-from').click();const picker=page.locator('#ss-date-picker-from');
+      check('Client/config calendar clock mode controls AM/PM independently of UI language: '+index,
+        await picker.locator('.ss-date-periods').isVisible()===(index===1)&&
+        await page.locator('#ss-custom-date-from').getAttribute('placeholder')===(index===1?'mm/dd/yyyy hh:mm AM':index===2?'yyyy-mm-dd HH:mm':'dd.mm.yyyy HH:mm'));
+      check('The calendar uses the effective client/config first weekday: '+index,
+        await picker.locator('.ss-date-weekday').first().textContent()===(index===1?'Nd':'Pn'));
+      await picker.locator('.ss-date-picker-cancel').click();
+    }
   } finally {await page.close();}
 };

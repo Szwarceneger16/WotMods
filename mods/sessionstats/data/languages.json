@@ -346,7 +346,17 @@
       "timeline.calendar_clock_help": "Choose hours or minutes above. Click or drag the clock hand; arrow keys adjust one step.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Sorting value: {0}",
-      "sort.win_rate": "Win rate"
+      "sort.win_rate": "Win rate",
+      "help.wn8.combined": "Recalculated from all results in this group and their expected vehicle values. It is not the arithmetic mean of individual-battle WN8 shown below.",
+      "metric.combined_wn8": "Combined WN8",
+      "sort.first_newest": "First battle ↓",
+      "sort.first_newest.description": "First battle: newest first",
+      "sort.first_oldest": "First battle ↑",
+      "sort.first_oldest.description": "First battle: oldest first",
+      "sort.last_newest": "Last battle ↓",
+      "sort.last_newest.description": "Last battle: newest first",
+      "sort.last_oldest": "Last battle ↑",
+      "sort.last_oldest.description": "Last battle: oldest first"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -693,7 +703,17 @@
       "timeline.calendar_clock_help": "Wybierz godziny lub minuty powyżej. Kliknij lub przeciągnij wskazówkę; strzałki zmieniają wartość o jeden.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Wartość sortowania: {0}",
-      "sort.win_rate": "Zwycięstwa, %"
+      "sort.win_rate": "Zwycięstwa, %",
+      "help.wn8.combined": "Obliczane ponownie ze wszystkich wyników tej grupy i wartości oczekiwanych dla pojazdów. To nie jest średnia arytmetyczna WN8 pojedynczych bitew widoczna poniżej.",
+      "metric.combined_wn8": "Łączne WN8",
+      "sort.first_newest": "Pierwsza bitwa ↓",
+      "sort.first_newest.description": "Pierwsza bitwa: od najnowszych",
+      "sort.first_oldest": "Pierwsza bitwa ↑",
+      "sort.first_oldest.description": "Pierwsza bitwa: od najstarszych",
+      "sort.last_newest": "Ostatnia bitwa ↓",
+      "sort.last_newest.description": "Ostatnia bitwa: od najnowszych",
+      "sort.last_oldest": "Ostatnia bitwa ↑",
+      "sort.last_oldest.description": "Ostatnia bitwa: od najstarszych"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1040,7 +1060,17 @@
       "timeline.calendar_clock_help": "Выберите часы или минуты выше. Нажмите или перетащите стрелку; клавиши со стрелками меняют значение на один шаг.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Значение сортировки: {0}",
-      "sort.win_rate": "Победы, %"
+      "sort.win_rate": "Победы, %",
+      "help.wn8.combined": "Пересчитано по всем результатам этой группы и ожидаемым показателям машин. Это не среднее арифметическое WN8 отдельных боёв, показанное ниже.",
+      "metric.combined_wn8": "Общее WN8",
+      "sort.first_newest": "Первая битва ↓",
+      "sort.first_newest.description": "Первая битва: новые сначала",
+      "sort.first_oldest": "Первая битва ↑",
+      "sort.first_oldest.description": "Первая битва: старые сначала",
+      "sort.last_newest": "Последняя битва ↓",
+      "sort.last_newest.description": "Последняя битва: новые сначала",
+      "sort.last_oldest": "Последняя битва ↑",
+      "sort.last_oldest.description": "Последняя битва: старые сначала"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1387,7 +1417,17 @@
       "timeline.calendar_clock_help": "Choisissez les heures ou les minutes ci-dessus. Cliquez ou faites glisser l’aiguille ; les flèches ajustent d’une unité.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Valeur de tri : {0}",
-      "sort.win_rate": "Victoires, %"
+      "sort.win_rate": "Victoires, %",
+      "help.wn8.combined": "Recalculé à partir de tous les résultats de ce groupe et des valeurs attendues des véhicules. Ce n’est pas la moyenne arithmétique des WN8 par bataille affichée ci-dessous.",
+      "metric.combined_wn8": "WN8 global",
+      "sort.first_newest": "Première bataille ↓",
+      "sort.first_newest.description": "Première bataille : plus récentes",
+      "sort.first_oldest": "Première bataille ↑",
+      "sort.first_oldest.description": "Première bataille : plus anciennes",
+      "sort.last_newest": "Dernière bataille ↓",
+      "sort.last_newest.description": "Dernière bataille : plus récentes",
+      "sort.last_oldest": "Dernière bataille ↑",
+      "sort.last_oldest.description": "Dernière bataille : plus anciennes"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1734,7 +1774,17 @@
       "timeline.calendar_clock_help": "Wähle oben Stunden oder Minuten. Klicke oder ziehe den Zeiger; die Pfeiltasten ändern den Wert schrittweise.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Sortierwert: {0}",
-      "sort.win_rate": "Siegrate"
+      "sort.win_rate": "Siegrate",
+      "help.wn8.combined": "Aus allen Ergebnissen dieser Gruppe und den erwarteten Fahrzeugwerten neu berechnet. Es ist nicht das unten gezeigte arithmetische Mittel der WN8 einzelner Gefechte.",
+      "metric.combined_wn8": "Gesamt-WN8",
+      "sort.first_newest": "Erstes Gefecht ↓",
+      "sort.first_newest.description": "Erstes Gefecht: neueste zuerst",
+      "sort.first_oldest": "Erstes Gefecht ↑",
+      "sort.first_oldest.description": "Erstes Gefecht: älteste zuerst",
+      "sort.last_newest": "Letztes Gefecht ↓",
+      "sort.last_newest.description": "Letztes Gefecht: neueste zuerst",
+      "sort.last_oldest": "Letztes Gefecht ↑",
+      "sort.last_oldest.description": "Letztes Gefecht: älteste zuerst"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2081,7 +2131,17 @@
       "timeline.calendar_clock_help": "Elige horas o minutos arriba. Haz clic o arrastra la aguja; las flechas ajustan el valor de uno en uno.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Valor de ordenación: {0}",
-      "sort.win_rate": "Victorias, %"
+      "sort.win_rate": "Victorias, %",
+      "help.wn8.combined": "Recalculado a partir de todos los resultados de este grupo y los valores esperados de los vehículos. No es la media aritmética de los WN8 de batallas individuales que se muestra debajo.",
+      "metric.combined_wn8": "WN8 combinado",
+      "sort.first_newest": "Primera batalla ↓",
+      "sort.first_newest.description": "Primera batalla: más recientes primero",
+      "sort.first_oldest": "Primera batalla ↑",
+      "sort.first_oldest.description": "Primera batalla: más antiguas primero",
+      "sort.last_newest": "Última batalla ↓",
+      "sort.last_newest.description": "Última batalla: más recientes primero",
+      "sort.last_oldest": "Última batalla ↑",
+      "sort.last_oldest.description": "Última batalla: más antiguas primero"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2428,7 +2488,17 @@
       "timeline.calendar_clock_help": "Виберіть години або хвилини вище. Натисніть або перетягніть стрілку; клавіші зі стрілками змінюють значення на один крок.",
       "sort.metric_stat": "{0} {1}",
       "sort.active_value": "Значення сортування: {0}",
-      "sort.win_rate": "Перемоги, %"
+      "sort.win_rate": "Перемоги, %",
+      "help.wn8.combined": "Перераховано за всіма результатами цієї групи та очікуваними показниками машин. Це не середнє арифметичне WN8 окремих боїв, показане нижче.",
+      "metric.combined_wn8": "Сумарний WN8",
+      "sort.first_newest": "Перша битва ↓",
+      "sort.first_newest.description": "Перша битва: нові спочатку",
+      "sort.first_oldest": "Перша битва ↑",
+      "sort.first_oldest.description": "Перша битва: старі спочатку",
+      "sort.last_newest": "Остання битва ↓",
+      "sort.last_newest.description": "Остання битва: нові спочатку",
+      "sort.last_oldest": "Остання битва ↑",
+      "sort.last_oldest.description": "Остання битва: старі спочатку"
     }
   }
 }

@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.1 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.2 (persistent data schema unchanged)
 Release date: 2026-11-11.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.1', account_key: string, generated_at: unix seconds,
+ version: '0.9.2', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -388,12 +388,14 @@ or persisted-data migration.
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
 ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8|battles|win_rate,
-                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest}.
+                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
 A successful request resets that grouping to page zero; pagination and totals remain period-wide.
 Metric ordering uses the selected per-battle series statistic, with missing values last.
-Chronology uses the latest/earliest battle for groups and the start time for individual battles.
+Group chronology independently selects the first or last battle and ascending or descending
+dates. Legacy newest=last descending, oldest=first ascending; first_desc and last_asc
+complete the four group modes. Individual Battles retain newest/oldest only.
 Stable IDs resolve remaining ties. Tiers use the original recorded vehicle_tier, including XI;
 unknown tier metadata has a separate group. No persistent schema or saved data is changed.
 
@@ -415,7 +417,11 @@ set_vehicle_battles(scope, vehicle_id, page, period_id) follows set_map_battles.
 The vehicle_battles UI action carries account_key, scope, vehicle_id, zero-based
 page and period_id. Visible subscribed group rows expose battle_list with
 items {id, name, map, started_at, outcome, wn8}, page, pages, total, page_size.
-Both group histories are indexed newest-first and slice at most ten rows.
+Both group histories retain one chronological index and slice at most ten rows.
+Their direction follows the group chronology (oldest/last_asc ascending, otherwise
+descending), including when an advanced metric is active. battle_list includes chronology.
+A direction change resets subscribed history pages; optional chronology on page commands
+rejects callbacks retained from a different order.
 Existing battle_select resolves the current Battles page and returns the guarded
 request identity; selecting a target retains an orange frame in the same period.
 Active aggregate metric sorting also publishes sort_value, the exact scalar

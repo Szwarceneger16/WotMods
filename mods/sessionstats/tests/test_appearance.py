@@ -60,6 +60,16 @@ class AppearanceTests(unittest.TestCase):
                 self.assertEqual(result[key], source.read() + extra)
         self.assertEqual(result['scroll_speed'], 1.0)
 
+    def test_date_time_overrides_validate_each_field_and_preserve_auto_defaults(self):
+        expected = {'order': 'YMD', 'separator': '-', 'hour_format': '24h', 'first_weekday': 0}
+        self.assertEqual(style.validate_config({'date_time': expected})['date_time'], expected)
+        invalid = {'order': 'DYM', 'separator': '<script>', 'hour_format': True, 'first_weekday': True}
+        self.assertEqual(style.validate_config({'date_time': invalid})['date_time'],
+                         style.default_config()['date_time'])
+        for invalid in (-1, 7, 1.5, [], {}, None):
+            self.assertEqual(style.validate_config({'date_time': {'first_weekday': invalid}})['date_time']['first_weekday'], 'auto')
+        self.assertEqual(style.validate_config({'date_time': {'hour_format': '12h'}})['date_time']['hour_format'], '12h')
+
     def test_every_real_color_radius_opacity_is_tokenized(self):
         templates = style.PANEL_TEMPLATE + style.FOOTER_TEMPLATE
         # Exclude comments, where renderer notes can legitimately mention a color.

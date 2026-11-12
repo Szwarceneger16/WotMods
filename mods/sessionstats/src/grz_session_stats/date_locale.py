@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Read regional date preferences without changing the process locale."""
+"""Resolve client-localized date preferences without reading the OS locale."""
 from __future__ import absolute_import, unicode_literals
 
-import locale
 import re
 import time
 
@@ -36,52 +35,24 @@ def date_pattern(value):
     return {'order': ''.join(names), 'separator': separators[0]}
 
 
-def _windows_settings():
-    import ctypes
-    kernel = ctypes.windll.kernel32
-    def read(field):
-        buffer = ctypes.create_unicode_buffer(128)
-        getter = getattr(kernel, 'GetLocaleInfoEx', None)
-        length = getter(None, field, buffer, len(buffer)) if getter else kernel.GetLocaleInfoW(0x0400, field, buffer, len(buffer))
-        return buffer.value if length else ''
-    result = date_pattern(read(0x001f))  # LOCALE_SSHORTDATE, including user overrides.
-    week = read(0x100c)  # Monday=0 through Sunday=6.
-    if week in tuple(str(value) for value in range(7)):
-        result['first_weekday'] = (int(week) + 1) % 7
-    clock = read(0x0023)
-    if clock in ('0', '1'):
-        result['hour12'] = clock == '0'
-    result['weekdays'] = [read(0x0037)] + [read(0x0031 + index) for index in range(6)]
-    result['months'] = [read(0x0038 + index) for index in range(12)]
-    result['periods'] = [read(0x0028), read(0x0029)]
-    return result
-
-
-def _posix_settings():
-    # A C process locale is not evidence of the user's regional preferences.
-    # In particular, the game can keep Python in C while Wulf uses Windows.
-    name = locale.getlocale(locale.LC_TIME)[0]
-    if not name or name in ('C', 'POSIX') or not hasattr(locale, 'nl_langinfo'):
-        return {}
-    result = date_pattern(locale.nl_langinfo(locale.D_FMT))
-    result['hour12'] = bool(re.search(r'%[IlpPr]', locale.nl_langinfo(locale.T_FMT)))
-    result['weekdays'] = [locale.nl_langinfo(getattr(locale, 'ABDAY_' + str(index))) for index in range(1, 8)]
-    result['months'] = [locale.nl_langinfo(getattr(locale, 'MON_' + str(index))) for index in range(1, 13)]
-    result['periods'] = [locale.nl_langinfo(locale.AM_STR), locale.nl_langinfo(locale.PM_STR)]
-    return result
-
-
-def regional_date_settings(date_formatter=None, time_formatter=None):
-    """Prefer the game's formatter; use system settings for calendar metadata."""
-    try:
-        result = _windows_settings()
-    except (ImportError, AttributeError, OSError, ValueError, TypeError):
+def language_date_settings(client_language=None):
+    """Use bundled-language date defaults with a conservative 24-hour clock."""
+    if isinstance(client_language, bytes) and not isinstance(client_language, text_type):
         try:
-            result = _posix_settings()
-        except (AttributeError, ValueError, TypeError):
-            result = {}
-    # All components differ, so a formatted sample unambiguously identifies
-    # DMY/MDY/YMD even when the system uses a two-digit display year.
+            client_language = client_language.decode('ascii')
+        except UnicodeError:
+            client_language = None
+    code = client_language.lower().replace('_', '-').split('-')[0] if isinstance(client_language, text_type) else ''
+    # Only an actual native formatted sample or an explicit override enables
+    # 12h mode. Neither Windows preferences nor a browser locale is evidence.
+    return {'order': 'DMY', 'separator': '/' if code in ('fr', 'es') else '.',
+            'hour12': False, 'first_weekday': 1}
+
+
+def regional_date_settings(date_formatter=None, time_formatter=None, client_language=None,
+                           weekday_formatter=None, month_formatter=None):
+    """Read only the game's resource-backed formatters, never OS preferences."""
+    result = language_date_settings(client_language)
     sample = time.mktime((2006, 11, 23, 17, 45, 0, 0, 0, -1))
     if callable(date_formatter):
         try:
@@ -101,4 +72,37 @@ def regional_date_settings(date_formatter=None, time_formatter=None):
                 result['hour12'] = int(match.group()) == 5
         except (ValueError, TypeError, AttributeError, RuntimeError):
             pass
+    # These callbacks use R.strings.menu.dateTime, not strftime's process locale.
+    for key, count, formatter in (('weekdays', 7, weekday_formatter), ('months', 12, month_formatter)):
+        if not callable(formatter):
+            continue
+        try:
+            stamps = [time.mktime((2006, index + 1, 23, 12, 0, 0, 0, 0, -1)) for index in range(12)] if key == 'months' else [
+                time.mktime((2026, 11, 1 + index, 12, 0, 0, 0, 0, -1)) for index in range(7)]
+            labels = [formatter(stamp) for stamp in stamps]
+            labels = [label.decode('utf-8') if isinstance(label, bytes) and not isinstance(label, text_type) else label for label in labels]
+            if all(isinstance(label, text_type) and 0 < len(label) <= 64 and
+                   not any(ord(char) < 32 for char in label) for label in labels):
+                result[key] = labels
+        except (ValueError, TypeError, AttributeError, RuntimeError):
+            pass
+    return result
+
+
+def resolve_date_settings(client_language=None, native=None, overrides=None):
+    """Explicit config fields override the game, then language supplies gaps."""
+    from .localization import calendar_settings
+    result = language_date_settings(client_language)
+    result.update(calendar_settings(native))
+    if not isinstance(overrides, dict):
+        return result
+    if overrides.get('order') in ('DMY', 'MDY', 'YMD'):
+        result['order'] = overrides['order']
+    if overrides.get('separator') in ('.', '/', '-'):
+        result['separator'] = overrides['separator']
+    if overrides.get('hour_format') in ('12h', '24h'):
+        result['hour12'] = overrides['hour_format'] == '12h'
+    first = overrides.get('first_weekday')
+    if isinstance(first, int) and not isinstance(first, bool) and 0 <= first <= 6:
+        result['first_weekday'] = first
     return result

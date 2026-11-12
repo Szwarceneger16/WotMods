@@ -137,6 +137,32 @@ class HistoryNavigationTests(unittest.TestCase):
         self.assertEqual(self.service._state, before)
         self.assertEqual(self.service.store.sequence, sequence)
 
+    def test_more_direction_changes_reset_pages_and_reject_retained_old_order_requests(self):
+        period = self.service.snapshot()['scopes']['manual']['period_id']
+        for kind, identifier, setter in [('maps', 'map-a', self.service.set_map_battles),
+                                         ('vehicles', '1', self.service.set_vehicle_battles)]:
+            self.assertTrue(setter('manual', identifier, 2, period, 'newest'))
+            self.assertTrue(self.service.set_order('manual', kind,
+                dict(DEFAULT_ORDER, chronology='oldest'), period))
+            scope = self.service.snapshot()['scopes']['manual']
+            row = next(row for row in scope[kind] if row['id'] == identifier)
+            self.assertEqual(row['battle_list']['page'], 0)
+            values = [item['started_at'] for item in row['battle_list']['items']]
+            self.assertEqual(values, sorted(values))
+            self.assertFalse(setter('manual', identifier, 2, period, 'newest'))
+            self.assertTrue(setter('manual', identifier, 1, period, 'oldest'))
+            patch = self.service.snapshot()['scopes']['manual']['battle_history']
+            self.assertEqual(patch['battle_list']['chronology'], 'oldest')
+            values = [item['started_at'] for item in patch['battle_list']['items']]
+            self.assertEqual(values, sorted(values))
+            self.assertTrue(self.service.set_order('manual', kind,
+                dict(DEFAULT_ORDER, chronology='first_desc'), period))
+            scope = self.service.snapshot()['scopes']['manual']
+            row = next(row for row in scope[kind] if row['id'] == identifier)
+            self.assertEqual(row['battle_list']['page'], 0)
+            values = [item['started_at'] for item in row['battle_list']['items']]
+            self.assertEqual(values, sorted(values, reverse=True))
+
     def test_map_pages_clamp_and_reject_nonmembers_stale_periods_and_bad_pages(self):
         period = self.service.snapshot()['scopes']['manual']['period_id']
         for identifier, page, token in [('missing', 0, period), ('map-a', 0, 'expired'),

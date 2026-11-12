@@ -1,6 +1,8 @@
 /* Gameface-compatible select menus, native sorting protocol and narrow layouts. */
 const fs=require('fs'),path=require('path');
 module.exports=async ({browser,nativeHost,check})=>{
+  await require('./ui-chronology.cjs')({browser,nativeHost,check});
+  require('./ui-chronology-source.cjs')();check('Actual-source first/last battle ordering supports both directions independently',true);
   const page=await nativeHost(browser,{});
   await page.locator('#ss-group-tiers').click();
   await page.evaluate(()=>{const s=JSON.parse(model.payload);s.localization={language:'en',messages:{'groups.tiers.count':'Legacy count · newest first'}};
@@ -12,6 +14,19 @@ module.exports=async ({browser,nativeHost,check})=>{
     await page.locator('#ss-sort-chronology .ss-control-label').first().textContent()==='Tier: highest first'&&
     await page.locator('#ss-sort-chronology [data-value="tier_desc"]').evaluate(node=>node.style.display!=='none')&&
     await page.locator('#ss-sort-chronology [data-value="tier_asc"]').evaluate(node=>node.style.display!=='none'));
+  for(const group of ['vehicles','maps','tiers','battles']){
+    await page.locator('#ss-group-'+group).click();
+    const choices=await page.locator('#ss-sort-chronology [role=option]').evaluateAll(nodes=>nodes.filter(node=>node.style.display!=='none').map(node=>({value:node.getAttribute('data-value'),label:node.textContent,description:node.getAttribute('aria-label')})));
+    const expected=group==='battles'?['newest','oldest']:group==='tiers'?['newest','last_asc','first_desc','oldest','tier_desc','tier_asc']:['newest','last_asc','first_desc','oldest'];
+    check('Ordinary date choices distinguish first/last boundaries only for aggregates in '+group+': '+JSON.stringify(choices),
+      JSON.stringify(choices.map(choice=>choice.value))===JSON.stringify(expected)&&choices.every(choice=>choice.description&&choice.label));
+    if(group==='battles')check('Retained aggregate date choices cannot sort individual battles',await page.evaluate(()=>{
+      const before=__grzCommands.filter(command=>command.action==='sort').length;
+      for(const value of ['first_desc','last_asc'])document.querySelector('#ss-sort-chronology [data-value="'+value+'"]').onclick();
+      return __grzCommands.filter(command=>command.action==='sort').length===before;
+    }));
+  }
+  await page.locator('#ss-group-tiers').click();
   async function choose(field,value){
     await page.locator('#ss-sort-'+field+' [role=combobox]').click();
     await page.locator('#ss-sort-'+field+' [data-value="'+value+'"]').click();

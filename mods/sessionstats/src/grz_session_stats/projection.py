@@ -33,7 +33,8 @@ def valid_order(options, kind=None):
             (options.get('metric') != 'win_rate' or kind is None or kind in ('vehicles', 'maps', 'tiers')) and
             options.get('statistic') in ('min', 'avg', 'max') and
             options.get('direction') in ('asc', 'desc') and
-            options.get('chronology') in ('newest', 'oldest', 'tier_asc', 'tier_desc') and
+            options.get('chronology') in ('newest', 'oldest', 'first_desc', 'last_asc', 'tier_asc', 'tier_desc') and
+            (options.get('chronology') not in ('first_desc', 'last_asc') or kind != 'battles') and
             (options.get('chronology') not in ('tier_asc', 'tier_desc') or kind is None or kind == 'tiers'))
 
 
@@ -390,7 +391,8 @@ class ScopeIndex(object):
         metric = options['metric']
         # Metric ordering uses one deterministic tie-breaker. The saved date
         # preference applies again only after metric sorting is switched off.
-        ascending_time = metric == 'off' and options['chronology'] == 'oldest'
+        ascending_time = metric == 'off' and options['chronology'] in ('oldest', 'last_asc')
+        first_time = metric == 'off' and options['chronology'] in ('oldest', 'first_desc')
         def key(entry):
             if kind == 'battles':
                 record, item = self.records[entry[1]]
@@ -404,7 +406,7 @@ class ScopeIndex(object):
             else:
                 identifier = entry.identifier
                 times = entry.starts.ordered
-                time = (times[0] if ascending_time else times[-1]) if times else None
+                time = (times[0] if first_time else times[-1]) if times else None
                 value = self._group_sort_value(entry, options)
                 if kind == 'tiers' and metric == 'off' and options['chronology'] in ('tier_asc', 'tier_desc'):
                     tier = entry.metadata().get('tier')
@@ -434,13 +436,13 @@ class ScopeIndex(object):
             position = next(index for index, key in enumerate(ordered) if key[1] == identifier)
         return position // PAGE_SIZE
 
-    def map_battles(self, identifier, page):
-        return self._group_battles('maps', identifier, page)
+    def map_battles(self, identifier, page, options=None):
+        return self._group_battles('maps', identifier, page, options)
 
-    def vehicle_battles(self, identifier, page):
-        return self._group_battles('vehicles', identifier, page)
+    def vehicle_battles(self, identifier, page, options=None):
+        return self._group_battles('vehicles', identifier, page, options)
 
-    def _group_battles(self, kind, identifier, page):
+    def _group_battles(self, kind, identifier, page, options=None):
         group = self.groups[kind].get(identifier)
         if group is None:
             return None
@@ -448,14 +450,19 @@ class ScopeIndex(object):
         pages = max(1, (total + MAP_BATTLE_PAGE_SIZE - 1) // MAP_BATTLE_PAGE_SIZE)
         page = max(0, min(page, pages - 1))
         start = page * MAP_BATTLE_PAGE_SIZE
+        options = options if valid_order(options, kind) else DEFAULT_ORDER
+        ascending = options['chronology'] in ('oldest', 'last_asc')
+        keys = (group.battle_order[start:start + MAP_BATTLE_PAGE_SIZE] if ascending else
+                reversed(group.battle_order[max(0, total - start - MAP_BATTLE_PAGE_SIZE):total - start]))
         rows = []
-        for key in reversed(group.battle_order[max(0, total - start - MAP_BATTLE_PAGE_SIZE):total - start]):
+        for key in keys:
             record, item = self.records[key[1]]
             rows.append({'id': record['arena_id'],
                          'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],
                          'map': (record.get('map_name') or message('unknown.map'))[:256],
                          'started_at': record.get('started_at'), 'outcome': record.get('outcome'), 'wn8': item[1]})
-        return {'items': rows, 'page': page, 'pages': pages, 'total': total, 'page_size': MAP_BATTLE_PAGE_SIZE}
+        return {'items': rows, 'page': page, 'pages': pages, 'total': total, 'page_size': MAP_BATTLE_PAGE_SIZE,
+                'chronology': options['chronology']}
 
     def snapshot(self, label, started_at, pages=None, orders=None, map_pages=None, vehicle_pages=None):
         pages, orders = pages or {}, orders or {}
@@ -505,7 +512,7 @@ class ScopeIndex(object):
                 if expanded_pages:
                     for row in rows:
                         if row['id'] in expanded_pages:
-                            row['battle_list'] = self._group_battles(kind, row['id'], expanded_pages[row['id']])
+                            row['battle_list'] = self._group_battles(kind, row['id'], expanded_pages[row['id']], options)
             result[kind] = rows
             result['pagination'][kind] = {'page': page, 'page_size': PAGE_SIZE, 'total': total,
                                           'pages': max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)}

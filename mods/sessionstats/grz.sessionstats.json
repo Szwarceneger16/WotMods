@@ -1,6 +1,12 @@
 {
   "schema_version": 1,
   "language": "auto",
+  "date_time": {
+    "order": "auto",
+    "separator": "auto",
+    "hour_format": "auto",
+    "first_weekday": "auto"
+  },
   "colors": {
     "body_text": "#e5e2cb",
     "body_background": "transparent",

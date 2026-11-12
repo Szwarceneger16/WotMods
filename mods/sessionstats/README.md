@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.1 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.2 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -8,14 +8,16 @@ their contents are English.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
 to filter by battle start time. Either selector also accepts **Custom date**:
-edit the date and time inside that same control, using the displayed native/system
+edit the date and time inside that same control, using the displayed WoT client
 format (for example `dd.mm.yyyy HH:mm`, or `mm/dd/yyyy hh:mm AM`). Press Enter to
 apply a typed value, or open the adjacent calendar button to choose a day and time.
 Click the month or year heading for a selection grid. The graphical clock stays
 below the calendar; its hour/minute controls and short hints explain selection.
 Future dates/times and choices outside the other range boundary are disabled;
 From must be earlier than To. Typed dates follow the same range restrictions.
-Regional preferences also determine the week start and calendar labels.
+The client language/resources also determine calendar labels and week start.
+Explicit `date_time` configuration overrides each automatic setting independently;
+see [client date and clock formatting](docs/CLIENT_DATE_TIME.md).
 The separate dropdown button still offers saved time points.
 Ranges are half-open: **From** is included and **To** is excluded. The start must
 be earlier than the end. **Beginning of history** and **Now** leave the
@@ -25,11 +27,14 @@ The account and region determine which history and time points are shown.
 
 Advanced sorting marks the existing card value in orange instead of repeating it
 below the name. For WN8, the large figure shows the selected Min/Average/Max while
-that sort is active; otherwise it shows period WN8. Win-rate sorting is available
-in Vehicles, Maps, Tiers and Battles. Unknown outcomes stay last; individual wins
-sort as 100% and losses/draws as 0%. More: [sorting](docs/SORTING_AND_TIERS.md),
+that sort is active; otherwise the **Combined WN8** headline recalculates a rating
+from all group results and expected vehicle values. It differs from the arithmetic
+mean of individual-battle WN8 in the table. The card information button explains
+this distinction. Win-rate sorting is available in Vehicles, Maps and Tiers;
+unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [calendar](docs/CALENDAR_0.9.0.md), [0.9.1 UI refinements](docs/UI_POLISH_0.9.1.md),
-[native scrollbar checks](docs/SCROLLBAR_NATIVE_SAFETY.md).
+[native scrollbar checks](docs/SCROLLBAR_NATIVE_SAFETY.md), and
+[stable filtering and chronology](docs/FILTERING_0.9.2.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an

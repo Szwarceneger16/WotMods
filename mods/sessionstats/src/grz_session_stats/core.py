@@ -580,25 +580,38 @@ class StatsService(object):
         index = self._view_index(scope)
         if index is None or period_id != index.identifier:
             return False
+        previous = self._orders.get(scope, {}).get(group, {})
+        ascending = lambda order: order.get('chronology') in ('oldest', 'last_asc')
+        if group in ('vehicles', 'maps') and ascending(previous) != ascending(options):
+            opened = self._vehicle_pages if group == 'vehicles' else self._map_pages
+            current = opened.get(scope)
+            if current and current['period_id'] == period_id:
+                current['pages'] = dict((identifier, 0) for identifier in current['pages'])
+            history = self._history_request.get(scope)
+            if history and history['kind'] == group:
+                self._history_request.pop(scope, None)
         self._orders.setdefault(scope, {})[group] = dict(options)
         self._pages.setdefault(scope, {})[group] = 0
         self._page_requests.get(scope, {}).pop(group, None)
         self._battle_focus.pop(scope, None)
         return True
 
-    def set_map_battles(self, scope, map_id, page, period_id):
-        return self._set_group_battles(scope, 'maps', map_id, page, period_id, self._map_pages)
+    def set_map_battles(self, scope, map_id, page, period_id, chronology=None):
+        return self._set_group_battles(scope, 'maps', map_id, page, period_id, self._map_pages, chronology)
 
-    def set_vehicle_battles(self, scope, vehicle_id, page, period_id):
-        return self._set_group_battles(scope, 'vehicles', vehicle_id, page, period_id, self._vehicle_pages)
+    def set_vehicle_battles(self, scope, vehicle_id, page, period_id, chronology=None):
+        return self._set_group_battles(scope, 'vehicles', vehicle_id, page, period_id, self._vehicle_pages, chronology)
 
-    def _set_group_battles(self, scope, kind, group_id, page, period_id, opened):
+    def _set_group_battles(self, scope, kind, group_id, page, period_id, opened, chronology=None):
         if (not self.ready or self._closed or not isinstance(group_id, (text_type, bytes)) or
                 isinstance(page, bool) or not isinstance(page, int) or not 0 <= page < 10 ** 8):
             return False
         index = self._view_index(scope)
         group_id = _text(group_id)
         if index is None or period_id != index.identifier or group_id not in index.groups[kind]:
+            return False
+        current_order = self._orders.get(scope, {}).get(kind, {})
+        if chronology is not None and chronology != current_order.get('chronology', 'newest'):
             return False
         current = opened.get(scope)
         if current is None or current['period_id'] != period_id:
@@ -636,7 +649,8 @@ class StatsService(object):
         scope = index.snapshot(label, started_at, self._pages.get(name), self._orders.get(name), map_pages, vehicle_pages)
         history = self._history_request.get(name)
         if history and history['period_id'] == index.identifier:
-            battle_list = index._group_battles(history['kind'], history['id'], history['page'])
+            battle_list = index._group_battles(history['kind'], history['id'], history['page'],
+                                                self._orders.get(name, {}).get(history['kind']))
             if battle_list is not None:
                 scope['battle_history'] = {'kind': history['kind'], 'id': history['id'], 'battle_list': battle_list}
         for group, request in self._page_requests.get(name, {}).items():
@@ -1225,8 +1239,10 @@ class StatsService(object):
                     from .projection import tier_name
                     group['tier'] = latest.get('vehicle_tier')
                     group['name'] = tier_name(group['tier'])
-                group['started_at'] = max((row.get('started_at') or 0 for row in group_records))
-                group['first_started_at'] = min((row.get('started_at') or 0 for row in group_records))
+                starts = [row['started_at'] for row in group_records
+                          if _number(row.get('started_at'), True) is not None]
+                group['started_at'] = max(starts) if starts else None
+                group['first_started_at'] = min(starts) if starts else None
                 scope[group_type].append(group)
             scope[group_type].sort(key=lambda group: (-group['stats']['battles'], group['name'].lower(), group['id']))
         for record in sorted(records, key=lambda row: (row.get('started_at') or 0, row['arena_id']), reverse=True):

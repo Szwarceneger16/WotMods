@@ -73,6 +73,12 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('XP sorting selects the matching existing XP series and marks its selected cell: '+caption,
         await page.locator('.ss-group .ss-performance .ss-metric-row').first().locator('.ss-metric-name').textContent()===messages['xp.received']&&
         await page.locator('.ss-group [data-ss-sort-active="xp_received"]').count()===8);
+      const combined=await page.locator('.ss-group-wn8-kpi').evaluateAll(nodes=>nodes.map(node=>({
+        label:node.querySelector('.ss-kpi-label').textContent,kind:node.getAttribute('data-wn8-kind'),hint:node.title
+      })));
+      check('Default group WN8 identifies the combined rating and explains its difference from the distribution: '+caption,
+        combined.length===4&&combined.every(item=>item.label===messages['metric.combined_wn8']&&item.kind==='combined'&&
+          item.hint===messages['help.wn8.combined']));
       await page.evaluate(()=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
         scope.ordering.tiers={metric:'battle_wn8',statistic:'avg',direction:'desc',chronology:'oldest'};
         scope.tiers.forEach((item,index)=>{item.sort_value=[1968,1889,1593,1592][index];

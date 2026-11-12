@@ -31,6 +31,7 @@ NUMBER_TYPES = integer_types + (float,)
 
 DEFAULT_CONFIG = {'schema_version': 1,
  'language': 'auto',
+ 'date_time': {'order': 'auto', 'separator': 'auto', 'hour_format': 'auto', 'first_weekday': 'auto'},
  'colors': {'body_text': '#e5e2cb',
             'body_background': 'transparent',
             'window_border': '#646044',
@@ -358,7 +359,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
 .ss-filter-loading { display:flex; position:absolute; right:0; bottom:5rem; width:24rem; height:30rem; align-items:center; justify-content:center; pointer-events:none; }
 .ss-filter-loading .ss-page-spinner { width:24rem; height:26rem; }
-.ss-filters-wide .ss-list-meta { flex:0 0 auto; white-space:nowrap; }
+.ss-filters-wide .ss-list-meta { flex:0 0 150rem; width:150rem; max-width:150rem; }
+.ss-filters-wide .ss-list-meta > span { white-space:nowrap; }
 .ss-filters-wide .ss-pagination { flex:0 0 340rem; }
 .ss-filters-wide .ss-sorting { flex:0 0 auto; width:auto; max-width:none; padding:0 5rem; border:1rem solid {{colors.details_separator_border_top}}; border-radius:{{radii.control}}rem; background:{{colors.group_card_background_end}}; }
 .ss-filters-wide .ss-sort-field { flex-shrink:0; }
@@ -495,6 +497,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-filters-compact .ss-sorting .ss-sort-metric { flex-basis:126rem; width:126rem; }
 .ss-filters-compact .ss-sorting .ss-sort-statistic { flex-basis:59rem; width:59rem; }
 .ss-select-option:hover, .ss-select-option:focus, .ss-select-option[aria-selected="true"] { color:{{colors.group_title_text}}; background:{{colors.window_background}}; box-shadow:inset 2rem 0 {{colors.list_meta_text}}; }
+/* Off is a selectable state, not a disabled dropdown. Keep its arrow and
+   normal text contrast; the neutral diagonal pattern communicates its value. */
+.ss-select-trigger.ss-sort-off-choice, .ss-select-option.ss-sort-off-choice { background-color:{{colors.date_unavailable_background}}; background-image:linear-gradient(135deg,{{colors.date_unavailable_background}} 0%,{{colors.date_unavailable_background}} 42%,{{colors.date_unavailable_border}} 42%,{{colors.date_unavailable_border}} 56%,{{colors.date_unavailable_background}} 56%); background-size:9rem 9rem; background-repeat:repeat; }
 .ss-outcome-art { display:flex; align-items:center; width:auto; max-width:48%; padding:0; background:none; }
 .ss-outcome-image { display:block; position:relative; overflow:hidden; flex-shrink:0; width:64rem; height:38rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.battle_outcome_background}}; }
 .ss-outcome-win .ss-outcome-image { border-color:{{colors.win_text}}; background:{{colors.win_background}}; }
@@ -531,6 +536,28 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 @media (max-width:380px) {
   .ss-language-caption { margin-right:4rem; }
 }
+
+/* Result/map captions respond to their actual card, not the full game viewport.
+   Stacking the captions frees the identity column without adding a tall banner. */
+.ss-battle .ss-group-header { flex-wrap:nowrap; }
+.ss-battle .ss-outcome-art { flex-direction:column; align-items:center; justify-content:center; flex:0 0 64rem; width:64rem; max-width:64rem; margin-left:6rem; }
+.ss-battle .ss-outcome-image { width:54rem; height:30rem; }
+.ss-battle .ss-outcome-art .ss-outcome-label { padding:0; margin-top:1rem; font-size:11rem; line-height:14rem; white-space:normal; overflow-wrap:normal; }
+.ss-battle-map-visual { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:0 0 84rem; width:84rem; min-width:0; max-width:84rem; margin-left:6rem; }
+.ss-battle-map-visual .ss-battle-map-thumb { width:54rem; height:30rem; margin:0; }
+.ss-battle-map-label { display:block; min-width:0; width:100%; max-width:100%; margin-top:1rem; color:{{colors.group_subtitle_text}}; font-size:11rem; line-height:14rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-art { flex-direction:row; flex:0 1 auto; width:auto; max-width:30%; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-image { width:64rem; height:38rem; }
+.ss-battle.ss-battle-inline-captions .ss-outcome-label { margin-top:0; padding:2rem 4rem; font-size:12rem; line-height:18rem; white-space:nowrap; }
+.ss-battle-inline-captions .ss-battle-map-visual { flex-direction:row; flex:0 1 auto; width:auto; max-width:28%; margin-left:8rem; }
+.ss-battle-inline-captions .ss-battle-map-thumb { width:54rem; height:32rem; }
+.ss-battle-inline-captions .ss-battle-map-label { width:auto; max-width:124rem; margin-top:0; padding-left:6rem; font-size:12rem; line-height:16rem; text-align:left; }
+.ss-narrow-cards .ss-battle .ss-group-header { flex-wrap:wrap; }
+.ss-narrow-cards .ss-battle .ss-group-name { flex:1 1 180rem; min-width:0; }
+.ss-narrow-cards .ss-battle .ss-outcome-art { flex-basis:64rem; width:64rem; max-width:64rem; }
+.ss-narrow-cards .ss-battle-map-visual { flex-basis:76rem; width:76rem; max-width:76rem; }
+.ss-narrow-cards .ss-battle .ss-outcome-image, .ss-narrow-cards .ss-battle-map-thumb { width:48rem; height:28rem; }
+.ss-narrow-cards .ss-battle .ss-outcome-label, .ss-narrow-cards .ss-battle-map-label { font-size:11rem; line-height:13rem; }
 
 .ss-time-point-controls { display:flex; align-items:center; flex:1 1 266rem; min-width:0; width:266rem; max-width:100%; margin-right:8rem; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:{{colors.window_background}}; box-shadow:inset 0 1rem {{colors.button_shadow_2}}; }
 .ss-time-point-name { display:block; flex:1 1 0rem; width:0; min-width:0; height:28rem; padding:4rem 7rem; margin:0; border:0; border-radius:0 {{radii.control}}rem {{radii.control}}rem 0; background:{{colors.close_background}}; color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:12rem; line-height:18rem; }
@@ -997,7 +1024,7 @@ def validate_config(raw):
             result['language'] = value
         else:
             reporter.issue('language', 'expected_language_code')
-    for section in ('colors', 'radii', 'opacity', 'scroll', 'maps', 'sessions', 'cards', 'wide_cards', 'window'):
+    for section in ('colors', 'radii', 'opacity', 'scroll', 'maps', 'sessions', 'cards', 'wide_cards', 'window', 'date_time'):
         if section not in raw:
             continue
         supplied = raw[section]
@@ -1011,7 +1038,17 @@ def validate_config(raw):
             if key not in supplied:
                 continue
             value = supplied[key]
-            if section == 'maps':
+            if section == 'date_time':
+                if key == 'order':
+                    checked = value if isinstance(value, text_type) and value in ('auto', 'DMY', 'MDY', 'YMD') else None
+                elif key == 'separator':
+                    checked = value if isinstance(value, text_type) and value in ('auto', '.', '/', '-') else None
+                elif key == 'hour_format':
+                    checked = value if isinstance(value, text_type) and value in ('auto', '12h', '24h') else None
+                else:
+                    checked = value if value == 'auto' or isinstance(value, integer_types) and not isinstance(value, bool) and 0 <= value <= 6 else None
+                reason = 'expected_date_time_option'
+            elif section == 'maps':
                 checked = value if isinstance(value, text_type) and value in ('image', 'minimap') else None
                 reason = 'expected_image_or_minimap'
             elif section == 'sessions':

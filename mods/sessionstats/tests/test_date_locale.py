@@ -33,31 +33,44 @@ class RegionalCalendarTests(unittest.TestCase):
         for pattern in ('ddd, dd MMM yyyy', '%x', '%m/%d-%Y', 'arbitrary', None):
             self.assertEqual(dates.date_pattern(pattern), {})
 
-    def test_native_game_format_overrides_process_locale_and_keeps_calendar_metadata(self):
-        native = {'order': 'DMY', 'separator': '.', 'first_weekday': 0,
-                  'weekdays': ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], 'hour12': False}
-        with replace(dates, '_windows_settings', lambda: dict(native)):
-            answer = dates.regional_date_settings(lambda stamp: '11/23/2006', lambda stamp: '5:45 PM')
-        self.assertEqual(answer['order'], 'MDY')
-        self.assertEqual(answer['separator'], '/')
-        self.assertTrue(answer['hour12'])
-        self.assertEqual(answer['first_weekday'], 0)
-        self.assertEqual(answer['weekdays'], native['weekdays'])
-        with replace(dates, '_windows_settings', lambda: dict(native)):
-            answer = dates.regional_date_settings(lambda stamp: '2006-11-23', lambda stamp: '17:45')
-        self.assertEqual(answer['order'], 'YMD')
-        self.assertFalse(answer['hour12'])
+    def test_client_resource_formatters_override_language_without_os_metadata(self):
+        answer = dates.regional_date_settings(lambda stamp: '11/23/2006', lambda stamp: '5:45 PM',
+                                              client_language='pl',
+                                              weekday_formatter=lambda stamp: 'Day' + str(dates.time.localtime(stamp).tm_wday),
+                                              month_formatter=lambda stamp: ('Month' + str(dates.time.localtime(stamp).tm_mon)).encode('utf-8'))
+        self.assertEqual((answer['order'], answer['separator'], answer['hour12']), ('MDY', '/', True))
+        self.assertEqual(answer['first_weekday'], 1)
+        self.assertEqual(answer['weekdays'], ['Day6', 'Day0', 'Day1', 'Day2', 'Day3', 'Day4', 'Day5'])
+        self.assertEqual(answer['months'], ['Month' + str(index) for index in range(1, 13)])
+        answer = dates.regional_date_settings(lambda stamp: '2006-11-23', lambda stamp: '17:45', client_language='en')
+        self.assertEqual((answer['order'], answer['separator'], answer['hour12']), ('YMD', '-', False))
 
-    def test_unavailable_native_formatters_keep_valid_system_preferences(self):
+    def test_unavailable_native_formatters_use_client_language_not_windows(self):
         def broken(stamp):
             raise RuntimeError('fixture unavailable')
-        with replace(dates, '_windows_settings', lambda: {'order': 'DMY', 'separator': '-', 'hour12': False}):
-            answer = dates.regional_date_settings(broken, broken)
-        self.assertEqual(answer, {'order': 'DMY', 'separator': '-', 'hour12': False})
+        answer = dates.regional_date_settings(broken, broken, client_language='pl',
+                                              weekday_formatter=broken, month_formatter=broken)
+        self.assertEqual(answer, {'order': 'DMY', 'separator': '.', 'hour12': False, 'first_weekday': 1})
+        self.assertFalse(dates.regional_date_settings(client_language=b'en')['hour12'])
+        self.assertFalse(dates.regional_date_settings(client_language='pl')['hour12'])
+        self.assertEqual(dates.regional_date_settings(client_language='fr')['separator'], '/')
+        self.assertFalse(dates.regional_date_settings(client_language=None)['hour12'])
+        # No Windows/ctypes or process-locale entry point is retained in this module.
+        self.assertFalse(hasattr(dates, '_windows_settings'))
+        self.assertFalse(hasattr(dates, '_posix_settings'))
+        self.assertFalse(hasattr(dates, 'locale'))
 
-    def test_c_process_locale_does_not_invent_regional_preferences(self):
-        with replace(dates.locale, 'getlocale', lambda unused: (None, None)):
-            self.assertEqual(dates._posix_settings(), {})
+    def test_config_fields_override_client_and_auto_preserves_client_values(self):
+        native = {'order': 'MDY', 'separator': '/', 'hour12': True, 'first_weekday': 0,
+                  'months': ['Native month'] * 12}
+        forced = {'order': 'YMD', 'separator': '-', 'hour_format': '24h', 'first_weekday': 1}
+        result = dates.resolve_date_settings('en', native, forced)
+        self.assertEqual((result['order'], result['separator'], result['hour12'], result['first_weekday']),
+                         ('YMD', '-', False, 1))
+        self.assertEqual(result['months'], ['Native month'] * 12)
+        self.assertEqual(native['order'], 'MDY')
+        self.assertEqual(dates.resolve_date_settings('pl', native, dict((key, 'auto') for key in forced)), native)
+        self.assertEqual(dates.resolve_date_settings('pl', None, {'hour_format': '12h'})['hour12'], True)
 
     def test_native_metadata_is_bounded_and_snapshot_does_not_share_mutable_labels(self):
         source = {'order': 'MDY', 'separator': '/', 'hour12': True, 'first_weekday': 0,
@@ -72,24 +85,41 @@ class RegionalCalendarTests(unittest.TestCase):
                                             'first_weekday': True, 'months': ['x'] * 13,
                                             'weekdays': ['x\n'] * 7, 'periods': ['', 'x']}), {})
 
-    def test_platform_metadata_uses_windows_user_overrides_and_weekday_order(self):
-        class Kernel(object):
-            def GetLocaleInfoEx(self, name, field, buffer, size):
-                values = {0x1f: 'M/d/yyyy', 0x100c: '6', 0x23: '0', 0x28: 'AM', 0x29: 'PM'}
-                buffer.value = values.get(field, 'label-' + str(field))
-                return len(buffer.value) + 1
-        class Windows(object):
-            kernel32 = Kernel()
-        import ctypes
-        original = getattr(ctypes, 'windll', None)
-        ctypes.windll = Windows()
+    def test_game_api_uses_client_resources_and_never_backport_system_locale(self):
+        import types
+        from grz_session_stats.runtime import GameAPI
+        names = ('gui', 'gui.shared', 'gui.shared.formatters', 'gui.impl', 'gui.impl.gen',
+                 'gui.impl.gen.view_models', 'gui.impl.gen.view_models.constants',
+                 'gui.impl.gen.view_models.constants.date_time_formats')
+        modules = dict((name, types.ModuleType(name)) for name in names)
+        for module in modules.values():
+            module.__path__ = []
+        class Formats(object):
+            SHORTDATE = 'shortDate'
+            SHORTTIME = 'ShortTime'
+        calls = []
+        def regional(stamp, form):
+            calls.append(form)
+            return '23.11.2006' if form == Formats.SHORTDATE else '17:45'
+        native = types.ModuleType('date_time')
+        native.getRegionalDateTime = regional
+        native.getFormattedDateTime = lambda stamp, form: ('Day' + str(dates.time.localtime(stamp).tm_wday)
+                                                           if form == '%a' else 'Month' + str(dates.time.localtime(stamp).tm_mon))
+        modules['gui.shared.formatters'].date_time = native
+        modules['gui.impl.gen.view_models.constants.date_time_formats'].DateTimeFormatsEnum = Formats
+        prior = dict((name, sys.modules.get(name)) for name in modules)
+        sys.modules.update(modules)
         try:
-            answer = dates._windows_settings()
+            api = GameAPI.__new__(GameAPI)
+            api.client_language = lambda: 'pl'
+            settings = api.date_settings()
         finally:
-            if original is None:
-                del ctypes.windll
-            else:
-                ctypes.windll = original
-        self.assertEqual((answer['order'], answer['separator'], answer['first_weekday'], answer['hour12']), ('MDY', '/', 0, True))
-        self.assertEqual(answer['weekdays'][0], 'label-55')
-        self.assertEqual(answer['weekdays'][1], 'label-49')
+            for name, old in prior.items():
+                if old is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = old
+        self.assertEqual(calls, [Formats.SHORTDATE, Formats.SHORTTIME])
+        self.assertEqual((settings['order'], settings['separator'], settings['hour12']), ('DMY', '.', False))
+        self.assertEqual(len(settings['months']), 12)
+        self.assertEqual(len(settings['weekdays']), 7)

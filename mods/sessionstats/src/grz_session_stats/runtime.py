@@ -167,11 +167,18 @@ class GameAPI(object):
 
     def date_settings(self):
         from .date_locale import regional_date_settings
+        language = self.client_language()
         try:
-            from gui.impl import backport
-            return regional_date_settings(backport.getShortDateFormat, backport.getShortTimeFormat)
+            from gui.shared.formatters import date_time
+            from gui.impl.gen.view_models.constants.date_time_formats import DateTimeFormatsEnum
+            return regional_date_settings(
+                lambda stamp: date_time.getRegionalDateTime(stamp, DateTimeFormatsEnum.SHORTDATE),
+                lambda stamp: date_time.getRegionalDateTime(stamp, DateTimeFormatsEnum.SHORTTIME),
+                client_language=language,
+                weekday_formatter=lambda stamp: date_time.getFormattedDateTime(stamp, '%a'),
+                month_formatter=lambda stamp: date_time.getFormattedDateTime(stamp, '%B'))
         except (ImportError, AttributeError):
-            return regional_date_settings()
+            return regional_date_settings(client_language=language)
 
     def in_battle(self):
         player = self.player()
@@ -609,10 +616,13 @@ class Runtime(object):
                 path = prepare_config_path()
             self.appearance_path = path
             config = load_config(path)
+            from .date_locale import resolve_date_settings
+            client_language = self._client_language()
             self._localizer = Localizer(config['language'],
-                                        client_language=self._client_language(),
+                                        client_language=client_language,
                                         native_messages=self._outcome_messages(),
-                                        date_settings=self._date_settings())
+                                        date_settings=resolve_date_settings(
+                                            client_language or config['language'], self._date_settings(), config['date_time']))
             self._presentation = build_presentation(config)
             self._instance_tab_enabled = config['sessions']['instance_tab']
         except Exception:
@@ -620,7 +630,10 @@ class Runtime(object):
             # collection. Static styles and the original wheel step remain.
             self._presentation = {'panel_css': '', 'footer_css': '', 'scroll_speed': 1.0}
             self._instance_tab_enabled = False
-            self._localizer = Localizer('auto', client_language=self._client_language(), date_settings=self._date_settings())
+            from .date_locale import resolve_date_settings
+            client_language = self._client_language()
+            self._localizer = Localizer('auto', client_language=client_language,
+                                        date_settings=resolve_date_settings(client_language, self._date_settings()))
             LOG.exception('CONFIG appearance unavailable; built-in styles and scrolling remain active.')
         if not self._instance_tab_enabled:
             self.compatibility_warnings.pop('installation:identity', None)
@@ -1660,9 +1673,9 @@ class Runtime(object):
                 if not isinstance(raw_page, text_type) or len(raw_page) > 8 or not raw_page or any(char not in '0123456789' for char in raw_page):
                     return
                 if action == 'map_battles':
-                    accepted = service.set_map_battles(scope, getter('map_id'), int(raw_page), period_id)
+                    accepted = service.set_map_battles(scope, getter('map_id'), int(raw_page), period_id, getter('chronology'))
                 elif action == 'vehicle_battles':
-                    accepted = service.set_vehicle_battles(scope, getter('vehicle_id'), int(raw_page), period_id)
+                    accepted = service.set_vehicle_battles(scope, getter('vehicle_id'), int(raw_page), period_id, getter('chronology'))
                 else:
                     accepted = service.set_page(scope, group, int(raw_page), period_id, getter('request_id'))
                 if not accepted:

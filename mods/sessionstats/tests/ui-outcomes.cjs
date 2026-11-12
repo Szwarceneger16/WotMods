@@ -1,4 +1,8 @@
 /* Native artwork stays unchanged while opaque compositing removes its built-in fade. */
+const fs=require('fs'),path=require('path');
+const frames=page=>page.evaluate(()=>new Promise(resolve=>{let remaining=10;
+  function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+}));
 module.exports = async ({browser,nativeHost,check}) => {
   const page = await nativeHost(browser,{});
   await page.evaluate(()=>{
@@ -6,6 +10,7 @@ module.exports = async ({browser,nativeHost,check}) => {
     const sample=scope.battles[0];
     scope.battles=['win','loss','draw'].map((outcome,index)=>({
       ...sample,id:'outcome-'+outcome,started_at:1800000000-index,outcome,
+      map:['Himmelsdorf','Granica imperium','Linia Mannerheima'][index],
       outcome_visual:{kind:'outcome',src:'img://gui/maps/icons/library/BgBattleResultIcon'+
         ['Victory','Defeat','Draw'][index]+'-1.png'},
       map_visual:{kind:'map',src:'img://gui/maps/icons/map/small/synthetic-'+outcome+'.png',
@@ -26,15 +31,21 @@ module.exports = async ({browser,nativeHost,check}) => {
             paint.backgroundSize==='contain' && paint.position==='absolute' && paint.opacity==='1' && paint.filter==='none';
         }) && node.textContent==='';
     })));
-  check('WG-localized captions sit beside the unchanged composited image',await page.evaluate(()=>
+  check('Normal-card captions stack below the unchanged result artwork without a tall banner',await page.evaluate(()=>
     Array.from(document.querySelectorAll('.ss-outcome-label')).map(n=>n.textContent).join('|')===
       'Zwycięstwo|Porażka|Remis' && Array.from(document.querySelectorAll('.ss-outcome-art')).every(node=>{
         const image=node.querySelector('.ss-outcome-image'),label=node.querySelector('.ss-outcome-label');
         return image.getAttribute('aria-hidden')==='true' &&
-          label.getBoundingClientRect().left>=image.getBoundingClientRect().right-1 &&
-          label.getBoundingClientRect().top<image.getBoundingClientRect().bottom &&
-          node.getBoundingClientRect().height<=40;
+          label.getBoundingClientRect().top>=image.getBoundingClientRect().bottom &&
+          Math.abs((label.getBoundingClientRect().left+label.getBoundingClientRect().right-image.getBoundingClientRect().left-image.getBoundingClientRect().right)/2)<=1 &&
+          node.getBoundingClientRect().height<=47;
       })));
+  check('Battle map names sit below their own thumbnails instead of repeating in the identity',await page.evaluate(()=>
+    Array.from(document.querySelectorAll('.ss-battle-map-visual')).every((node,index)=>{
+      const thumb=node.querySelector('.ss-battle-map-thumb'),label=node.querySelector('.ss-battle-map-label'),name=['Himmelsdorf','Granica imperium','Linia Mannerheima'][index];
+      return label.textContent===name && label.getBoundingClientRect().top>=thumb.getBoundingClientRect().bottom &&
+        !node.closest('.ss-group').querySelector('.ss-group-subtitle').textContent.includes(name);
+    })));
   // A real raster check with a synthetic 20%-alpha texel: one layer is red=51,
   // twelve layers are red~=238. No native WG raster is copied into test inputs.
   const painted=page.locator('.ss-outcome-image').first();
@@ -103,14 +114,14 @@ module.exports = async ({browser,nativeHost,check}) => {
     const panel=document.getElementById('grz-session-stats').getBoundingClientRect(),failures=[],groups=[];
     for(const group of document.querySelectorAll('#ss-groups .ss-group')){
       const header=group.querySelector('.ss-group-header').getBoundingClientRect();
-      const selectors=['.ss-group-thumb:not(.ss-battle-map-thumb)','.ss-group-name','.ss-battle-outcome','.ss-battle-map-thumb','.ss-more-button'];
+      const selectors=['.ss-group-thumb:not(.ss-battle-map-thumb)','.ss-group-name','.ss-battle-outcome','.ss-battle-map-visual','.ss-more-button'];
       const nodes=selectors.map(selector=>({selector,node:group.querySelector(selector)}));
       const boxes=nodes.map(({selector,node})=>{const r=node&&node.getBoundingClientRect();return {selector,left:r&&r.left,top:r&&r.top,right:r&&r.right,bottom:r&&r.bottom,width:r&&r.width,height:r&&r.height};});
       for(const box of boxes)if(!(box.width>0&&box.height>0)||box.left<panel.left-1||box.right>panel.right+1||box.top<header.top-1||box.bottom>header.bottom+1){failures.push({kind:'visual-bounds',box});}
       for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
         const a=boxes[i],b=boxes[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1){failures.push({kind:'overlap',a,b});}
       }
-      for(const node of group.querySelectorAll('.ss-group-title,.ss-group-subtitle,.ss-free-xp,.ss-outcome-label,.ss-more-button .ss-control-label')){
+      for(const node of group.querySelectorAll('.ss-group-title,.ss-group-subtitle,.ss-free-xp,.ss-outcome-label,.ss-battle-map-label,.ss-more-button .ss-control-label')){
         const r=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
         if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<r.left-1||text.right>r.right+1||text.top<r.top-1||text.bottom>r.bottom+1))){failures.push({kind:'clipped-text',text:node.textContent});}
       }
@@ -120,6 +131,44 @@ module.exports = async ({browser,nativeHost,check}) => {
   });
   check('Vehicle, readable outcome, map and actions fit without overlap at the real 550px native minimum'+
     (minimumGeometry.passed?'':': '+JSON.stringify(minimumGeometry)),minimumGeometry.passed);
+  const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
+  const mapNames={en:["Himmelsdorf","Empire's Border","Mannerheim Line"],pl:['Himmelsdorf','Granica imperium','Linia Mannerheima'],
+    de:['Himmelsdorf','Grenze des Reichs','Mannerheim-Linie'],fr:['Himmelsdorf','Frontière impériale','Ligne Mannerheim'],
+    es:['Himmelsdorf','Frontera del Imperio','Línea Mannerheim'],ru:['Химмельсдорф','Граница империи','Линия Маннергейма'],
+    uk:['Хіммельсдорф','Кордон імперії','Лінія Маннергейма']};
+  await page.evaluate(()=>{window.__captionFixture=JSON.parse(model.payload);});
+  for(const scale of [1,2])for(const [language,messages] of Object.entries(languages))for(const cardWidth of [500,800]){
+    await page.setViewportSize({width:2700*scale,height:1300*scale});
+    await page.evaluate(({scale,language,messages,cardWidth,names})=>{
+      const snapshot=JSON.parse(JSON.stringify(__captionFixture));snapshot.account_key='synthetic-captions-'+scale+'-'+language+'-'+cardWidth;
+      snapshot.viewport={width:2700*scale,height:1300*scale,scale};snapshot.window_size=[2000,1000];
+      snapshot.appearance={wide_card_widths:{battles:cardWidth},window_settings:{background_transparency:0,maximized:false,restored_width:2000,restored_height:1000}};
+      snapshot.localization={language,messages};snapshot.scopes.launch.battles.forEach((row,index)=>{row.map=names[index];row.map_visual.alt=names[index];});
+      model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);
+    },{scale,language,messages,cardWidth,names:mapNames[language]});await frames(page);
+    const audit=await page.locator('#ss-groups .ss-group').evaluateAll((cards,{scale,cardWidth})=>cards.map(card=>{
+      const box=node=>node.getBoundingClientRect(),header=card.querySelector('.ss-group-header'),r=box(card),h=box(header),issues=[];
+      const outcome=card.querySelector('.ss-battle-outcome'),image=outcome.querySelector('.ss-outcome-image'),label=outcome.querySelector('.ss-outcome-label');
+      const map=card.querySelector('.ss-battle-map-visual'),thumb=map.querySelector('.ss-battle-map-thumb'),name=map.querySelector('.ss-battle-map-label');
+      const inline=card.classList.contains('ss-battle-inline-captions');
+      const aligned=(art,text)=>inline?box(text).left>=box(art).right-scale:box(text).top>=box(art).bottom;
+      if(inline!==(cardWidth>=700)||!aligned(image,label)||!aligned(thumb,name))issues.push('caption-mode');
+      const nodes=Array.from(header.children).filter(node=>box(node).width>0&&box(node).height>0);
+      for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+        const a=box(nodes[i]),b=box(nodes[j]);if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>scale&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>scale)issues.push('overlap');
+      }
+      for(const node of card.querySelectorAll('.ss-group-title,.ss-group-subtitle,.ss-free-xp,.ss-outcome-label,.ss-battle-map-label,.ss-more-button .ss-control-label')){
+        const bounds=box(node),range=document.createRange();range.selectNodeContents(node);
+        if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale)))issues.push('clipped:'+node.textContent);
+      }
+      if(Math.abs(r.width/scale-cardWidth)>1||h.height/scale>(inline?48:64)||r.height/scale>165)issues.push('dimensions');
+      return {width:r.width/scale,header:h.height/scale,height:r.height/scale,inline,issues};
+    }),{scale,cardWidth});
+    check('Battle captions follow the actual '+cardWidth+'px card without extra height or clipped text: '+language+' at'+(scale*100)+'%'+
+      (audit.every(card=>!card.issues.length)?'':': '+JSON.stringify(audit)),audit.length===3&&audit.every(card=>!card.issues.length));
+  }
+  await page.setViewportSize({width:550,height:730});
+  await page.evaluate(()=>{model.payload=JSON.stringify(__captionFixture);GRZSessionStats.update(model.payload);delete window.__captionFixture;});await frames(page);
   await page.evaluate(()=>{
     const snapshot=JSON.parse(model.payload), rows=snapshot.scopes.launch.battles;
     rows[0].outcome_visual.src='https://example.invalid/banner.png';

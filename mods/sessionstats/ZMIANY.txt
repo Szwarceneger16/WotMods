@@ -1,5 +1,16 @@
 SESSION STATS — CHANGELOG
 
+0.9.2 • 2026-11-12
+• Make filter layout deterministic from the full control budget, preserving
+  rendered cards/scroll position and coalescing resize promotion into one frame.
+• Keep narrow Off choices selectable with a gray diagonal hatch.
+• Identify Combined WN8 separately from individual-battle Min/Average/Max.
+• Stack result/map captions on compact cards; keep inline artwork on wide cards.
+• Use WoT client date resources and independent explicit date_time overrides;
+  remove operating-system regional settings from automatic formatting.
+• Offer first/last battle ascending/descending chronology for aggregate groups;
+  keep expanded map/vehicle history pages in the same selected date direction.
+
 0.9.1 • 2026-11-11
 • Make verified native result illustrations clearer on opaque outcome frames.
 • Add battle-card map thumbnails with the same hover previews as Maps.

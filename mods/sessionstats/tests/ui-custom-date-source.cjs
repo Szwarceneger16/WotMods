@@ -17,7 +17,24 @@ function host(messages) {
     timelineError:(field,message)=>errors.push({field,message}),cancelBattleNavigation:()=>{},retireFeed:()=>{},invoke:(action,args)=>{sent.push({action,args});return true;}};
   vm.createContext(context);vm.runInContext(code,context);return {context,state,timeline,sent,errors};
 }
+function clientDateFixtures() {
+  const python="import json; from grz_session_stats.date_locale import regional_date_settings,resolve_date_settings; " +
+    "from grz_session_stats.appearance import validate_config; native=regional_date_settings(client_language='pl'); " +
+    "overrides=[{}, {'order':'MDY','separator':'/','hour_format':'12h','first_weekday':0}, {'order':'YMD','separator':'-','hour_format':'24h','first_weekday':1}]; " +
+    "print(json.dumps([resolve_date_settings('pl',native,validate_config({'date_time':value})['date_time']) for value in overrides]))";
+  return JSON.parse(child.execFileSync(process.env.GRZ_PYTHON3||'python3',['-c',python],{
+    env:{...process.env,PYTHONPATH:path.resolve(__dirname,'../src')},encoding:'utf8'}));
+}
 module.exports=async({check})=>{
+  {
+    const fixtures=clientDateFixtures(),epoch=new Date(2028,10,11,13,10).getTime()/1000;
+    for(const [index,expected] of ['11.11.2028 13:10','11/11/2028 01:10 PM','2028-11-11 13:10'].entries()) {
+      const {context:c,state}=host(catalogs.pl);state.payload.localization={date_settings:fixtures[index]};
+      check('Actual Python client/config date settings govern masks and exact UI epochs: '+index,
+        c.customDateText(epoch)===expected&&c.customDateValue(expected)===epoch&&c.dateLocale().hour12===(index===1));
+    }
+    check('A Polish client defaults to 24h without any Windows locale metadata',fixtures[0].order==='DMY'&&fixtures[0].separator==='.'&&fixtures[0].hour12===false);
+  }
   for(const [language,messages] of Object.entries(catalogs)) {
     const {context:c,state,timeline,sent,errors}=host(messages),separator=language==='fr'||language==='es'?'/':'.';
     const text=value=>value.replace(/\./g,separator),epoch=new Date(2028,1,29,7,5).getTime()/1000;
@@ -140,5 +157,6 @@ module.exports=async({check})=>{
   const dst=JSON.parse(child.execFileSync(process.execPath,['-e','const t=()=>"{0}.{1}.{2}, {3}:{4}";const state={};const hasNumber=value=>typeof value==="number"&&isFinite(value);'+dstCode],{env:{...process.env,TZ:'Europe/Warsaw'},encoding:'utf8'}));
   check('Typed and calendar component paths reject a Warsaw DST-gap time while accepting the subsequent real time',dst[0]===null && dst[1]===null && typeof dst[2]==='number');
 };
+module.exports.clientDateFixtures=clientDateFixtures;
 if(require.main===module)module.exports({check:(name,passed)=>{assert(passed,name);console.log('PASS '+name);}})
   .catch(error=>{console.error(error);process.exitCode=1;});
