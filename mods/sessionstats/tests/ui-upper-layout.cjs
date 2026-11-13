@@ -62,7 +62,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         const summary=bounds(document.querySelector('#ss-summary .ss-summary-layout'));
         const kpis=[...document.querySelectorAll('#ss-summary .ss-kpi')].map(bounds);
         const filters=[...document.querySelectorAll('.ss-timeline-field')].map(bounds);
-        const xp=bounds(document.querySelector('.ss-xp-picker'));
+        const xpPickerCount=document.querySelectorAll('.ss-xp-picker,#ss-xp-base,#ss-xp-received').length;
         const scopes=bounds(document.querySelector('.ss-scopes'));
         const lower=['.ss-list-meta','#ss-pagination','#ss-sorting'].map(selector=>bounds(document.querySelector(selector)));
         const lowerTriggers=['#ss-page-previous','#ss-sort-statistic .ss-select-trigger','#ss-sort-metric .ss-select-trigger','#ss-sort-direction .ss-select-trigger'].map(selector=>bounds(document.querySelector(selector)));
@@ -86,11 +86,11 @@ module.exports=async function ({browser,nativeHost,check}) {
         }
         const compact=text=>text.replace(/\s/g,'');
         const credits=document.querySelector('#ss-summary .ss-money-row');
-        return {root,panels,pair,summary,kpis,filters,xp,scopes,lower,lowerTriggers,overflow,badNumbers,
+        return {root,panels,pair,summary,kpis,filters,xpPickerCount,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
           coverage:[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>compact(node.textContent)),
-          xpValues:[...document.querySelectorAll('#ss-summary .ss-metric-row .ss-metric-number')].slice(0,3).map(node=>compact(node.textContent)),
+          xpValues:[...document.querySelectorAll('#ss-summary [data-ss-metric="xp_base"] .ss-metric-number,#ss-summary [data-ss-metric="xp_received"] .ss-metric-number')].map(node=>compact(node.textContent)),
           wn8:document.querySelector('#ss-summary .ss-kpi-value.ss-wn8').textContent,
         };
       },scale);
@@ -102,7 +102,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         audit.panels[0].width<=461 && audit.pair.width<=651 && audit.panels[1].width<=301 && audit.panels[2].width<=351 &&
         audit.badNumbers.length===0 && audit.values.join('|')==='12345678|-12345678|-12345678' &&
         audit.coverage.join('|')==='1/4|2/4|3/4' &&
-        audit.xpValues.length===3 && audit.xpValues.every(value=>value==='123456') &&
+        audit.xpValues.length===6 && audit.xpValues.every(value=>value==='123456') &&
         audit.wn8==='10420');
       if(width>=470) check('Main battle, win-rate and WN8 KPIs remain horizontal: '+caption,
         audit.kpis.length===3 && Math.max(...audit.kpis.map(box=>box.top))-Math.min(...audit.kpis.map(box=>box.top))<=1 &&
@@ -113,12 +113,10 @@ module.exports=async function ({browser,nativeHost,check}) {
       check('Timeline selectors remain bounded and hide the redundant period line: '+caption,
         audit.periodHidden && audit.filters.every(field=>field.width>0 && field.width<=223));
       if(mode==='wide') {
-        check('Wide upper scopes, date filters and XP toggle share a bounded row: '+caption,
-          audit.scopes.width<=261 && audit.scopes.right<=audit.filters[0].left &&
-          Math.abs(audit.scopes.top-audit.xp.top)<=3 &&
-          Math.abs(audit.filters[0].top-audit.filters[1].top)<=2 &&
-          Math.abs(audit.filters[0].top-audit.xp.top)<=2 &&
-          audit.filters[1].right<=audit.xp.left);
+        check('Wide upper scopes and date filters share a bounded row without an XP toggle: '+caption,
+          audit.xpPickerCount===0 && audit.scopes.width<=261 && audit.scopes.right<=audit.filters[0].left &&
+          Math.abs(audit.scopes.top-audit.filters[0].top)<=3 &&
+          Math.abs(audit.filters[0].top-audit.filters[1].top)<=2);
         check('Wide result count, pagination and sorting share a bounded row: '+caption,
           audit.lower[1].width<=341 && audit.lower[2].width<=425 &&
           audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
@@ -138,8 +136,7 @@ module.exports=async function ({browser,nativeHost,check}) {
       } else {
         check('A narrow mod window stacks sections despite the wide game viewport: '+caption,
           audit.panels[1].top>=audit.panels[0].bottom-1 &&
-          audit.panels[2].top>=audit.panels[1].bottom-1 &&
-          audit.xp.top>=Math.max(...audit.filters.map(field=>field.bottom))-1);
+          audit.panels[2].top>=audit.panels[1].bottom-1 && audit.xpPickerCount===0);
       }
       if(mode!=='wide') check('Wrapped summary rows stay centered: '+caption,
         Math.abs(audit.panels[0].left+audit.panels[0].right-audit.summary.left-audit.summary.right)<=2 &&

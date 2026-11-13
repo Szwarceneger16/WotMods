@@ -20,7 +20,6 @@ const checks = [];
 const check = (name, pass) => { assert(pass, name); checks.push(name); };
 const captions = {
   'ss-close':'×', 'ss-scope-launch':'Since launch', 'ss-scope-manual':'Since reset',
-  'ss-xp-base':'Base XP', 'ss-xp-received':'Received XP',
   'ss-group-vehicles':'Vehicles', 'ss-group-maps':'Maps', 'ss-group-battles':'Battles',
   'ss-refresh':'Refresh', 'ss-reset':'Reset period',
   'ss-reset-cancel':'Cancel', 'ss-reset-confirm':'Reset period'
@@ -253,7 +252,7 @@ async function runFeatureSuite(file,browser) {
   check('Missing anonymous button text fixture rejects v0.2 markup',textRegression.legacyFails);
   check('Every caption survives the observed direct-text failure',textRegression.captionsSurvive);
   let controls=await controlLayout(page);
-  check('All twelve controls have explicit caption nodes',controls.length===12 && controls.every(c=>c.explicit && !c.directText));
+  check('All ten controls have explicit caption nodes',controls.length===10 && controls.every(c=>c.explicit && !c.directText));
   check('Visible controls have flex boxes, block captions and nonzero fitted labels',controls.filter(c=>c.visible).every(c=>c.flex && c.block && c.fits));
   check('Panel and captions use normal Warhelios rather than PFDINMax',controls.every(c=>c.font==='Warhelios') && await page.evaluate(()=>getComputedStyle(document.body).fontFamily.split(',')[0].trim()==='Warhelios'));
   check('Native content avoids unsupported main, section and article tags',await page.locator('#grz-session-stats main,#grz-session-stats section,#grz-session-stats article').count()===0);
@@ -267,7 +266,7 @@ async function runFeatureSuite(file,browser) {
   const kpis=()=>page.locator('#ss-summary .ss-kpi-value').allTextContents();
   let values=await kpis();
   check('Launch has 16 completed battles',values[0]==='16');
-  check('Default view is tanks/base XP',(await page.evaluate(()=>GRZSessionStats.getState())).group==='vehicles' && (await page.evaluate(()=>GRZSessionStats.getState())).xp==='base');
+  check('Default view is tanks with no XP-mode switch',(await page.evaluate(()=>GRZSessionStats.getState())).group==='vehicles' && await page.locator('.ss-xp-picker,#ss-xp-base,#ss-xp-received').count()===0);
   check('Full integer WN8 is shown',values[2]==='2236');
   check('Summary and tank details are present without expanding',await page.locator('#ss-summary .ss-details').isVisible() && await page.locator('#ss-groups .ss-details').count()===3);
   const missingFixture=JSON.parse(JSON.stringify(fixtures.normal));
@@ -312,10 +311,9 @@ async function runFeatureSuite(file,browser) {
       card.missionDetails===0 && card.otherAccordions===0) && await page.locator('details').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
-  const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
-  await page.locator('#ss-xp-received').click();
-  const after=await page.locator('#ss-summary .ss-metric-row').first().innerText();
-  check('Received XP differs from base XP',before!==after && after.includes('Received XP'));
+  const baseSummary=await page.locator('#ss-summary [data-ss-metric="xp_base"]').innerText();
+  const receivedSummary=await page.locator('#ss-summary [data-ss-metric="xp_received"]').innerText();
+  check('Both distinct XP series are visible together in the summary',baseSummary.includes('Base XP') && receivedSummary.includes('Received XP') && baseSummary!==receivedSummary);
   await page.locator('#ss-group-maps').click();
   check('Map grouping contains all five maps',await page.locator('#ss-groups .ss-group').count()===5);
   await settleScroll(page);
@@ -332,12 +330,13 @@ async function runFeatureSuite(file,browser) {
   check('Per-battle list available',await page.locator('#ss-groups .ss-group').count()===25);
   let battles=await battleCards(page);
   const expectedBattles=new Map(fixtures.normal.scopes.manual.battles.map(row=>[row.id,row]));
-  check('Each battle shows one XP and one WN8 value without min/mean/max rows',
-    battles.every(row=>row.values.length===2 && row.aggregateRows===0));
-  check('Received XP and WN8 match each individual battle result',battles.every(row=>{
+  check('Each battle shows both XP values and one WN8 value without min/mean/max rows',
+    battles.every(row=>row.values.length===3 && row.aggregateRows===0));
+  check('Base XP, Received XP and WN8 match each individual battle result together',battles.every(row=>{
     const stats=expectedBattles.get(row.id).stats;
-    return row.values[0].label==='Received XP' && row.values[0].value===formattedInteger(stats.xp_received.sum) &&
-      row.values[1].label==='WN8' && row.values[1].value===String(Math.round(stats.wn8));
+    return row.values[0].label==='Base XP' && row.values[0].value===formattedInteger(stats.xp_base.sum) &&
+      row.values[1].label==='Received XP' && row.values[1].value===formattedInteger(stats.xp_received.sum) &&
+      row.values[2].label==='WN8' && row.values[2].value===String(Math.round(stats.wn8));
   }));
   check('Battle header shows the actual outcome without one-battle count or win-rate KPIs',battles.every(row=>{
     const outcomes={win:'VICTORY',loss:'DEFEAT',draw:'DRAW'};
@@ -345,10 +344,9 @@ async function runFeatureSuite(file,browser) {
   }));
   check('Aggregate summary still has min/mean/max while the battle list is selected',
     (await page.locator('#ss-summary .ss-metric-head .ss-metric-number').allTextContents()).join('|')==='Min|Average|Max' &&
-    await page.locator('#ss-summary .ss-metric-row').count()===2);
-  await page.locator('#ss-xp-base').click();
+    await page.locator('#ss-summary .ss-metric-row').count()===3);
   battles=await battleCards(page);
-  check('XP switch changes every battle to its single base-XP result',battles.every(row=>
+  check('Base XP remains visible alongside Received XP in every battle',battles.every(row=>
     row.values[0].label==='Base XP' && row.values[0].value===formattedInteger(expectedBattles.get(row.id).stats.xp_base.sum)));
   const knownBattle=battles.find(row=>row.id==='2000015');
   check('Battle finances retain separate income, costs and net including bonds',
@@ -423,7 +421,6 @@ async function runFeatureSuite(file,browser) {
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   await page.setViewportSize({width:744,height:730});
   await page.locator('#ss-group-vehicles').click();
-  await page.locator('#ss-xp-base').click();
   await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=0);
   await settleScroll(page);
@@ -471,26 +468,23 @@ async function runFeatureSuite(file,browser) {
     q.scopes.launch.battles=[zero,missing];
     GRZSessionStats.update(q);
   },fixtures.normal);
-  for(const xpMode of ['base','received']) {
-    await page.locator('#ss-xp-'+xpMode).click();
-    battles=await battleCards(page);
-    check('Known zero XP/WN8 remain zero in a single battle ('+xpMode+')',
-      battles.find(row=>row.id==='qa-battle-zero').values.every(value=>value.value==='0'));
-    const missing=battles.find(row=>row.id==='qa-battle-missing');
-    check('Unavailable XP/WN8 remain dashes in a single battle ('+xpMode+')',
-      missing.values.every(value=>value.value==='—'));
-    check('Unknown battle outcome and unavailable bond balance stay explicit ('+xpMode+')',
-      missing.outcome==='UNKNOWN RESULT' && missing.money[1].values[2]==='—');
-  }
+  battles=await battleCards(page);
+  check('Known zero Base XP, Received XP and WN8 remain zero in a single battle',
+    battles.find(row=>row.id==='qa-battle-zero').values.length===3 &&
+    battles.find(row=>row.id==='qa-battle-zero').values.every(value=>value.value==='0'));
+  const missing=battles.find(row=>row.id==='qa-battle-missing');
+  check('Unavailable Base XP, Received XP and WN8 remain dashes in a single battle',
+    missing.values.length===3 && missing.values.every(value=>value.value==='—'));
+  check('Unknown battle outcome and unavailable bond balance stay explicit',
+    missing.outcome==='UNKNOWN RESULT' && missing.money[1].values[2]==='—');
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   for(const grouping of ['maps','vehicles']) {
     await page.locator('#ss-group-'+grouping).click();
     check('Min/mean/max battle statistics remain available for '+grouping,
       await page.locator('#ss-groups .ss-battle-measure').count()===0 &&
       (await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-head .ss-metric-number').allTextContents()).join('|')==='Min|Average|Max' &&
-      await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row').count()===2);
+      await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row').count()===3);
   }
-  await page.locator('#ss-xp-base').click();
 
   // Synthetic local names test only the visual contract and layout. They are not
   // bundled game art or evidence of a successfully loaded native WoT texture.
@@ -627,6 +621,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-chronology.cjs',browser);
   await runFeatureSuite('./ui-chronology-labels.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
+  await runFeatureSuite('./ui-dual-xp.cjs',browser);
   await runFeatureSuite('./ui-sort-layout-stable.cjs',browser);
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
@@ -806,7 +801,9 @@ async function runFeatureSuite(file,browser) {
       await localized.title()===messages.title &&
       await localized.locator('html').getAttribute('lang')===language &&
       await localized.locator('#ss-close').getAttribute('aria-label')===messages.close &&
-      await localized.locator('#ss-xp-received .ss-control-label').textContent()===messages['xp.received']);
+      await localized.locator('#ss-summary [data-ss-metric="xp_base"] .ss-cell-value').textContent()===messages['xp.base'] &&
+      await localized.locator('#ss-summary [data-ss-metric="xp_received"] .ss-cell-value').textContent()===messages['xp.received'] &&
+      await localized.locator('.ss-xp-picker').count()===0);
     await localized.locator('#ss-scope-instance').click();
     await localized.locator('#ss-reset').click();
     check('Translated installation reset and persistence explanation for '+language,
@@ -847,7 +844,7 @@ async function runFeatureSuite(file,browser) {
   await localized.evaluate(payload=>GRZSessionStats.update(payload),custom);
   check('Partial catalogs fall back to English and custom text cannot inject markup',
     await localized.locator('#ss-refresh .ss-control-label').textContent()==='Reload' &&
-    await localized.locator('#ss-xp-base .ss-control-label').textContent()==='Base XP' &&
+    await localized.locator('#ss-summary [data-ss-metric="xp_base"] .ss-cell-value').textContent()==='Base XP' &&
     await localized.locator('.ss-titlebar h1').textContent()===custom.localization.messages.title &&
     await localized.locator('.ss-titlebar h1 img').count()===0);
   await localized.evaluate(payload=>GRZSessionStats.update(payload),fixtures.normal);

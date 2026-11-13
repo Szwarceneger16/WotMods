@@ -28,12 +28,12 @@ TIER_ORDER = dict(DEFAULT_ORDER, chronology='tier_desc')
 
 def valid_order(options, kind=None):
     return (isinstance(options, dict) and set(options) == set(DEFAULT_ORDER) and
-            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross', 'battle_wn8', 'battles', 'win_rate') and
+            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross', 'credits_costs', 'battle_wn8', 'battles', 'win_rate') and
             (options.get('metric') != 'battles' or kind is None or kind in ('vehicles', 'maps')) and
             (options.get('metric') != 'win_rate' or kind is None or kind in ('vehicles', 'maps', 'tiers')) and
             options.get('statistic') in ('min', 'avg', 'max', 'sum') and
             (options.get('statistic') != 'sum' or
-             kind != 'battles' and options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross')) and
+             kind != 'battles' and options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross', 'credits_costs')) and
             options.get('direction') in ('asc', 'desc') and
             options.get('chronology') in ('newest', 'oldest', 'first_desc', 'last_asc', 'tier_asc', 'tier_desc') and
             (options.get('chronology') not in ('first_desc', 'last_asc') or kind != 'battles') and
@@ -191,6 +191,7 @@ class Totals(object):
                                       dict((key, series.sum()) for key, series in self.expected.items()))
         result['credits_net'] = self.money['credits']['net'].snapshot()
         result['credits_gross'] = self.money['credits']['income'].snapshot()
+        result['credits_costs'] = self.money['credits']['costs'].snapshot()
         result['currencies'] = {}
         for currency, fields in self.money.items():
             values = {'breakdown': {}, 'breakdown_counts': {}}
@@ -384,6 +385,7 @@ class ScopeIndex(object):
             return group.totals.counts['wins'] * 100.0 / count if count else None
         series = (group.totals.money['credits']['net'] if metric == 'credits_net' else
                   group.totals.money['credits']['income'] if metric == 'credits_gross' else
+                  group.totals.money['credits']['costs'] if metric == 'credits_costs' else
                   group.totals.series.get(metric))
         return series.snapshot().get(options['statistic']) if series else None
 
@@ -407,6 +409,7 @@ class ScopeIndex(object):
                     value = (item[1] if metric == 'battle_wn8' else
                              record.get('currencies', {}).get('credits', {}).get('net') if metric == 'credits_net' else
                              record.get('currencies', {}).get('credits', {}).get('income') if metric == 'credits_gross' else
+                             record.get('currencies', {}).get('credits', {}).get('costs') if metric == 'credits_costs' else
                              record.get(metric))
             else:
                 identifier = entry.identifier

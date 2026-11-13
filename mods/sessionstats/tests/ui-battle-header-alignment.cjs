@@ -50,8 +50,14 @@ module.exports=async({browser,nativeHost,check})=>{
           const bounds=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
           if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale)))failures.push('clipped:'+node.textContent);
         }
-        if(Math.abs(card.getBoundingClientRect().width/scale-width)>1||origin.height/scale>64||card.getBoundingClientRect().height/scale>165)failures.push('dimensions');
-        return {positions,headerHeight:origin.height/scale,cardHeight:card.getBoundingClientRect().height/scale,failures};
+        const received=card.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
+        const addedMetricHeight=received?(received.getBoundingClientRect().height+parseFloat(getComputedStyle(received).marginTop))/scale:0;
+        // Both XP values add one required metric row. Preserve the original
+        // header/card budget after accounting only for that measured row.
+        if(!received||card.querySelectorAll('.ss-battle-measure').length!==3||
+          Math.abs(card.getBoundingClientRect().width/scale-width)>1||origin.height/scale>64||
+          card.getBoundingClientRect().height/scale-addedMetricHeight>165)failures.push('dimensions');
+        return {positions,headerHeight:origin.height/scale,cardHeight:card.getBoundingClientRect().height/scale,addedMetricHeight,failures};
       });
       for(const [index,row] of rows.entries())for(const [key,box] of Object.entries(row.positions)){
         const reference=rows.find(other=>other.positions[key]).positions[key];

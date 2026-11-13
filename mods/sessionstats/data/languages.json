@@ -201,7 +201,7 @@
       "sort.oldest": "Oldest first",
       "sort.avg": "Avg",
       "sort.off": "Off",
-      "sort.credits": "Credits (net)",
+      "sort.credits": "Credits income (net)",
       "sort.asc": "Ascending",
       "sort.desc": "Descending",
       "unknown.tier": "Unknown tier",
@@ -361,8 +361,11 @@
       "xp.received_total": "Total received XP:",
       "sort.sum": "All",
       "sort.sum.description": "Sum of the available values",
-      "sort.credits_gross": "Credits (gross)",
-      "sort.value_total": "Total {0}: {1}"
+      "sort.credits_gross": "Credits income (gross)",
+      "sort.value_total": "Total {0}: {1}",
+      "sort.credits_costs": "Credits costs",
+      "sort.credits.caption": "Credits income (net)",
+      "sort.credits_gross.caption": "Credits income (gross)"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -564,7 +567,7 @@
       "sort.oldest": "Najstarsze",
       "sort.avg": "Śr.",
       "sort.off": "Wyłączone",
-      "sort.credits": "Kredyty (netto)",
+      "sort.credits": "Dochód kredytów (netto)",
       "sort.asc": "Rosnąco",
       "sort.desc": "Malejąco",
       "unknown.tier": "Nieznany poziom",
@@ -724,8 +727,11 @@
       "xp.received_total": "Otrzymane PD łącznie:",
       "sort.sum": "Suma",
       "sort.sum.description": "Suma dostępnych wartości",
-      "sort.credits_gross": "Kredyty (brutto)",
-      "sort.value_total": "{0} łącznie: {1}"
+      "sort.credits_gross": "Przychód kredytów (brutto)",
+      "sort.value_total": "{0} łącznie: {1}",
+      "sort.credits_costs": "Koszty kredytów",
+      "sort.credits.caption": "Dochód kr. (netto)",
+      "sort.credits_gross.caption": "Przychód kr. (brutto)"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -927,7 +933,7 @@
       "sort.oldest": "Старые сначала",
       "sort.avg": "Сред.",
       "sort.off": "Отключено",
-      "sort.credits": "Кредиты нетто",
+      "sort.credits": "Доход кредитов (нетто)",
       "sort.asc": "По возр.",
       "sort.desc": "По убыв.",
       "unknown.tier": "Неизвестный уровень",
@@ -1087,8 +1093,11 @@
       "xp.received_total": "Всего получено опыта:",
       "sort.sum": "Всего",
       "sort.sum.description": "Сумма известных значений",
-      "sort.credits_gross": "Кред. брутто",
-      "sort.value_total": "Всего {0}: {1}"
+      "sort.credits_gross": "Доход кредитов (брутто)",
+      "sort.value_total": "Всего {0}: {1}",
+      "sort.credits_costs": "Расход кредитов",
+      "sort.credits.caption": "Доход кр. (нетто)",
+      "sort.credits_gross.caption": "Доход кр. (брутто)"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1290,7 +1299,7 @@
       "sort.oldest": "Plus anciens",
       "sort.avg": "Moy.",
       "sort.off": "Désactivé",
-      "sort.credits": "Crédits nets",
+      "sort.credits": "Revenus crédits (nets)",
       "sort.asc": "Croissant",
       "sort.desc": "Décroissant",
       "unknown.tier": "Rang inconnu",
@@ -1450,8 +1459,11 @@
       "xp.received_total": "Total d’EXP reçue :",
       "sort.sum": "Total",
       "sort.sum.description": "Somme des valeurs disponibles",
-      "sort.credits_gross": "Crédits bruts",
-      "sort.value_total": "Total {0} : {1}"
+      "sort.credits_gross": "Revenus crédits (bruts)",
+      "sort.value_total": "Total {0} : {1}",
+      "sort.credits_costs": "Coûts crédits",
+      "sort.credits.caption": "Revenus crédits (nets)",
+      "sort.credits_gross.caption": "Revenus crédits (bruts)"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1653,7 +1665,7 @@
       "sort.oldest": "Älteste zuerst",
       "sort.avg": "Ø",
       "sort.off": "Aus",
-      "sort.credits": "Kreditp. (netto)",
+      "sort.credits": "Kreditertrag (netto)",
       "sort.asc": "Aufsteigend",
       "sort.desc": "Absteigend",
       "unknown.tier": "Unbekannte Stufe",
@@ -1813,8 +1825,11 @@
       "xp.received_total": "Erhaltene EP gesamt:",
       "sort.sum": "Ges.",
       "sort.sum.description": "Summe der verfügbaren Werte",
-      "sort.credits_gross": "Kred. (brutto)",
-      "sort.value_total": "{0} gesamt: {1}"
+      "sort.credits_gross": "Kreditertrag (brutto)",
+      "sort.value_total": "{0} gesamt: {1}",
+      "sort.credits_costs": "Kreditkosten",
+      "sort.credits.caption": "Kreditertrag (netto)",
+      "sort.credits_gross.caption": "Kreditertrag (brutto)"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2016,7 +2031,7 @@
       "sort.oldest": "Más antiguos",
       "sort.avg": "Prom.",
       "sort.off": "Desactivado",
-      "sort.credits": "Créditos netos",
+      "sort.credits": "Ingreso créditos (neto)",
       "sort.asc": "Ascendente",
       "sort.desc": "Descendente",
       "unknown.tier": "Nivel desconocido",
@@ -2176,8 +2191,11 @@
       "xp.received_total": "EXP recibida total:",
       "sort.sum": "Total",
       "sort.sum.description": "Suma de los valores disponibles",
-      "sort.credits_gross": "Créditos brutos",
-      "sort.value_total": "Total {0}: {1}"
+      "sort.credits_gross": "Ingreso créditos (bruto)",
+      "sort.value_total": "Total {0}: {1}",
+      "sort.credits_costs": "Costes créditos",
+      "sort.credits.caption": "Ingreso créditos (neto)",
+      "sort.credits_gross.caption": "Ingreso créditos (bruto)"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2379,7 +2397,7 @@
       "sort.oldest": "Старі спочатку",
       "sort.avg": "Сер.",
       "sort.off": "Вимкнено",
-      "sort.credits": "Кредити нетто",
+      "sort.credits": "Дохід кредитів (нетто)",
       "sort.asc": "Зростання",
       "sort.desc": "Спадання",
       "unknown.tier": "Невідомий рівень",
@@ -2539,8 +2557,11 @@
       "xp.received_total": "Усього отримано досвіду:",
       "sort.sum": "Сума",
       "sort.sum.description": "Сума відомих значень",
-      "sort.credits_gross": "Кред. брутто",
-      "sort.value_total": "Усього {0}: {1}"
+      "sort.credits_gross": "Дохід кредитів (брутто)",
+      "sort.value_total": "Усього {0}: {1}",
+      "sort.credits_costs": "Витрати кредитів",
+      "sort.credits.caption": "Дохід кредитів (нетто)",
+      "sort.credits_gross.caption": "Дохід кредитів (брутто)"
     }
   }
 }

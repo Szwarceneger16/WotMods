@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.6 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.7 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -31,12 +31,14 @@ below the name. For WN8, the large figure shows the selected Min/Average/Max whi
 that sort is active; otherwise the **Combined WN8** headline recalculates a rating
 from all group results and expected vehicle values. It differs from the arithmetic
 mean of individual-battle WN8 in the table. The card information button explains
-this distinction. **All** sorts aggregate XP or net/gross credits by the sum of
+this distinction. **All** sorts aggregate XP, credit income or credit costs by the sum of
 known values; gross credits mean income before costs. All is not offered for
 WN8, win rate or individual battles. Credit sums mark the existing finance total;
 XP sums show an explicit total beside the card identity, with missing-value coverage.
-A compact summary table shows total base XP, total received XP and Free XP in that
-order, each with its own coverage. Win-rate sorting is available in Vehicles, Maps and Tiers;
+A compact summary table shows total base XP, total received XP and Free XP in three
+horizontal columns, each with its own coverage. Performance tables and battle
+cards always show both Base XP and Received XP; the display selector is removed.
+Win-rate sorting is available in Vehicles, Maps and Tiers;
 unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [calendar](docs/CALENDAR_0.9.0.md), [0.9.1 UI refinements](docs/UI_POLISH_0.9.1.md),
 [native scrollbar checks](docs/SCROLLBAR_NATIVE_SAFETY.md), and
@@ -44,7 +46,8 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [0.9.3 UI refinements](docs/UI_REFINEMENTS_0.9.3.md), and
 [0.9.4 display corrections](docs/UI_REFINEMENTS_0.9.4.md), and
 [0.9.5 layout refinements](docs/UI_REFINEMENTS_0.9.5.md), and
-[0.9.6 readability and loading refinements](docs/UI_REFINEMENTS_0.9.6.md).
+[0.9.6 readability and loading refinements](docs/UI_REFINEMENTS_0.9.6.md), and
+[0.9.7 XP presentation and credit sorting](docs/UI_REFINEMENTS_0.9.7.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an
@@ -246,9 +249,9 @@ retain text outcomes. See [0.2.9 UI and language evidence](docs/UI_0.2.9_SOURCE_
 
 ### Result ordering and Tiers
 
-Use the date dropdown between Previous and Next for chronology. Advanced sorting offers Statistic (Min/Avg/Max, plus All for additive aggregate metrics), Sort by (Off/Base XP/Received XP/Credits net/Credits gross/WN8), and Order (Ascending/Descending). With sorting off, chronology applies. Equal metric values use the selected chronology, with stable ID ties. Missing metric values sort last.
+Use the date dropdown between Previous and Next for chronology. Advanced sorting offers Statistic (Min/Avg/Max, plus All for additive aggregate metrics), Sort by (Off/Base XP/Received XP/Credits income net/Credits income gross/Credits costs/WN8), and Order (Ascending/Descending). With sorting off, chronology applies. Equal metric values use the selected chronology, with stable ID ties. Missing metric values sort last.
 
-Sorting covers the complete selected period before pages of 40 rows are sent to the UI, and changes return to page one. Vehicles, Maps, Battles and Tiers have independent choices in each session scope, including Installation. Tiers includes XI and preserves an unknown-tier group for incomplete metadata. WN8 Min/Avg/Max uses individual battle WN8. Credits gross uses recorded income, while credits net includes costs and losses. All sums confirmed XP or credits for the group and selected period; it is unavailable for WN8, win rate and individual battles.
+Sorting covers the complete selected period before pages of 40 rows are sent to the UI, and changes return to page one. Vehicles, Maps, Battles and Tiers have independent choices in each session scope, including Installation. Tiers includes XI and preserves an unknown-tier group for incomplete metadata. WN8 Min/Avg/Max uses individual battle WN8. Credits income gross uses recorded income, while credits income net includes costs and losses. Credits costs sorts nonnegative expense magnitudes, with the largest expense first when descending; the finance table still displays costs with a minus sign. All sums confirmed XP, credit income or credit costs for the group and selected period; it is unavailable for WN8, win rate and individual battles.
 
 The selectors use local Gameface-compatible dropdowns with keyboard navigation.
 Battles hides the aggregate Min/Avg/Max selector. When the complete control row

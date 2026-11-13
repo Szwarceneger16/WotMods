@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.6 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.7 (persistent data schema unchanged)
 Release date: 2026-11-11.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.6', account_key: string, generated_at: unix seconds,
+ version: '0.9.7', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -97,7 +97,7 @@ STATS = {
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
  xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
- credits_net:SERIES, credits_gross:SERIES,
+ credits_net:SERIES, credits_gross:SERIES, credits_costs:SERIES,
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -239,14 +239,17 @@ User preferences (scope, group, XP type, sorting) can remain in JS and be sent o
 `reset` requires confirmation in UI, resets manual scope only. `close` destroys window.
 Root `window.GRZSessionStats.update(payload)` allows offline DOM QA.
 Preview data are injected ONLY by standalone preview, never silently shown inside game.
-Window title Session statistics; top session toggles; base/received XP toggle.
+Window title Session statistics; top session toggles. Base and Received XP are
+always visible together; there is no XP display selector or live mode handler.
 Single vertically scrolling content: compact global stats + full details always visible,
 then Vehicles | Maps | Tiers | Battles switch; Vehicles default. All group details always visible.
 No separate Summary tab, accordions or 'more details'. Summary and aggregate group
 headline columns: Battles, Win rate, WN8. Sessions, vehicles and maps retain XP/WN8
-min/average/max. A battle row shows its outcome and exactly one XP and one WN8 value,
+min/average/max for both XP metrics and battle WN8. A battle row shows its outcome,
+one Base XP value, one Received XP value and one WN8 value,
 without Battles=1 or Win rate=0/100%; individual Battles reject win-rate ordering.
-Both XP choices work in all groupings.
+Legacy xp_mode payload/preferences remain readable but do not hide either metric.
+XP sorting selects its own metric independently of the visible rows.
 WN8 full integer, never k/truncation/leading zeroes.
 Use Gameface-safe flex/block CSS; no grid, gap, sticky, inline-block, fit-content,
 font-feature-settings. Warhelios native font, warm cream/olive/gold.
@@ -388,15 +391,17 @@ or persisted-data migration.
 
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
-ordering[group] = {metric:off|xp_base|xp_received|credits_net|credits_gross|battle_wn8|battles|win_rate,
+ordering[group] = {metric:off|xp_base|xp_received|credits_net|credits_gross|credits_costs|battle_wn8|battles|win_rate,
                    statistic:min|avg|max|sum, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
 A successful request resets that grouping to page zero; pagination and totals remain period-wide.
 Metric ordering uses the selected series statistic, with missing values last.
-All (sum) is available only for aggregate XP and net/gross credits, never WN8,
+All (sum) is available only for aggregate XP and credit income/costs, never WN8,
 win rate, battle counts or individual battles. Gross credits are the income series;
-net credits are the settled balance series. Each retains independent known-value coverage.
+net credits are the settled balance series. Credits costs use the nonnegative expense
+series; descending costs ranks the largest expense first, although the finance table
+prints expenses with a minus sign. Each retains independent known-value coverage.
 Disabling an aggregate metric may retain sum; selecting a nonadditive metric resets it to avg.
 Group chronology independently selects the first or last battle and ascending or descending
 dates. Legacy newest=last descending, oldest=first ascending; first_desc and last_asc

@@ -78,16 +78,20 @@ module.exports = async ({browser,nativeHost,check}) => {
   check('Leaving a battle map miniature immediately closes its preview',!await page.locator('#ss-map-preview').isVisible());
   const compactGeometry=await page.evaluate(()=>{
     const groups=Array.from(document.querySelectorAll('#ss-groups .ss-group')).map(group=>{
-      const free=group.querySelector('.ss-free-xp'), details=group.querySelector('.ss-details');
+      const free=group.querySelector('.ss-free-xp'), details=group.querySelector('.ss-details'),
+        received=group.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
       const box=node=>{const r=node.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
       const geometry={name:group.querySelector('.ss-group-title').textContent,card:box(group),
         header:box(group.querySelector('.ss-group-header')),identity:box(group.querySelector('.ss-group-name')),
         outcome:box(group.querySelector('.ss-battle-outcome')),map:box(group.querySelector('.ss-battle-map-thumb')),
-        free:box(free),details:box(details),rows:Array.from(group.querySelectorAll('.ss-battle-measure,.ss-money-row')).map(box)};
+        free:box(free),details:box(details),rows:Array.from(group.querySelectorAll('.ss-battle-measure,.ss-money-row')).map(box),
+        xpRows:group.querySelectorAll('.ss-battle-measure').length,
+        addedMetricHeight:received?box(received).height+parseFloat(getComputedStyle(received).marginTop):0};
       // A separate map miniature can move Free XP onto its own identity line.
       // Reserve one normal text line, retaining compact rows and full captions.
       geometry.passed=geometry.header.height<=64 && geometry.free.bottom<=geometry.details.top+1 &&
-        geometry.rows.every(row=>row.height<=30) && geometry.card.height<=165;
+        geometry.rows.every(row=>row.height<=30) && geometry.xpRows===3 &&
+        geometry.card.height-geometry.addedMetricHeight<=165;
       return geometry;
     });
     return {passed:groups.every(group=>group.passed),groups};
@@ -163,10 +167,13 @@ module.exports = async ({browser,nativeHost,check}) => {
         const bounds=box(node),range=document.createRange();range.selectNodeContents(node);
         if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale)))issues.push('clipped:'+node.textContent);
       }
-      if(Math.abs(r.width/scale-cardWidth)>1||h.height/scale>64||r.height/scale>165)issues.push('dimensions');
-      return {width:r.width/scale,header:h.height/scale,height:r.height/scale,inline,issues};
+      const received=card.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
+      const addedMetricHeight=received?(box(received).height+parseFloat(getComputedStyle(received).marginTop))/scale:0;
+      if(!received||card.querySelectorAll('.ss-battle-measure').length!==3||
+        Math.abs(r.width/scale-cardWidth)>1||h.height/scale>64||r.height/scale-addedMetricHeight>165)issues.push('dimensions');
+      return {width:r.width/scale,header:h.height/scale,height:r.height/scale,addedMetricHeight,inline,issues};
     }),{scale,cardWidth});
-    check('Battle captions follow the actual '+cardWidth+'px card without extra height or clipped text: '+language+' at'+(scale*100)+'%'+
+    check('Battle captions retain their header budget above both XP rows at '+cardWidth+'px without clipped text: '+language+' at'+(scale*100)+'%'+
       (audit.every(card=>!card.issues.length)?'':': '+JSON.stringify(audit)),audit.length===3&&audit.every(card=>!card.issues.length));
   }
   await page.setViewportSize({width:550,height:730});

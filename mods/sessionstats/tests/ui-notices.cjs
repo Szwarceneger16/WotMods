@@ -45,12 +45,12 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
     await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help').then(t=>
       t.includes('x/y: battles with this value / recorded battles.')));
   check('Zero available metric values keep their honest count and explanation',
-    await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-cell-coverage').getAttribute('aria-label')===
+    await page.locator('#ss-summary [data-ss-metric="xp_base"]').first().locator('.ss-cell-coverage').getAttribute('aria-label')===
       'Data available for 0 of '+stats.observed_battles+' recorded battles.');
   check('Coverage numbers do not create immediate browser hover tooltips',
     await page.locator('#ss-summary .ss-cell-coverage[title],#ss-summary [data-ss-help]:not(.ss-info-button)').count()===0);
   check('Unavailable XP stays unknown instead of becoming zero',
-    (await page.locator('#ss-summary .ss-metric-row').first().locator('.ss-metric-number').allTextContents()).every(v=>v==='—'));
+    (await page.locator('#ss-summary [data-ss-metric="xp_base"]').first().locator('.ss-metric-number').allTextContents()).every(v=>v==='—'));
   check('Finance coverage explains its own independent available count',
     await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').getAttribute('aria-label')===
       'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.');
@@ -189,7 +189,7 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
   const vehicle=payload.scopes.launch.vehicles[0], partial=vehicle.stats;
   vehicle.name='Leox';
   partial.observed_battles=4;partial.battles=3;partial.wn8_count=3;
-  partial.xp_base.count=3;partial.battle_wn8.count=3;partial.free_xp.count=3;
+  partial.xp_base.count=3;partial.xp_received.count=3;partial.battle_wn8.count=3;partial.free_xp.count=3;
   for(const currency of ['credits','bonds']) for(const field of ['income','costs','net']) partial.currencies[currency][field+'_count']=3;
   // Non-rendered zero gold must not prevent the visible rows sharing coverage.
   partial.currencies.gold={income:0,costs:0,net:0,income_count:1,costs_count:1,net_count:1};
@@ -223,7 +223,7 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
       Array.from(table.querySelectorAll('.ss-money-row .ss-cell-coverage')).map(node=>node.textContent).join('|')==='3/4|3/4|2/4'));
   partial.currencies.gold={income:0,costs:0,net:0,income_count:1,costs_count:1,net_count:1};
   await render(payload);
-  check('Shared XP and battle WN8 coverage uses the header and keeps both rows compact',await page.locator('#ss-groups .ss-group').first().locator('.ss-performance').evaluate(table=>
+  check('Shared Base XP, Received XP and battle WN8 coverage uses one header and keeps all rows compact',await page.locator('#ss-groups .ss-group').first().locator('.ss-performance').evaluate(table=>
     table.querySelector('.ss-metric-head .ss-cell-coverage').textContent==='3/4' &&
     table.querySelectorAll('.ss-metric-row .ss-cell-coverage').length===0 &&
     Array.from(table.querySelectorAll('.ss-metric-row')).every(row=>row.getBoundingClientRect().height<=30)));
@@ -237,8 +237,8 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
         table.querySelectorAll('.ss-cell-coverage').length===1;
     }));
   }
-  partial.battle_wn8.count=2;await render(payload);
-  check('Different XP and WN8 coverage remains independently visible',await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row .ss-cell-coverage').allTextContents().then(values=>values.join('|')===' (3/4)| (2/4)'));
+  partial.xp_received.count=1;partial.battle_wn8.count=2;await render(payload);
+  check('Base XP, Received XP and WN8 coverage remain independently visible',await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row .ss-cell-coverage').allTextContents().then(values=>values.join('|')===' (3/4)| (1/4)| (2/4)'));
   partial.currencies.credits.net_count=2;await render(payload);
   check('Different financial coverage retains the independent count for each value',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').first().locator('.ss-money-value .ss-cell-coverage').allTextContents().then(values=>values.join('|')==='3/4|3/4|2/4'));
   await page.locator('#ss-close').focus();

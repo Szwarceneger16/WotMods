@@ -23,14 +23,15 @@ module.exports=async({browser,nativeHost,check})=>{
         item.stats.xp_received={count:1,sum:0,min:0,avg:0,max:0};
         item.stats.credits_net={count:2,sum:-500,min:-400,avg:-250,max:-100};
         item.stats.credits_gross={count:2,sum:1000,min:400,avg:500,max:600};
-        item.stats.currencies.credits.net=-500;item.stats.currencies.credits.income=1000;
+        item.stats.credits_costs={count:2,sum:1500,min:400,avg:750,max:1100};
+        item.stats.currencies.credits.net=-500;item.stats.currencies.credits.income=1000;item.stats.currencies.credits.costs=1500;
         scope[group]=[item];scope.pagination[group]={page:0,pages:1,page_size:40,total:1};
       }
       model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
     });await frames(page);
     for(const group of ['vehicles','maps','tiers']){
       await page.locator('#ss-group-'+group).click();
-      for(const metric of ['xp_base','xp_received','credits_net','credits_gross']){
+      for(const metric of ['xp_base','xp_received','credits_net','credits_gross','credits_costs']){
         await choose('metric',metric);
         check('All is available only for an additive aggregate metric '+group+'/'+metric,
           await page.locator('#ss-sort-statistic [data-value="sum"]').evaluate(node=>node.style.display!=='none'));
@@ -38,7 +39,7 @@ module.exports=async({browser,nativeHost,check})=>{
         check('All dispatches the owned aggregate sum '+group+'/'+metric,
           command.metric===metric&&command.statistic==='sum'&&command.group===group&&command.account_key&&command.period_id);
         if(metric.startsWith('credits_')){
-          const column=metric==='credits_gross'?1:3;
+          const column=metric==='credits_gross'?1:metric==='credits_costs'?2:3;
           check('All '+metric+' highlights the existing financial total '+group,
             await page.locator('.ss-group .ss-money-row').first().evaluate((row,{metric,column})=>
               row.children[column].getAttribute('data-ss-sort-active')===metric,{metric,column})&&
@@ -65,6 +66,11 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
       await page.locator('#ss-sort-statistic [data-value="sum"]').evaluate(node=>node.style.display==='none')&&
       await page.locator('.ss-money-row [data-ss-sort-active="credits_gross"]').count()>0);
+    await choose('metric','credits_costs');
+    check('Battles sort recorded expense magnitudes and highlight the existing displayed costs',
+      await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
+      await page.locator('#ss-sort-statistic [data-value="sum"]').evaluate(node=>node.style.display==='none')&&
+      await page.locator('.ss-money-row [data-ss-sort-active="credits_costs"]').count()>0);
     for(const [language,catalog]of Object.entries(messages)){
       await page.evaluate(({language,catalog})=>{
         const payload=JSON.parse(model.payload);payload.localization={language,messages:catalog};
@@ -74,7 +80,7 @@ module.exports=async({browser,nativeHost,check})=>{
       },{language,catalog});await frames(page);
       check('All and gross-credit labels follow the selected language '+language,
         await page.locator('#ss-sort-statistic .ss-select-trigger .ss-control-label').textContent()===catalog['sort.sum']&&
-        await page.locator('#ss-sort-metric .ss-select-trigger .ss-control-label').textContent()===catalog['sort.credits_gross']);
+        await page.locator('#ss-sort-metric .ss-select-trigger .ss-control-label').textContent()===catalog['sort.credits_gross.caption']);
     }
     await page.evaluate(()=>{
       const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.maps={metric:'battle_wn8',statistic:'sum',direction:'desc',chronology:'newest'};
@@ -83,4 +89,5 @@ module.exports=async({browser,nativeHost,check})=>{
     check('A legacy invalid WN8 sum snapshot normalizes to Avg before presentation',
       await page.locator('#ss-sort-statistic .ss-select-trigger .ss-control-label').textContent()===messages.uk['sort.avg']);
   }finally{await page.close();}
+  await require('./ui-credit-labels.cjs')({browser,nativeHost,check});
 };

@@ -51,7 +51,7 @@ function assertBidirectionalSource(source=shipped()){
     'revealFeedTop','pageBoundary','showFeedPending','requestFeedPage','prepareFeed','updateFeedControls','renderGroups','loadNearEdges','onScrollIntent','changePage'])
     vm.runInContext(sourceFunction(source,name),context);
   const topStart=source.indexOf("    if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {",source.indexOf('    function changePage('));
-  const topEnd=source.indexOf('    function switchXP(',topStart);assert(topStart>=0&&topEnd>topStart);
+  const topEnd=source.indexOf("    document.getElementById('ss-scope-launch')",topStart);assert(topStart>=0&&topEnd>topStart);
   vm.runInContext(source.slice(topStart,topEnd),context);
   const flush=()=>{for(let count=0;scheduled.length&&count<100;count++)scheduled.shift()();assert(scheduled.length===0);};
   const reply=(index,request)=>{scope.battles=rows(index);scope.pagination={battles:{page:index,pages:6,page_size:40,total:205}};

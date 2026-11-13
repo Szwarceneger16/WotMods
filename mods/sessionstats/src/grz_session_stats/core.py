@@ -160,6 +160,7 @@ def aggregate_stats(records, expected_table):
         stats[key] = _series([record.get(key) for record in records])
     stats['credits_net'] = _series([record.get('currencies', {}).get('credits', {}).get('net') for record in records])
     stats['credits_gross'] = _series([record.get('currencies', {}).get('credits', {}).get('income') for record in records])
+    stats['credits_costs'] = _series([record.get('currencies', {}).get('credits', {}).get('costs') for record in records])
     actual = dict((key, 0.0) for key in ('damage', 'frags', 'spots', 'defense', 'wins'))
     reference = dict((key, 0.0) for key in actual)
     per_battle = []

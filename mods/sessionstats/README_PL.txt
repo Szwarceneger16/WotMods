@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.9.6 • 2026-11-13 • target: Wargaming EU 2.4.1.1
+Version 0.9.7 • 2026-11-13 • target: Wargaming EU 2.4.1.1
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -85,13 +85,14 @@ changes the language and wheel speed while preserving all other defaults.
 
 HOW THE PANEL WORKS
 • The header shows completed battles, win rate and the full WN8 number.
-  The centered Base/Received XP totals remain visible together and each retains
+  Base/Received/Free XP totals use three horizontal columns, each retaining
   its own received-value coverage. It does not add a meaningless WN8 total.
 • Two default period tabs: "Since launch" and "Timeline". Both belong to the
   active account. The optional installation tab has its own persistent manual
   reset and is hidden by default.
-• "Base XP" is selected initially. "Received XP" switches all visible experience
-  statistics to the values including bonuses awarded by the game.
+• Base XP and Received XP are permanently visible together in performance
+  tables and individual battle cards. Received XP includes bonuses awarded by
+  the game. Sorting can still select either metric independently.
 • Summary and details are visible immediately. Vehicles / Maps / Tiers / Battles appear
   below, with Vehicles selected on opening. Scroll the whole panel vertically;
   use "More" on a battle card for missions, Battle Pass and bonuses. Wheel down
@@ -425,7 +426,7 @@ Audit details and pinned sources: source/docs/UPDATE_COMPATIBILITY_SOURCES.md.
 
 FIRST IN-GAME CHECK
 1. In the garage, check the small icon, window position, visible tab labels,
-   title-bar dragging, upper-right close button, XP mode, Vehicles/Maps/Battles,
+   title-bar dragging, upper-right close button, both XP values, Vehicles/Maps/Battles,
    Ctrl+F10 and Esc. Change a color or wheel multiplier in JSON, save and click
    "Refresh". This interface check does not require playing a battle.
 2. Verify result receipt separately: after a new completed random battle, compare

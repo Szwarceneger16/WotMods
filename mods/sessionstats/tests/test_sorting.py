@@ -35,7 +35,7 @@ class SortingTests(NativePaginationTests):
 
     def test_additive_totals_and_gross_credits_pass_the_owned_native_sort_bridge(self):
         for group in ('vehicles', 'maps', 'tiers'):
-            for metric in ('xp_base', 'xp_received', 'credits_net', 'credits_gross'):
+            for metric in ('xp_base', 'xp_received', 'credits_net', 'credits_gross', 'credits_costs'):
                 scope = self.sort(group=group, metric=metric, statistic='sum')
                 self.assertEqual(scope['ordering'][group]['statistic'], 'sum')
                 self.assertEqual(scope['ordering'][group]['metric'], metric)
@@ -45,7 +45,25 @@ class SortingTests(NativePaginationTests):
             # accepted sum, even if an old UI callback sends it directly.
             for metric in ('battle_wn8', 'win_rate', 'battles'):
                 scope = self.sort(group=group, metric=metric, statistic='sum')
-                self.assertEqual(scope['ordering'][group]['metric'], 'credits_gross')
+                self.assertEqual(scope['ordering'][group]['metric'], 'credits_costs')
+
+    def test_costs_sorting_uses_complete_battle_history_before_pagination(self):
+        service = self.mod.active_service
+        for index in range(45):
+            row = result('cost-' + str(index), started_at=111 + index)
+            row['currencies']['credits'] = {'income': 100, 'costs': index, 'net': 100 - index}
+            self.assertTrue(service.record_result(row))
+        scope = self.sort(metric='credits_costs', direction='desc')
+        self.assertEqual(scope['battles'][0]['id'], 'cost-44')
+        rows = list(scope['battles'])
+        for page in ('1', '2'):
+            self.window._model.onAction(self.command(page=page))
+            rows.extend(self.payload()['scopes']['manual']['battles'])
+        self.assertEqual(len(rows), 90)
+        self.assertEqual(len(set(row['id'] for row in rows)), 90)
+        values = [row['stats']['credits_costs']['sum'] for row in rows]
+        self.assertEqual(values, sorted(values, reverse=True))
+        self.assertEqual(rows[-1]['id'], 'cost-0')
 
     def test_missing_is_last_negative_credits_are_numeric_and_corrections_invalidate_order(self):
         service = self.mod.active_service

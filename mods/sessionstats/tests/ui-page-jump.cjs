@@ -149,7 +149,7 @@ function assertPageJumpSource(source=shipped()){
 
   const top=geometry(source);top.begin();const retained=retainedTimer(top);
   const start=source.indexOf("    if (nodes['scroll-top']) { nodes['scroll-top'].onclick = function () {");
-  const end=source.indexOf('\n    function switchXP(',start);assert(start>=0&&end>start,'Exercise the shipped Back to top handler');
+  const end=source.indexOf("\n    document.getElementById('ss-scope-launch')",start);assert(start>=0&&end>start,'Exercise the shipped Back to top handler');
   vm.runInContext(source.slice(start,end),top.context);top.context.nodes['scroll-top'].onclick();
   top.show();retained();assert.strictEqual(top.state.pageJump,null,'Back to top supersedes the pending page divider');
   assert.strictEqual(top.scroll.scrollTop,0,'A retained page callback cannot undo Back to top');

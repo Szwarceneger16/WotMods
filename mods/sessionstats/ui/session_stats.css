@@ -109,6 +109,8 @@ button:disabled { opacity:0.45; }
 .ss-summary-details .ss-money-label { display:block; width:23%; }
 .ss-summary-details .ss-money-value { width:25.666%; font-size:14rem; }
 .ss-summary-details .ss-money-head .ss-money-value { font-size:12rem; }
+/* Reclaim label insets for the permanently visible Received XP row. */
+.ss-summary-details .ss-metric-name { padding-left:1rem; padding-right:0; }
 .ss-narrow-summary .ss-money-head, .ss-narrow-summary .ss-money-row { flex-wrap:wrap; }
 .ss-narrow-summary .ss-money-head .ss-money-label { display:none; }
 .ss-narrow-summary .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
@@ -293,6 +295,9 @@ button:disabled { opacity:0.45; }
 .ss-select-trigger.ss-select-disabled .ss-control-label, .ss-select-trigger[aria-disabled="true"] .ss-control-label { color:#969a9d; text-shadow:none; }
 .ss-select-trigger.ss-select-disabled .ss-select-arrow, .ss-select-trigger[aria-disabled="true"] .ss-select-arrow { border-right-color:#969a9d; border-bottom-color:#969a9d; }
 .ss-select-trigger .ss-control-label { flex:1; text-align:left; }
+/* Full financial metric names use two lines inside the existing fixed slot. */
+.ss-sort-metric .ss-select-trigger { padding-top:1rem; padding-bottom:1rem; }
+.ss-sort-metric .ss-select-trigger .ss-control-label { font-size:11rem; line-height:13rem; white-space:normal; }
 .ss-select-arrow { display:block; flex-shrink:0; width:6rem; height:6rem; margin:-3rem 3rem 0 6rem; border-right:1rem solid currentColor; border-bottom:1rem solid currentColor; transform:rotate(45deg); }
 .ss-select-options { position:absolute; top:100%; left:0; z-index:20; min-width:100%; width:180rem; max-width:260rem; padding:3rem; border:1rem solid #b3b69a; border-radius:5rem; background:#111309; box-shadow:0 3rem 8rem #000; }
 .ss-sorting .ss-select-options { width:100%; }
@@ -336,12 +341,18 @@ button:disabled { opacity:0.45; }
 .ss-group .ss-sort-active-value { border-radius:5rem; background:#252a23; box-shadow:inset 0 0 0 1rem #e7a23b; }
 .ss-summary-meta { margin:3rem 4rem; }
 .ss-summary-main .ss-summary-meta { display:block; }
-/* A compact three-row table keeps every total and its coverage together. */
-.ss-summary-xp-totals { display:block; width:100%; min-width:0; max-width:400rem; min-height:51rem; margin:0 auto; }
-.ss-summary-xp-total { display:flex; flex-wrap:nowrap; align-items:center; width:100%; min-width:0; max-width:100%; min-height:17rem; text-align:left; margin:0; }
-.ss-summary-xp-total .ss-xp-total-label { display:block; flex:1 1 auto; min-width:0; margin:0 10rem 0 0; line-height:17rem; text-align:left; }
-.ss-summary-xp-total .ss-xp-total-amount { display:block; flex:0 0 auto; min-height:17rem; line-height:17rem; text-align:right; white-space:nowrap; }
-.ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { display:inline; white-space:nowrap; margin-right:0; }
+/* Explicit header/value rows keep all three totals horizontal in native flex. */
+.ss-summary-xp-totals { display:block; width:100%; min-width:0; max-width:100%; min-height:68rem; margin:0 auto; }
+.ss-summary-xp-head, .ss-summary-xp-values { display:flex; flex-wrap:nowrap; width:100%; min-width:0; }
+.ss-summary-xp-head { height:34rem; min-height:34rem; }
+.ss-summary-xp-values { height:34rem; min-height:34rem; }
+.ss-summary-xp-head .ss-xp-total-label, .ss-summary-xp-total { display:block; flex:0 0 33.333%; width:33.333%; min-width:0; max-width:33.333%; padding:0 4rem; margin:0; text-align:center; }
+.ss-summary-xp-head .ss-xp-total-label { display:flex; flex-direction:column; justify-content:flex-end; height:34rem; min-height:34rem; line-height:17rem; }
+.ss-xp-total-caption { display:block; width:100%; min-width:0; }
+.ss-summary-xp-total .ss-xp-total-amount { display:block; height:34rem; min-height:34rem; line-height:17rem; text-align:center; }
+.ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { display:block; min-height:17rem; line-height:17rem; white-space:nowrap; margin:0; }
+.ss-narrow-summary .ss-summary-xp-totals { min-height:85rem; }
+.ss-narrow-summary .ss-summary-xp-head, .ss-narrow-summary .ss-xp-total-label { height:51rem; min-height:51rem; }
 
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
