@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.4 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.5 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -15,7 +15,8 @@ Click the month or year heading for a selection grid. The graphical clock stays
 below the calendar; its hour/minute controls and short hints explain selection.
 Future dates/times and choices outside the other range boundary are disabled;
 From must be earlier than To. Typed dates follow the same range restrictions.
-The client language/resources also determine calendar labels and week start.
+Calendar words follow the selected interface language; the client supplies numeric
+date/time preferences and week start.
 Explicit `date_time` configuration overrides each automatic setting independently;
 see [client date and clock formatting](docs/CLIENT_DATE_TIME.md).
 The separate dropdown button still offers saved time points.
@@ -37,7 +38,8 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [native scrollbar checks](docs/SCROLLBAR_NATIVE_SAFETY.md), and
 [stable filtering and chronology](docs/FILTERING_0.9.2.md), and
 [0.9.3 UI refinements](docs/UI_REFINEMENTS_0.9.3.md), and
-[0.9.4 display corrections](docs/UI_REFINEMENTS_0.9.4.md).
+[0.9.4 display corrections](docs/UI_REFINEMENTS_0.9.4.md), and
+[0.9.5 layout refinements](docs/UI_REFINEMENTS_0.9.5.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an
@@ -219,6 +221,8 @@ share a row too. Battle Pass is a compact strip above the details. A wider bonus
 table sits beside the mission cards; each mission has its name, progress and
 description inside one outline. These sections wrap when the card cannot fit
 them without crowding, including unusually large numerical rewards.
+Mission cards use two columns when their available block fits two readable
+cards; smaller blocks retain a single column.
 Mission progress shows confirmed per-battle increments and known current/target
 counters with their objective labels. Explicit unchanged counters show no
 progress; missing historical counters remain unavailable. A current/target

@@ -80,16 +80,18 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   state.scope='launch';state.payload.loading=false;state.group='battles';render();
   const battleBefore=commands.length;context.changeOrder('statistic','max');
   assert.strictEqual(commands.length,battleBefore,'Battles rejects stale aggregate-statistic callbacks');
-  assert.strictEqual(statistic.style.display,'none');assert.strictEqual(selects.statistic.trigger.disabled,true);
+  assert.strictEqual(statistic.style.visibility,'hidden');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');assert.strictEqual(selects.statistic.trigger.disabled,true);
   context.changeOrder('metric','battles');assert.strictEqual(commands.length,battleBefore,'Battles rejects the aggregate count metric');
   for(const chronology of ['first_desc','last_asc']){context.changeOrder('chronology',chronology);assert.strictEqual(commands.length,battleBefore,'Battles rejects a retained aggregate-date callback');}
   state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
-  assert.strictEqual(statistic.style.display,'none','Recorded counts do not expose an average/minimum/maximum selector');
+  assert.strictEqual(statistic.style.visibility,'hidden','Recorded counts keep an inaccessible reserved statistic slot');
+  assert.strictEqual(statistic.style.display,'');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');
   const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
   const rateOrders=JSON.parse(JSON.stringify(scope.ordering));
   for(const group of ['vehicles','maps','tiers']){
     state.group=group;scope.ordering[group]={metric:'win_rate',statistic:'max',direction:'desc',chronology:'newest'};render();
-    assert.strictEqual(statistic.style.display,'none','Win rate has no aggregate-statistic selector in '+group);
+    assert.strictEqual(statistic.style.visibility,'hidden','Win rate keeps its inapplicable statistic out of presentation in '+group);
+    assert.strictEqual(statistic.style.display,'');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');
     assert.strictEqual(selects.statistic.trigger.disabled,true);
     const beforeRate=commands.length;context.changeOrder('statistic','min');assert.strictEqual(commands.length,beforeRate,'Retained statistic callbacks cannot alter win-rate sorting');
     const option=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');

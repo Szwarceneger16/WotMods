@@ -602,8 +602,8 @@
         node.style.color = color || '';
         // Black ink needs a crisp light edge against dark camo, not more blur.
         node.style.textShadow = color === '#000000' ?
-            '-0.75rem 0 0 rgba(224,216,191,0.85), 0.75rem 0 0 rgba(224,216,191,0.85), ' +
-            '0 -0.75rem 0 rgba(224,216,191,0.85), 0 0.75rem 0 rgba(224,216,191,0.85)' :
+            '-0.4rem 0 0 rgba(224,216,191,0.85), 0.4rem 0 0 rgba(224,216,191,0.85), ' +
+            '0 -0.4rem 0 rgba(224,216,191,0.85), 0 0.4rem 0 rgba(224,216,191,0.85)' :
             color ? '0 0 0.7rem rgba(212,204,176,0.35)' : '';
         if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
         else { node.removeAttribute('data-wn8-value'); }
@@ -695,9 +695,10 @@
         var holder = append(parent, element('div', 'ss-free-xp ss-summary-xp-total'));
         holder.setAttribute('data-xp-metric', metric);
         append(holder, element('span', 'ss-xp-total-label', t(metric === 'xp_base' ? 'xp.base_total' : 'xp.received_total')));
-        append(holder, element('strong', 'ss-xp-total-value' + (!hasNumber(value) ? ' ss-unknown' : ''), number(value)));
+        var amount = append(holder, element('div', 'ss-xp-total-amount'));
+        append(amount, element('strong', 'ss-xp-total-value' + (!hasNumber(value) ? ' ss-unknown' : ''), number(value)));
         var partial = coverage(data.count, total);
-        if (partial) { explainCoverage(append(holder, element('span', 'ss-count-coverage',
+        if (partial) { explainCoverage(append(amount, element('span', 'ss-count-coverage',
             ' (' + partial + ')')), data.count, total); }
     }
     function wn8Coverage(parent, stats, battle) {
@@ -818,8 +819,9 @@
         var xpTotals = append(summaryMeta, element('div', 'ss-summary-xp-totals'));
         totalXP(xpTotals, stats, 'xp_base');
         totalXP(xpTotals, stats, 'xp_received');
-        freeXP(summaryMeta, stats);
-        wn8Coverage(summaryMeta, stats, false);
+        var summaryCoverage = append(summaryMeta, element('div', 'ss-summary-coverage'));
+        freeXP(summaryCoverage, stats);
+        wn8Coverage(summaryCoverage, stats, false);
         details(layout, stats, true);
         layoutSummary();
         if (nodes.summary.querySelector('.ss-cell-coverage, .ss-count-coverage')) { help(nodes.summary, t('coverage.legend')); }
@@ -1054,7 +1056,16 @@
     function renderSelects(scope) {
         var options = getOrder(scope), field, index, remembered = rememberedMetric(scope, options.metric);
         var statistic = document.querySelector('.ss-sort-statistic'), off = document.getElementById('ss-sort-off');
-        if (statistic) { statistic.style.display = state.group === 'battles' || options.metric === 'battles' || options.metric === 'win_rate' ? 'none' : ''; }
+        var statisticMetric = options.metric === 'off' ? remembered : options.metric;
+        var applicable = state.group !== 'battles' && statisticMetric !== 'battles' && statisticMetric !== 'win_rate';
+        if (statistic) {
+            // Keep its logical slot so metric changes never recenter the row.
+            // Invisible, disabled controls do not suggest a statistic for rates/counts.
+            statistic.style.display = '';
+            statistic.style.visibility = applicable ? '' : 'hidden';
+            statistic.setAttribute('aria-hidden', String(!applicable));
+            if (!applicable && state.openSelect === selects.statistic) { closeSelect(false); }
+        }
         if (off) {
             off.style.display = state.wideFilters ? 'flex' : 'none';
             off.disabled = orderingUnavailable(scope); off.setAttribute('aria-disabled', String(off.disabled));
@@ -1835,10 +1846,32 @@
         hideMapPreview(); hideHelp();
         var bounds = root.getBoundingClientRect(), anchor = target.getBoundingClientRect(), scale = state.nativeScale || 1;
         var gap = 8 * scale;
-        if (!(anchor.width > 1) || !(anchor.height > 1) || !(bounds.width > gap * 2) || !(bounds.height > gap * 2)) { return; }
-        var previewHeight = target.getAttribute('data-ss-map-preview-mode') === 'minimap' ? anchor.width : anchor.height;
-        var factor = Math.min(4, (bounds.width - gap * 2) / anchor.width, (bounds.height - gap * 2) / previewHeight);
-        var width = anchor.width * factor, height = previewHeight * factor;
+        var frameX = 2 * scale, frameY = frameX, source = target.getAttribute('data-ss-map-preview') || '';
+        if (typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+            try {
+                var style = window.getComputedStyle(mapPreview);
+                var horizontal = parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+                var vertical = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+                if (isFinite(horizontal) && horizontal >= 0) { frameX = horizontal; }
+                if (isFinite(vertical) && vertical >= 0) { frameY = vertical; }
+            } catch (error) { /* Keep the shipped native frame while styles mount. */ }
+        }
+        if (!(anchor.width > 1) || !(anchor.height > 1) || !(bounds.width > gap * 2 + frameX) || !(bounds.height > gap * 2 + frameY)) { return; }
+        // Use the reviewed category defaults (8:5 loading art, 5:3 small
+        // icons, square lobby maps), not the unrelated thumbnail frame.
+        // Decorative loading art may crop edge variants; tactical and unknown
+        // images always retain contain, so no part of a minimap is discarded.
+        var aspect = anchor.width / anchor.height;
+        var decorative = target.getAttribute('data-ss-map-preview-mode') !== 'minimap' &&
+            source.indexOf('img://gui/maps/icons/map/screen/') === 0;
+        if (target.getAttribute('data-ss-map-preview-mode') === 'minimap' ||
+                /^img:\/\/gui\/maps\/icons\/map\/[A-Za-z0-9_-]+\.(png|dds)$/i.test(source)) { aspect = 1; }
+        else if (decorative) { aspect = 8 / 5; }
+        else if (source.indexOf('img://gui/maps/icons/map/small/') === 0) { aspect = 5 / 3; }
+        var width = Math.min(anchor.width * 4, bounds.width - gap * 2,
+            (bounds.height - gap * 2 - frameY) * aspect + frameX);
+        var height = (width - frameX) / aspect + frameY;
+        if (!(width > frameX) || !(height > frameY)) { return; }
         var left = anchor.right - bounds.left + gap;
         if (left + width > bounds.width - gap) { left = anchor.left - bounds.left - width - gap; }
         var top = anchor.top - bounds.top;
@@ -1846,7 +1879,8 @@
         target.setAttribute('aria-describedby', mapPreview.id); target.setAttribute('aria-expanded', 'true');
         var label = t('maps.preview', [target.getAttribute('aria-label') || '']);
         mapPreview.setAttribute('aria-label', label); mapPreviewImage.setAttribute('aria-label', label);
-        mapPreviewImage.style.backgroundImage = 'url("' + target.getAttribute('data-ss-map-preview') + '")';
+        mapPreviewImage.style.backgroundImage = 'url("' + source + '")';
+        mapPreviewImage.style.backgroundSize = decorative ? 'cover' : 'contain';
         mapPreview.style.width = width + 'px'; mapPreview.style.height = height + 'px';
         mapPreview.style.left = Math.max(gap, Math.min(left, bounds.width - width - gap)) + 'px';
         mapPreview.style.top = Math.max(gap, Math.min(top, bounds.height - height - gap)) + 'px';
@@ -2013,9 +2047,9 @@
                 ids.unshift(data.active_crucible);
             }
             var missionTable = rewardTable(missionBlock, 'ss-more-missions');
-            ids.forEach(function (id) {
+            ids.forEach(function (id, index) {
                 var mission = missions[id], kind = mission.kind || 'other';
-                var row = append(missionTable, element('div', 'ss-more-mission'));
+                var row = append(missionTable, element('div', 'ss-more-mission' + (index % 2 ? ' ss-more-mission-even' : '')));
                 row.setAttribute('role', 'row');
                 var label = t('more.kind.' + kind);
                 if (mission.operation) { label += ' · ' + mission.operation; }
@@ -2114,6 +2148,34 @@
         if (data.suicide) { append(panel, element('p', 'ss-more-caption', t('more.suicide'))); }
         if (!panel.firstChild) { append(panel, element('p', '', t('more.empty'))); }
     }
+    function layoutMissionRows(missions, width) {
+        var body = missions.querySelector('.ss-more-body');
+        if (!body) { return; }
+        var cards = Array.prototype.slice.call(body.querySelectorAll('.ss-more-mission'));
+        // Two readable mission cells fill compact cards without squeezing the
+        // independent bonus matrix. Explicit rows avoid native grid/wrap gaps.
+        var count = cards.length > 1 && width >= 440 ? 2 : 1, gap = 8;
+        if (body.getAttribute('data-mission-columns') !== String(count)) {
+            clear(body);
+            var row;
+            cards.forEach(function (card, index) {
+                if (index % count === 0) {
+                    row = append(body, element('div', 'ss-more-mission-row'));
+                    row.setAttribute('role', 'presentation');
+                }
+                row.appendChild(card);
+            });
+            body.setAttribute('data-mission-columns', String(count));
+        }
+        cards.forEach(function (card, index) {
+            var paired = count === 2 && (index % 2 === 1 || index + 1 < cards.length);
+            var value = (paired ? (width - gap) / 2 : width) + 'rem';
+            if (card.style.width !== value) { card.style.width = value; }
+            if (card.style.flex !== '0 0 ' + value) { card.style.flex = '0 0 ' + value; }
+            var margin = paired && index % 2 === 0 ? gap + 'rem' : '0rem';
+            if (card.style.marginRight !== margin) { card.style.marginRight = margin; }
+        });
+    }
     function layoutMoreColumns(card, availableWidth) {
         var columns = card.querySelector('.ss-more-columns');
         if (!columns) { return; }
@@ -2140,6 +2202,7 @@
             missions.style.width = missionWidth + 'rem';
             missions.style.flex = paired ? '0 0 ' + missionWidth + 'rem' : '0 0 auto';
             missions.style.minWidth = paired ? minimumMissionWidth + 'rem' : '0rem';
+            layoutMissionRows(missions, missionWidth);
         }
     }
     function attachBattleMore(card, header, battle) {

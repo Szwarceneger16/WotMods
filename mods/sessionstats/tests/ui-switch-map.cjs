@@ -12,21 +12,21 @@ function assertMapPreviewSource(){
   let bounds={left:100,top:50,width:700,height:730},anchor={left:120,top:110,width:54,height:32};
   root.contains=node=>node===target;root.getBoundingClientRect=()=>bounds;
   target.getBoundingClientRect=()=>({...anchor,right:anchor.left+anchor.width,bottom:anchor.top+anchor.height});
-  target.setAttribute('data-ss-map-preview','img://gui/maps/icons/map/synthetic.png');target.setAttribute('aria-label','Synthetic map');
+  target.setAttribute('data-ss-map-preview','img://gui/maps/icons/map/screen/synthetic.dds');target.setAttribute('aria-label','Synthetic map');
   preview.id='ss-map-preview';
   const state={group:'maps',nativeScale:1,destroyed:false},context={state,root,mapPreview:preview,mapPreviewImage:image,mapPreviewTarget:null,
     hideHelp(){},t:(key,args)=>key+': '+args[0]};
   vm.createContext(context);const text=source();
   vm.runInContext(['hideMapPreview','mapPreviewAncestor','showMapPreview','hoverMapPreview','leaveMapPreview','mapPreviewKey'].map(name=>sourceFunction(text,name)).join('\n'),context);
-  context.showMapPreview(target);assert.strictEqual(preview.style.width,'216px');assert.strictEqual(preview.style.height,'128px');
+  context.showMapPreview(target);assert.strictEqual(preview.style.width,'216px');assert.strictEqual(preview.style.height,'135.75px');
   assert.strictEqual(preview.style.display,'block');assert.strictEqual(target.getAttribute('aria-expanded'),'true');
-  assert.strictEqual(image.style.backgroundImage,'url("img://gui/maps/icons/map/synthetic.png")');
+  assert.strictEqual(image.style.backgroundImage,'url("img://gui/maps/icons/map/screen/synthetic.dds")');
   context.leaveMapPreview({relatedTarget:new Node()});assert.strictEqual(preview.style.display,'none');
   assert.strictEqual(target.getAttribute('aria-expanded'),'false');assert.strictEqual(target.getAttribute('aria-describedby'),null);
   state.nativeScale=2;bounds={left:40,top:30,width:1100,height:1460};anchor={left:1060,top:1400,width:84,height:52};
-  context.showMapPreview(target);assert.strictEqual(preview.style.width,'336px');assert.strictEqual(preview.style.height,'208px');
+  context.showMapPreview(target);assert.strictEqual(preview.style.width,'336px');assert.strictEqual(preview.style.height,'211.5px');
   assert(parseFloat(preview.style.left)>=16&&parseFloat(preview.style.left)+336<=bounds.width-16);
-  assert(parseFloat(preview.style.top)>=16&&parseFloat(preview.style.top)+208<=bounds.height-16);
+  assert(parseFloat(preview.style.top)>=16&&parseFloat(preview.style.top)+211.5<=bounds.height-16);
   let consumed=0;context.mapPreviewKey({key:'Escape',preventDefault(){consumed++;},stopPropagation(){consumed++;}});
   assert.strictEqual(consumed,2);assert.strictEqual(preview.style.display,'none');
   for(const blocked of ['dialog','resize','dragging','destroyed']){state[blocked]=true;context.showMapPreview(target);
@@ -58,7 +58,7 @@ async function assertPendingMapGeometry(browser,nativeHost,check){
       try{
         const payload=JSON.parse(model.payload);payload.account_key='synthetic-pending-map';payload.window_size=[1800,1100];
         payload.localization={language:'en',messages:{}};
-        payload.scopes.launch.maps[0].visual={kind:'map',src:'img://gui/maps/icons/map/synthetic.png',alt:'Synthetic map'};
+        payload.scopes.launch.maps[0].visual={kind:'map',src:'img://gui/maps/icons/map/small/synthetic.png',preview_src:'img://gui/maps/icons/map/screen/synthetic.dds',preview_mode:'image',alt:'Synthetic map'};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();document.getElementById('ss-group-maps').onclick();
         for(let n=0;n<6;n++)frame();
         const thumb=document.querySelector('.ss-group-thumb[data-ss-map-preview]'),bar=document.getElementById('ss-list-controls');
@@ -84,12 +84,13 @@ module.exports=async({browser,nativeHost,check})=>{
   require('./ui-map-preview-quality.cjs')();check('Actual-source high-resolution and minimap previews preserve safe local fallback and geometry',true);
   assertMapPreviewSource();check('Actual-source map preview scales fourfold, stays bounded and retires on leave/Escape/blocked state',true);
   await assertPendingMapGeometry(browser,nativeHost,check);
+  await require('./ui-map-preview-aspects.cjs')({browser,nativeHost,check});
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:2400*scale,height:1400*scale},viewport:{width:2400*scale,height:1400*scale,scale}});
     try{
       await page.evaluate(scale=>{const payload=JSON.parse(model.payload);payload.account_key='synthetic-map-preview-'+scale;
         payload.window_size=[1800,1100];payload.localization={language:'en',messages:{}};
-        payload.scopes.launch.maps[0].visual={kind:'map',src:'img://gui/maps/icons/map/synthetic.png',alt:'Synthetic map'};
+        payload.scopes.launch.maps[0].visual={kind:'map',src:'img://gui/maps/icons/map/small/synthetic.png',preview_src:'img://gui/maps/icons/map/screen/synthetic.dds',preview_mode:'image',alt:'Synthetic map'};
         payload.scopes.launch.ordering.vehicles={metric:'off',statistic:'avg',direction:'desc',chronology:'newest'};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},scale);
       await page.locator('#ss-group-maps').click();await readyMapLayout(page,scale);
@@ -97,8 +98,10 @@ module.exports=async({browser,nativeHost,check})=>{
       await thumb.evaluate(node=>{window.__mapPreviewProbe=node;});
       const before=await thumb.locator('xpath=..').boundingBox();await thumb.hover();await frames(page);
       const tile=await thumb.boundingBox(),popup=await tooltip.boundingBox(),panel=await page.locator('#grz-session-stats').boundingBox();
-      check('Hover shows an adjacent fourfold map image inside the panel at'+scale*100+'%',
-        !!popup&&Math.abs(popup.width-tile.width*4)<=1&&Math.abs(popup.height-tile.height*4)<=1&&
+      check('Hover shows an adjacent fourfold-width loading-art preview inside the panel at'+scale*100+'%',
+        !!popup&&Math.abs(popup.width-tile.width*4)<=1&&
+        await tooltip.evaluate(node=>{const image=node.querySelector('.ss-map-preview-image').getBoundingClientRect();
+          return getComputedStyle(node.querySelector('.ss-map-preview-image')).backgroundSize==='cover'&&Math.abs(image.width/image.height-8/5)<0.01;})&&
         popup.x>=panel.x&&popup.y>=panel.y&&popup.x+popup.width<=panel.x+panel.width&&popup.y+popup.height<=panel.y+panel.height&&
         await tooltip.evaluate(node=>getComputedStyle(node).position==='absolute'&&getComputedStyle(node).pointerEvents==='none'));
       const after=await thumb.locator('xpath=..').boundingBox();

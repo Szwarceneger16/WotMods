@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.4
+# Appearance and scrolling configuration — 0.9.5
 
 ## File placement and applying changes
 
@@ -258,8 +258,10 @@ preview mode, card widths and window settings for the existing UI models.
 ## Map hover artwork
 
 `"maps": {"preview_mode": "image"}` keeps the landscape thumbnail on each map
-card and uses the client's larger loading-screen picture in its fourfold hover
-preview. Set `preview_mode` to `"minimap"` for a square tactical-map preview;
+card and uses the client's larger loading-screen picture in a hover frame whose
+width is four times the thumbnail width. Reviewed loading art uses an 8:5 frame;
+unusual photo proportions fill that frame without distortion and may crop at
+the edges. Set `preview_mode` to `"minimap"` for a complete square tactical preview;
 this affects the hover only. Other values restore the `"image"` default.
 
 The resolver selects the same geometry through the client's resource registry

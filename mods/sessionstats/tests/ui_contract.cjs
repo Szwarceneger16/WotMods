@@ -627,6 +627,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-chronology.cjs',browser);
   await runFeatureSuite('./ui-chronology-labels.cjs',browser);
   await runFeatureSuite('./ui-sort-details.cjs',browser);
+  await runFeatureSuite('./ui-sort-layout-stable.cjs',browser);
   await runFeatureSuite('./ui-help-click.cjs',browser);
   await runFeatureSuite('./ui-scroll-state.cjs',browser);
   await runFeatureSuite('./ui-pagination.cjs',browser);

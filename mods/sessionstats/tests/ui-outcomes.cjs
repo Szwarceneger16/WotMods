@@ -67,10 +67,12 @@ module.exports = async ({browser,nativeHost,check}) => {
   await page.evaluate(()=>{const saved=__outcomePaintRestore;saved.node.style.background=saved.background;
     Array.from(saved.node.children).forEach((layer,index)=>{layer.style.backgroundImage=saved.layers[index];});delete window.__outcomePaintRestore;});
   const thumb=page.locator('.ss-battle-map-thumb').first();await thumb.hover();
-  check('Battle map hover uses the same fourfold high-resolution preview as Maps',await thumb.evaluate(node=>{
-    const tile=node.getBoundingClientRect(),preview=document.getElementById('ss-map-preview'),box=preview.getBoundingClientRect();
-    return getComputedStyle(preview).display==='block'&&Math.abs(box.width-tile.width*4)<=1&&Math.abs(box.height-tile.height*4)<=1&&
-      preview.querySelector('.ss-map-preview-image').style.backgroundImage.includes('/map/screen/synthetic-win.dds');
+  check('Battle map hover uses the same fourfold-width loading-art preview as Maps',await thumb.evaluate(node=>{
+    const tile=node.getBoundingClientRect(),preview=document.getElementById('ss-map-preview'),box=preview.getBoundingClientRect(),
+      image=preview.querySelector('.ss-map-preview-image'),content=image.getBoundingClientRect();
+    return getComputedStyle(preview).display==='block'&&Math.abs(box.width-tile.width*4)<=1&&
+      Math.abs(content.width/content.height-8/5)<0.005&&getComputedStyle(image).backgroundSize==='cover'&&
+      image.style.backgroundImage.includes('/map/screen/synthetic-win.dds');
   }));
   await page.locator('#ss-titlebar h1').hover();
   check('Leaving a battle map miniature immediately closes its preview',!await page.locator('#ss-map-preview').isVisible());

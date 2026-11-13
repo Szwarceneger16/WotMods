@@ -11,7 +11,7 @@ function hasBlackOutline(shadow){
     if(!/rgba\(224,\s*216,\s*191,\s*0\.85\)/.test(part))return false;
     const offsets=part.replace(/rgba\([^)]+\)/,'').match(/-?\d+(?:\.\d+)?(?:px|rem)?/g)||[];
     const values=offsets.map(parseFloat);
-    if(values.length!==3||values[2]!==0||Math.abs(values[0])+Math.abs(values[1])!==0.75)return false;
+    if(values.length!==3||values[2]!==0||Math.abs(values[0])+Math.abs(values[1])!==0.4)return false;
     directions.push(values.slice(0,2).join(','));
   }
   return new Set(directions).size===4;

@@ -84,4 +84,5 @@ module.exports=async({browser,nativeHost,check})=>{
     }
   }finally{await page.close();}
   await require('./ui-more-spacing.cjs')({browser,nativeHost,check});
+  await require('./ui-mission-columns.cjs')({browser,nativeHost,check});
 };

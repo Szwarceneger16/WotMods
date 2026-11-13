@@ -27,8 +27,8 @@
         node.style.color = color || '';
         // Black ink needs a crisp light edge against dark camo, not more blur.
         node.style.textShadow = color === '#000000' ?
-            '-0.75rem 0 0 rgba(224,216,191,0.85), 0.75rem 0 0 rgba(224,216,191,0.85), ' +
-            '0 -0.75rem 0 rgba(224,216,191,0.85), 0 0.75rem 0 rgba(224,216,191,0.85)' :
+            '-0.4rem 0 0 rgba(224,216,191,0.85), 0.4rem 0 0 rgba(224,216,191,0.85), ' +
+            '0 -0.4rem 0 rgba(224,216,191,0.85), 0 0.4rem 0 rgba(224,216,191,0.85)' :
             color ? '0 0 0.7rem rgba(212,204,176,0.35)' : '';
         if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
         else { node.removeAttribute('data-wn8-value'); }
