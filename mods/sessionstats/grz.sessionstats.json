@@ -151,7 +151,8 @@
     "garage_spinner_border_top_color": "#969a9d",
     "date_unavailable_text": "#969c96",
     "date_unavailable_border": "#464c46",
-    "date_unavailable_background": "#2b302b"
+    "date_unavailable_background": "#2b302b",
+    "loading_scrim_background": "rgba(17,19,9,0.45)"
   },
   "radii": {
     "window": 8,

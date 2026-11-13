@@ -1,5 +1,13 @@
 SESSION STATS — CHANGELOG
 
+0.9.6 • 2026-11-13
+• Fill decorative result/map thumbnails without black side bands.
+• Compact the XP summary into Base, Received and Free XP total rows.
+• Put a light backing directly behind black WN8 figures for small-text contrast.
+• Add aggregate All sorting for XP and credits, including gross credits.
+• Present battle outcomes consistently in uppercase in all interface languages.
+• Show a centered panel-wide loading overlay with softly blurred results.
+
 0.9.5 • 2026-11-13
 • Keep the two XP totals and their coverage in explicit, non-overlapping rows.
 • Use readable two-column mission rows when compact card space permits.

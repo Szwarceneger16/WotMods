@@ -17,7 +17,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     maps:{metric:'off',statistic:'avg',direction:'desc',chronology:'newest'}}};
   const state={payload:{account_key:'synthetic-filter-account',loading:false,load_error:'',scopes:{launch:scope,instance:scope}},
     scope:'launch',group:'vehicles',nativeSession:true,orders:{},orderIntent:null,wideFilters:true,feed:null};
-  const commands=[],selects={},context={state,selects,Object,String,JSON,
+  const commands=[],selects={},context={state,selects,root:new Node(),Object,String,JSON,
     document:{getElementById:id=>controls[id]||(controls[id]=new Node()),querySelector:selector=>selector==='.ss-sort-statistic'?statistic:null},
     t:key=>key,currentScope:()=>scope,scopeName:()=>state.scope,
     viewContext:()=>({account_key:state.payload.account_key,scope:state.scope,period_id:scope.period_id}),
@@ -30,7 +30,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['orderKey','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
+  for(const name of ['orderKey','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
     vm.runInContext(actual(name),context);
   context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
@@ -73,7 +73,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   scope.loading=false;scope.load_error='';state.orderIntent={context:context.viewContext(),group:state.group,options:scope.ordering.vehicles};
   context.renderFilterActivity(scope);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible','A pending native sort owns the spinner before loading data arrives');
   state.orderIntent=null;state.feed={pending:{id:'synthetic-page'}};context.renderFilterActivity(scope);
-  assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible','An owned page fetch uses the reserved filter spinner');
+  assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible','An owned page fetch displays the panel loading status');
   state.feed=null;context.renderFilterActivity(scope);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'hidden');
   state.payload.loading=true;context.renderFilterActivity(scope);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible');
   state.scope='instance';context.renderFilterActivity(scope);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'hidden','Account history loading does not mark a ready installation scope busy');
@@ -252,7 +252,7 @@ module.exports=async({browser,nativeHost,check})=>{
         payload.appearance=payload.appearance||{};payload.appearance.window_settings={background_transparency:0,maximized:false,restored_width:1500,restored_height:850};
         payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.manual));payload.scopes.timeline.period_id='synthetic-filter-timeline';
         payload.scopes.timeline.from_point=payload.scopes.timeline.to_point='';payload.scopes.timeline.loading=false;payload.scopes.timeline.load_error='';
-        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},scale);await frames(page);
       check('A fitting wide panel exposes the adjacent Off toggle'+caption,
         await page.locator('#ss-sort-off').isVisible()&&await page.locator('.ss-list-controls').evaluate(node=>node.classList.contains('ss-filters-wide')));
       if(await page.locator('#ss-sort-off').getAttribute('aria-pressed')==='false'){
@@ -294,7 +294,7 @@ module.exports=async({browser,nativeHost,check})=>{
       const row=await page.locator('.ss-list-controls').evaluate(node=>{const controls=[...node.children].filter(child=>{
         const box=child.getBoundingClientRect();return box.width>0&&box.height>0;}).map(child=>child.getBoundingClientRect()),box=node.getBoundingClientRect();
         return {bounded:controls.every(child=>child.left>=box.left-1&&child.right<=box.right+1),row:Math.min(...controls.map(child=>child.bottom))-Math.max(...controls.map(child=>child.top))>0};});
-      check('The wide result controls and reserved loading slot share one bounded row'+caption,row.bounded&&row.row);
+      check('The wide result controls share one bounded row independently of the loading overlay'+caption,row.bounded&&row.row);
       await width(500);
       check('A narrow panel retains the original metric dropdown despite the wide game viewport'+caption,
         !await page.locator('#ss-sort-off').isVisible()&&!await page.locator('.ss-list-controls').evaluate(node=>node.classList.contains('ss-filters-wide')));
@@ -336,7 +336,7 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.timeline.loading=true;payload.scopes.timeline.load_error='';
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
       const loading=await geometry();
-      check('A rebuilding range exposes the localized spinner in its reserved slot'+caption,
+      check('A rebuilding range exposes the localized full-panel loading status'+caption,
         await page.locator('#ss-filter-loading').isVisible()&&await page.locator('#ss-filter-loading').getAttribute('role')==='status'&&
         await page.locator('#ss-filter-loading').getAttribute('aria-label')==='Loading page…');
       check('The loading indicator keeps filter geometry and the retained result position'+caption+': '+JSON.stringify({before,loading}),
@@ -356,6 +356,7 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-sort-metric .ss-select-trigger').click();await page.locator('#ss-sort-metric [data-value="credits_net"]').click();await frames(page);
       check('An unacknowledged native sort immediately owns the filter spinner'+caption,await page.locator('#ss-filter-loading').isVisible());
       await acknowledge();check('The matching native sort acknowledgement clears its spinner'+caption,!await page.locator('#ss-filter-loading').isVisible());
+      await require('./ui-loading-overlay.cjs')({page,check,caption,scale,width,acknowledge,frames});
     }finally{await page.close();}
   }
 };

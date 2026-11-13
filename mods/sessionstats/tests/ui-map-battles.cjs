@@ -59,11 +59,13 @@ module.exports=async ({browser,nativeHost,check})=>{
         buttons:card.querySelectorAll('.ss-map-battle-open').length,
         names:[...card.querySelectorAll('.ss-map-battle-name')].slice(0,2).map(node=>node.textContent),
         ratings:[...card.querySelectorAll('.ss-map-battle-wn8')].slice(0,2).map(node=>node.textContent),
+        outcomes:[...card.querySelectorAll('.ss-map-battle-outcome')].slice(0,4).map(node=>node.textContent),
         markup:[...card.querySelectorAll('b,img')].map(node=>node.outerHTML),
         openCaption:card.querySelector('.ss-map-battle-open').textContent}));
       check('A map page renders ten escaped battle rows and honest zero/missing WN8 in '+language+': '+JSON.stringify(firstPage),
         firstPage.rows===10 && firstPage.buttons===10 && firstPage.names[0]==='<b>Synthetic tank</b>' &&
         firstPage.ratings[0]===messages['metric.wn8']+' 0' && firstPage.ratings[1]===messages['metric.wn8']+' '+messages['format.missing'] &&
+        firstPage.outcomes.join('|')===['win','loss','draw','unknown'].map(outcome=>messages['outcome.'+outcome].toUpperCase()).join('|') &&
         firstPage.markup.length===0 && firstPage.openCaption===messages['maps.open_battle']);
       check('Map battle paging disables only the unavailable direction in '+language,
         await map.locator('.ss-map-page-previous').isDisabled() && await map.locator('.ss-map-page-next').isEnabled());

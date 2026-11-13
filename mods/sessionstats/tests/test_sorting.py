@@ -33,6 +33,20 @@ class SortingTests(NativePaginationTests):
                     self.window._model.onAction(self.command())
                     self.assertEqual(len(self.payload()['scopes']['manual']['battles']),5)
 
+    def test_additive_totals_and_gross_credits_pass_the_owned_native_sort_bridge(self):
+        for group in ('vehicles', 'maps', 'tiers'):
+            for metric in ('xp_base', 'xp_received', 'credits_net', 'credits_gross'):
+                scope = self.sort(group=group, metric=metric, statistic='sum')
+                self.assertEqual(scope['ordering'][group]['statistic'], 'sum')
+                self.assertEqual(scope['ordering'][group]['metric'], metric)
+                for row in scope[group]:
+                    self.assertEqual(row['sort_value'], row['stats'][metric]['sum'])
+            # A retained inappropriate All command cannot replace the last
+            # accepted sum, even if an old UI callback sends it directly.
+            for metric in ('battle_wn8', 'win_rate', 'battles'):
+                scope = self.sort(group=group, metric=metric, statistic='sum')
+                self.assertEqual(scope['ordering'][group]['metric'], 'credits_gross')
+
     def test_missing_is_last_negative_credits_are_numeric_and_corrections_invalidate_order(self):
         service = self.mod.active_service
         self.assertTrue(service.record_result(result('missing', xp_base=None)))

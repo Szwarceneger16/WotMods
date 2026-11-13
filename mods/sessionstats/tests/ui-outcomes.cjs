@@ -28,12 +28,12 @@ module.exports = async ({browser,nativeHost,check}) => {
       return style && style.opacity==='1' && style.backgroundColor.startsWith('rgb(') &&
         layers.length===12 && layers.every(layer=>{const paint=getComputedStyle(layer);
           return paint.backgroundImage.includes('/BgBattleResultIcon'+name+'-1.png') &&
-            paint.backgroundSize==='contain' && paint.position==='absolute' && paint.opacity==='1' && paint.filter==='none';
+            paint.backgroundSize==='cover' && paint.position==='absolute' && paint.opacity==='1' && paint.filter==='none';
         }) && node.textContent==='';
     })));
-  check('Normal-card captions stack below the unchanged result artwork without a tall banner',await page.evaluate(()=>
+  check('Normal-card captions stack below the native result artwork without a tall banner',await page.evaluate(()=>
     Array.from(document.querySelectorAll('.ss-outcome-label')).map(n=>n.textContent).join('|')===
-      'Zwycięstwo|Porażka|Remis' && Array.from(document.querySelectorAll('.ss-outcome-art')).every(node=>{
+      'ZWYCIĘSTWO|PORAŻKA|REMIS' && Array.from(document.querySelectorAll('.ss-outcome-art')).every(node=>{
         const image=node.querySelector('.ss-outcome-image'),label=node.querySelector('.ss-outcome-label');
         return image.getAttribute('aria-hidden')==='true' &&
           label.getBoundingClientRect().top>=image.getBoundingClientRect().bottom &&
@@ -180,7 +180,8 @@ module.exports = async ({browser,nativeHost,check}) => {
   });
   check('Missing, remote and mismatched artwork retain readable localized outcomes',
     await page.locator('.ss-outcome-image').count()===0 &&
-    (await page.locator('.ss-outcome-label').allTextContents()).join('|')==='Zwycięstwo|Porażka|Remis');
+    (await page.locator('.ss-outcome-label').allTextContents()).join('|')==='ZWYCIĘSTWO|PORAŻKA|REMIS');
   await page.close();
   await require('./ui-battle-header-alignment.cjs')({browser,nativeHost,check});
+  await require('./ui-thumbnail-framing.cjs')({browser,nativeHost,check});
 };

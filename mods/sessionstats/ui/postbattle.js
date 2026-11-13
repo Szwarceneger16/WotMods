@@ -22,8 +22,32 @@
         }
         return colors[colors.length - 1];
     }
+    function paintWN8Ink(node, black) {
+        var ink = node.querySelector('.ss-wn8-low-ink');
+        if (!black) {
+            if (ink) {
+                var text = ink.textContent;
+                node.removeChild(ink);
+                node.textContent = text;
+            }
+            return;
+        }
+        if (!ink) {
+            ink = node.ownerDocument.createElement('span');
+            ink.className = 'ss-wn8-low-ink';
+            ink.textContent = node.textContent;
+            node.textContent = '';
+            node.appendChild(ink);
+        }
+        // Use the panel's figure-only backing for the black rating band.
+        ink.style.backgroundColor = '#d8d2b6';
+        ink.style.borderRadius = '2rem';
+        ink.style.boxShadow = '0 0 0 1rem #d8d2b6';
+        ink.style.fontWeight = 'bold';
+    }
     function paintWN8(node, value) {
         var color = wn8Color(value);
+        paintWN8Ink(node, color === '#000000');
         node.style.color = color || '';
         // Black ink needs a crisp light edge against dark camo, not more blur.
         node.style.textShadow = color === '#000000' ?
@@ -36,6 +60,7 @@
     }
     function paintWN8Caption(node, value) {
         var color = wn8Color(value);
+        paintWN8Ink(node, false);
         node.style.color = color && color !== '#000000' ? color : '';
         node.style.textShadow = 'none';
         node.removeAttribute('data-wn8-value');

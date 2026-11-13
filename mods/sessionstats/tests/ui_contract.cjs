@@ -290,7 +290,7 @@ async function runFeatureSuite(file,browser) {
   await page.locator('#ss-group-battles').click();
   const missingCard=(await battleCards(page)).find(row=>row.id==='missing-result-fixture');
   check('Unrecovered battle stays listed with unknown outcome and dashes rather than fabricated zeros',
-    missingCard && missingCard.outcome==='Unknown result' && missingCard.values.every(row=>row.value==='—') &&
+    missingCard && missingCard.outcome==='UNKNOWN RESULT' && missingCard.values.every(row=>row.value==='—') &&
     missingCard.money.every(row=>row.values.every(value=>value==='—')));
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   await page.locator('#ss-group-vehicles').click();
@@ -340,7 +340,7 @@ async function runFeatureSuite(file,browser) {
       row.values[1].label==='WN8' && row.values[1].value===String(Math.round(stats.wn8));
   }));
   check('Battle header shows the actual outcome without one-battle count or win-rate KPIs',battles.every(row=>{
-    const outcomes={win:'Victory',loss:'Defeat',draw:'Draw'};
+    const outcomes={win:'VICTORY',loss:'DEFEAT',draw:'DRAW'};
     return row.aggregateKPIs===0 && row.outcome===outcomes[expectedBattles.get(row.id).outcome];
   }));
   check('Aggregate summary still has min/mean/max while the battle list is selected',
@@ -480,7 +480,7 @@ async function runFeatureSuite(file,browser) {
     check('Unavailable XP/WN8 remain dashes in a single battle ('+xpMode+')',
       missing.values.every(value=>value.value==='—'));
     check('Unknown battle outcome and unavailable bond balance stay explicit ('+xpMode+')',
-      missing.outcome==='Unknown result' && missing.money[1].values[2]==='—');
+      missing.outcome==='UNKNOWN RESULT' && missing.money[1].values[2]==='—');
   }
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   for(const grouping of ['maps','vehicles']) {
@@ -821,7 +821,7 @@ async function runFeatureSuite(file,browser) {
     await localized.locator('#ss-group-battles').click();
     check('Translated battle outcomes and finance headers for '+language,
       (await localized.locator('.ss-battle-outcome').allTextContents()).every(value=>
-        ['win','loss','draw'].some(outcome=>value===messages['outcome.'+outcome])) &&
+        ['win','loss','draw'].some(outcome=>value===messages['outcome.'+outcome].toUpperCase())) &&
       await localized.locator('#ss-summary .ss-money-head .ss-money-label').textContent()===messages['finance.currency']);
     for(const width of [320,744]) {
       await localized.setViewportSize({width,height:900});

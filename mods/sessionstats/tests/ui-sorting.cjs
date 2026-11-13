@@ -1,6 +1,7 @@
 /* Gameface-compatible select menus, native sorting protocol and narrow layouts. */
 const fs=require('fs'),path=require('path');
 module.exports=async ({browser,nativeHost,check})=>{
+  await require('./ui-sort-totals.cjs')({browser,nativeHost,check});
   await require('./ui-chronology.cjs')({browser,nativeHost,check});
   require('./ui-chronology-source.cjs')();check('Actual-source first/last battle ordering supports both directions independently',true);
   const page=await nativeHost(browser,{});

@@ -11,13 +11,15 @@ function run(){
     querySelectorAll(selector){return this.selectors[selector]||[];}querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
     appendChild(node){node.parentNode=this;this.children.push(node);return node;}
   }
-  const messages={'metric.wn8':'WN8','metric.win_rate':'Win rate','metric.battles':'Battles','sort.credits':'Credits (net)',
+  const messages={'metric.wn8':'WN8','metric.win_rate':'Win rate','metric.battles':'Battles','sort.credits':'Credits (net)','sort.credits_gross':'Credits (gross)',
     'xp.base':'Base XP','xp.received':'Received XP','sort.avg':'Avg','metric.min':'Min','metric.max':'Max',
+    'sort.sum':'All','sort.value_total':'Total {0}: {1}',
     'sort.metric_stat':'{0} {1}','sort.active_value':'Sorting value: {0}','sort.value_per_battle':'{0} {1} / battle: {2}'};
   const context={hasNumber:value=>typeof value==='number'&&Number.isFinite(value),
     append:(parent,node)=>parent.appendChild(node),element:(tag,cls,text)=>{const node=new Node(text);node.className=cls;return node;},
+    number:value=>value===null?'—':String(value),explainCoverage:node=>node,
     signed:value=>value===null?'—':String(value),t:(key,args=[])=>messages[key].replace(/\{(\d+)\}/g,(_,index)=>args[index])};
-  vm.createContext(context);vm.runInContext(['groupSortValue','cardSortValue','sortMetricLabel','markSortValue','highlightCardSort'].map(actual).join('\n'),context);
+  vm.createContext(context);vm.runInContext(['series','coverage','observedTotal','groupSortValue','cardSortValue','sortMetricLabel','markSortValue','highlightCardSort'].map(actual).join('\n'),context);
   function fixture(){
     const card=new Node(),meta=new Node(),kpis=[new Node(),new Node(),new Node()],rows=[new Node(),new Node()],head=new Node(),money=new Node();
     for(const row of rows.concat([head,money]))row.children=[new Node(),new Node(),new Node(),new Node()];
@@ -50,6 +52,19 @@ function run(){
   assert.strictEqual(f.money.children[3].getAttribute('data-ss-sort-active'),null,'A group total must not pretend to be the sorting average');
   f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric:'credits_net'},true);
   assert.strictEqual(f.money.children[3].getAttribute('data-ss-sort-active'),'credits_net');assert.strictEqual(f.meta.children.length,0);
+  for(const [metric,index] of [['credits_net',3],['credits_gross',1]]) {
+    f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric,statistic:'sum'},false);
+    assert.strictEqual(f.money.children[index].getAttribute('data-ss-sort-active'),metric,'All credits mark the actual aggregate total');
+    assert.strictEqual(f.meta.children.length,0,'An already displayed total needs no duplicate per-battle caption');
+  }
+  f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric:'credits_gross',statistic:'avg'},false);
+  assert.strictEqual(f.meta.children[0].textContent,'Avg Credits (gross) / battle: 5');
+  f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:600,stats:{observed_battles:3,xp_base:{count:2,sum:600}}},{metric:'xp_base',statistic:'sum'},false);
+  assert.strictEqual(f.meta.children[0].textContent,'Total Base XP: 600');
+  assert.strictEqual(f.meta.children[0].children[0].textContent,' (2/3)');
+  assert(f.rows[0].children.every(node=>!node.getAttribute('data-ss-sort-active')),'An XP total must not highlight the average distribution cell');
+  assert.strictEqual(context.groupSortValue({stats:{xp_base:{count:0,sum:0}}},{metric:'xp_base',statistic:'sum'}),null,'An empty legacy sum is unknown, not zero');
+  assert.strictEqual(context.groupSortValue({stats:{xp_base:{count:1,sum:0}}},{metric:'xp_base',statistic:'sum'}),0,'A received zero remains known');
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'battle_wn8'},true);
   assert.strictEqual(f.rows[1].getAttribute('data-ss-sort-active'),'battle_wn8');assert.strictEqual(f.meta.children.length,0);
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'off'},false);

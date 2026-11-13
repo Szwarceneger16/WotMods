@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.5 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.6 (persistent data schema unchanged)
 Release date: 2026-11-11.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.5', account_key: string, generated_at: unix seconds,
+ version: '0.9.6', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -96,7 +96,8 @@ STATS = {
  battles:int, observed_battles:int, missing_results:int, partial_results:int,
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
- xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES, credits_net:SERIES,
+ xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
+ credits_net:SERIES, credits_gross:SERIES,
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -177,7 +178,7 @@ radii, opacity and wheel behavior. Static CSS remains the fallback if this optio
 or bridge cannot be used. Successful defaults must be equivalent to both base stylesheets,
 apart from neutral opacity:1 declarations for the panel and garage button.
 
-Schema 1 contains 144 color keys, 12 radii keys, 3 opacity keys and
+Schema 1 contains 145 color keys, 15 radii keys, 5 opacity keys and
 scroll.speed_multiplier. Colors accept #RGB, #RRGGBB, #RRGGBBAA, rgb(), rgba(),
 or transparent; RGB channels are integers 0..255, alpha 0..1. Convert 8-digit hex to
 rgba() before rendering. Reject arbitrary CSS declarations, selectors, URLs and scripts.
@@ -387,12 +388,16 @@ or persisted-data migration.
 
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
-ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8|battles|win_rate,
-                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
+ordering[group] = {metric:off|xp_base|xp_received|credits_net|credits_gross|battle_wn8|battles|win_rate,
+                   statistic:min|avg|max|sum, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
 A successful request resets that grouping to page zero; pagination and totals remain period-wide.
-Metric ordering uses the selected per-battle series statistic, with missing values last.
+Metric ordering uses the selected series statistic, with missing values last.
+All (sum) is available only for aggregate XP and net/gross credits, never WN8,
+win rate, battle counts or individual battles. Gross credits are the income series;
+net credits are the settled balance series. Each retains independent known-value coverage.
+Disabling an aggregate metric may retain sum; selecting a nonadditive metric resets it to avg.
 Group chronology independently selects the first or last battle and ascending or descending
 dates. Legacy newest=last descending, oldest=first ascending; first_desc and last_asc
 complete the four group modes. Individual Battles retain newest/oldest only.
@@ -428,7 +433,8 @@ Active aggregate metric sorting also publishes sort_value, the exact scalar
 used by its selected comparator (null if unavailable). Mark the existing matching
 value instead of repeating it below the name. Active WN8 ordering replaces the
 large headline with its selected Min/Average/Max; finance tables continue to show
-totals, so absent aggregate per-battle net-credit values retain an explicit caption.
+totals. Credit All selects the existing income/net total; per-battle Min/Avg/Max
+credit values and XP All retain an explicit caption when no matching table cell exists.
 Win-rate ordering is aggregate-only and matches known-outcome percentages; unknown
 results remain last in either direction. Default group headlines identify Combined
 WN8, recalculated from summed actual/expected values, separately from battle averages.

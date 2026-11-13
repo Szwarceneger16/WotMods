@@ -36,6 +36,10 @@ function run() {
   }
   let target = thumbnail({preview_src: screen, preview_mode: 'image'});
   assert.strictEqual(target.style.backgroundImage, 'url("' + small + '")', 'Card keeps the small native thumbnail');
+  assert.strictEqual(target.style.backgroundSize, 'cover', 'Small decorative photographs fill the fixed thumbnail');
+  const sourceCount=root.children.length;
+  context.appendVisual(root,{visual:{kind:'map',src:minimap}});
+  assert.strictEqual(root.children[sourceCount].style.backgroundSize,undefined,'Tactical thumbnails retain CSS containment');
   context.showMapPreview(target);
   assert.strictEqual(image.style.backgroundImage, 'url("' + screen + '")', 'Hover selects verified high-resolution DDS');
   assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '135.75px');
@@ -92,7 +96,7 @@ function run() {
   assert.strictEqual(root.children.length, battleCount, 'Missing or unsafe battle map metadata creates no invented image');
   context.state.group = 'vehicles'; context.showMapPreview(target);
   assert.strictEqual(preview.style.display, 'none', 'Battle hover cannot leak into another group');
-  console.log('Map preview quality: verified screen selection, unchanged thumbnails, square bounded minimap and safe fallback passed.');
+  console.log('Map preview quality: verified native sources, filled photo thumbnails, square bounded minimap and safe fallback passed.');
 }
 module.exports = run;
 if (require.main === module) { run(); }

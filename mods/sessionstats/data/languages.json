@@ -358,7 +358,11 @@
       "sort.last_oldest": "Last battle ↑",
       "sort.last_oldest.description": "Last battle: oldest first",
       "xp.base_total": "Total base XP:",
-      "xp.received_total": "Total received XP:"
+      "xp.received_total": "Total received XP:",
+      "sort.sum": "All",
+      "sort.sum.description": "Sum of the available values",
+      "sort.credits_gross": "Credits (gross)",
+      "sort.value_total": "Total {0}: {1}"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -717,7 +721,11 @@
       "sort.last_oldest": "Ostatnia bitwa ↑",
       "sort.last_oldest.description": "Ostatnia bitwa: od najstarszych",
       "xp.base_total": "Bazowe PD łącznie:",
-      "xp.received_total": "Otrzymane PD łącznie:"
+      "xp.received_total": "Otrzymane PD łącznie:",
+      "sort.sum": "Suma",
+      "sort.sum.description": "Suma dostępnych wartości",
+      "sort.credits_gross": "Kredyty (brutto)",
+      "sort.value_total": "{0} łącznie: {1}"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1076,7 +1084,11 @@
       "sort.last_oldest": "Последняя битва ↑",
       "sort.last_oldest.description": "Последняя битва: старые сначала",
       "xp.base_total": "Всего базового опыта:",
-      "xp.received_total": "Всего получено опыта:"
+      "xp.received_total": "Всего получено опыта:",
+      "sort.sum": "Всего",
+      "sort.sum.description": "Сумма известных значений",
+      "sort.credits_gross": "Кред. брутто",
+      "sort.value_total": "Всего {0}: {1}"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1435,7 +1447,11 @@
       "sort.last_oldest": "Dernière bataille ↑",
       "sort.last_oldest.description": "Dernière bataille : plus anciennes",
       "xp.base_total": "Total d’EXP de base :",
-      "xp.received_total": "Total d’EXP reçue :"
+      "xp.received_total": "Total d’EXP reçue :",
+      "sort.sum": "Total",
+      "sort.sum.description": "Somme des valeurs disponibles",
+      "sort.credits_gross": "Crédits bruts",
+      "sort.value_total": "Total {0} : {1}"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1794,7 +1810,11 @@
       "sort.last_oldest": "Letztes Gefecht ↑",
       "sort.last_oldest.description": "Letztes Gefecht: älteste zuerst",
       "xp.base_total": "Basis-EP gesamt:",
-      "xp.received_total": "Erhaltene EP gesamt:"
+      "xp.received_total": "Erhaltene EP gesamt:",
+      "sort.sum": "Ges.",
+      "sort.sum.description": "Summe der verfügbaren Werte",
+      "sort.credits_gross": "Kred. (brutto)",
+      "sort.value_total": "{0} gesamt: {1}"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2153,7 +2173,11 @@
       "sort.last_oldest": "Última batalla ↑",
       "sort.last_oldest.description": "Última batalla: más antiguas primero",
       "xp.base_total": "EXP base total:",
-      "xp.received_total": "EXP recibida total:"
+      "xp.received_total": "EXP recibida total:",
+      "sort.sum": "Total",
+      "sort.sum.description": "Suma de los valores disponibles",
+      "sort.credits_gross": "Créditos brutos",
+      "sort.value_total": "Total {0}: {1}"
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2512,7 +2536,11 @@
       "sort.last_oldest": "Остання битва ↑",
       "sort.last_oldest.description": "Остання битва: старі спочатку",
       "xp.base_total": "Усього базового досвіду:",
-      "xp.received_total": "Усього отримано досвіду:"
+      "xp.received_total": "Усього отримано досвіду:",
+      "sort.sum": "Сума",
+      "sort.sum.description": "Сума відомих значень",
+      "sort.credits_gross": "Кред. брутто",
+      "sort.value_total": "Усього {0}: {1}"
     }
   }
 }

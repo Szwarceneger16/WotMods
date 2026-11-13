@@ -31,13 +31,17 @@ module.exports=async({browser,nativeHost,check})=>{
       model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);document.getElementById('ss-group-battles').click();
     },{scale,language,messages,width,names:names[language]});
     await frames(page);
-    const geometry=await page.locator('#ss-groups .ss-group').evaluateAll((cards,{scale,width})=>{
+    const expectedOutcomes={};for(const outcome of ['win','loss','draw','unknown'])expectedOutcomes[outcome]=messages['outcome.'+outcome].toUpperCase();
+    const geometry=await page.locator('#ss-groups .ss-group').evaluateAll((cards,{scale,width,expectedOutcomes})=>{
       const relative=(node,origin)=>{const r=node.getBoundingClientRect();return {left:(r.left-origin.left)/scale,right:(r.right-origin.left)/scale,top:(r.top-origin.top)/scale,bottom:(r.bottom-origin.top)/scale,width:r.width/scale,height:r.height/scale};};
       const rows=cards.map(card=>{
         const origin=card.querySelector('.ss-group-header').getBoundingClientRect(),failures=[];
         const parts={outcome:'.ss-battle-outcome',map:'.ss-battle-map-visual',mapArt:'.ss-battle-map-thumb',action:'.ss-more-button'};
         const positions={};for(const [key,selector] of Object.entries(parts))positions[key]=relative(card.querySelector(selector),origin);
         const image=card.querySelector('.ss-outcome-image');if(image)positions.resultArt=relative(image,origin);
+        const resultLabel=card.querySelector('.ss-outcome-label').textContent;
+        const resultKind=['win','loss','draw','unknown'].find(kind=>card.querySelector('.ss-battle-outcome').classList.contains('ss-outcome-'+kind));
+        if(resultLabel!==expectedOutcomes[resultKind])failures.push('outcome-not-localized-uppercase');
         const children=Array.from(card.querySelector('.ss-group-header').children).map(node=>relative(node,origin));
         for(let i=0;i<children.length;i++)for(let j=i+1;j<children.length;j++){
           const a=children[i],b=children[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)failures.push('overlap');
@@ -54,7 +58,7 @@ module.exports=async({browser,nativeHost,check})=>{
         if(['left','right','top','bottom'].some(axis=>Math.abs(box[axis]-reference[axis])>1))row.failures.push('column-drift:'+key+':'+index);
       }
       return {passed:rows.length===4&&rows.every(row=>!row.failures.length),rows};
-    },{scale,width});
+    },{scale,width,expectedOutcomes});
     check('Localized battle result, map and action slots align at '+width+'px, '+language+' '+scale*100+'%'+
       (geometry.passed?'':': '+JSON.stringify(geometry)),geometry.passed);
     if(width===720&&language==='ru'&&scale===1){

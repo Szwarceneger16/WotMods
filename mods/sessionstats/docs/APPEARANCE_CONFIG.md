@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.5
+# Appearance and scrolling configuration — 0.9.6
 
 ## File placement and applying changes
 
@@ -27,7 +27,7 @@ are logged as `CONFIG_SETUP` without stopping collection or modifying source fil
 Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
-The full supplied JSON contains **the current appearance as defaults**: 143 colors,
+The full supplied JSON contains **the current appearance as defaults**: 145 colors,
 15 corner radii, five opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
@@ -59,6 +59,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.table_row_hover_background` | `"#252d1b"` | Hovered row background |
 | `colors.metric_value_text` | `"#ebe7d4"` | Performance-table numbers |
 | `colors.sort_active_background` | `"#252a23"` | Neutral fill behind the active sorting value; the orange outline remains separate |
+| `colors.loading_scrim_background` | `"rgba(17,19,9,0.45)"` | Panel-wide loading scrim; retained results also use a slight blur where supported |
 | `colors.positive_text` | `"#c0d889"` | Positive balance |
 | `colors.negative_text` | `"#e4ad84"` | Negative balance |
 | `colors.garage_bars_background` | `"#969a9d"` | Garage-icon bars |
