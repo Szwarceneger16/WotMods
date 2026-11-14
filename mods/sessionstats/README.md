@@ -108,6 +108,18 @@ package, `grz.sessionstats` resources and data/log directory. Medkit Reminder ha
 a separate entrypoint and is not a dependency. Built packages have disjoint
 resource paths; coexistence in the actual client still requires an in-game test.
 
+### Read-only Hangar integration
+
+Version 0.5.0 exposes `gui.mods.grz_session_stats.runtime.read_hangar_stats(vehicle_ids)`
+on the already loaded module. Consumers must not import or start Session Stats
+when it is absent. API schema 1 returns only requested vehicle summaries from
+the current account's full recorded Random Battle history, independent of UI
+pages, reset periods and selected timeline bounds. WN8, battles and net credits
+reuse the existing timeline group totals. Sparse daily counts cover the last
+366 calendar days in the game computer's local time. Missing results are not
+invented, and the first recorded battle is never treated as a purchase date.
+The API returns no account identifier, local path or individual battle ledger.
+
 ## Local build
 
 Packaging requires Python 3.9+ and CPython 2.7.18 for game bytecode. Python 2.7 is

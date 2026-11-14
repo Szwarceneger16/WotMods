@@ -146,6 +146,9 @@ SESSION STATS — CHANGELOG
 • Support custom local dates in both timeline bounds and localized More/Less labels.
 • Add persistent maximize/restore, background transparency and wider two-column cards.
 • Preserve known mission-objective metadata when partial result retries omit fields.
+• Add a read-only API for the optional Hangar integration using existing per-vehicle
+  full-history WN8, battle and net-credit totals, plus bounded local daily counts.
+• Keep account IDs and battle records local; ownership dates remain unavailable.
 • Refresh all time-range captions immediately when the language changes.
 • Normalize filter heights, gray unavailable statistics and display the exact
   per-battle value used by net-credit sorting.
