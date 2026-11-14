@@ -173,15 +173,29 @@ async function audit(page,mode,group) {
           ![...matrix.querySelectorAll('.ss-bonus-number')].some(cell=>normalize(cell.textContent)==='+110000')) issues.push({kind:'missing-reported-shape-values'});
       }
     }
-    const credits=first.querySelector('.ss-money-row');
+    const credits=first.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
     const values=[...credits.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent));
     const counts=[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
     if(values.join('|')!==[sample.income,-sample.costs,'+'+sample.net].join('|')) issues.push({kind:'incomplete-finance-values',values});
     const headerCount=first.querySelector('.ss-money-count .ss-cell-coverage');
     if(group!=='battles' && (stress ? counts.join('|')!=='1/4|2/4|3/4' :
-      counts.length!==0 || !headerCount || normalize(headerCount.textContent)!=='123/137')) {
+      counts.join('|')!=='123/137' || !!headerCount)) {
       issues.push({kind:'missing-finance-coverage',counts,header:headerCount && headerCount.textContent});
     }
+    const base=first.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row');
+    const baseValues=[...base.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent)),
+      baseIncome=sample.income-Math.floor(sample.income/4),baseNet=baseIncome-sample.costs;
+    if(baseValues.join('|')!==[baseIncome,-sample.costs,(baseNet>=0?'+':'')+baseNet].join('|')) {
+      issues.push({kind:'incomplete-base-finance-values',values:baseValues});
+    }
+    const baseCounts=[...base.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
+    if(group!=='battles' && baseCounts.join('|')!==(stress?'1/4|2/4|1/4':'122/137|123/137|122/137')) {
+      issues.push({kind:'missing-base-finance-coverage',counts:baseCounts});
+    }
+    const historical=panel.querySelector('[data-list-index="1"] .ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row');
+    if([...historical.querySelectorAll('.ss-cell-value')].filter((node,index)=>index!==1).some(node=>node.textContent!=='—') ||
+      historical.querySelectorAll('[data-ss-metric="credits_income_base"] .ss-metric-battle-link,[data-ss-metric="credits_net_base"] .ss-metric-battle-link').length!==0) issues.push({kind:'invented-historical-base-finance'});
+    if(group!=='battles' && first.querySelectorAll('.ss-metric-battle-link').length!==16) issues.push({kind:'missing-permanent-extrema-actions'});
     const detail=first.querySelector('.ss-details'),performance=detail.querySelector('.ss-performance').getBoundingClientRect(),
       economy=detail.querySelector('.ss-economy').getBoundingClientRect();
     const cardWidth=first.getBoundingClientRect().width/scale;
@@ -252,7 +266,10 @@ module.exports=async function ({browser,nativeHost,check}) {
             battle.stats.wn8=sample.wn8;battle.stats.wn8_count=1;
             const money=index%2 ? (mode.stress ? {income:12345678,costs:24691356,net:-12345678} :
               {income:74321,costs:87654,net:-13333}) : {income:sample.income,costs:sample.costs,net:sample.net};
-            battle.stats.currencies.credits={...money,income_count:1,costs_count:1,net_count:1};
+            const baseIncome=index%2?null:money.income-Math.floor(money.income/4);
+            battle.stats.currencies.credits={...money,income_count:1,costs_count:1,net_count:1,
+              income_base:baseIncome,net_base:baseIncome===null?null:baseIncome-money.costs,
+              income_base_count:baseIncome===null?0:1,net_base_count:baseIncome===null?0:1};
             battle.details={pass_points:mode.stress ? {credited:33,battle:8,missions:10,vehicle:15} : {credited:25,battle:5,missions:20,vehicle:0},
               missions:{
                 'daily:fixture':{kind:'daily',name:messages['more.kind.daily']+' · '+messages['more.mission.completed'],status:'completed',description:objective},
@@ -288,7 +305,28 @@ module.exports=async function ({browser,nativeHost,check}) {
               item.stats.wn8=sample.wn8;item.stats.wn8_count=mode.stress ? 3 : 123;
               item.stats.currencies.credits={income:sample.income,costs:sample.costs,net:sample.net,
                 income_count:mode.stress ? 1 : 123,costs_count:mode.stress ? 2 : 123,net_count:mode.stress ? 3 : 123};
+              const baseIncome=index%2?null:sample.income-Math.floor(sample.income/4),baseCount=mode.stress?1:122;
+              Object.assign(item.stats.currencies.credits,{income_base:baseIncome,net_base:baseIncome===null?null:baseIncome-sample.costs,
+                income_base_count:baseIncome===null?0:baseCount,net_base_count:baseIncome===null?0:baseCount});
               for(const field of ['income','costs','net']) item.stats.currencies.bonds[field+'_count']=mode.stress ? 4 : 123;
+              const money=item.stats.currencies.credits;
+              for(const [metric,field] of [['credits_income_base','income_base'],['credits_income_received','income'],
+                ['credits_net_base','net_base'],['credits_net_received','net'],['credits_costs','costs']]) {
+                const value=money[field],count=money[field+'_count'];
+                item.stats[metric]={count,min:value,avg:value,max:value,sum:value};
+              }
+              // Coherent synthetic winners keep the permanent controls in all
+              // geometry audits; missing historical base has no invented link.
+              item.extrema_battles={};
+              for(const metric of ['xp_base','xp_received','battle_wn8','credits_income_base','credits_income_received',
+                'credits_net_base','credits_net_received','credits_costs']) {
+                const series=item.stats[metric];if(!series||!series.count)continue;
+                item.extrema_battles[metric]={};
+                for(const statistic of ['min','max']) item.extrema_battles[metric][statistic]={
+                  id:timeline.battles[index].id,name:timeline.battles[index].name,map:timeline.battles[index].map,
+                  started_at:timeline.battles[index].started_at,outcome:timeline.battles[index].outcome,
+                  metric,statistic,value:series[statistic]};
+              }
               return item;
             });
             if(timeline.pagination && timeline.pagination[group]) timeline.pagination[group]={page:0,page_size:40,total:4,pages:1};
@@ -309,7 +347,7 @@ module.exports=async function ({browser,nativeHost,check}) {
             await page.locator('#ss-scroll').evaluate(scroll=>{scroll.scrollTop=0;});
             await frames(page);
             const name='session-stats-'+language+'-'+group+'-'+mode.name+'.jpg';
-            const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:74,animations:'disabled'});
+            const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:70,animations:'disabled'});
             screenshots.push({name,language,group,mode:mode.name,fixture:'ordinary',width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
           }
         }

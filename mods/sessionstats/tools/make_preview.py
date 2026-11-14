@@ -37,6 +37,8 @@ def snapshots():
         tank = tanks[(i // 3) % 3]
         map_info = maps[i % len(maps)]
         credit_income = 57680+i*1417
+        # Mix known, zero and unavailable synthetic base earnings.
+        credit_base = None if i % 7 == 0 else 0 if i == 1 else 34000+i*733
         repair, ammo, consumables = 7900+i*163, 21200+(i%4)*2280, 3000
         costs = repair+ammo+consumables
         xp_base = 346+((i*137)%907)
@@ -49,6 +51,7 @@ def snapshots():
                 'complete':True, 'warnings':[],
                 'currencies':{
                     'credits':{'income':credit_income, 'costs':costs,'net':credit_income-costs,
+                               'income_base':credit_base, 'net_base':credit_base-costs if credit_base is not None else None,
                                'breakdown':{'repair':repair,'ammo':ammo,'consumables':consumables,'directives':0}},
                     'bonds':{'income':7 if i%2==0 else 0, 'costs':6 if i%5==0 else 0,
                              'net':(7 if i%2==0 else 0)-(6 if i%5==0 else 0)},

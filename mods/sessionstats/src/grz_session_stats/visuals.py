@@ -7,7 +7,9 @@ Verified EU client sources (2.4.1.5493):
   gui/shared/utils/functions.py: getArenaImage, getAbsoluteUrl
   gui/impl/backport/backport_r.py: image -> wulf.getImagePath
   items/vehicles.py: getVehicleType and VehicleType.compactDescr
-  gui/shared/gui_items/Vehicle.py: role, roleLabel, getType44x44IconResource
+  gui/shared/gui_items/Vehicle.py: role, roleLabel, isElite
+  gui/shared/utils/functions.py: getVehTypeIconName (native _elite suffix)
+  vehicleTypes/24x24_metal supplies the original compact class medallions.
   gui/shared/formatters: getRoleText; formatters/icons.py: getRoleIcon
   R.strings.menu.roleExp.roleDescr supplies the original client definition.
 Assets / Gameface loader: Kurzdor/wot.assets 2.4.1.0 #977,
@@ -130,7 +132,8 @@ class NativeVisualResolver(object):
 
     def __init__(self, resources=None, vehicle_getter=None, image_getter=None,
                  icon_name_getter=None, absolute_url_getter=None, file_exists=None,
-                 role_label_getter=None, role_name_getter=None, text_getter=None):
+                 role_label_getter=None, role_name_getter=None, text_getter=None,
+                 gui_vehicle_getter=None):
         if resources is None:
             from gui.impl.gen.resources import R
             resources = R
@@ -152,11 +155,33 @@ class NativeVisualResolver(object):
         self._role_label_getter = role_label_getter
         self._role_name_getter = role_name_getter
         self._text_getter = text_getter
+        self._gui_vehicle_getter = gui_vehicle_getter
         self._vehicles = {}
         self._vehicle_metadata = {}
         self._maps = {}
         self._map_previews = {}
         self._outcomes = {}
+
+    def _vehicle_elite(self, compact):
+        """Read current account state, never infer elite status from a descriptor.
+
+        Native Vehicle.isElite includes the account's researched vehicles. It can
+        change while the panel is open, so this lookup precedes the metadata cache.
+        """
+        try:
+            if self._gui_vehicle_getter is None:
+                from helpers import dependency
+                from skeletons.gui.shared import IItemsCache
+                cache = dependency.instance(IItemsCache)
+                item = cache.items.getItemByCD(compact)
+            else:
+                item = self._gui_vehicle_getter(compact)
+            if getattr(item, 'intCD', None) != compact:
+                return None
+            elite = item.isElite
+            return elite if isinstance(elite, bool) else None
+        except Exception:
+            return None
 
     def vehicle_metadata(self, compact):
         """Resolve class/role from the live descriptor for historic as well as new rows.
@@ -168,8 +193,10 @@ class NativeVisualResolver(object):
         compact = _compact_id(compact)
         if compact is None:
             return None
-        if compact in self._vehicle_metadata:
-            return copy.deepcopy(self._vehicle_metadata[compact])
+        elite = self._vehicle_elite(compact)
+        cache_key = (compact, elite)
+        if cache_key in self._vehicle_metadata:
+            return copy.deepcopy(self._vehicle_metadata[cache_key])
         try:
             if self._vehicle_getter is None:
                 from items.vehicles import getVehicleType
@@ -197,16 +224,17 @@ class NativeVisualResolver(object):
                 result['tier'] = tier
             if kind:
                 result['class'] = kind
+                if elite is not None:
+                    result['elite'] = elite
                 try:
                     root = self._resources.images.gui.maps.icons.vehicleTypes
-                    for branch in ('c_44x44', 'big'):
-                        try:
-                            icon = self._resource_url(getattr(root, branch).dyn(kind), 'vehicle_class')
-                            if icon:
-                                result['class_icon'] = {'kind': 'vehicle_class', 'src': icon}
-                                break
-                        except Exception:
-                            pass
+                    # The larger 44x44/big canvases contain transparent margins;
+                    # shrinking them to a small badge makes ordinary classes dots.
+                    # Use the client's compact metal artwork at its native canvas.
+                    key = kind + ('_elite' if elite is True else '')
+                    icon = self._resource_url(root.num('24x24_metal').dyn(key), 'vehicle_class')
+                    if icon:
+                        result['class_icon'] = {'kind': 'vehicle_class', 'src': icon}
                 except Exception:
                     pass
             key = None
@@ -259,7 +287,7 @@ class NativeVisualResolver(object):
                 result['role'] = role
                 if (result.get('class_icon') and role.get('name') and role.get('description') and
                         (role.get('icon') or key == 'role_SPG')):
-                    self._vehicle_metadata[compact] = copy.deepcopy(result)
+                    self._vehicle_metadata[cache_key] = copy.deepcopy(result)
             return result or None
         except Exception:
             return None

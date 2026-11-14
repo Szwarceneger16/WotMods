@@ -1,5 +1,5 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.8 (persistent data schema unchanged)
-Release date: 2026-11-11.
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.9 (persistent data schema unchanged)
+Release date: 2026-11-14.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
 All game-independent code must also run under Python 3 for development.
@@ -46,6 +46,7 @@ NORMALIZED RECORD
  free_xp: number or None,
  currencies: {
   credits: {income: number or None, costs: number or None, net: number or None,
+            income_base: optional number or None, net_base: optional number or None,
             breakdown: {repair: number or None, ammo: number or None,
                         consumables: number or None, directives: number or None}},
   bonds: {income: number or None, costs: number or None, net: number or None},
@@ -81,7 +82,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.8', account_key: string, generated_at: unix seconds,
+ version: '0.9.9', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -97,7 +98,9 @@ STATS = {
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
  xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
- credits_net:SERIES, credits_gross:SERIES, credits_costs:SERIES,
+ credits_income_base:SERIES, credits_income_received:SERIES,
+ credits_net_base:SERIES, credits_net_received:SERIES, credits_costs:SERIES,
+ credits_net:SERIES, credits_gross:SERIES (legacy received aliases),
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -106,6 +109,12 @@ MONEY = {income:number or null, costs:number or null, net:number or null,
          income_count:int, costs_count:int, net_count:int,
          breakdown:{repair:number or null, ammo:number or null,
                     consumables:number or null, directives:number or null}}
+Credits MONEY also has income_base/net_base and their independent *_count fields.
+Base income is raw originalCredits before bonuses, analogous to raw originalXP;
+received income is the existing settled result after verified sharing deductions.
+Base net subtracts the same actual costs. This is not a counterfactual account
+without premium. Historical missing base income remains unknown, never zero or
+received income divided by a premium factor. Existing received values stay intact.
 Partial sums are sums of confirmed known values. Their coverage remains available
 in visible group details or help/ARIA; global totals and table headers omit repeated
 visible x/y while the received-results count remains above.
@@ -117,9 +126,13 @@ never silently present the known subset as the whole registered session.
 GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, started_at:latest battle time, first_started_at:earliest battle time, stats:STATS}
 BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
               outcome:string, tier:int or null, stats:STATS}
-Aggregate Min/Max may add sort_battle = {id, name, map, map_id, started_at, outcome,
-wn8, metric, statistic, value}. It is indexed over the complete selected period;
-ties select the smallest stable battle ID. Average/All have no source reference.
+Scopes and aggregate groups expose extrema_battles = {metric:{min:REFERENCE,max:REFERENCE}}
+independently of active sorting. REFERENCE = {id, name, map, map_id, started_at,
+outcome, wn8, metric, statistic, value}. Canonical XP, WN8 and all five credit
+metrics have independent indexed winners over the complete selected period;
+ties select the smallest stable battle ID. Missing metrics omit their reference.
+Legacy sort_battle may remain for old consumers; new permanent UI actions do not
+depend on it. Average/All have no invented source reference.
 Presentation may add vehicle_meta = {class, tier, class_icon, role:{key, name,
 group_name, description, icon}} from the live descriptor and native resources.
 These are derived snapshot fields; do not migrate or rewrite stored battle records.
@@ -399,7 +412,7 @@ or persisted-data migration.
 
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
-ordering[group] = {metric:off|xp_base|xp_received|credits_net|credits_gross|credits_costs|battle_wn8|battles|win_rate,
+ordering[group] = {metric:off|xp_base|xp_received|credits_income_base|credits_income_received|credits_net_base|credits_net_received|credits_costs|battle_wn8|battles|win_rate,
                    statistic:min|avg|max|sum, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
@@ -407,7 +420,8 @@ A successful request resets that grouping to page zero; pagination and totals re
 Metric ordering uses the selected series statistic, with missing values last.
 All (sum) is available only for aggregate XP and credit income/costs, never WN8,
 win rate, battle counts or individual battles. Gross credits are the income series;
-net credits are the settled balance series. Credits costs use the nonnegative expense
+net credits subtract actual costs from the selected base/received income. Legacy
+credits_gross and credits_net remain received aliases. Credits costs use the nonnegative expense
 series; descending costs ranks the largest expense first, although the finance table
 prints expenses with a minus sign. Each retains independent known-value coverage.
 Disabling an aggregate metric may retain sum; selecting a nonadditive metric resets it to avg.

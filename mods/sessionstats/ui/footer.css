@@ -27,10 +27,10 @@
 .grz-session-footer-button .grz-session-footer-icon {
     position:absolute;
     display:block;
-    left:17rem;
-    bottom:5rem;
-    width:18rem;
-    height:18rem;
+    left:24rem;
+    top:7rem;
+    width:16rem;
+    height:22rem;
     pointer-events:none;
 }
 .grz-session-footer-button .grz-session-footer-bar {
@@ -42,22 +42,22 @@
     background-color:#969a9d;
 }
 .grz-session-footer-button:hover .grz-session-footer-bar { background-color:#e0ddd2; }
-.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:9rem; }
-.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:13rem; }
-.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
+.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:10rem; }
+.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:15rem; }
+.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:22rem; }
 .grz-session-footer-button .grz-session-footer-rating {
     position:absolute;
-    top:10rem;
+    top:12rem;
     left:0;
     display:block;
-    width:22rem;
-    height:11rem;
+    width:21rem;
+    height:12rem;
     margin:0;
     color:#bdc0c2;
     font-family:Warhelios, Arial, sans-serif;
     font-size:9rem;
     font-weight:normal;
-    line-height:11rem;
+    line-height:12rem;
     letter-spacing:0;
     text-align:center;
     white-space:nowrap;
@@ -68,21 +68,22 @@
 .grz-session-footer-button:hover .grz-session-footer-rating { color:#eee6c9; }
 
 /* CSS animation stays inside the renderer; no Python/JS frame callbacks.
-   Fits above the tallest bar, clear of WN8, inside the fixed 44 x 36 slot. */
+   The spinner replaces the bars at their shared center, inside the fixed slot. */
 .grz-session-footer-button .grz-session-footer-spinner {
     position:absolute;
     display:none;
     box-sizing:border-box;
-    left:27rem;
-    top:2rem;
-    width:8rem;
-    height:8rem;
+    left:0;
+    top:3rem;
+    width:16rem;
+    height:16rem;
     border:2rem solid rgba(150,154,157,0.25);
     border-top-color:#969a9d;
-    border-radius:5rem;
+    border-radius:8rem;
     pointer-events:none;
     animation:none;
 }
+.grz-session-footer-busy .grz-session-footer-bar { visibility:hidden; }
 .grz-session-footer-busy .grz-session-footer-spinner {
     display:block;
     animation:grz-session-footer-spin 1s linear infinite;

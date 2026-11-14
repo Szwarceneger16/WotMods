@@ -79,19 +79,29 @@ module.exports = async ({browser,nativeHost,check}) => {
   const compactGeometry=await page.evaluate(()=>{
     const groups=Array.from(document.querySelectorAll('#ss-groups .ss-group')).map(group=>{
       const free=group.querySelector('.ss-free-xp'), details=group.querySelector('.ss-details'),
-        received=group.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
+        received=group.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]'),
+        baseCredits=group.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row'),
+        receivedCredits=group.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
       const box=node=>{const r=node.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+      const rows=Array.from(group.querySelectorAll('.ss-battle-measure,.ss-money-row')).map(row=>({
+        ...box(row),credit:row===baseCredits||row===receivedCredits}));
       const geometry={name:group.querySelector('.ss-group-title').textContent,card:box(group),
         header:box(group.querySelector('.ss-group-header')),identity:box(group.querySelector('.ss-group-name')),
         outcome:box(group.querySelector('.ss-battle-outcome')),map:box(group.querySelector('.ss-battle-map-thumb')),
-        free:box(free),details:box(details),rows:Array.from(group.querySelectorAll('.ss-battle-measure,.ss-money-row')).map(box),
+        free:box(free),details:box(details),rows,
         xpRows:group.querySelectorAll('.ss-battle-measure').length,
-        addedMetricHeight:received?box(received).height+parseFloat(getComputedStyle(received).marginTop):0};
+        addedMetricHeight:received?box(received).height+parseFloat(getComputedStyle(received).marginTop):0,
+        addedBaseCreditHeight:box(baseCredits).height,
+        receivedCreditWrapHeight:Math.max(0,box(receivedCredits).height-30)};
       // A separate map miniature can move Free XP onto its own identity line.
       // Reserve one normal text line, retaining compact rows and full captions.
+      // Keep the original 165px card budget after accounting for the newly
+      // visible Base credit row and the Received label's second text line.
+      // Only those two credit rows may exceed the old 30px row budget.
       geometry.passed=geometry.header.height<=64 && geometry.free.bottom<=geometry.details.top+1 &&
-        geometry.rows.every(row=>row.height<=30) && geometry.xpRows===3 &&
-        geometry.card.height-geometry.addedMetricHeight<=165;
+        geometry.rows.filter(row=>row.credit).length===2 &&
+        geometry.rows.every(row=>row.height<=(row.credit?48:30)) && geometry.xpRows===3 &&
+        geometry.card.height-geometry.addedMetricHeight-geometry.addedBaseCreditHeight-geometry.receivedCreditWrapHeight<=165;
       return geometry;
     });
     return {passed:groups.every(group=>group.passed),groups};
@@ -169,9 +179,17 @@ module.exports = async ({browser,nativeHost,check}) => {
       }
       const received=card.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
       const addedMetricHeight=received?(box(received).height+parseFloat(getComputedStyle(received).marginTop))/scale:0;
+      const baseCredits=card.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row'),
+        receivedCredits=card.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
+      const addedBaseCreditHeight=box(baseCredits).height/scale,
+        receivedCreditWrapHeight=Math.max(0,box(receivedCredits).height/scale-30);
+      for(const row of card.querySelectorAll('.ss-money-row')){
+        if(box(row).height/scale>(row===baseCredits||row===receivedCredits?48:30))issues.push('row-height');
+      }
       if(!received||card.querySelectorAll('.ss-battle-measure').length!==3||
-        Math.abs(r.width/scale-cardWidth)>1||h.height/scale>64||r.height/scale-addedMetricHeight>165)issues.push('dimensions');
-      return {width:r.width/scale,header:h.height/scale,height:r.height/scale,addedMetricHeight,inline,issues};
+        Math.abs(r.width/scale-cardWidth)>1||h.height/scale>64||
+        r.height/scale-addedMetricHeight-addedBaseCreditHeight-receivedCreditWrapHeight>165)issues.push('dimensions');
+      return {width:r.width/scale,header:h.height/scale,height:r.height/scale,addedMetricHeight,addedBaseCreditHeight,receivedCreditWrapHeight,inline,issues};
     }),{scale,cardWidth});
     check('Battle captions retain their header budget above both XP rows at '+cardWidth+'px without clipped text: '+language+' at'+(scale*100)+'%'+
       (audit.every(card=>!card.issues.length)?'':': '+JSON.stringify(audit)),audit.length===3&&audit.every(card=>!card.issues.length));

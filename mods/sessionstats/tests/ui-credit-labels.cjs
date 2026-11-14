@@ -3,7 +3,7 @@ const fs=require('fs'),path=require('path');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 module.exports=async({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  const labels={credits_net:['sort.credits.caption','sort.credits'],credits_gross:['sort.credits_gross.caption','sort.credits_gross'],credits_costs:['sort.credits_costs','sort.credits_costs']};
+  const labels=Object.fromEntries(['credits_income_base','credits_income_received','credits_net_base','credits_net_received','credits_costs'].map(metric=>[metric,[metric==='credits_costs'?'sort.credits_costs':'sort.'+metric+'.caption','sort.'+metric]]));
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     try{

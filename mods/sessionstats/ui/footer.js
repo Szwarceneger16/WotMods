@@ -267,7 +267,7 @@
         var spinner = document.createElement('span');
         spinner.className = 'grz-session-footer-spinner';
         spinner.setAttribute('aria-hidden', 'true');
-        button.appendChild(spinner);
+        icon.appendChild(spinner);
         button.onclick = openWindow;
         placeButton(insertion);
     }

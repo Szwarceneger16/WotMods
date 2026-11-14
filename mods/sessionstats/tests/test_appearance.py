@@ -147,6 +147,15 @@ class AppearanceTests(unittest.TestCase):
         self.assertEqual(self.write(old)['colors']['garage_spinner_border_top_color'], '#abcdef')
         self.assertEqual(self.write(old)['colors']['garage_spinner_border'], 'rgba(207,190,140,0.25)')
 
+    def test_previous_spinner_radius_adopts_the_round_overlay_without_rewriting_custom_settings(self):
+        old = {'radii': {'garage_spinner': 5, 'window': 9}}
+        actual = self.write(old)
+        self.assertEqual(actual['radii']['garage_spinner'], 8)
+        self.assertEqual(actual['radii']['window'], 9)
+        with io.open(self.path, 'r', encoding='utf-8') as source:
+            self.assertEqual(json.load(source), old)
+        self.assertEqual(self.write({'radii': {'garage_spinner': 3}})['radii']['garage_spinner'], 3)
+
     def test_invalid_leaf_keeps_valid_siblings_and_logs_only_field_reason(self):
         actual = self.write({'colors': {'window_background': 'SECRET-user-value',
                                        'window_border': '#246'},

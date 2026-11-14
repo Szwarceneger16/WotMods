@@ -8,7 +8,7 @@ import uuid
 from collections import Counter
 
 from .core import (_number, _text, _OUTCOMES, _CURRENCIES, _BREAKDOWN,
-                   aggregate_stats, wn8_from_totals)
+                   _CREDIT_METRICS, _CREDIT_ALIASES, aggregate_stats, wn8_from_totals)
 from .localization import message
 from .loading import complete
 
@@ -28,12 +28,12 @@ TIER_ORDER = dict(DEFAULT_ORDER, chronology='tier_desc')
 
 def valid_order(options, kind=None):
     return (isinstance(options, dict) and set(options) == set(DEFAULT_ORDER) and
-            options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross', 'credits_costs', 'battle_wn8', 'battles', 'win_rate') and
+            options.get('metric') in ('off', 'xp_base', 'xp_received', 'battle_wn8', 'battles', 'win_rate') + tuple(key for key, unused in _CREDIT_METRICS) and
             (options.get('metric') != 'battles' or kind is None or kind in ('vehicles', 'maps')) and
             (options.get('metric') != 'win_rate' or kind is None or kind in ('vehicles', 'maps', 'tiers')) and
             options.get('statistic') in ('min', 'avg', 'max', 'sum') and
             (options.get('statistic') != 'sum' or
-             kind != 'battles' and options.get('metric') in ('off', 'xp_base', 'xp_received', 'credits_net', 'credits_gross', 'credits_costs')) and
+             kind != 'battles' and options.get('metric') in ('off', 'xp_base', 'xp_received') + tuple(key for key, unused in _CREDIT_METRICS)) and
             options.get('direction') in ('asc', 'desc') and
             options.get('chronology') in ('newest', 'oldest', 'first_desc', 'last_asc', 'tier_asc', 'tier_desc') and
             (options.get('chronology') not in ('first_desc', 'last_asc') or kind != 'battles') and
@@ -44,7 +44,17 @@ _COUNTS = ('battles', 'observed_battles', 'missing_results', 'partial_results',
            'wins', 'losses', 'draws', 'wn8_count')
 _XP = ('xp_base', 'xp_received', 'free_xp', 'battle_wn8')
 _RATING = ('damage', 'frags', 'spots', 'defense', 'wins')
-_EXTREMA = ('xp_base', 'xp_received', 'battle_wn8', 'credits_net', 'credits_gross', 'credits_costs')
+_EXTREMA = ('xp_base', 'xp_received', 'battle_wn8') + tuple(key for key, unused in _CREDIT_METRICS if key not in _CREDIT_ALIASES)
+
+
+def _extremum_pair(index, metric, statistic):
+    values = index.get(_CREDIT_ALIASES.get(metric, metric))
+    if statistic not in ('min', 'max') or not values:
+        return None
+    # Tied values always name the smallest stable battle ID, independently
+    # of chronology and pagination. Corrections remove their original pair.
+    position = 0 if statistic == 'min' else bisect.bisect_left(values, (values[-1][0], ''))
+    return values[position]
 
 
 def _extremum_values(item):
@@ -52,9 +62,9 @@ def _extremum_values(item):
     if record.get('mode') != 'random' or record.get('outcome') not in _OUTCOMES:
         return
     credit = record.get('currencies', {}).get('credits', {})
-    for key, value in (('xp_base', record.get('xp_base')), ('xp_received', record.get('xp_received')),
-                       ('battle_wn8', rating), ('credits_net', credit.get('net')),
-                       ('credits_gross', credit.get('income')), ('credits_costs', credit.get('costs'))):
+    values = [('xp_base', record.get('xp_base')), ('xp_received', record.get('xp_received')), ('battle_wn8', rating)]
+    values.extend((key, credit.get(field)) for key, field in _CREDIT_METRICS if key not in _CREDIT_ALIASES)
+    for key, value in values:
         if value is not None:
             yield key, value
 
@@ -131,7 +141,8 @@ class Totals(object):
         self.counts = dict((key, 0) for key in _COUNTS)
         self.series = dict((key, Series()) for key in _XP)
         self.money = dict((currency, dict((key, Series()) for key in
-                          ('income', 'costs', 'net') + _BREAKDOWN)) for currency in _CURRENCIES)
+                          ('income', 'costs', 'net') + _BREAKDOWN +
+                          (('income_base', 'net_base') if currency == 'credits' else ()))) for currency in _CURRENCIES)
         self.actual = dict((key, Series()) for key in _RATING)
         self.expected = dict((key, Series()) for key in _RATING)
 
@@ -202,9 +213,8 @@ class Totals(object):
         result.update((key, series.snapshot()) for key, series in self.series.items())
         result['wn8'] = wn8_from_totals(dict((key, series.sum()) for key, series in self.actual.items()),
                                       dict((key, series.sum()) for key, series in self.expected.items()))
-        result['credits_net'] = self.money['credits']['net'].snapshot()
-        result['credits_gross'] = self.money['credits']['income'].snapshot()
-        result['credits_costs'] = self.money['credits']['costs'].snapshot()
+        for metric, field in _CREDIT_METRICS:
+            result[metric] = self.money['credits'][field].snapshot()
         result['currencies'] = {}
         for currency, fields in self.money.items():
             values = {'breakdown': {}, 'breakdown_counts': {}}
@@ -289,14 +299,7 @@ class Group(object):
                 _remove(self.extrema[metric], pair)
 
     def extremum(self, options):
-        statistic = options.get('statistic')
-        values = self.extrema.get(options.get('metric'))
-        if statistic not in ('min', 'max') or not values:
-            return None
-        # Tied values always name the smallest stable battle ID, independently
-        # of chronology and pagination. Corrections remove their original pair.
-        position = 0 if statistic == 'min' else bisect.bisect_left(values, (values[-1][0], ''))
-        return values[position]
+        return _extremum_pair(self.extrema, options.get('metric'), options.get('statistic'))
 
     def metadata(self):
         latest = self.records[self.order[-1][-1]]
@@ -325,6 +328,7 @@ class ScopeIndex(object):
         self.order = []
         self.groups = dict((kind, {}) for kind, unused in GROUP_FIELDS)
         self.totals = Totals()
+        self.extrema = dict((key, []) for key in _EXTREMA)
         self.pending = 0
         self._sort_cache = {}
         self.warnings = Counter()
@@ -342,6 +346,8 @@ class ScopeIndex(object):
         self._revision_generation = uuid.uuid4().hex
         self._revision = 0
         self.records, self.order, self.pending, self.warnings = {}, [], 0, Counter()
+        self.groups = dict((kind, {}) for kind, unused in GROUP_FIELDS)
+        self.extrema = dict((key, []) for key in _EXTREMA)
         self._sort_cache = {}
         for position, item in enumerate(items):
             row = item[0]
@@ -349,9 +355,14 @@ class ScopeIndex(object):
             self.order.append((row.get('started_at') or 0, row['arena_id']))
             self.pending += int(not row.get('complete') or row.get('outcome') not in _OUTCOMES)
             self.warnings.update(row.get('warnings', []))
+            for metric, value in _extremum_values(item):
+                self.extrema[metric].append((value, row['arena_id']))
             if position % 128 == 0:
                 yield None
         self.order.sort()
+        for metric in _EXTREMA:
+            self.extrema[metric].sort()
+            yield None
         yield None
         for step in self.totals.build_steps(items):
             yield step
@@ -393,6 +404,12 @@ class ScopeIndex(object):
             del self.records[identifier]
             _remove(self.order, key)
         self.totals.change(item, direction)
+        for metric, value in _extremum_values(item):
+            pair = (value, identifier)
+            if direction > 0:
+                bisect.insort(self.extrema[metric], pair)
+            else:
+                _remove(self.extrema[metric], pair)
         self.pending += direction * int(not record.get('complete') or record.get('outcome') not in _OUTCOMES)
         for warning in record.get('warnings', []):
             self.warnings[warning] += direction
@@ -419,10 +436,8 @@ class ScopeIndex(object):
             # while received draws remain in the known-result denominator.
             count = group.totals.counts['battles']
             return group.totals.counts['wins'] * 100.0 / count if count else None
-        series = (group.totals.money['credits']['net'] if metric == 'credits_net' else
-                  group.totals.money['credits']['income'] if metric == 'credits_gross' else
-                  group.totals.money['credits']['costs'] if metric == 'credits_costs' else
-                  group.totals.series.get(metric))
+        field = dict(_CREDIT_METRICS).get(metric)
+        series = group.totals.money['credits'][field] if field else group.totals.series.get(metric)
         return series.snapshot().get(options['statistic']) if series else None
 
     def _ordered(self, kind, options):
@@ -442,11 +457,9 @@ class ScopeIndex(object):
                 known = record.get('mode') == 'random' and record.get('outcome') in _OUTCOMES
                 value = None
                 if known:
+                    field = dict(_CREDIT_METRICS).get(metric)
                     value = (item[1] if metric == 'battle_wn8' else
-                             record.get('currencies', {}).get('credits', {}).get('net') if metric == 'credits_net' else
-                             record.get('currencies', {}).get('credits', {}).get('income') if metric == 'credits_gross' else
-                             record.get('currencies', {}).get('credits', {}).get('costs') if metric == 'credits_costs' else
-                             record.get(metric))
+                             record.get('currencies', {}).get('credits', {}).get(field) if field else record.get(metric))
             else:
                 identifier = entry.identifier
                 times = entry.starts.ordered
@@ -487,7 +500,9 @@ class ScopeIndex(object):
         return self._group_battles('vehicles', identifier, page, options)
 
     def _sort_battle(self, group, options):
-        winner = group.extremum(options)
+        return self._battle_reference(group.extremum(options), options['metric'], options['statistic'])
+
+    def _battle_reference(self, winner, metric, statistic):
         if winner is None:
             return None
         value, identifier = winner
@@ -497,7 +512,21 @@ class ScopeIndex(object):
                 'map': (record.get('map_name') or message('unknown.map'))[:256],
                 'map_id': record.get('map_id'), 'started_at': record.get('started_at'),
                 'outcome': record.get('outcome'), 'wn8': item[1],
-                'metric': options['metric'], 'statistic': options['statistic'], 'value': value}
+                'metric': metric, 'statistic': statistic, 'value': value}
+
+    def _extrema_battles(self, group=None):
+        """Return a fixed-size set of indexed references, never scanning history."""
+        index = group.extrema if group is not None else self.extrema
+        result = {}
+        for metric in _EXTREMA:
+            pair = {}
+            for statistic in ('min', 'max'):
+                reference = self._battle_reference(_extremum_pair(index, metric, statistic), metric, statistic)
+                if reference is not None:
+                    pair[statistic] = reference
+            if pair:
+                result[metric] = pair
+        return result
 
     def _group_battles(self, kind, identifier, page, options=None):
         group = self.groups[kind].get(identifier)
@@ -526,6 +555,7 @@ class ScopeIndex(object):
         pages, orders = pages or {}, orders or {}
         result = {'label': label, 'started_at': started_at, 'pending': self.pending,
                   'summary': self.totals.snapshot(), 'pagination': {}, 'ordering': {},
+                  'extrema_battles': self._extrema_battles(),
                   'period_id': self.identifier, 'data_revision': self.data_revision}
         for kind in ('vehicles', 'maps', 'battles', 'tiers'):
             default = TIER_ORDER if kind == 'tiers' else DEFAULT_ORDER
@@ -564,6 +594,8 @@ class ScopeIndex(object):
             else:
                 visible = ordered[start:start + PAGE_SIZE]
                 rows = [group.snapshot() for group in visible]
+                for row, group in zip(rows, visible):
+                    row['extrema_battles'] = self._extrema_battles(group)
                 if options['metric'] != 'off':
                     for row, group in zip(rows, visible):
                         row['sort_value'] = self._group_sort_value(group, options)

@@ -97,13 +97,19 @@ function gamefaceBackgrounds(css) {
     assert.strictEqual(geometry.button.width, 44);
     assert.strictEqual(geometry.button.height, 36);
     assert.strictEqual(geometry.background, 'none');
-    assert.ok(geometry.badge.x < geometry.icon.x && geometry.badge.y > geometry.button.y,
-      'WN8 must move left and down into the short-bar space');
-    assert.ok(geometry.badge.bottom < geometry.bars[0].y && geometry.badge.right < geometry.bars[1].x,
-      'WN8 must stay above the first bar and left of the taller bars');
+    assert.ok(geometry.badge.x < geometry.icon.x && geometry.badge.y > geometry.button.y &&
+      geometry.badge.y+geometry.badge.height/2===geometry.icon.y+geometry.icon.height/2,
+      'WN8 and the chart must share the native statistics center line');
+    assert.ok(geometry.badge.right < geometry.bars[0].x,
+      'WN8 must remain entirely left of the aligned chart');
     assert.ok(geometry.badge.x >= geometry.button.x && geometry.badge.right <= geometry.button.right &&
       geometry.badge.bottom <= geometry.button.bottom, 'WN8 must fit inside the compact button');
-    assert.deepStrictEqual(geometry.bars.map(bar => bar.height), [9,13,18]);
+    assert.deepStrictEqual(geometry.bars.map(bar => bar.height), [10,15,22]);
+    assert.ok(await button.evaluate(element => {
+      const own=element.querySelector('.grz-session-footer-icon').getBoundingClientRect();
+      const native=document.querySelector('.native-test-icon').getBoundingClientRect();
+      return own.top===native.top && own.bottom===native.bottom;
+    }), 'the chart must share the native statistics icon top and bottom');
     assert.deepStrictEqual(geometry.barColors, ['rgb(150, 154, 157)','rgb(150, 154, 157)','rgb(150, 154, 157)'],
       'bars must remain painted when Gameface rejects currentColor backgrounds');
     assert.ok(geometry.bars.every(bar => bar.bottom === geometry.icon.bottom));

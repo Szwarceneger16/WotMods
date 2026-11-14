@@ -97,15 +97,21 @@ async function setActivity(page, pending, processing, wrapped = false) {
         icon:box(el.querySelector('.grz-session-footer-icon')),badge:box(el.querySelector('.grz-session-footer-rating')),
         bars:el.querySelectorAll('.grz-session-footer-bar').length,text:el.textContent.trim(),
         pointer:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).pointerEvents,
-        spinnerColor:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopColor};
+        spinnerColor:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopColor,
+        spinnerRadius:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopLeftRadius};
     });
-    check('Busy button retains its 44 x 36 footprint, all bars and WN8 in the short-bar space',
+    check('Busy button retains its 44 x 36 footprint, all bars and centered WN8 caption',
       geometry.button.width===44 && geometry.button.height===36 && geometry.bars===3 && geometry.text==='WN8');
-    check('Muted gray spinner fits above the tall bar and right of WN8 without overlap or native clipping',
+    check('Muted gray spinner covers the chart center inside the fixed native slot',
       geometry.spinner.x>=geometry.button.x && geometry.spinner.y>=geometry.button.y &&
-      geometry.spinner.bottom<=geometry.icon.y && geometry.badge.right<geometry.spinner.x &&
+      geometry.spinner.x+geometry.spinner.width/2===geometry.icon.x+geometry.icon.width/2 &&
+      geometry.spinner.y+geometry.spinner.height/2===geometry.icon.y+geometry.icon.height/2 &&
+      geometry.badge.right<geometry.spinner.x &&
       geometry.spinner.right<=geometry.button.right && geometry.spinner.bottom<=geometry.button.bottom &&
-      geometry.spinnerColor==='rgb(150, 154, 157)');
+      geometry.spinnerColor==='rgb(150, 154, 157)' && geometry.spinnerRadius==='8px');
+    check('The active spinner is owned by the chart and replaces its bars',await spinner.evaluate(el=>
+      el.parentNode.classList.contains('grz-session-footer-icon') &&
+      Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='hidden')));
     check('Spinner cannot intercept native button input',geometry.pointer==='none');
     for (const scale of [1,1.5,2]) {
       await page.evaluate(scale => {document.documentElement.style.fontSize=scale+'px';},scale);
@@ -125,14 +131,17 @@ async function setActivity(page, pending, processing, wrapped = false) {
           JSON.stringify(fixed)===JSON.stringify(baseline) && fixed.slot[2]===44*scale && fixed.slot[3]===36*scale);
         if (pending || processing) {
           for (const time of [0,125,250,375,500,625,750,875]) {
-            check('Spinner stays inside its slot and above the bars throughout rotation at '+scale+'x/'+time+'ms',
+            check('Spinner stays centered over the chart without changing native geometry at '+scale+'x/'+time+'ms',
               await spinner.evaluate((el,time) => {
                 el.getAnimations().forEach(animation=>{animation.pause();animation.currentTime=time;});
-                const box=el.getBoundingClientRect(),slot=el.parentNode.getBoundingClientRect();
-                const badge=el.parentNode.querySelector('.grz-session-footer-rating').getBoundingClientRect();
-                const icon=el.parentNode.querySelector('.grz-session-footer-icon').getBoundingClientRect();
+                const button=el.closest('.grz-session-footer-button'),box=el.getBoundingClientRect(),slot=button.getBoundingClientRect();
+                const badge=button.querySelector('.grz-session-footer-rating'),range=document.createRange();range.selectNodeContents(badge);
+                const ink=range.getBoundingClientRect(),icon=el.parentNode.getBoundingClientRect();
                 return box.left>=slot.left && box.right<=slot.right && box.top>=slot.top &&
-                  box.bottom<=icon.top && badge.right<box.left;
+                  box.bottom<=slot.bottom && ink.right<box.left &&
+                  Math.abs(box.x+box.width/2-icon.x-icon.width/2)<0.01 &&
+                  Math.abs(box.y+box.height/2-icon.y-icon.height/2)<0.01 &&
+                  Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='hidden');
               },time));
           }
         }
@@ -149,7 +158,7 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await page.locator('.App_footer_verified').screenshot({path:process.env.GRZ_ACTIVITY_SCREENSHOT});
     }
     await spinner.evaluate(el => {el.getAnimations().forEach(a=>a.play());});
-    await button.click({position:{x:31,y:6}});
+    await button.click({position:{x:32,y:18}});
     await button.focus();
     await page.keyboard.press('Enter');
     check('Mouse over the spinner and keyboard still open statistics exactly once each',
@@ -165,14 +174,15 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'px';},scale);
       check('Spinner and button scale with native rem at '+scale+'x',
         (await button.boundingBox()).width===44*scale &&
-        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===8*scale,scale));
+        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===16*scale,scale));
     }
     await page.evaluate(()=>{document.documentElement.style.fontSize='1px';});
     await setActivity(page,0,false);
     check('Completing work restores the exact idle label and removes the CSS animation',
       await button.getAttribute('title')==='Session statistics: battles, win rate and WN8' &&
       await button.getAttribute('aria-busy')==='false' &&
-      await spinner.evaluate(el=>getComputedStyle(el).display==='none' && el.getAnimations().length===0));
+      await spinner.evaluate(el=>getComputedStyle(el).display==='none' && el.getAnimations().length===0 &&
+        Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='visible')));
 
     await page.evaluate(()=>{delete testModel.activity;emitChange();});
     check('An older model without activity keeps a usable idle button without a warning',

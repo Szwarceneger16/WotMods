@@ -11,7 +11,7 @@ const frames=page=>page.evaluate(()=>new Promise((resolve,reject)=>{let left=6;
   }requestAnimationFrame(next);}));
 module.exports=async({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  const metrics=[['battles','avg'],['win_rate','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['credits_net','avg'],['credits_costs','max'],['xp_received','sum'],['off','avg']];
+  const metrics=[['battles','avg'],['win_rate','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['credits_net_received','avg'],['credits_costs','max'],['xp_received','sum'],['off','avg']];
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     try{
@@ -87,19 +87,33 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.maps.metric='win_rate';model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});
       check('An inapplicable statistic closes its old menu and leaves keyboard navigation',await page.locator('#ss-sort-statistic .ss-select-trigger').getAttribute('aria-expanded')==='false'&&
         await page.locator('#ss-sort-statistic .ss-select-trigger').isDisabled()&&!await page.locator('#ss-sort-statistic .ss-select-options').isVisible());
-      for(const [confirmed,total] of [[0,137],[123456,137000]]){
-        await page.evaluate(({confirmed,total})=>{const payload=JSON.parse(model.payload);payload.scopes.launch.maps.forEach(item=>{
-          item.stats.battles=confirmed;item.stats.observed_battles=total;
-        });model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},{confirmed,total});await frames(page);
+      for(const [language,messages] of Object.entries(languages))for(const [confirmed,total] of
+        [[0,137],[38,39],[999,1000],[9999,10000],[99999,100000],[123456,137000],[99999,99999]]){
+        await page.evaluate(({confirmed,total,language,messages})=>{const payload=JSON.parse(model.payload);
+          payload.localization={language,messages};payload.scopes.launch.maps.forEach(item=>{
+            item.stats.battles=confirmed;item.stats.observed_battles=total;
+          });model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+        },{confirmed,total,language,messages});await frames(page);
         const count=await page.locator('.ss-group-count').first().evaluate(node=>{
-          const value=node.querySelector('.ss-kpi-value'),parts=[...value.children];
-          return {text:value.textContent,parts:parts.length,fits:parts.every(part=>{
-            const box=part.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(part);
-            return [...range.getClientRects()].every(text=>text.left>=box.left-1&&text.right<=box.right+1&&text.top>=box.top-1&&text.bottom<=box.bottom+1);
-          })};
+          const value=node.querySelector('.ss-kpi-value'),parts=[...value.children],box=value.getBoundingClientRect(),
+            range=document.createRange();range.selectNodeContents(value);
+          const content=parts.length?parts.map(part=>part.getBoundingClientRect()):[range.getBoundingClientRect()],
+            center=(Math.min(...content.map(r=>r.top))+Math.max(...content.map(r=>r.bottom)))/2;
+          return {text:value.textContent,parts:parts.length,centerDelta:Math.abs(center-(box.top+box.bottom)/2),
+            peerCenters:[...node.parentElement.querySelectorAll('.ss-kpi-value')].map(peer=>{
+              const r=peer.getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-(box.top+box.bottom)/2);
+            }),financeFits:[...node.closest('.ss-group').querySelectorAll('.ss-economy .ss-cell-coverage')].every(coverage=>{
+              const owner=coverage.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(coverage);
+              return [...range.getClientRects()].every(ink=>ink.left>=owner.left-1&&ink.right<=owner.right+1&&ink.top>=owner.top-1&&ink.bottom<=owner.bottom+1);
+            }),fits:(parts.length?parts:[value]).every(part=>{
+              const owner=part.getBoundingClientRect(),ink=document.createRange();ink.selectNodeContents(part);
+              const rects=[...ink.getClientRects()];
+              return rects.length===1&&rects.every(text=>text.left>=owner.left-1&&text.right<=owner.right+1&&text.top>=owner.top-1&&text.bottom<=owner.bottom+1);
+            })};
         });
-        check('The compact battle-count slot retains full zero/large partial counts at '+scale+'x: '+JSON.stringify(count),
-          count.parts===2&&count.fits&&count.text.replace(/[\s\u00a0]/g,'')===confirmed+'/'+total);
+        check('Zero, stacked and large battle counts stay centered and unbroken: '+language+'/'+scale+'x/'+confirmed+'/'+total+': '+JSON.stringify(count),
+          count.parts===(confirmed<total?2:0)&&count.fits&&count.financeFits&&count.centerDelta<=scale*1.25&&count.peerCenters.every(delta=>delta<=scale*0.5)&&
+          count.text.replace(/[^\d/]/g,'')===String(confirmed)+(confirmed<total?'/'+total:''));
       }
 
     }finally{await page.close();}

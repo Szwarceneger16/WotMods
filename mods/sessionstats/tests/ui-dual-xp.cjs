@@ -33,7 +33,7 @@ module.exports=async({browser,nativeHost,check})=>{
         await page.locator('.ss-xp-picker,#ss-xp-base,#ss-xp-received').count()===0&&
         await page.evaluate(()=>!Object.prototype.hasOwnProperty.call(GRZSessionStats.getState(),'xp')));
       const summary=await page.locator('#ss-summary .ss-performance').evaluate(panel=>({
-        keys:[...panel.querySelectorAll('[data-ss-metric]')].map(row=>row.getAttribute('data-ss-metric')),
+        keys:[...panel.querySelectorAll('.ss-metric-row[data-ss-metric]')].map(row=>row.getAttribute('data-ss-metric')),
         rows:[...panel.querySelectorAll('.ss-metric-row')].map(row=>({
           key:row.getAttribute('data-ss-metric'),label:row.querySelector('.ss-metric-name').textContent,
           numbers:[...row.querySelectorAll('.ss-metric-number')].map(node=>node.textContent)})),
@@ -45,7 +45,7 @@ module.exports=async({browser,nativeHost,check})=>{
         summary.shared===0&&summary.rows[0].label.includes('1/3')&&summary.rows[1].label.includes('2/3')&&summary.rows[2].label.includes('1/3'));
       for(const group of ['vehicles','maps','tiers','battles']){
         await page.locator('#ss-group-'+group).click();await frames(page);
-        const rows=await page.locator('#ss-groups .ss-group').first().locator('[data-ss-metric]').evaluateAll(rows=>rows.map(row=>({
+        const rows=await page.locator('#ss-groups .ss-group').first().locator('.ss-performance .ss-metric-row[data-ss-metric],.ss-performance .ss-battle-measure[data-ss-metric]').evaluateAll(rows=>rows.map(row=>({
           key:row.getAttribute('data-ss-metric'),label:(row.querySelector('.ss-metric-name,.ss-battle-label')||row).textContent,
           values:[...row.querySelectorAll('.ss-metric-number,.ss-battle-value')].map(node=>node.textContent)})));
         check(group+' permanently displays both XP metrics before WN8'+caption,

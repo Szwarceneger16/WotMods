@@ -16,7 +16,7 @@ module.exports=async({browser,nativeHost,check})=>{
   seed.scopes.timeline=JSON.parse(JSON.stringify(scope));Object.assign(seed.scopes.timeline,{time_points:[],time_point_names:{},from_point:'__custom__',from_date:Date.UTC(2024,9,15,17,45)/1000,to_point:'',to_date:null});
   const python=spawnSync(process.env.GRZ_PYTHON3||'python3',['-c',
     'import copy,json,sys;sys.path.insert(0,sys.argv[1]);from grz_session_stats.localization import Localizer;seed=json.load(sys.stdin);print(json.dumps({language:Localizer(language,client_language="pl",date_settings={"order":"MDY","separator":"/","hour12":False,"first_weekday":0,"months":["Polish native month"]*12,"weekdays":["Polish native day"]*7}).snapshot(copy.deepcopy(seed)) for language in ("pl","en","ru","fr","de","es","uk")}))',
-    path.join(root,'src')],{input:JSON.stringify(seed),encoding:'utf8'});
+    path.join(root,'src')],{input:JSON.stringify(seed),encoding:'utf8',maxBuffer:8*1024*1024});
   if(python.error||python.status!==0)throw Error(python.error||python.stderr);const payloads=JSON.parse(python.stdout),page=await nativeHost(browser,{initialViewport:{width:1800,height:1400},viewport:{width:1800,height:1400,scale:1}});
   try{
     for(const language of ['pl','en','ru','fr','de','es','uk','en']){

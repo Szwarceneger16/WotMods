@@ -16,9 +16,9 @@ module.exports=async ({browser,nativeHost,check})=>{
         for(const group of ['vehicles','maps','tiers']) {
           const sample=scope[group][0];scope[group]=[12500,-23456,0,null].map((value,index)=>{
             const item=JSON.parse(JSON.stringify(sample));item.id='synthetic-sort-'+group+'-'+index;item.name='Synthetic '+index;item.sort_value=value;
-            item.stats.currencies.credits.net=999999;item.stats.credits_net={count:0,min:null,avg:null,max:null,sum:null};return item;
+            item.stats.currencies.credits.net=999999;item.stats.credits_net_received={count:0,min:null,avg:null,max:null,sum:null};return item;
           });
-          scope.ordering[group]={metric:'credits_net',statistic:'max',direction:'desc',chronology:'newest'};
+          scope.ordering[group]={metric:'credits_net_received',statistic:'max',direction:'desc',chronology:'newest'};
           scope.pagination[group]={page:0,pages:1,page_size:40,total:4};
         }
         scope.ordering.vehicles.metric='off';
@@ -48,14 +48,14 @@ module.exports=async ({browser,nativeHost,check})=>{
         controls.frame.border>=1 && (controls.frame.background!=='none' || !['transparent','rgba(0, 0, 0, 0)'].includes(controls.frame.color)));
       for(const group of ['vehicles','maps','tiers']) for(const statistic of language==='en' && scale===1 ? ['min','avg','max'] : ['max']) {
         await page.evaluate(({group,statistic})=>{const payload=JSON.parse(model.payload);
-          payload.scopes.launch.ordering[group]={metric:'credits_net',statistic,direction:'desc',chronology:'newest'};
+          payload.scopes.launch.ordering[group]={metric:'credits_net_received',statistic,direction:'desc',chronology:'newest'};
           model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},{group,statistic});
         await page.locator('#ss-group-'+group).click();await frames(page);
         const values=[12500,-23456,0,null],statLabel=messages[statistic==='avg' ? 'sort.avg' : 'metric.'+statistic];
         const expected=values.map(value=>{
           const amount=value===null ? messages['format.missing'] : (value>0 ? '+' : value<0 ? '-' : '')+
             String(Math.abs(value)).replace(/\B(?=(\d{3})+(?!\d))/g,messages['format.thousands']);
-          return {text:messages['sort.value_per_battle'].replace(/\{([0-9])\}/g,(_,index)=>[statLabel,messages['sort.credits'],amount][index]),amount};
+          return {text:messages['sort.value_per_battle'].replace(/\{([0-9])\}/g,(_,index)=>[statLabel,messages['sort.credits_net_received'],amount][index]),amount};
         });
         const audit=await page.locator('.ss-group-sort-value').evaluateAll((nodes,scale)=>nodes.map(node=>{
           const box=node.getBoundingClientRect(),card=node.closest('.ss-group').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);

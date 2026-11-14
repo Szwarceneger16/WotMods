@@ -30,7 +30,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['orderKey','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
+  for(const name of ['orderKey','canonicalMetric','creditMetric','metricSeries','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
     vm.runInContext(actual(name),context);
   context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
@@ -353,7 +353,7 @@ module.exports=async({browser,nativeHost,check})=>{
       check('A completed projection hides the spinner and restores ordering'+caption,
         !await page.locator('#ss-filter-loading').isVisible()&&await page.locator('#ss-sort-off').isEnabled()&&await page.locator('#ss-sort-chronology .ss-select-trigger').isEnabled());
       if(await page.locator('#ss-sort-off').getAttribute('aria-pressed')==='false'){await page.locator('#ss-sort-off').click();await acknowledge();}
-      await page.locator('#ss-sort-metric .ss-select-trigger').click();await page.locator('#ss-sort-metric [data-value="credits_net"]').click();await frames(page);
+      await page.locator('#ss-sort-metric .ss-select-trigger').click();await page.locator('#ss-sort-metric [data-value="credits_net_received"]').click();await frames(page);
       check('An unacknowledged native sort immediately owns the filter spinner'+caption,await page.locator('#ss-filter-loading').isVisible());
       await acknowledge();check('The matching native sort acknowledgement clears its spinner'+caption,!await page.locator('#ss-filter-loading').isVisible());
       await require('./ui-loading-overlay.cjs')({page,check,caption,scale,width,acknowledge,frames});

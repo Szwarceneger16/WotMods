@@ -21,9 +21,13 @@ module.exports=async({browser,nativeHost,check})=>{
         const item=scope[group][0];delete item.sort_value;
         item.stats.xp_base={count:2,sum:600,min:100,avg:300,max:500};
         item.stats.xp_received={count:1,sum:0,min:0,avg:0,max:0};
-        item.stats.credits_net={count:2,sum:-500,min:-400,avg:-250,max:-100};
-        item.stats.credits_gross={count:2,sum:1000,min:400,avg:500,max:600};
+        item.stats.credits_net_received={count:2,sum:-500,min:-400,avg:-250,max:-100};
+        item.stats.credits_net_base={count:2,sum:-1400,min:-900,avg:-700,max:-500};
+        item.stats.credits_income_base={count:2,sum:100,min:0,avg:50,max:100};
+        item.stats.credits_income_received={count:2,sum:1000,min:400,avg:500,max:600};
         item.stats.credits_costs={count:2,sum:1500,min:400,avg:750,max:1100};
+        item.stats.currencies.credits.income_base=100;item.stats.currencies.credits.income_base_count=2;
+        item.stats.currencies.credits.net_base=-1400;item.stats.currencies.credits.net_base_count=2;
         item.stats.currencies.credits.net=-500;item.stats.currencies.credits.income=1000;item.stats.currencies.credits.costs=1500;
         scope[group]=[item];scope.pagination[group]={page:0,pages:1,page_size:40,total:1};
       }
@@ -31,7 +35,7 @@ module.exports=async({browser,nativeHost,check})=>{
     });await frames(page);
     for(const group of ['vehicles','maps','tiers']){
       await page.locator('#ss-group-'+group).click();
-      for(const metric of ['xp_base','xp_received','credits_net','credits_gross','credits_costs']){
+      for(const metric of ['xp_base','xp_received','credits_income_base','credits_income_received','credits_net_base','credits_net_received','credits_costs']){
         await choose('metric',metric);
         check('All is available only for an additive aggregate metric '+group+'/'+metric,
           await page.locator('#ss-sort-statistic [data-value="sum"]').evaluate(node=>node.style.display!=='none'));
@@ -39,10 +43,9 @@ module.exports=async({browser,nativeHost,check})=>{
         check('All dispatches the owned aggregate sum '+group+'/'+metric,
           command.metric===metric&&command.statistic==='sum'&&command.group===group&&command.account_key&&command.period_id);
         if(metric.startsWith('credits_')){
-          const column=metric==='credits_gross'?1:metric==='credits_costs'?2:3;
-          check('All '+metric+' highlights the existing financial total '+group,
-            await page.locator('.ss-group .ss-money-row').first().evaluate((row,{metric,column})=>
-              row.children[column].getAttribute('data-ss-sort-active')===metric,{metric,column})&&
+          check('All '+metric+' highlights its explicit total figure rather than a source action '+group,
+            await page.locator('.ss-group .ss-money-value[data-ss-metric="'+metric+'"] > .ss-cell-value').evaluate((figure,metric)=>
+              figure.getAttribute('data-ss-sort-active')===metric,metric)&&
             await page.locator('.ss-group-sort-value').count()===0);
         }else{
           const caption=await page.locator('.ss-group-sort-value').getAttribute('aria-label');
@@ -62,11 +65,11 @@ module.exports=async({browser,nativeHost,check})=>{
         if(metric!=='battle_wn8'){await choose('metric','xp_base');await choose('statistic','sum');}
       }
     }
-    await page.locator('#ss-group-battles').click();await choose('metric','credits_gross');
+    await page.locator('#ss-group-battles').click();await choose('metric','credits_income_received');
     check('Battles can sort gross income but never expose an aggregate All option',
       await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
       await page.locator('#ss-sort-statistic [data-value="sum"]').evaluate(node=>node.style.display==='none')&&
-      await page.locator('.ss-money-row [data-ss-sort-active="credits_gross"]').count()>0);
+      await page.locator('.ss-money-row [data-ss-sort-active="credits_income_received"]').count()>0);
     await choose('metric','credits_costs');
     check('Battles sort recorded expense magnitudes and highlight the existing displayed costs',
       await page.locator('#ss-sort-statistic [role=combobox]').isDisabled()&&
@@ -75,13 +78,13 @@ module.exports=async({browser,nativeHost,check})=>{
     for(const [language,catalog]of Object.entries(messages)){
       await page.evaluate(({language,catalog})=>{
         const payload=JSON.parse(model.payload);payload.localization={language,messages:catalog};
-        payload.scopes.launch.ordering.maps={metric:'credits_gross',statistic:'sum',direction:'desc',chronology:'newest'};
+        payload.scopes.launch.ordering.maps={metric:'credits_income_received',statistic:'sum',direction:'desc',chronology:'newest'};
         model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
         document.querySelector('#ss-group-maps').onclick();
       },{language,catalog});await frames(page);
       check('All and gross-credit labels follow the selected language '+language,
         await page.locator('#ss-sort-statistic .ss-select-trigger .ss-control-label').textContent()===catalog['sort.sum']&&
-        await page.locator('#ss-sort-metric .ss-select-trigger .ss-control-label').textContent()===catalog['sort.credits_gross.caption']);
+        await page.locator('#ss-sort-metric .ss-select-trigger .ss-control-label').textContent()===catalog['sort.credits_income_received.caption']);
     }
     await page.evaluate(()=>{
       const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.maps={metric:'battle_wn8',statistic:'sum',direction:'desc',chronology:'newest'};

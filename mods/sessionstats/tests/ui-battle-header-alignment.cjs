@@ -52,12 +52,19 @@ module.exports=async({browser,nativeHost,check})=>{
         }
         const received=card.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
         const addedMetricHeight=received?(received.getBoundingClientRect().height+parseFloat(getComputedStyle(received).marginTop))/scale:0;
-        // Both XP values add one required metric row. Preserve the original
-        // header/card budget after accounting only for that measured row.
+        const baseCredits=card.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row'),
+          receivedCredits=card.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
+        const addedBaseCreditHeight=baseCredits.getBoundingClientRect().height/scale,
+          receivedCreditWrapHeight=Math.max(0,receivedCredits.getBoundingClientRect().height/scale-30);
+        for(const row of card.querySelectorAll('.ss-money-row')){
+          if(row.getBoundingClientRect().height/scale>(row===baseCredits||row===receivedCredits?48:30))failures.push('row-height');
+        }
+        // Preserve the original 165px budget after the additional XP/Base
+        // credit rows and the Received credit label's extra text line.
         if(!received||card.querySelectorAll('.ss-battle-measure').length!==3||
           Math.abs(card.getBoundingClientRect().width/scale-width)>1||origin.height/scale>64||
-          card.getBoundingClientRect().height/scale-addedMetricHeight>165)failures.push('dimensions');
-        return {positions,headerHeight:origin.height/scale,cardHeight:card.getBoundingClientRect().height/scale,addedMetricHeight,failures};
+          card.getBoundingClientRect().height/scale-addedMetricHeight-addedBaseCreditHeight-receivedCreditWrapHeight>165)failures.push('dimensions');
+        return {positions,headerHeight:origin.height/scale,cardHeight:card.getBoundingClientRect().height/scale,addedMetricHeight,addedBaseCreditHeight,receivedCreditWrapHeight,failures};
       });
       for(const [index,row] of rows.entries())for(const [key,box] of Object.entries(row.positions)){
         const reference=rows.find(other=>other.positions[key]).positions[key];

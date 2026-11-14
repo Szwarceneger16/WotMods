@@ -269,8 +269,14 @@ class Localizer(object):
                     localized_map = self.map_names.name(battle.get('map_id'), battle.get('map'))
                     if localized_map is not None:
                         battle['map'] = localized_map
+        def translate_extrema(references):
+            if isinstance(references, dict):
+                for pair in references.values():
+                    if isinstance(pair, dict):
+                        translate_battle_list({'items': [value for value in pair.values() if isinstance(value, dict)]})
         for name, scope in snapshot.get('scopes', {}).items():
             scope['label'] = self.text('scope.' + name)
+            translate_extrema(scope.get('extrema_battles'))
             history = scope.get('battle_history')
             if isinstance(history, dict):
                 translate_battle_list(history.get('battle_list'))
@@ -293,6 +299,7 @@ class Localizer(object):
                     winner = row.get('sort_battle')
                     if isinstance(winner, dict):
                         translate_battle_list({'items': [winner]})
+                    translate_extrema(row.get('extrema_battles'))
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
                     if grouping == 'maps' and isinstance(visual, dict):

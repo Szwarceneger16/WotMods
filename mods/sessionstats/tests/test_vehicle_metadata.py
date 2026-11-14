@@ -9,7 +9,7 @@ from test_visuals import Obj, Node, Branch, ResolverFixture, VEHICLE_ID, snapsho
 from grz_session_stats.visuals import canonical_vehicle_class, _native_role_text, enrich_snapshot
 
 
-CLASS_PATH = 'gui/maps/icons/vehicleTypes/44x44/AT-SPG.png'
+CLASS_PATH = 'gui/maps/icons/vehicleTypes/24x24_metal/AT-SPG.png'
 ROLE_KEY = 'role_ATSPG_sniper'
 ROLE_PATH = 'gui/maps/icons/roleExp/roles/24x24/' + ROLE_KEY + '.png'
 
@@ -22,7 +22,12 @@ def fixture():
     descriptor.level = 10
     descriptor.role = 17  # Synthetic number; the adapter uses the live mapping.
     icons = value.resources.images.gui.maps.icons
-    icons.vehicleTypes = Obj(c_44x44=Branch({'AT_SPG': Node(31)}), big=Branch())
+    value.class_icons = Branch({'AT_SPG': Node(31)})
+    value.class_sizes = []
+    def class_size(size):
+        value.class_sizes.append(size)
+        return value.class_icons if size == '24x24_metal' else Branch()
+    icons.vehicleTypes = Obj(num=class_size)
     icons.roleExp = Obj(roles=Obj(c_24x24=Branch({ROLE_KEY: Node(32)})))
     value.paths.update({31: 'img://' + CLASS_PATH, 32: 'img://' + ROLE_PATH})
     value.files.update([CLASS_PATH, ROLE_PATH])
@@ -56,6 +61,48 @@ class VehicleMetadataTests(unittest.TestCase):
             'group_name': 'Native client group', 'description': 'Native definition.\nSecond paragraph.',
             'icon': {'kind': 'vehicle_role', 'src': 'img://' + ROLE_PATH}})
         self.assertEqual(value.role_calls, [17])
+        self.assertEqual(value.class_sizes, ['24x24_metal'])
+
+    def test_native_account_elite_state_selects_laurels_and_can_change_after_caching(self):
+        value = fixture()
+        item = Obj(intCD=VEHICLE_ID, isElite=False)
+        value.resolver._gui_vehicle_getter = lambda compact: item
+        elite_path = CLASS_PATH.replace('.png', '_elite.png')
+        value.class_icons.nodes['AT_SPG_elite'] = Node(33)
+        value.paths[33] = 'img://' + elite_path
+        value.files.add(elite_path)
+        ordinary = value.resolver.vehicle_metadata(VEHICLE_ID)
+        self.assertFalse(ordinary['elite'])
+        self.assertEqual(ordinary['class_icon']['src'], 'img://' + CLASS_PATH)
+        item.isElite = True
+        elite = value.resolver.vehicle_metadata(VEHICLE_ID)
+        self.assertTrue(elite['elite'])
+        self.assertEqual(elite['class_icon']['src'], 'img://' + elite_path)
+        self.assertEqual(elite['role'], ordinary['role'])
+        item.isElite = False
+        self.assertEqual(value.resolver.vehicle_metadata(VEHICLE_ID), ordinary)
+
+    def test_unknown_or_mismatched_account_items_never_invent_elite_status(self):
+        value = fixture()
+        for item in (None, Obj(intCD=VEHICLE_ID + 1, isElite=True),
+                     Obj(intCD=VEHICLE_ID, isElite=1), Obj(intCD=VEHICLE_ID, isElite='true')):
+            value.resolver._gui_vehicle_getter = lambda compact: item
+            data = value.resolver.vehicle_metadata(VEHICLE_ID)
+            self.assertNotIn('elite', data)
+            self.assertEqual(data['class_icon']['src'], 'img://' + CLASS_PATH)
+
+    def test_every_native_class_uses_the_matching_compact_metal_artwork(self):
+        for kind in ('lightTank', 'mediumTank', 'heavyTank', 'AT-SPG', 'SPG'):
+            for elite in (False, True):
+                value = fixture()
+                value.vehicles[VEHICLE_ID].classTag = kind
+                value.resolver._gui_vehicle_getter = lambda compact: Obj(intCD=compact, isElite=elite)
+                key = kind.replace('-', '_') + ('_elite' if elite else '')
+                path = 'gui/maps/icons/vehicleTypes/24x24_metal/' + kind + ('_elite' if elite else '') + '.png'
+                value.class_icons.nodes[key] = Node(33)
+                value.paths[33] = 'img://' + path
+                value.files.add(path)
+                self.assertEqual(value.resolver.vehicle_metadata(VEHICLE_ID)['class_icon']['src'], 'img://' + path)
 
     def test_success_cache_is_owned_and_returned_metadata_cannot_mutate_it(self):
         value = fixture()
@@ -94,8 +141,8 @@ class VehicleMetadataTests(unittest.TestCase):
     def test_spg_has_its_original_class_icon_and_no_fabricated_role_art(self):
         value = fixture()
         value.vehicles[VEHICLE_ID].classTag = 'SPG'
-        path = 'gui/maps/icons/vehicleTypes/44x44/SPG.png'
-        value.resources.images.gui.maps.icons.vehicleTypes.c_44x44.nodes = {'SPG': Node(33)}
+        path = 'gui/maps/icons/vehicleTypes/24x24_metal/SPG.png'
+        value.class_icons.nodes = {'SPG': Node(33)}
         value.paths[33] = 'img://' + path
         value.files.add(path)
         value.resolver._role_label_getter = lambda descriptor: 'role_SPG'
@@ -122,16 +169,16 @@ class VehicleMetadataTests(unittest.TestCase):
         self.assertEqual(data['class'], 'AT_SPG')
         self.assertEqual(data['role']['description'], 'Native definition.\nSecond paragraph.')
 
-    def test_optional_class_size_and_role_group_api_fail_independently(self):
+    def test_missing_compact_metal_art_does_not_reuse_unreadable_padded_canvases(self):
         value = fixture()
         icons = value.resources.images.gui.maps.icons
-        icons.vehicleTypes = Obj(big=Branch({'AT_SPG': Node(33)}))
+        icons.vehicleTypes = Obj(c_44x44=Branch({'AT_SPG': Node(31)}), big=Branch({'AT_SPG': Node(33)}))
         path = 'gui/maps/icons/vehicleTypes/big/AT-SPG.png'
         value.paths[33] = 'img://' + path
         value.files.add(path)
         del value.resources.strings.menu.roleExp.roleGroupName
         data = value.resolver.vehicle_metadata(VEHICLE_ID)
-        self.assertEqual(data['class_icon']['src'], 'img://' + path)
+        self.assertNotIn('class_icon', data)
         self.assertNotIn('group_name', data['role'])
         self.assertEqual(data['role']['description'], 'Native definition.\nSecond paragraph.')
 

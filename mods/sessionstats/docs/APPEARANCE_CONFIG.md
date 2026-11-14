@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.8
+# Appearance and scrolling configuration — 0.9.9
 
 ## File placement and applying changes
 
@@ -73,7 +73,7 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `radii.table_header` | `5` | Table-header corners |
 | `radii.table_row` | `4` | Table-row corners |
 | `radii.group_card` | `7` | Vehicle/map/battle card corners |
-| `radii.garage_spinner` | `5` | Spinner corners |
+| `radii.garage_spinner` | `8` | Spinner corners |
 | `opacity.window` | `1.0` | Entire panel, including text |
 | `opacity.garage_button` | `1.0` | Entire garage button |
 | `opacity.disabled_controls` | `0.45` | Disabled controls |

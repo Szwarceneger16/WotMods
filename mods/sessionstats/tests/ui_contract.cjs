@@ -313,8 +313,8 @@ async function runFeatureSuite(file,browser) {
       card.missionDetails===0 && card.otherAccordions===0) && await page.locator('details').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
   await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
-  const baseSummary=await page.locator('#ss-summary [data-ss-metric="xp_base"]').innerText();
-  const receivedSummary=await page.locator('#ss-summary [data-ss-metric="xp_received"]').innerText();
+  const baseSummary=await page.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"]').innerText();
+  const receivedSummary=await page.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_received"]').innerText();
   check('Both distinct XP series are visible together in the summary',baseSummary.includes('Base XP') && receivedSummary.includes('Received XP') && baseSummary!==receivedSummary);
   await page.locator('#ss-group-maps').click();
   check('Map grouping contains all five maps',await page.locator('#ss-groups .ss-group').count()===5);
@@ -352,8 +352,9 @@ async function runFeatureSuite(file,browser) {
     row.values[0].label==='Base XP' && row.values[0].value===formattedInteger(expectedBattles.get(row.id).stats.xp_base.sum)));
   const knownBattle=battles.find(row=>row.id==='2000015');
   check('Battle finances retain separate income, costs and net including bonds',
-    knownBattle.money[0].label==='Credits' && knownBattle.money[0].values.join('|')==='78\u00a0935|-41\u00a0385|+37\u00a0550' &&
-    knownBattle.money[1].label==='Bonds' && knownBattle.money[1].values.join('|')==='0|-6|-6');
+    knownBattle.money[0].label==='Credits (base)' && knownBattle.money[0].values.join('|')==='44\u00a0995|-41\u00a0385|+3\u00a0610' &&
+    knownBattle.money[1].label==='Credits (received)' && knownBattle.money[1].values.join('|')==='78\u00a0935|-41\u00a0385|+37\u00a0550' &&
+    knownBattle.money[2].label==='Bonds' && knownBattle.money[2].values.join('|')==='0|-6|-6');
   await page.locator('#ss-reset').click();
   controls=await controlLayout(page);
   check('Reset and confirmation captions also have visible fitted boxes',controls.filter(c=>['ss-reset','ss-reset-cancel','ss-reset-confirm'].includes(c.id)).every(c=>c.visible && c.flex && c.block && c.fits));
@@ -444,11 +445,11 @@ async function runFeatureSuite(file,browser) {
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.wn8=805;GRZSessionStats.update(q);},fixtures.normal);
   check('WN8 below 1000 has no artificial padding',(await kpis())[2]==='805');
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.currencies.bonds.net=null;q.scopes.launch.summary.currencies.bonds.net_count=0;GRZSessionStats.update(q);},fixtures.normal);
-  check('Missing bond net is a dash, not zero',(await page.locator('#ss-summary .ss-money-row').nth(1).innerText()).includes('—'));
+  check('Missing bond net is a dash, not zero',(await page.locator('#ss-summary .ss-money-row').filter({has:page.locator('.ss-money-label',{hasText:'Bonds'})}).locator('.ss-money-value > .ss-cell-value').last().textContent())==='—');
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.currencies.credits.net=-5484;GRZSessionStats.update(q);},fixtures.normal);
   check('Negative balance and costs use the client-readable ASCII minus',
-    (await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value').nth(2).innerText())==='-5\u00a0484' &&
-    (await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value').nth(1).innerText()).startsWith('-'));
+    (await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_net_received"] > .ss-cell-value').textContent())==='-5\u00a0484' &&
+    (await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_costs"] > .ss-cell-value').textContent()).startsWith('-'));
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
 
   // Missing data must not turn into a fabricated zero when a battle uses a
@@ -478,7 +479,7 @@ async function runFeatureSuite(file,browser) {
   check('Unavailable Base XP, Received XP and WN8 remain dashes in a single battle',
     missing.values.length===3 && missing.values.every(value=>value.value==='—'));
   check('Unknown battle outcome and unavailable bond balance stay explicit',
-    missing.outcome==='UNKNOWN RESULT' && missing.money[1].values[2]==='—');
+    missing.outcome==='UNKNOWN RESULT' && missing.money.find(row=>row.label==='Bonds').values[2]==='—');
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   for(const grouping of ['maps','vehicles']) {
     await page.locator('#ss-group-'+grouping).click();
@@ -803,8 +804,8 @@ async function runFeatureSuite(file,browser) {
       await localized.title()===messages.title &&
       await localized.locator('html').getAttribute('lang')===language &&
       await localized.locator('#ss-close').getAttribute('aria-label')===messages.close &&
-      await localized.locator('#ss-summary [data-ss-metric="xp_base"] .ss-cell-value').textContent()===messages['xp.base'] &&
-      await localized.locator('#ss-summary [data-ss-metric="xp_received"] .ss-cell-value').textContent()===messages['xp.received'] &&
+      await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-cell-value').textContent()===messages['xp.base'] &&
+      await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_received"] .ss-cell-value').textContent()===messages['xp.received'] &&
       await localized.locator('.ss-xp-picker').count()===0);
     await localized.locator('#ss-scope-instance').click();
     await localized.locator('#ss-reset').click();
@@ -850,7 +851,7 @@ async function runFeatureSuite(file,browser) {
   await localized.evaluate(payload=>GRZSessionStats.update(payload),custom);
   check('Partial catalogs fall back to English and custom text cannot inject markup',
     await localized.locator('#ss-refresh .ss-control-label').textContent()==='Reload' &&
-    await localized.locator('#ss-summary [data-ss-metric="xp_base"] .ss-cell-value').textContent()==='Base XP' &&
+    await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-cell-value').textContent()==='Base XP' &&
     await localized.locator('.ss-titlebar h1').textContent()===custom.localization.messages.title &&
     await localized.locator('.ss-titlebar h1 img').count()===0);
   await localized.evaluate(payload=>GRZSessionStats.update(payload),fixtures.normal);

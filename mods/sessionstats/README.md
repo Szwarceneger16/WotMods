@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.8 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.9 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -34,7 +34,9 @@ that sort is active; otherwise the **Combined WN8** headline recalculates a rati
 from all group results and expected vehicle values. It differs from the arithmetic
 mean of individual-battle WN8 in the table. The card information button explains
 this distinction. **All** sorts aggregate XP, credit income or credit costs by the sum of
-known values; gross credits mean income before costs. All is not offered for
+known values. Credit income and net sorting separately offer Base (before bonuses)
+and Received (settled income); historical missing Base values remain unknown.
+Both net variants subtract actual battle costs. All is not offered for
 WN8, win rate or individual battles. Credit sums mark the existing finance total;
 XP sums show an explicit total in the header, with missing-value coverage.
 A compact summary table shows total base XP, total received XP and Free XP in three
@@ -51,7 +53,8 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [0.9.5 layout refinements](docs/UI_REFINEMENTS_0.9.5.md), and
 [0.9.6 readability and loading refinements](docs/UI_REFINEMENTS_0.9.6.md), and
 [0.9.7 XP presentation and credit sorting](docs/UI_REFINEMENTS_0.9.7.md), and
-[0.9.8 battle references and compact headers](docs/UI_REFINEMENTS_0.9.8.md).
+[0.9.8 battle references and compact headers](docs/UI_REFINEMENTS_0.9.8.md), and
+[0.9.9 permanent links and base/received credits](docs/UI_REFINEMENTS_0.9.9.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an

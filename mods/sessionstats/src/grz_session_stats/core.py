@@ -29,6 +29,13 @@ except NameError:
 _OUTCOMES = ('win', 'loss', 'draw')
 _CURRENCIES = ('credits', 'bonds', 'gold')
 _BREAKDOWN = ('repair', 'ammo', 'consumables', 'directives')
+_CREDIT_METRICS = (
+    ('credits_income_base', 'income_base'), ('credits_income_received', 'income'),
+    ('credits_net_base', 'net_base'), ('credits_net_received', 'net'),
+    ('credits_costs', 'costs'),
+    # Legacy metric names have always represented the received result.
+    ('credits_gross', 'income'), ('credits_net', 'net'))
+_CREDIT_ALIASES = {'credits_gross': 'credits_income_received', 'credits_net': 'credits_net_received'}
 _NUMBERS = ('damage', 'frags', 'spots', 'defense', 'xp_base', 'xp_received', 'free_xp')
 _UNKNOWN_MEMBERSHIP = message('core.membership')
 MAX_TIME_POINTS = 1000
@@ -128,7 +135,7 @@ class ExpectedTable(object):
 
 def _money(records, currency):
     money = {}
-    for key in ('income', 'costs', 'net'):
+    for key in ('income', 'costs', 'net') + (('income_base', 'net_base') if currency == 'credits' else ()):
         values = [record.get('currencies', {}).get(currency, {}).get(key) for record in records]
         known = [value for value in values if value is not None]
         money[key] = _number(sum(known)) if known else None
@@ -158,9 +165,8 @@ def aggregate_stats(records, expected_table):
     stats['win_rate'] = stats['wins'] * 100.0 / count if count else None
     for key in ('xp_base', 'xp_received', 'free_xp'):
         stats[key] = _series([record.get(key) for record in records])
-    stats['credits_net'] = _series([record.get('currencies', {}).get('credits', {}).get('net') for record in records])
-    stats['credits_gross'] = _series([record.get('currencies', {}).get('credits', {}).get('income') for record in records])
-    stats['credits_costs'] = _series([record.get('currencies', {}).get('credits', {}).get('costs') for record in records])
+    for metric, field in _CREDIT_METRICS:
+        stats[metric] = _series([record.get('currencies', {}).get('credits', {}).get(field) for record in records])
     actual = dict((key, 0.0) for key in ('damage', 'frags', 'spots', 'defense', 'wins'))
     reference = dict((key, 0.0) for key in actual)
     per_battle = []
@@ -218,7 +224,7 @@ def _clean_record(record):
             if not isinstance(incoming, dict):
                 continue
             values = {}
-            for key in ('income', 'costs', 'net'):
+            for key in ('income', 'costs', 'net') + (('income_base', 'net_base') if currency == 'credits' else ()):
                 if key in incoming:
                     # The client's after-penalty income can be negative.
                     # Costs alone must be nonnegative; do not erase a fine.
@@ -979,11 +985,12 @@ class StatsService(object):
         # when an authoritative update revises a component but does not supply net.
         for currency, values in merged.get('currencies', {}).items():
             update = incoming.get('currencies', {}).get(currency, {})
-            has_components = values.get('income') is not None and values.get('costs') is not None
-            if has_components and (values.get('net') is None or
-                                   (revise and update.get('net') is None and
-                                    (update.get('income') is not None or update.get('costs') is not None))):
-                values['net'] = values['income'] - values['costs']
+            for income, net in (('income', 'net'),) + ((('income_base', 'net_base'),) if currency == 'credits' else ()):
+                has_components = values.get(income) is not None and values.get('costs') is not None
+                if has_components and (values.get(net) is None or
+                                       (revise and update.get(net) is None and
+                                        (update.get(income) is not None or update.get('costs') is not None))):
+                    values[net] = values[income] - values['costs']
         if merged == old:
             return False
         merged['revision'] = old.get('revision', 0) + 1

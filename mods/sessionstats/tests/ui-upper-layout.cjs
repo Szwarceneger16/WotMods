@@ -85,7 +85,7 @@ module.exports=async function ({browser,nativeHost,check}) {
             parseFloat(getComputedStyle(node).fontSize)/scale<minFont) badNumbers.push(node.textContent);
         }
         const compact=text=>text.replace(/\s/g,'');
-        const credits=document.querySelector('#ss-summary .ss-money-row');
+        const credits=document.querySelector('#ss-summary .ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
         return {root,panels,pair,summary,kpis,filters,xpPickerCount,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
@@ -147,7 +147,7 @@ module.exports=async function ({browser,nativeHost,check}) {
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       });
       check('Positive finance totals retain their full signed amount: '+caption,
-        await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value .ss-cell-value').last().textContent().then(text=>text.replace(/\s/g,'')==='+12345678'));
+        await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_net_received"] > .ss-cell-value').textContent().then(text=>text.replace(/\s/g,'')==='+12345678'));
     } finally { await page.close(); }
   }
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;

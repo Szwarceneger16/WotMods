@@ -191,7 +191,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'battle_outcome': 5,
            'panel_footer': 7,
            'confirmation': 8,
-           'garage_spinner': 5},
+           'garage_spinner': 8},
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7, 'date_unavailable': 1.0},
  'scroll': {'speed_multiplier': 1.0},
  'maps': {'preview_mode': 'image'},
@@ -338,6 +338,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-free-xp strong { display:block; color:{{colors.free_xp_value_text}}; font-size:14rem; font-weight:normal; margin-right:4rem; }
 .ss-money-label { display:block; width:19%; font-size:13rem; color:{{colors.money_label_text}}; }
 .ss-money-value { display:block; width:27%; text-align:right; font-size:14rem; }
+/* Base and received credit totals share compact, permanent extrema actions. */
+.ss-credit-extreme-actions { display:flex; align-items:center; justify-content:flex-end; min-height:18rem; width:100%; }
+.ss-credit-extreme-actions > .ss-metric-battle-link { flex:0 1 50%; width:50%; min-width:0; max-width:50%; height:18rem; min-height:18rem; padding:0 1rem; font-size:11rem; line-height:16rem; }
+.ss-credit-extreme-actions .ss-control-label, .ss-credit-extreme-actions .ss-metric-action-label { font-size:11rem; line-height:16rem; white-space:nowrap; }
+.ss-credit-cell > .ss-cell-value { white-space:normal; overflow-wrap:break-word; }
 .ss-positive { color:{{colors.positive_text}}; }
 .ss-negative { color:{{colors.negative_text}}; }
 .ss-unknown { color:{{colors.unknown_text}}; }
@@ -540,6 +545,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-vehicle-meta { display:flex; flex:0 1 auto; flex-wrap:nowrap; align-items:center; min-width:0; line-height:16rem; }
 .ss-vehicle-tier { display:block; flex-shrink:0; margin-right:3rem; }
 .ss-vehicle-icon { display:block; flex:0 0 16rem; width:16rem; height:16rem; margin-right:3rem; background-repeat:no-repeat; background-position:center; background-size:contain; cursor:help; }
+.ss-vehicle-class-icon { flex-basis:24rem; width:24rem; height:24rem; background-size:24rem 24rem; }
 
 .ss-group-meta .ss-free-xp { font-size:12rem; }
 .ss-group-meta .ss-free-xp strong { font-size:12rem; }
@@ -564,7 +570,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary-meta .ss-coverage-note { margin-left:10rem; }
 .ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
 .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
-.ss-money-label .ss-cell-coverage { margin-left:3rem; }
+.ss-money-label .ss-cell-coverage { display:block; margin-left:0; white-space:normal; overflow-wrap:break-word; }
 @media (max-width:560px) {
   .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
   .ss-battle .ss-group-name { width:0; flex:1; }
@@ -712,23 +718,24 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-aggregate .ss-group-count { flex-basis:60rem; width:60rem; }
 .ss-aggregate .ss-group-wn8-kpi { flex-basis:72rem; width:72rem; }
 .ss-aggregate .ss-group-kpi .ss-kpi-label { height:26rem; min-height:26rem; font-size:11rem; line-height:13rem; overflow-wrap:break-word; }
-.ss-aggregate .ss-group-kpi .ss-kpi-value { height:38rem; min-height:38rem; font-size:20rem; line-height:23rem; overflow-wrap:break-word; }
+.ss-aggregate .ss-group-kpi .ss-kpi-value { display:flex; flex-direction:column; align-items:center; justify-content:center; height:38rem; min-height:38rem; font-size:20rem; line-height:23rem; overflow-wrap:break-word; }
 .ss-aggregate .ss-group-count .ss-kpi-value { font-size:18rem; }
+.ss-aggregate .ss-group-rate .ss-kpi-value { font-size:17rem; }
 .ss-aggregate .ss-group-count-partial .ss-kpi-value { line-height:23rem; }
 .ss-count-confirmed { display:block; font-size:18rem; line-height:23rem; }
 .ss-count-observed { display:block; font-size:11rem; line-height:15rem; }
 .ss-group-sort-host { position:relative; flex:0 0 96rem; width:96rem; min-width:0; height:64rem; padding:0 3rem; text-align:center; }
-.ss-group-sort-host.ss-group-sort-link-space { padding-right:24rem; }
 .ss-group-sort-caption { display:block; width:100%; height:26rem; min-height:26rem; color:{{colors.list_meta_text}}; font-size:11rem; font-weight:normal; line-height:13rem; overflow-wrap:break-word; }
 .ss-group-sort-number { display:block; width:100%; height:38rem; min-height:38rem; margin:0; color:{{colors.kpi_value_text}}; font-size:16rem; line-height:19rem; white-space:normal; overflow-wrap:break-word; }
-.ss-group-sort-date { font-size:12rem; font-weight:normal; }
 .ss-group-sort-host .ss-group-sort-value { width:100%; height:64rem; min-height:64rem; margin:0; padding:0; border:0; }
 .ss-group-sort-partial .ss-group-sort-number { height:19rem; min-height:19rem; font-size:12rem; white-space:nowrap; }
 .ss-group-sort-partial > .ss-count-coverage { display:block; margin:0; font-size:10rem; line-height:15rem; }
-.ss-group-sort-host .ss-sort-battle-link { position:absolute; right:0; top:34rem; width:22rem; min-width:22rem; height:22rem; min-height:22rem; margin:0; padding:0; }
-.ss-sort-battle-symbol { position:relative; display:block; width:12rem; height:12rem; pointer-events:none; }
-.ss-sort-battle-symbol:before { content:""; display:block; position:absolute; left:1rem; top:10rem; width:13rem; height:0; border-top:2rem solid currentColor; transform:rotate(-45deg); transform-origin:0 0; }
-.ss-sort-battle-symbol:after { content:""; display:block; position:absolute; right:0; top:0; width:7rem; height:7rem; border-top:2rem solid currentColor; border-right:2rem solid currentColor; }
+/* The value itself is the link: preserve number width and align its baseline. */
+.ss-metric-row .ss-extreme-cell { padding-top:0; padding-bottom:0; }
+.ss-metric-battle-link { display:block; min-width:0; width:100%; min-height:26rem; margin:0; padding:3rem 0; border:0; border-radius:{{radii.control}}rem; background:{{colors.close_background}}; color:inherit; font-family:inherit; font-size:inherit; font-weight:inherit; line-height:20rem; text-align:right; text-shadow:inherit; cursor:pointer; }
+.ss-extreme-figure { display:inline; border-bottom:1rem solid {{colors.list_meta_text}}; }
+.ss-metric-battle-link:hover, .ss-metric-battle-link:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:-1rem; background:{{colors.table_row_hover_background}}; }
+.ss-metric-battle-link:hover .ss-extreme-figure, .ss-metric-battle-link:focus .ss-extreme-figure { border-bottom-color:{{colors.session_tab_marker_background}}; }
 .ss-group-stats > .ss-map-more-button { flex:0 0 72rem; width:72rem; min-width:72rem; margin-left:4rem; padding:3rem 4rem; font-size:11rem; line-height:16rem; }
 .ss-group-stats > .ss-map-more-button .ss-control-label { font-size:11rem; line-height:16rem; }
 .ss-aggregate.ss-compact-headline .ss-group-header { flex-wrap:wrap; }
@@ -939,10 +946,10 @@ FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow t
 .grz-session-footer-button .grz-session-footer-icon {
     position:absolute;
     display:block;
-    left:17rem;
-    bottom:5rem;
-    width:18rem;
-    height:18rem;
+    left:24rem;
+    top:7rem;
+    width:16rem;
+    height:22rem;
     pointer-events:none;
 }
 .grz-session-footer-button .grz-session-footer-bar {
@@ -954,22 +961,22 @@ FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow t
     background-color:{{colors.garage_bars_background}};
 }
 .grz-session-footer-button:hover .grz-session-footer-bar { background-color:{{colors.garage_bars_hover_background}}; }
-.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:9rem; }
-.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:13rem; }
-.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:18rem; }
+.grz-session-footer-button .grz-session-footer-bar-0 { left:0; height:10rem; }
+.grz-session-footer-button .grz-session-footer-bar-1 { left:6rem; height:15rem; }
+.grz-session-footer-button .grz-session-footer-bar-2 { left:12rem; height:22rem; }
 .grz-session-footer-button .grz-session-footer-rating {
     position:absolute;
-    top:10rem;
+    top:12rem;
     left:0;
     display:block;
-    width:22rem;
-    height:11rem;
+    width:21rem;
+    height:12rem;
     margin:0;
     color:{{colors.garage_wn8_text}};
     font-family:Warhelios, Arial, sans-serif;
     font-size:9rem;
     font-weight:normal;
-    line-height:11rem;
+    line-height:12rem;
     letter-spacing:0;
     text-align:center;
     white-space:nowrap;
@@ -980,21 +987,22 @@ FOOTER_TEMPLATE = '''/* Own compact icon in LobbyFooter. All dimensions follow t
 .grz-session-footer-button:hover .grz-session-footer-rating { color:{{colors.garage_wn8_hover_text}}; }
 
 /* CSS animation stays inside the renderer; no Python/JS frame callbacks.
-   Fits above the tallest bar, clear of WN8, inside the fixed 44 x 36 slot. */
+   The spinner replaces the bars at their shared center, inside the fixed slot. */
 .grz-session-footer-button .grz-session-footer-spinner {
     position:absolute;
     display:none;
     box-sizing:border-box;
-    left:27rem;
-    top:2rem;
-    width:8rem;
-    height:8rem;
+    left:0;
+    top:3rem;
+    width:16rem;
+    height:16rem;
     border:2rem solid {{colors.garage_spinner_border}};
     border-top-color:{{colors.garage_spinner_border_top_color}};
     border-radius:{{radii.garage_spinner}}rem;
     pointer-events:none;
     animation:none;
 }
+.grz-session-footer-busy .grz-session-footer-bar { visibility:hidden; }
 .grz-session-footer-busy .grz-session-footer-spinner {
     display:block;
     animation:grz-session-footer-spin 1s linear infinite;
@@ -1301,6 +1309,11 @@ def load_config(path):
             colors.get('garage_spinner_border_top_color') == '#dfd3a4'):
         for key in ('garage_spinner_border', 'garage_spinner_border_top_color'):
             colors[key] = DEFAULT_CONFIG['colors'][key]
+    radii = parsed.get('radii') if isinstance(parsed, dict) else None
+    # The original 8px indicator clamped radius 5 to a circle. Preserve that
+    # default shape for its 16px overlay while retaining custom radii.
+    if isinstance(radii, dict) and radii.get('garage_spinner') == 5:
+        radii['garage_spinner'] = DEFAULT_CONFIG['radii']['garage_spinner']
     return validate_config(parsed)
 
 

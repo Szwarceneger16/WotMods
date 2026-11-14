@@ -1,5 +1,12 @@
 SESSION STATS — CHANGELOG
 
+0.9.9 • 2026-11-14
+• Use original native metal class emblems and elite badges alongside role icons.
+• Center the processing spinner over the native-aligned footer chart.
+• Keep Min/Max source-battle actions available independently of sorting.
+• Center stacked battle counts and preserve readable large values.
+• Separate base/received credit income and net sorting with independent coverage.
+
 0.9.8 • 2026-11-14
 • Link aggregate Min/Max sorting values to the battle responsible for the result.
 • Remove redundant visible XP-total and global table-header coverage counts.

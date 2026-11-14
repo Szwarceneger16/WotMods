@@ -150,6 +150,13 @@ def normalize_currencies(data, warnings=None, avatar=None):
         'bonds': _money(_bond_income(data, avatar or {}), bond_costs),
         'gold': _money(_number(data.get('gold')), gold_costs),
     }
+    # Like originalXP, originalCredits is the server's pre-bonus earning.
+    # It is not the native account panel's replayed "without premium" subtotal.
+    # Both net metrics deduct the same settled repair/ammunition/equipment costs.
+    base_income = _number(data.get('originalCredits'), nonnegative=False)
+    result['credits']['income_base'] = base_income
+    result['credits']['net_base'] = (base_income - credit_costs
+                                     if base_income is not None and credit_costs is not None else None)
     if _number(data.get('piggyBank')):
         warnings.append(message('normalize.reserve'))
     if any(value['net'] is None for value in result.values()):

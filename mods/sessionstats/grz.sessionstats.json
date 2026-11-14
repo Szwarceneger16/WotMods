@@ -169,7 +169,7 @@
     "battle_outcome": 5,
     "panel_footer": 7,
     "confirmation": 8,
-    "garage_spinner": 5
+    "garage_spinner": 8
   },
   "opacity": {
     "window": 1.0,
