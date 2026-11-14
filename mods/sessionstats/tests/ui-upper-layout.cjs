@@ -85,8 +85,12 @@ module.exports=async function ({browser,nativeHost,check}) {
             parseFloat(getComputedStyle(node).fontSize)/scale<minFont) badNumbers.push(node.textContent);
         }
         const compact=text=>text.replace(/\s/g,'');
+        const wrappedMetricLabels=[...document.querySelectorAll('#ss-summary .ss-metric-row .ss-metric-name .ss-cell-value')].filter(label=>{
+          const range=document.createRange();range.selectNodeContents(label);
+          return range.getBoundingClientRect().height>parseFloat(getComputedStyle(label).lineHeight)+scale;
+        }).map(label=>label.textContent);
         const credits=document.querySelector('#ss-summary .ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
-        return {root,panels,pair,summary,kpis,filters,xpPickerCount,scopes,lower,lowerTriggers,overflow,badNumbers,
+        return {root,panels,pair,summary,kpis,filters,xpPickerCount,scopes,lower,lowerTriggers,overflow,badNumbers,wrappedMetricLabels,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
           coverage:credits.querySelectorAll('.ss-cell-coverage').length,
@@ -99,6 +103,8 @@ module.exports=async function ({browser,nativeHost,check}) {
       const caption=expectedWidth+' logical pixels at '+(scale*100)+'% in a '+gameWidth+'px game';
       check('Upper controls and summary stay within the floating window: '+caption,
         Math.abs(audit.root.width-expectedWidth)<=1 && audit.overflow.length===0);
+      check('Summary metric labels stay on one line beside complete source values: '+caption+
+        (audit.wrappedMetricLabels.length?' '+JSON.stringify(audit.wrappedMetricLabels):''),audit.wrappedMetricLabels.length===0);
       check('Summary sections keep capped widths and readable full values: '+caption,
         audit.panels[0].width<=461 && audit.pair.width<=651 && audit.panels[1].width<=301 && audit.panels[2].width<=351 &&
         audit.badNumbers.length===0 && audit.values.join('|')==='12345678|-12345678|-12345678' &&

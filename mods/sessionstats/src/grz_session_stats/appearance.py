@@ -299,7 +299,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary-layout.ss-details { flex-direction:row; flex-wrap:wrap; align-items:flex-start; justify-content:center; padding:0; border:0; }
 .ss-summary-main { flex:0 1 460rem; width:460rem; max-width:100%; min-width:0; padding:0 6rem; margin:0 0 8rem; }
 .ss-summary-details { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; flex:0 1 650rem; width:650rem; max-width:100%; min-width:0; }
-.ss-summary-details > .ss-performance { flex:0 1 300rem; width:300rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-details > .ss-performance { flex:0 1 300rem; width:300rem; max-width:100%; min-width:0; padding:4rem 4rem 0 0; margin:0 0 8rem; }
 .ss-summary-details > .ss-economy { flex:0 1 350rem; width:350rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
 .ss-summary-wrap .ss-summary-layout { flex-direction:column; align-items:center; }
 .ss-summary-wrap .ss-summary-main, .ss-summary-wrap .ss-summary-details { flex-basis:auto; }
@@ -317,8 +317,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary-details .ss-money-value { width:25.666%; font-size:14rem; }
 .ss-summary-details .ss-money-head .ss-money-value { font-size:12rem; }
 /* Reclaim label insets for the permanently visible Received XP row. */
-.ss-summary-details .ss-metric-name { width:24%; padding-left:1rem; padding-right:0; }
-.ss-summary-details .ss-metric-number { width:25.333%; }
+.ss-summary-details .ss-metric-name { width:26%; padding-left:1rem; padding-right:0; }
+.ss-summary-details .ss-metric-number { width:24.666%; }
 .ss-narrow-summary .ss-money-head, .ss-narrow-summary .ss-money-row { flex-wrap:wrap; }
 .ss-narrow-summary .ss-money-head .ss-money-label { display:none; }
 .ss-narrow-summary .ss-money-head .ss-money-count { display:block; width:100%; padding:0 4rem; }
@@ -629,7 +629,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
    original starts and widths of the right-aligned numeric columns. */
 .ss-summary-details .ss-metric-head, .ss-summary-details .ss-money-head { align-items:center; }
 .ss-summary-details .ss-summary-table-heading { display:block; min-width:0; }
-.ss-summary-details .ss-metric-head .ss-summary-table-heading { width:40%; margin-right:-16%; }
+.ss-summary-details .ss-metric-head .ss-summary-table-heading { width:40%; margin-right:-14%; }
 .ss-summary-details .ss-money-head .ss-summary-table-heading { width:30.8%; margin-right:-7.8%; }
 .ss-summary-details .ss-summary-table-title { position:relative; z-index:1; display:flex; align-items:center; width:100%; min-width:0; height:26rem; margin:0; font-size:11rem; line-height:13rem; }
 .ss-summary-details .ss-economy .ss-summary-table-title { width:100%; }
