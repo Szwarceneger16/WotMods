@@ -42,17 +42,15 @@
         // Use the panel's figure-only backing for the black rating band.
         ink.style.backgroundColor = 'rgba(180,192,166,0.65)';
         ink.style.borderRadius = '2rem';
-        ink.style.boxShadow = '0 0 0 1rem rgba(180,192,166,0.65)';
+        ink.style.boxShadow = 'none';
         ink.style.fontWeight = 'bold';
     }
     function paintWN8(node, value) {
         var color = wn8Color(value);
         paintWN8Ink(node, color === '#000000');
         node.style.color = color || '';
-        // Black ink needs a crisp light edge against dark camo, not more blur.
-        node.style.textShadow = color === '#000000' ?
-            '-0.4rem 0 0 rgba(224,216,191,0.85), 0.4rem 0 0 rgba(224,216,191,0.85), ' +
-            '0 -0.4rem 0 rgba(224,216,191,0.85), 0 0.4rem 0 rgba(224,216,191,0.85)' :
+        // Black digits use their muted backing; colored ratings keep their halo.
+        node.style.textShadow = color === '#000000' ? 'none' :
             color ? '0 0 0.7rem rgba(212,204,176,0.35)' : '';
         if (color) { node.setAttribute('data-wn8-value', String(Math.round(value))); }
         else { node.removeAttribute('data-wn8-value'); }

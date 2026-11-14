@@ -79,6 +79,7 @@ DEFAULT_CONFIG = {'schema_version': 1,
             'kpi_value_text': '#e8e5d2',
             'kpi_wn8_text': '#d9dca4',
             'sort_active_background': '#252a23',
+            'sort_warning_text': '#e67345',
             'outcome_summary_text': '#bebca3',
             'outcome_summary_value_text': '#e0dcc3',
             'details_separator_border_top': '#303421',
@@ -370,6 +371,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-tab:hover, .ss-group-tab:focus { background:{{colors.group_tab_hover_background}}; color:{{colors.group_tab_hover_text}}; }
 .ss-group-tab.is-active { color:{{colors.group_tab_active_text}}; background:linear-gradient({{colors.group_tab_active_background_start}}, {{colors.group_tab_active_background_end}}); box-shadow:inset 0 -2rem {{colors.group_tab_active_shadow}}, inset 0 1rem {{colors.session_tab_shadow}}; }
 .ss-list-controls { position:relative; display:flex; flex-wrap:wrap; align-items:flex-end; width:100%; padding:5rem 28rem 0 0; }
+.ss-sort-data-warning { width:100%; min-width:0; padding:4rem 4rem 1rem; color:{{colors.sort_warning_text}}; font-size:13rem; font-weight:bold; line-height:18rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
 .ss-list-controls.ss-filters-wrapped { justify-content:center; padding-left:28rem; }
 .ss-list-controls.ss-filters-wide { justify-content:center; }
 .ss-filters-wrapped .ss-list-meta, .ss-filters-wrapped .ss-pagination, .ss-filters-wrapped .ss-sorting { margin-left:4rem; margin-right:4rem; }
@@ -723,7 +725,8 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-group-sort-host { position:relative; flex:0 0 96rem; width:96rem; min-width:0; height:64rem; padding:0 3rem; text-align:center; }
 .ss-group-sort-caption { display:block; width:100%; height:26rem; min-height:26rem; color:{{colors.list_meta_text}}; font-size:11rem; font-weight:normal; line-height:13rem; overflow-wrap:break-word; }
 .ss-group-sort-number { display:block; width:100%; height:38rem; min-height:38rem; margin:0; color:{{colors.kpi_value_text}}; font-size:16rem; line-height:19rem; white-space:normal; overflow-wrap:break-word; }
-.ss-group-sort-host .ss-group-sort-value { width:100%; height:64rem; min-height:64rem; margin:0; padding:0; border:0; }
+.ss-group-sort-host .ss-group-sort-value { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:64rem; min-height:64rem; margin:0; padding:0 2rem; border:0; text-align:center; }
+.ss-group-sort-host .ss-group-sort-caption, .ss-group-sort-host .ss-group-sort-number { display:block; flex:0 0 auto; height:auto; min-height:0; text-align:center; }
 /* Keep numeric text in its native cell; only the transparent hit target overlays it. */
 .ss-metric-battle-link { display:block; min-width:0; width:100%; min-height:26rem; margin:0; padding:3rem 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}},{{colors.button_background_middle}} 48%,{{colors.button_background_end}}); color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:14rem; font-weight:normal; line-height:20rem; text-align:center; cursor:pointer; }
 .ss-metric-battle-link:hover, .ss-metric-battle-link:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:-1rem; border-color:{{colors.session_tab_marker_background}}; }
@@ -850,7 +853,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
-.ss-group .ss-performance { flex:1 1 300rem; min-width:0; width:auto; }
+.ss-group .ss-performance { display:flex; flex-direction:column; justify-content:space-around; flex:1 1 300rem; min-width:0; width:auto; }
 .ss-group .ss-performance.ss-long-metrics { flex-basis:330rem; }
 .ss-group .ss-economy { flex:1 1 296rem; min-width:0; width:auto; }
 .ss-group .ss-economy.ss-long-finance { flex-basis:304rem; }

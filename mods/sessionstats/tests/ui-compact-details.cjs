@@ -110,6 +110,7 @@ module.exports=async({browser,nativeHost,check})=>{
         !layout.paged && layout.height>0 && layout.height<240 && layout.rows.length===4 && layout.rows.every(row=>row.inline && row.dateFont>=13));
     }finally{await page.close();}
   }
+  await require('./ui-stat-layout-controls.cjs')({browser,nativeHost,check});
 };
 module.exports.sourceChecks=sourceChecks;
 if(require.main===module){sourceChecks();console.log('Actual-source compact history, stable paging and complete bonus-column checks passed.');}

@@ -8,6 +8,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     constructor(){this.style={};this.attributes={};this.disabled=false;this.textContent='';this.label=null;const names=new Set();
       this.classList={add:name=>names.add(name),remove:name=>names.delete(name),contains:name=>names.has(name)};}
     setAttribute(name,value){this.attributes[name]=String(value);}getAttribute(name){return this.attributes[name]||null;}
+    removeAttribute(name){delete this.attributes[name];}
     querySelector(selector){if(selector==='.ss-control-label')return this.label||(this.label=new Node());return null;}
   }
   const controls={'ss-sort-off':new Node(),'ss-filter-loading':new Node(),'ss-sorting':new Node()},statistic=new Node();
@@ -30,7 +31,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['orderKey','canonicalMetric','creditMetric','metricSeries','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity'])
+  for(const name of ['orderKey','canonicalMetric','creditMetric','metricSeries','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity','renderSortDataWarning'])
     vm.runInContext(actual(name),context);
   context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
@@ -230,6 +231,7 @@ async function retainedPromotion(browser,nativeHost,check){
 module.exports=async({browser,nativeHost,check})=>{
   assertFilterStateSource();check('Actual-source Off memory, readiness, context ownership and loading-state regressions pass',true);
   await retainedPromotion(browser,nativeHost,check);
+  await require('./ui-filter-completeness.cjs')({browser,nativeHost,check});
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     const caption=' at '+(scale*100)+'%',count=()=>page.evaluate(()=>__grzCommands.filter(command=>command.action==='sort').length);

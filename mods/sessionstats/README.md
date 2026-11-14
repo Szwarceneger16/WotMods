@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.11 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.12 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -28,6 +28,9 @@ The account and region determine which history and time points are shown.
 
 Advanced sorting marks the existing card value in orange when that value is
 already present. Additional credit or XP-total figures use a stable header slot.
+The active sorting caption and value are centered within that slot. When received
+results in the selected period lack the selected metric, the filter section shows
+an orange-red incomplete-data warning. Pending battles alone do not trigger it.
 Min/Max offers a rounded arrow cue beside the number to open its source battle,
 across Maps, Vehicles and Tiers. The whole numeric cell remains clickable; only
 the small cue changes its background on hover or focus. Financial Min/Max buttons
@@ -49,6 +52,9 @@ A compact summary table shows total base XP, total received XP and Free XP in th
 horizontal columns, with metric availability in the existing overview help.
 The repeated visible x/y captions are removed. Performance tables and battle
 cards always show both Base XP and Received XP; the display selector is removed.
+Performance rows share spare card height evenly; financial cells reserve an
+action row only when a source action is available. Black WN8 uses bold black text
+on its muted backing, without a light text outline or shadow ring.
 Win-rate sorting is available in Vehicles, Maps and Tiers;
 unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [calendar](docs/CALENDAR_0.9.0.md), [0.9.1 UI refinements](docs/UI_POLISH_0.9.1.md),
@@ -62,7 +68,13 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [0.9.8 battle references and compact headers](docs/UI_REFINEMENTS_0.9.8.md), and
 [0.9.9 permanent links and base/received credits](docs/UI_REFINEMENTS_0.9.9.md), and
 [0.9.10 native rendering and single coverage](docs/UI_REFINEMENTS_0.9.10.md), and
-[0.9.11 source arrows and historical data corrections](docs/UI_REFINEMENTS_0.9.11.md).
+[0.9.11 source arrows and historical data corrections](docs/UI_REFINEMENTS_0.9.11.md), and
+[0.9.12 bonus amounts, localized hints and source navigation](docs/UI_REFINEMENTS_0.9.12.md).
+
+Summary Min/Max arrows also open results on another page when **Battles** is
+already selected, including in a full-history Timeline range. Vehicle role names
+and descriptions follow the selected mod language across the seven supported
+languages, with English fallback for missing translations.
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an
@@ -77,6 +89,9 @@ reported result. Personal missions show the operation name and completion with
 honors when the additional objective is confirmed. The card also shows Battle
 Pass points and the available bonus breakdown. The finance tables include
 vehicle and account-level bonds reported for each recorded Random Battle.
+Premium account bonuses show absolute added credits, XP, Free XP and crew XP
+when their original amounts are known. Missing original amounts remain unknown;
+the mod never estimates a premium contribution from an already received total.
 Older saved battles may have no mission or bonus details. All four corners and all four edges
 resize the window and keep its size across garage openings during the same
 game process. The panel follows the resolved WoT interface scale.

@@ -1,4 +1,4 @@
-/* Native descriptor metadata provides class/role artwork, with client-localized definitions. */
+/* Native role identity/artwork keeps tooltips in the selected mod language. */
 const fs=require('fs'),path=require('path');
 module.exports=async({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
@@ -27,9 +27,10 @@ module.exports=async({browser,nativeHost,check})=>{
           await card.locator('.ss-vehicle-icon').evaluateAll(nodes=>nodes.length===2&&nodes.every(node=>
             node.getAttribute('role')==='img'&&node.tabIndex===0&&node.classList.contains('ss-hover-help')&&
             getComputedStyle(node).backgroundImage.startsWith('url("img://gui/maps/icons/'))));
-        check('Class labels use the selected UI language while the official definition remains client-localized in '+caption,
+        check('Class and role definitions follow the selected mod language despite Polish native metadata in '+caption,
           await card.locator('.ss-vehicle-class-icon').getAttribute('aria-label')===messages['vehicle.AT_SPG']&&
-          await card.locator('.ss-vehicle-role-icon').getAttribute('data-ss-help')==='Rola klienta\nOryginalny opis klienta.\nDrugi akapit.'&&
+          await card.locator('.ss-vehicle-role-icon').getAttribute('data-ss-help')===
+            messages['vehicle.role.role_ATSPG_sniper.name']+'\n'+messages['vehicle.role.role_ATSPG_sniper.description']&&
           await card.locator('.ss-vehicle-role-icon').getAttribute('data-vehicle-role')==='role_ATSPG_sniper');
         check('Native class artwork keeps its full 24px canvas while role artwork retains its size in '+caption,
           await card.locator('.ss-vehicle-meta').evaluate((row,{scale,grouping})=>{
@@ -64,8 +65,8 @@ module.exports=async({browser,nativeHost,check})=>{
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });await frames();
     check('Unverified artwork cannot become a class or role icon',await page.locator('.ss-group .ss-vehicle-icon').count()===0);
-    check('Missing artwork retains the known class and native definition on the tier tooltip',
-      (await page.locator('.ss-vehicle-tier').getAttribute('data-ss-help')).includes('Oryginalny opis klienta.'));
+    check('Missing artwork retains the selected-language class and role definition on the tier tooltip',
+      (await page.locator('.ss-vehicle-tier').getAttribute('data-ss-help')).includes(languages.uk['vehicle.role.role_ATSPG_sniper.description']));
     await page.evaluate(()=>{
       const payload=JSON.parse(model.payload),item=payload.scopes.launch.vehicles[0];
       item.type='constructor';item.tier=10;delete item.vehicle_meta;
@@ -81,5 +82,54 @@ module.exports=async({browser,nativeHost,check})=>{
     check('Presentation metadata does not replace a recorded tier',await page.locator('.ss-vehicle-tier').textContent()==='IX');
     check('Invalid role keys do not become an official-role tooltip',
       !(await page.locator('.ss-vehicle-tier').getAttribute('data-ss-help')).includes('Invented'));
+    const roles=['role_HT_assault','role_HT_break','role_HT_universal','role_HT_support',
+      'role_MT_assault','role_MT_universal','role_MT_sniper','role_MT_support',
+      'role_ATSPG_assault','role_ATSPG_universal','role_ATSPG_sniper','role_ATSPG_support',
+      'role_LT_universal','role_LT_scout','role_LT_support','role_SPG'];
+    for(const [language,messages]of Object.entries(languages))for(const key of roles){
+      await page.evaluate(({language,messages,key})=>{
+        const payload=JSON.parse(model.payload),item=payload.scopes.launch.vehicles[0];
+        payload.localization={language,messages};
+        const kind=key==='role_SPG'?'SPG':{HT:'heavyTank',MT:'mediumTank',ATSPG:'AT_SPG',LT:'lightTank'}[key.split('_')[1]];
+        item.type=kind;item.vehicle_meta={class:kind,tier:10,elite:false,
+          class_icon:{kind:'vehicle_class',src:'img://gui/maps/icons/vehicleTypes/24x24_metal/'+(kind==='AT_SPG'?'AT-SPG':kind)+'.png'},
+          role:{key,name:'Niepoprawny język klienta',group_name:'Polska grupa klienta',description:'Polski opis z pamięci klienta.',
+            icon:key==='role_SPG'?{}:{kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/24x24/'+key+'.png'}}};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },{language,messages,key});await frames();
+      const expected=messages['vehicle.role.'+key+'.name']+'\n'+messages['vehicle.role.'+key+'.description'];
+      const target=page.locator(key==='role_SPG'?'.ss-group .ss-vehicle-class-icon':'.ss-group .ss-vehicle-role-icon');
+      check('Verified role '+key+' uses its '+language+' catalog tooltip and ignores cached native paragraphs',
+        typeof messages['vehicle.role.'+key+'.name']==='string'&&typeof messages['vehicle.role.'+key+'.description']==='string'&&
+        await target.getAttribute('data-ss-help').then(text=>text.endsWith(expected)&&!text.includes('klienta'))&&
+        await target.getAttribute('title').then(text=>text.endsWith(expected)));
+      if(key==='role_SPG')check('SPG role text does not invent a role icon in '+language,await page.locator('.ss-group .ss-vehicle-role-icon').count()===0);
+    }
+    for(const language of ['pl','en','de','en']){
+      await page.evaluate(({language,messages})=>{
+        const payload=JSON.parse(model.payload),meta=payload.scopes.launch.vehicles[0].vehicle_meta;
+        payload.localization={language,messages};meta.class='AT_SPG';payload.scopes.launch.vehicles[0].type='AT_SPG';
+        meta.class_icon.src='img://gui/maps/icons/vehicleTypes/24x24_metal/AT-SPG.png';meta.role.key='role_ATSPG_sniper';
+        meta.role.icon={kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/24x24/role_ATSPG_sniper.png'};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },{language,messages:languages[language]});await frames();
+      check('A live language change re-translates the same cached native role metadata to '+language,
+        await page.locator('.ss-group .ss-vehicle-role-icon').getAttribute('data-ss-help')===
+          languages[language]['vehicle.role.role_ATSPG_sniper.name']+'\n'+languages[language]['vehicle.role.role_ATSPG_sniper.description']);
+    }
+    await page.evaluate(()=>{
+      const payload=JSON.parse(model.payload);payload.localization={language:'fr',messages:{title:'Partial catalog'}};
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    });await frames();
+    check('An incomplete role catalog falls back to English instead of cached Polish client text',
+      await page.locator('.ss-group .ss-vehicle-role-icon').getAttribute('data-ss-help')===
+        languages.en['vehicle.role.role_ATSPG_sniper.name']+'\n'+languages.en['vehicle.role.role_ATSPG_sniper.description']);
+    await page.evaluate(()=>{
+      const payload=JSON.parse(model.payload),role=payload.scopes.launch.vehicles[0].vehicle_meta.role;
+      role.key='role_ATSPG_future';role.icon.src='img://gui/maps/icons/roleExp/roles/24x24/role_ATSPG_future.png';
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    });await frames();
+    check('An unknown future role keeps its verified artwork without inventing or importing a wrong-language definition',
+      await page.locator('.ss-group .ss-vehicle-role-icon').getAttribute('data-ss-help')===languages.en['vehicle.AT_SPG']);
   }finally{await page.close();}
 };

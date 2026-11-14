@@ -28,7 +28,17 @@ BONUS_FIELDS = {
     'wotPlusCrewXP': 'crew_xp', 'premiumVehicleXP': 'xp', 'squadXP': 'xp',
     'dailyXPFactor10': 10, 'additionalXPFactor10': 10,
     'appliedPremiumCreditsFactor100': 100, 'appliedPremiumXPFactor100': 100,
+    'appliedPremiumTmenXPFactor100': 100,
+    'premiumCredits': 'credits', 'premiumXP': 'xp',
+    'premiumFreeXP': 'free_xp', 'premiumCrewXP': 'crew_xp',
 }
+PREMIUM_BONUSES = (
+    ('premiumCredits', 'originalCredits', 'appliedPremiumCreditsFactor100'),
+    ('premiumXP', 'originalXP', 'appliedPremiumXPFactor100'),
+    ('premiumFreeXP', 'originalFreeXP', 'appliedPremiumXPFactor100'),
+    ('premiumCrewXP', 'originalTMenXP', 'appliedPremiumTmenXPFactor100'),
+)
+PREMIUM_BONUS_NAMES = frozenset(item[0] for item in PREMIUM_BONUSES)
 
 
 def _mapping(value):
@@ -49,6 +59,23 @@ def _bounded_number(value):
 def _bounded_delta(value):
     number = _number(value, nonnegative=False)
     return number if number is not None and abs(number) <= 10 ** 12 else None
+
+
+def _premium_bonuses(vehicle):
+    """Apply the native account factor once to its original earning only."""
+    result = {}
+    for field, original, factor_name in PREMIUM_BONUSES:
+        base = _bounded_number(vehicle.get(original))
+        factor = _bounded_number(vehicle.get(factor_name))
+        if (base is None or factor is None or base != int(base) or factor != int(factor) or
+                not 100 < factor <= 10000):
+            continue
+        # CPython 2's native result replay rounds half away from zero. Integer
+        # arithmetic also keeps the developer's Python 3 result identical.
+        delta = (int(base) * int(factor) + 50) // 100 - int(base)
+        if delta <= 10 ** 12:
+            result[field] = delta
+    return result
 
 
 def _clean_objectives(value):
@@ -268,6 +295,8 @@ def result_details(avatar, vehicle, active=None, mission_resolver=None):
     if active:
         details['active_crucible'] = active
     for field in BONUS_FIELDS:
+        if field in PREMIUM_BONUS_NAMES:
+            continue
         amount = _bounded_number(vehicle.get(field))
         base = BONUS_FIELDS[field] if isinstance(BONUS_FIELDS[field], int) else 0
         if amount is not None and amount > base:
@@ -277,6 +306,7 @@ def result_details(avatar, vehicle, active=None, mission_resolver=None):
             account_amount = _bounded_number(avatar.get(field))
             if account_amount:
                 details['bonuses'][field] = (details['bonuses'].get(field) or 0) + account_amount
+    details['bonuses'].update(_premium_bonuses(vehicle))
     # Native FairplayViolationsInfo stores warnings, penalties and violations
     # separately. Only the violation/penalty mask is evidence of suicide.
     fairplay = avatar.get('fairplayViolations')

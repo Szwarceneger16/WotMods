@@ -1,5 +1,6 @@
 const fs=require('fs'),path=require('path');
 module.exports = async function ({browser, nativeHost, check}) {
+  await require('./ui-premium-bonuses.cjs')({browser,nativeHost,check});
   check('Timeline line styling uses supported tiled gradients instead of unsupported dashed borders',
     !/border[^;{}]*\bdashed\b/.test(fs.readFileSync(path.join(__dirname,'../ui/session_stats.css'),'utf8')));
   const page = await nativeHost(browser, {
@@ -22,7 +23,8 @@ module.exports = async function ({browser, nativeHost, check}) {
       active_crucible:'challenge:8:2', bonuses:{dailyXPFactor10:20,eventCrystal:43,eventCredits:12345678,
         boosterCredits:26943,boosterXP:136,boosterFreeXP:28,boosterTMenXP:544,
         wotPlusCredits:8083,wotPlusXP:41,wotPlusFreeXP:2,wotPlusCrewXP:164,
-        appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150},
+        appliedPremiumCreditsFactor100:150,appliedPremiumXPFactor100:150,
+        premiumCredits:6614,premiumXP:113,premiumFreeXP:6,premiumCrewXP:113},
     };
     model.payload = JSON.stringify(payload);
     __grzEvents['viewEnv.onDataChanged']();
@@ -245,9 +247,9 @@ module.exports = async function ({browser, nativeHost, check}) {
     bonusRows.find(row=>row.label==='Personal reserve').values.join('|')==='+26943|+136|+28|+544|—' &&
     bonusRows.filter(row=>row.label==='WoT Plus').length===1 &&
     bonusRows.find(row=>row.label==='WoT Plus').values.join('|')==='+8083|+41|+2|+164|—');
-  check('Premium and first-victory factors align with resource amounts without full-width factor rows',
+  check('Absolute premium deltas and first-victory factors align without full-width factor rows',
     bonusRows.filter(row=>row.label==='Premium account').length===1 &&
-    bonusRows.find(row=>row.label==='Premium account').values.join('|')==='×1.5|×1.5|—|—|—' &&
+    bonusRows.find(row=>row.label==='Premium account').values.join('|')==='+6614|+113|+6|+113|—' &&
     bonusRows.find(row=>row.label==='First victory').values.join('|')==='—|×2|—|—|—' &&
     await details.locator('.ss-more-bonuses .ss-bonus-row').evaluateAll(rows=>rows.every(row=>
       row.querySelectorAll('[role="rowheader"],[role="columnheader"],[role="cell"]').length===6)) &&
@@ -295,11 +297,11 @@ module.exports = async function ({browser, nativeHost, check}) {
     label:row.querySelector('.ss-bonus-label').textContent,
     values:Array.from(row.querySelectorAll('.ss-bonus-number')).map(cell=>cell.textContent.replace(/\s/g,'')),
   })));
-  check('An ordinary 500px battle keeps zero points and paired premium factors in a compact matrix',
+  check('An ordinary 500px battle keeps zero points and reconstructible premium deltas in a compact matrix',
     ordinaryRows.length===3 && ordinaryRows[0].values.join('|')==='Credits|XP|FreeXP|CrewXP' &&
     ordinaryRows.find(row=>row.label==='WoT Plus').values.join('|')==='+3456|+64|+8|+96' &&
     ordinaryRows.filter(row=>row.label==='Premium account').length===1 &&
-    ordinaryRows.find(row=>row.label==='Premium account').values.join('|')==='×1.5|×1.5|—|—' &&
+    ordinaryRows.find(row=>row.label==='Premium account').values.join('|')==='—|+228|—|—' &&
     await details.locator('.ss-more-pass .ss-more-value').count()===1 &&
     await details.locator('.ss-more-pass').textContent()==='0 points earned' &&
     await details.locator('.ss-more-factors').count()===0);
@@ -356,7 +358,7 @@ module.exports = async function ({browser, nativeHost, check}) {
   check('An applied bonus with unknown amount remains a notice without inventing a multiplier',
     await details.locator('.ss-more-factors .ss-more-value').count()===1 &&
     await details.locator('.ss-more-factors').textContent()==='Post-battle XP bonus applied' &&
-    await details.locator('.ss-bonus-factor').count()===2);
+    await details.locator('.ss-bonus-factor').count()===0);
   await page.evaluate(()=>{model.payload=JSON.stringify(__moreStressSnapshot);__grzEvents['viewEnv.onDataChanged']();});
 
   const grip = await page.locator('#ss-resize-grip').boundingBox();

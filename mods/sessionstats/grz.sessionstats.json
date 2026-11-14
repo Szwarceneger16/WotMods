@@ -155,7 +155,8 @@
     "loading_scrim_background": "rgba(17,19,9,0.45)",
     "extreme_link_background": "#303726",
     "extreme_link_hover_background": "#50583b",
-    "extreme_link_text": "#c4c7ac"
+    "extreme_link_text": "#c4c7ac",
+    "sort_warning_text": "#e67345"
   },
   "radii": {
     "window": 8,

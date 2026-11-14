@@ -162,10 +162,12 @@ async function audit(page,mode,group) {
         }
       }
       if(!stress && pass && matrix) {
-        const pointCells=pass.querySelectorAll('.ss-more-value'),factorCells=matrix.querySelectorAll('.ss-bonus-factor');
+        const pointCells=pass.querySelectorAll('.ss-more-value'),factorCells=matrix.querySelectorAll('.ss-bonus-factor'),
+          premium=matrix.querySelector('[data-bonus-source="premium"]'),
+          premiumValues=premium ? [...premium.querySelectorAll('.ss-bonus-number')].map(cell=>normalize(cell.textContent)) : [];
         if(pointCells.length!==3 || matrix.querySelectorAll('.ss-bonus-head .ss-bonus-number').length!==5 ||
-          matrix.querySelectorAll('.ss-bonus-row').length!==4 || factorCells.length!==2 ||
-          [...factorCells].some(cell=>cell.textContent.replace(',','.')!=='×1.5') || more.querySelector('.ss-more-factors')) {
+          matrix.querySelectorAll('.ss-bonus-row').length!==4 || factorCells.length!==0 ||
+          premiumValues.join('|')!=='+36575|+228|—|—|—' || more.querySelector('.ss-more-factors')) {
           issues.push({kind:'expanded-ordinary-bonus-layout'});
         }
         const pointValues=[...pointCells].map(cell=>normalize(cell.querySelector('.ss-more-amount').textContent));

@@ -170,7 +170,7 @@ module.exports=async({browser,check:reportCheck})=>{
         colors.length===2&&colors[0].color===(rating<300?'rgb(198, 197, 191)':color)&&colors[0].halo==='none'&&
         colors[0].value===null&&colors[0].caption===String(rating)&&colors[1].color===color&&colors[1].value===String(rating)&&
         colors.every(item=>item.background==='')&&
-        (rating<300?require('./ui-wn8-colors.cjs').hasBlackOutline(colors[1].halo):colors[1].halo.includes('0.35')));
+        (rating<300?require('./ui-wn8-colors.cjs').isUnoutlinedBlackInk(colors[1].halo):colors[1].halo.includes('0.35')));
     }
     await setRating(page,{state:'ready',value:1234567.6,labels:{'format.thousands':'.'}},true);
     check('Wrapped native subviews and rating properties render rounded localized thousands',

@@ -30,7 +30,7 @@ function geometry(source=shipped()) {
     focusControl(){focused++;},pinnedFilterHeight:()=>60,scrollbarMetrics:()=>({maximum:4000}),
     queueResize(){context.finishBattleJump();},updatePinnedFilters(){pinnedUpdates++;},syncScrollbar(){}};
   vm.createContext(context);
-  const names=['cancelBattleNavigation','cancelPageJump','consumeBattleFocus','finishBattleJump','finishPageJump','onScrollIntent'];
+  const names=['cancelBattleNavigation','cancelPageJump','retireFeed','consumeBattleFocus','finishBattleJump','finishPageJump','onScrollIntent'];
   for(const name of ['retryBattleJump','battleLayoutOffset','battleScrollPending'])if(source.includes('    function '+name+'('))names.push(name);
   vm.runInContext(names.map(name=>actualFunction(source,name)).join('\n'),context);
   context.consumeBattleFocus({battle_focus:{id:'selected-page-three',request_id:'owned-focus'},pagination:{battles:{page:2}}});
