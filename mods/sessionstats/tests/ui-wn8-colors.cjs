@@ -81,6 +81,20 @@ function assertWN8Source(){
   assert.strictEqual(card.children[0].style.borderColor,'rgba(0,0,0,0.22)','Zero retains its own rating tint');
   panel.paintWN8Card(card,null);assert.strictEqual(card.children.length,0);assert.strictEqual(card.attributes['data-wn8-border-value'],undefined,'Unknown ratings retire a stale card border');
 }
+async function sourceArrowAppearance(page){
+  return page.locator('#ss-groups [data-ss-metric="battle_wn8"] .ss-extreme-cell').evaluateAll(cells=>cells.length>0&&cells.every(cell=>{
+    const button=cell.querySelector('.ss-metric-battle-link'),cue=button&&button.querySelector('.ss-extreme-link-cue');
+    if(!button||!cue)return false;
+    const frameless=node=>{const style=getComputedStyle(node);return parseFloat(style.borderWidth)===0&&style.outlineStyle==='none'&&style.boxShadow==='none';};
+    const cellStyle=getComputedStyle(cell),buttonStyle=getComputedStyle(button),arrow=getComputedStyle(cue),
+      shaft=getComputedStyle(cue,':before'),head=getComputedStyle(cue,':after');
+    return frameless(cell)&&frameless(button)&&frameless(cue)&&parseFloat(arrow.borderRadius)>0&&
+      cellStyle.backgroundColor==='rgba(0, 0, 0, 0)'&&buttonStyle.backgroundColor==='rgba(0, 0, 0, 0)'&&buttonStyle.backgroundImage==='none'&&
+      ['rgb(48, 55, 38)','rgb(80, 88, 59)'].includes(arrow.backgroundColor)&&
+      shaft.backgroundColor==='rgb(196, 199, 172)'&&head.borderTopColor==='rgb(196, 199, 172)'&&
+      head.borderRightColor==='rgb(196, 199, 172)';
+  }));
+}
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 module.exports=async({browser,nativeHost,check})=>{
   assertWN8Source();check('Actual-source WN8 palette boundaries, rounding, unknown states and label/value rendering pass',true);
@@ -92,7 +106,18 @@ module.exports=async({browser,nativeHost,check})=>{
       for(const group of ['vehicles','maps','tiers','battles'])for(const item of scope[group]){
         item.stats.wn8=1599.5;item.stats.wn8_count=1;
         item.stats.battle_wn8={count:3,min:299.4,avg:899.5,max:2899.5,sum:4098.4};
-        item.sort_value=2450;
+        if(group!=='battles'){
+          // The selected figure comes from this series. The stale scalar is
+          // deliberately yellow so it cannot supply the expected purple ink.
+          item.stats.battles=item.stats.observed_battles=item.stats.wn8_count=6;
+          item.stats.battle_wn8={count:6,min:299.4,avg:2450,max:2899.5,sum:14700};
+          item.extrema_battles=item.extrema_battles||{};item.extrema_battles.battle_wn8={};
+          for(const statistic of ['min','max'])item.extrema_battles.battle_wn8[statistic]={
+            id:'synthetic-wn8-source-'+group+'-'+item.id+'-'+statistic,
+            name:'Synthetic rating source',map:'Synthetic map',started_at:1700000000,
+            metric:'battle_wn8',statistic,value:item.stats.battle_wn8[statistic]};
+        }
+        item.sort_value=899.5;
         if(group==='maps'||group==='vehicles')item.battle_list={page:0,pages:1,total:bands.length,page_size:10,
           items:bands.map(([value],index)=>({id:'synthetic-color-history-'+index,name:'Synthetic tank '+index,map:'Synthetic map',
             started_at:1700000000-index,wn8:value===0?261:value,outcome:'win'}))};
@@ -153,6 +178,20 @@ module.exports=async({browser,nativeHost,check})=>{
           return css.backgroundColor==='rgb(37, 42, 35)'&&css.boxShadow.includes('rgb(231, 162, 59)')&&
             getComputedStyle(figure).color==='rgb(131, 87, 157)';
         }));
+      if(group!=='battles'){
+        check('Clickable WN8 extrema keep neutral rounded arrow cues without cell frames in '+group,await sourceArrowAppearance(page));
+        check('The selected WN8 average retains its neutral sorting fill without becoming a source action in '+group,
+          await page.locator('#ss-groups [data-ss-metric="battle_wn8"] > .ss-sort-active-value').first().evaluate(cell=>{
+            const style=getComputedStyle(cell);return !cell.querySelector('.ss-metric-battle-link')&&
+              style.color==='rgb(131, 87, 157)'&&style.backgroundColor==='rgb(37, 42, 35)'&&style.boxShadow.includes('rgb(231, 162, 59)');
+          }));
+        if(group==='vehicles'){
+          const obsolete=await page.addStyleTag({content:'.ss-extreme-cell { outline:1px solid #e7a23b !important; }'});
+          check('The WN8 source appearance guard rejects a reintroduced whole-cell outline',!await sourceArrowAppearance(page));
+          await obsolete.evaluate(node=>node.remove());
+          check('Removing the obsolete outline restores WN8 source appearance',await sourceArrowAppearance(page));
+        }
+      }
       if(group==='vehicles')console.log('GRZ_BLACK_WN8_QA_V1 '+(await page.locator('.ss-map-battles').first().screenshot({type:'png'})).toString('base64'));
       const borders=await page.locator('.ss-group').first().evaluate(card=>{
         const border=card.querySelector('.ss-wn8-card-border'),rect=card.getBoundingClientRect();
