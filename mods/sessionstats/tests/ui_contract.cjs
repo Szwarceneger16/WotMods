@@ -86,12 +86,19 @@ async function numericTextOverflow(page) {
       const cell=value.classList.contains('ss-cell-value')?value.parentNode:value;
       const box=cell.getBoundingClientRect(), style=getComputedStyle(cell);
       if(box.width===0 || box.height===0) { continue; }
-      const range=document.createRange(); range.selectNodeContents(value);
-      const text=range.getBoundingClientRect();
+      // Numeric action overlays fill the cell but contain no value text.
+      // Measure the original text/WN8 figure nodes rather than their hit area.
+      const contents=value.classList.contains('ss-metric-number')?
+        Array.from(value.childNodes).filter(node=>node.nodeType!==1 || !node.classList.contains('ss-metric-battle-link')):[value];
       const left=box.left+parseFloat(style.paddingLeft)+parseFloat(style.borderLeftWidth);
       const right=box.right-parseFloat(style.paddingRight)-parseFloat(style.borderRightWidth);
-      if(text.left<left-1 || text.right>right+1) {
-        bad.push({className:cell.className,value:value.textContent,textWidth:text.width,available:right-left});
+      for(const content of contents) {
+        const range=document.createRange(); range.selectNodeContents(content);
+        const text=range.getBoundingClientRect();
+        if(text.left<left-1 || text.right>right+1) {
+          bad.push({className:cell.className,value:value.textContent,textWidth:text.width,available:right-left});
+          break;
+        }
       }
     }
     return bad.slice(0,12);
@@ -281,7 +288,8 @@ async function runFeatureSuite(file,browser) {
     started_at:missingScope.started_at+1,outcome:null,stats:missingStats});
   await page.evaluate(p=>GRZSessionStats.update(p),missingFixture);
   check('Missing battle exposes 16 of 17 results and marks averages incomplete',
-    (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
+    (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('Pending: 1') &&
+    !(await page.locator('#ss-status').innerText()).includes('16 / 17') &&
     (await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
   check('Financial coverage includes the missing result in help instead of repeating a visible header count',
@@ -370,6 +378,18 @@ async function runFeatureSuite(file,browser) {
   await page.locator('#demo-reopen').click();
   check('Preview can reopen',await page.locator('#grz-session-stats').isVisible());
   await page.locator('#demo-restart').click();
+
+  const oversizedFigure='9876543210987654321098765432109876543210';
+  await page.evaluate(text=>{
+    const cell=document.querySelector('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-metric-number');
+    window.__numericOverflowProbe={node:cell.firstChild,text:cell.firstChild.textContent};
+    cell.firstChild.textContent=text;
+  },oversizedFigure);
+  let rejectedOverflow;
+  try { rejectedOverflow=await numericTextOverflow(page); }
+  finally { await page.evaluate(()=>{__numericOverflowProbe.node.textContent=__numericOverflowProbe.text;delete window.__numericOverflowProbe;}); }
+  check('Text geometry still rejects real oversized figures beneath full-cell action overlays',
+    rejectedOverflow.some(row=>row.className.includes('ss-extreme-cell')&&row.value===oversizedFigure&&row.textWidth>row.available+1));
 
   const overflow=[],textOverflow=[];
   for(const width of [744,620,560,420,360,320]) {
@@ -635,6 +655,7 @@ async function runFeatureSuite(file,browser) {
   await runFeatureSuite('./ui-loading.cjs',browser);
   await runFeatureSuite('./ui-empty-state.cjs',browser);
   await runFeatureSuite('./ui-notices.cjs',browser);
+  await runFeatureSuite('./ui-coverage-once.cjs',browser);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));

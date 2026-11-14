@@ -175,26 +175,38 @@ async function audit(page,mode,group) {
     }
     const credits=first.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row');
     const values=[...credits.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent));
-    const counts=[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
+    const messages=JSON.parse(model.payload).localization.messages;
+    const availability=(count,total,label)=>label+' '+messages['coverage.value'].replace('{0}',count).replace('{1}',total);
+    const financeLabels=[messages['finance.income'],messages['finance.costs'],messages['finance.net']];
+    const counts=[...credits.querySelectorAll('.ss-money-value')].map(node=>node.getAttribute('aria-label'));
     if(values.join('|')!==[sample.income,-sample.costs,'+'+sample.net].join('|')) issues.push({kind:'incomplete-finance-values',values});
-    const headerCount=first.querySelector('.ss-money-count .ss-cell-coverage');
-    if(group!=='battles' && (stress ? counts.join('|')!=='1/4|2/4|3/4' :
-      counts.join('|')!=='123/137' || !!headerCount)) {
-      issues.push({kind:'missing-finance-coverage',counts,header:headerCount && headerCount.textContent});
+    if(first.querySelectorAll('.ss-cell-coverage,.ss-count-coverage,.ss-wn8-coverage').length) {
+      issues.push({kind:'repeated-visible-metric-coverage'});
     }
+    if(group!=='battles' && !counts.every((value,index)=>value===availability(stress ? index+1 : 123,stress ? 4 : 137,
+      messages['finance.credits_received']+' '+financeLabels[index]))) {
+      issues.push({kind:'missing-finance-availability',counts});
+    }
+    const badge=first.querySelector('.ss-group-coverage');
+    if(group!=='battles' && (stress ? !!badge : !badge || normalize(badge.textContent)!=='123/137' ||
+      badge.parentNode!==first.querySelector('.ss-group-heading'))) issues.push({kind:'incorrect-card-coverage-badge'});
     const base=first.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row');
     const baseValues=[...base.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent)),
       baseIncome=sample.income-Math.floor(sample.income/4),baseNet=baseIncome-sample.costs;
     if(baseValues.join('|')!==[baseIncome,-sample.costs,(baseNet>=0?'+':'')+baseNet].join('|')) {
       issues.push({kind:'incomplete-base-finance-values',values:baseValues});
     }
-    const baseCounts=[...base.querySelectorAll('.ss-cell-coverage')].map(node=>normalize(node.textContent));
-    if(group!=='battles' && baseCounts.join('|')!==(stress?'1/4|2/4|1/4':'122/137|123/137|122/137')) {
-      issues.push({kind:'missing-base-finance-coverage',counts:baseCounts});
+    const baseCounts=[...base.querySelectorAll('.ss-money-value')].map(node=>node.getAttribute('aria-label'));
+    if(group!=='battles' && !baseCounts.every((value,index)=>value===availability(
+      (stress ? [1,2,1] : [122,123,122])[index],stress ? 4 : 137,messages['finance.credits_base']+' '+financeLabels[index]))) {
+      issues.push({kind:'missing-base-finance-availability',counts:baseCounts});
     }
-    const historical=panel.querySelector('[data-list-index="1"] .ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row');
-    if([...historical.querySelectorAll('.ss-cell-value')].filter((node,index)=>index!==1).some(node=>node.textContent!=='—') ||
-      historical.querySelectorAll('[data-ss-metric="credits_income_base"] .ss-metric-battle-link,[data-ss-metric="credits_net_base"] .ss-metric-battle-link').length!==0) issues.push({kind:'invented-historical-base-finance'});
+    const historical=panel.querySelector('[data-list-index="1"]'),historicalReceived=historical.querySelector('.ss-money-value[data-ss-metric="credits_income_received"]').closest('.ss-money-row'),
+      historicalValues=[...historicalReceived.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent)),
+      historicalExpected=group==='battles'?(stress?[12345678,-24691356,-12345678]:[74321,-87654,-13333]):[sample.income,-sample.costs,'+'+sample.net];
+    if(historical.querySelector('[data-ss-metric="credits_income_base"],[data-ss-metric="credits_net_base"]') ||
+      historicalValues.join('|')!==historicalExpected.join('|') ||
+      historical.querySelectorAll('.ss-money-value[data-ss-metric="credits_costs"]').length!==1) issues.push({kind:'lost-historical-received-finance',values:historicalValues});
     if(group!=='battles' && first.querySelectorAll('.ss-metric-battle-link').length!==16) issues.push({kind:'missing-permanent-extrema-actions'});
     const detail=first.querySelector('.ss-details'),performance=detail.querySelector('.ss-performance').getBoundingClientRect(),
       economy=detail.querySelector('.ss-economy').getBoundingClientRect();

@@ -347,7 +347,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-negative { color:{{colors.negative_text}}; }
 .ss-unknown { color:{{colors.unknown_text}}; }
 .ss-cell-value { display:block; }
-.ss-cell-coverage { display:block; color:{{colors.partial_count_text}}; font-size:12rem; line-height:15rem; }
 .ss-battle-measure { display:flex; align-items:center; justify-content:space-between; min-height:28rem; padding:2rem 7rem; border-radius:{{radii.battle_measure}}rem; background:{{colors.battle_measure_background}}; }
 .ss-battle-measure + .ss-battle-measure { margin-top:3rem; background:{{colors.battle_measure_following_background}}; }
 .ss-battle-label { display:block; flex:1; min-width:0; padding-right:10rem; color:{{colors.battle_label_text}}; font-size:13rem; line-height:20rem; }
@@ -540,7 +539,6 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 
 /* Keep optional information above the tables, alongside the vehicle identity. */
 .ss-group-heading, .ss-group-meta, .ss-summary-meta { display:flex; align-items:center; flex-wrap:wrap; min-width:0; }
-.ss-group-heading .ss-coverage-note { margin-left:8rem; }
 .ss-group-meta .ss-group-subtitle { margin-right:10rem; }
 .ss-vehicle-meta { display:flex; flex:0 1 auto; flex-wrap:nowrap; align-items:center; min-width:0; line-height:16rem; }
 .ss-vehicle-tier { display:block; flex-shrink:0; margin-right:3rem; }
@@ -563,16 +561,11 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary-xp-head .ss-xp-total-label { display:flex; flex-direction:column; justify-content:flex-end; height:34rem; min-height:34rem; line-height:17rem; }
 .ss-xp-total-caption { display:block; width:100%; min-width:0; }
 .ss-summary-xp-total .ss-xp-total-amount { display:block; height:17rem; min-height:17rem; line-height:17rem; text-align:center; }
-.ss-summary-xp-total .ss-xp-total-value, .ss-summary-xp-total .ss-count-coverage { display:block; min-height:17rem; line-height:17rem; white-space:nowrap; margin:0; }
+.ss-summary-xp-total .ss-xp-total-value { display:block; min-height:17rem; line-height:17rem; white-space:nowrap; margin:0; }
 .ss-narrow-summary .ss-summary-xp-totals { min-height:68rem; }
 .ss-narrow-summary .ss-summary-xp-head, .ss-narrow-summary .ss-xp-total-label { height:51rem; min-height:51rem; }
 
-.ss-summary-meta .ss-coverage-note { margin-left:10rem; }
-.ss-metric-name .ss-cell-value, .ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { display:inline; }
-.ss-metric-name .ss-cell-coverage, .ss-money-label .ss-cell-coverage { font-size:11rem; white-space:nowrap; }
-.ss-money-label .ss-cell-coverage { display:block; margin-left:0; white-space:normal; overflow-wrap:break-word; }
 @media (max-width:560px) {
-  .ss-group-heading .ss-coverage-note { width:100%; margin-left:0; }
   .ss-battle .ss-group-name { width:0; flex:1; }
   .ss-outcome-image { width:48rem; height:29rem; }
   .ss-battle-map-thumb { width:42rem; height:26rem; margin-left:4rem; }
@@ -642,7 +635,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
   .ss-summary-details .ss-metric-head .ss-summary-table-heading, .ss-summary-details .ss-money-head .ss-summary-table-heading { width:100%; margin-right:0; }
 }
 
-.ss-wn8-coverage { margin-left:10rem; color:{{colors.coverage_notice_text}}; font-size:12rem; white-space:nowrap; }
+.ss-group-coverage { display:block; flex:0 0 auto; max-width:100%; margin-left:6rem; color:{{colors.partial_count_text}}; font-size:12rem; line-height:16rem; white-space:nowrap; }
 .ss-timeline { position:relative; z-index:21; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; flex:0 1 452rem; min-width:0; width:452rem; max-width:100%; margin:0 8rem 4rem 0; padding:0; }
 .ss-timeline-field { display:flex; flex:1 1 200rem; min-width:0; max-width:222rem; align-items:flex-start; margin:0 4rem; color:{{colors.table_header_text}}; }
 .ss-timeline-field > span { flex-shrink:0; margin-right:6rem; line-height:30rem; }
@@ -721,21 +714,22 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-aggregate .ss-group-kpi .ss-kpi-value { display:flex; flex-direction:column; align-items:center; justify-content:center; height:38rem; min-height:38rem; font-size:20rem; line-height:23rem; overflow-wrap:break-word; }
 .ss-aggregate .ss-group-count .ss-kpi-value { font-size:18rem; }
 .ss-aggregate .ss-group-rate .ss-kpi-value { font-size:17rem; }
-.ss-aggregate .ss-group-count-partial .ss-kpi-value { line-height:23rem; }
-.ss-count-confirmed { display:block; font-size:18rem; line-height:23rem; }
-.ss-count-observed { display:block; font-size:11rem; line-height:15rem; }
 .ss-group-sort-host { position:relative; flex:0 0 96rem; width:96rem; min-width:0; height:64rem; padding:0 3rem; text-align:center; }
 .ss-group-sort-caption { display:block; width:100%; height:26rem; min-height:26rem; color:{{colors.list_meta_text}}; font-size:11rem; font-weight:normal; line-height:13rem; overflow-wrap:break-word; }
 .ss-group-sort-number { display:block; width:100%; height:38rem; min-height:38rem; margin:0; color:{{colors.kpi_value_text}}; font-size:16rem; line-height:19rem; white-space:normal; overflow-wrap:break-word; }
 .ss-group-sort-host .ss-group-sort-value { width:100%; height:64rem; min-height:64rem; margin:0; padding:0; border:0; }
-.ss-group-sort-partial .ss-group-sort-number { height:19rem; min-height:19rem; font-size:12rem; white-space:nowrap; }
-.ss-group-sort-partial > .ss-count-coverage { display:block; margin:0; font-size:10rem; line-height:15rem; }
-/* The value itself is the link: preserve number width and align its baseline. */
-.ss-metric-row .ss-extreme-cell { padding-top:0; padding-bottom:0; }
-.ss-metric-battle-link { display:block; min-width:0; width:100%; min-height:26rem; margin:0; padding:3rem 0; border:0; border-radius:{{radii.control}}rem; background:{{colors.close_background}}; color:inherit; font-family:inherit; font-size:inherit; font-weight:inherit; line-height:20rem; text-align:right; text-shadow:inherit; cursor:pointer; }
-.ss-extreme-figure { display:inline; border-bottom:1rem solid {{colors.list_meta_text}}; }
-.ss-metric-battle-link:hover, .ss-metric-battle-link:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:-1rem; background:{{colors.table_row_hover_background}}; }
-.ss-metric-battle-link:hover .ss-extreme-figure, .ss-metric-battle-link:focus .ss-extreme-figure { border-bottom-color:{{colors.session_tab_marker_background}}; }
+/* Keep numeric text in its native cell; only the transparent hit target overlays it. */
+.ss-metric-battle-link { display:block; min-width:0; width:100%; min-height:26rem; margin:0; padding:3rem 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}},{{colors.button_background_middle}} 48%,{{colors.button_background_end}}); color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:14rem; font-weight:normal; line-height:20rem; text-align:center; cursor:pointer; }
+.ss-metric-battle-link:hover, .ss-metric-battle-link:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:-1rem; border-color:{{colors.session_tab_marker_background}}; }
+.ss-metric-extreme-action .ss-metric-action-label { display:block; width:100%; min-width:0; height:16rem; font-size:11rem; line-height:16rem; text-align:center; }
+.ss-metric-number.ss-extreme-cell { position:relative; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.table_header_background_start}},{{colors.table_header_background_end}}); }
+.ss-group .ss-extreme-cell.ss-sort-active-value { background:{{colors.sort_active_background}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
+.ss-extreme-cell > .ss-metric-battle-link { position:absolute; left:0; top:0; width:100%; height:100%; min-height:22rem; padding:0; background:none; }
+.ss-group .ss-extreme-cell.ss-sort-active-value > .ss-metric-battle-link { border-color:{{colors.session_tab_marker_background}}; }
+.ss-extreme-link-cue { display:block; position:absolute; left:2rem; bottom:0; width:3rem; height:3rem; pointer-events:none; }
+.ss-extreme-link-cue:before { content:""; display:block; position:absolute; left:0; top:1rem; width:4rem; height:1rem; background:{{colors.list_meta_text}}; transform:rotate(-45deg); }
+.ss-extreme-link-cue:after { content:""; display:block; position:absolute; right:0; top:0; width:3rem; height:3rem; border-top:1rem solid {{colors.list_meta_text}}; border-right:1rem solid {{colors.list_meta_text}}; }
+.ss-extreme-cell > .ss-metric-battle-link:hover, .ss-extreme-cell > .ss-metric-battle-link:focus { background:none; }
 .ss-group-stats > .ss-map-more-button { flex:0 0 72rem; width:72rem; min-width:72rem; margin-left:4rem; padding:3rem 4rem; font-size:11rem; line-height:16rem; }
 .ss-group-stats > .ss-map-more-button .ss-control-label { font-size:11rem; line-height:16rem; }
 .ss-aggregate.ss-compact-headline .ss-group-header { flex-wrap:wrap; }

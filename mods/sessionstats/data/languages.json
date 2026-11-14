@@ -386,7 +386,7 @@
       "finance.credits_net_received": "Received net",
       "finance.credits_base": "Credits (base)",
       "finance.credits_received": "Credits (received)",
-      "help.credits.base_received": "Base credits are the reported original earnings before bonuses. Base net subtracts the same actual battle costs. Received credits are the settled earnings after bonuses and deductions. Missing historical base earnings remain unavailable."
+      "help.credits.base_received": "Base credits are the reported original earnings before bonuses. Base net subtracts the same actual battle costs. Received credits are the settled earnings after bonuses and deductions. Original base earnings missing from older records are hidden. They can be added if a full report containing them is obtained again; the recorded received earnings are retained."
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -773,7 +773,7 @@
       "finance.credits_net_received": "Netto otrzymane",
       "finance.credits_base": "Kredyty (bazowe)",
       "finance.credits_received": "Kredyty (otrzymane)",
-      "help.credits.base_received": "Bazowe kredyty to raportowany pierwotny przychód przed premiami. Bazowe netto odejmuje te same rzeczywiste koszty bitwy. Otrzymane kredyty to rozliczony przychód po premiach i potrąceniach. Brakujące historyczne kwoty bazowe pozostają niedostępne."
+      "help.credits.base_received": "Bazowe kredyty to raportowany pierwotny przychód przed premiami. Bazowe netto odejmuje te same rzeczywiste koszty bitwy. Otrzymane kredyty to rozliczony przychód po premiach i potrąceniach. Bazowe kwoty, których nie ma w starszych zapisach, są ukryte. Można je uzupełnić, jeśli ponownie zostanie uzyskany pełny raport z tymi danymi; zapisane otrzymane kwoty nadal są dostępne."
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1160,7 +1160,7 @@
       "finance.credits_net_received": "Полученное нетто",
       "finance.credits_base": "Кредиты (базовые)",
       "finance.credits_received": "Полученные кредиты",
-      "help.credits.base_received": "Базовые кредиты — исходный доход из отчёта до бонусов. Базовое нетто вычитает те же фактические расходы боя. Полученные кредиты — итоговый доход после бонусов и удержаний. Отсутствующий базовый доход старых боёв остаётся недоступным."
+      "help.credits.base_received": "Базовые кредиты — исходный доход из отчёта до бонусов. Базовое нетто вычитает те же фактические расходы боя. Полученные кредиты — итоговый доход после бонусов и удержаний. Базовые суммы, отсутствующие в старых записях, скрыты. Их можно добавить, если будет повторно получен полный отчёт с этими данными; уже сохранённые полученные суммы остаются доступны."
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1547,7 +1547,7 @@
       "finance.credits_net_received": "Net reçu",
       "finance.credits_base": "Crédits (base)",
       "finance.credits_received": "Crédits (reçus)",
-      "help.credits.base_received": "Les crédits de base sont le revenu initial du rapport avant bonus. Le net de base déduit les mêmes frais réels de bataille. Les crédits reçus sont le revenu réglé après bonus et déductions. Les revenus de base historiques manquants restent indisponibles."
+      "help.credits.base_received": "Les crédits de base sont le revenu initial du rapport avant bonus. Le net de base déduit les mêmes frais réels de bataille. Les crédits reçus sont le revenu réglé après bonus et déductions. Les montants de base absents des anciens enregistrements sont masqués. Ils peuvent être complétés si un rapport complet contenant ces données est obtenu de nouveau ; les revenus reçus déjà enregistrés sont conservés."
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1934,7 +1934,7 @@
       "finance.credits_net_received": "Erhaltenes Netto",
       "finance.credits_base": "Kredite (Basis)",
       "finance.credits_received": "Kredite (erhalten)",
-      "help.credits.base_received": "Basiskredite sind die gemeldeten ursprünglichen Einnahmen vor Boni. Das Basisnetto zieht dieselben tatsächlichen Gefechtskosten ab. Erhaltene Kredite sind die abgerechneten Einnahmen nach Boni und Abzügen. Fehlende historische Basiseinnahmen bleiben unbekannt."
+      "help.credits.base_received": "Basiskredite sind die gemeldeten ursprünglichen Einnahmen vor Boni. Das Basisnetto zieht dieselben tatsächlichen Gefechtskosten ab. Erhaltene Kredite sind die abgerechneten Einnahmen nach Boni und Abzügen. Fehlende Basisbeträge älterer Aufzeichnungen werden ausgeblendet. Sie können ergänzt werden, wenn ein vollständiger Bericht mit diesen Angaben erneut vorliegt; bereits gespeicherte erhaltene Einnahmen bleiben erhalten."
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2321,7 +2321,7 @@
       "finance.credits_net_received": "Neto recibido",
       "finance.credits_base": "Créditos (base)",
       "finance.credits_received": "Créditos (recibidos)",
-      "help.credits.base_received": "Los créditos base son los ingresos originales del informe antes de bonificaciones. El neto base descuenta los mismos costes reales de batalla. Los créditos recibidos son los ingresos liquidados tras bonificaciones y deducciones. Los ingresos base históricos ausentes siguen sin estar disponibles."
+      "help.credits.base_received": "Los créditos base son los ingresos originales del informe antes de bonificaciones. El neto base descuenta los mismos costes reales de batalla. Los créditos recibidos son los ingresos liquidados tras bonificaciones y deducciones. Los importes base ausentes de los registros antiguos se ocultan. Se pueden completar si se obtiene de nuevo un informe íntegro con esos datos; los ingresos recibidos ya registrados se conservan."
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2708,7 +2708,7 @@
       "finance.credits_net_received": "Отримане нетто",
       "finance.credits_base": "Кредити (базові)",
       "finance.credits_received": "Кредити (отримані)",
-      "help.credits.base_received": "Базові кредити — початковий дохід зі звіту до бонусів. Базове нетто віднімає ті самі фактичні витрати бою. Отримані кредити — розрахований дохід після бонусів і відрахувань. Відсутній базовий дохід давніх боїв залишається недоступним."
+      "help.credits.base_received": "Базові кредити — початковий дохід зі звіту до бонусів. Базове нетто віднімає ті самі фактичні витрати бою. Отримані кредити — розрахований дохід після бонусів і відрахувань. Базові суми, відсутні в давніх записах, приховано. Їх можна додати, якщо буде повторно отримано повний звіт із цими даними; уже збережені отримані суми залишаються доступними."
     }
   }
 }

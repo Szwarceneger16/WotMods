@@ -94,4 +94,5 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-sort-statistic .ss-select-trigger .ss-control-label').textContent()===messages.uk['sort.avg']);
   }finally{await page.close();}
   await require('./ui-credit-labels.cjs')({browser,nativeHost,check});
+  await require('./ui-credit-history.cjs')({browser,nativeHost,check});
 };

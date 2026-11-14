@@ -102,18 +102,16 @@ module.exports=async({browser,nativeHost,check})=>{
           return {text:value.textContent,parts:parts.length,centerDelta:Math.abs(center-(box.top+box.bottom)/2),
             peerCenters:[...node.parentElement.querySelectorAll('.ss-kpi-value')].map(peer=>{
               const r=peer.getBoundingClientRect();return Math.abs((r.top+r.bottom)/2-(box.top+box.bottom)/2);
-            }),financeFits:[...node.closest('.ss-group').querySelectorAll('.ss-economy .ss-cell-coverage')].every(coverage=>{
-              const owner=coverage.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(coverage);
-              return [...range.getClientRects()].every(ink=>ink.left>=owner.left-1&&ink.right<=owner.right+1&&ink.top>=owner.top-1&&ink.bottom<=owner.bottom+1);
-            }),fits:(parts.length?parts:[value]).every(part=>{
+            }),metricCoverage:node.closest('.ss-group').querySelectorAll('.ss-cell-coverage,.ss-count-coverage,.ss-wn8-coverage').length,
+            badge:node.closest('.ss-group').querySelector('.ss-group-coverage')?.textContent.replace(/[^\d/]/g,''),fits:(parts.length?parts:[value]).every(part=>{
               const owner=part.getBoundingClientRect(),ink=document.createRange();ink.selectNodeContents(part);
               const rects=[...ink.getClientRects()];
               return rects.length===1&&rects.every(text=>text.left>=owner.left-1&&text.right<=owner.right+1&&text.top>=owner.top-1&&text.bottom<=owner.bottom+1);
             })};
         });
-        check('Zero, stacked and large battle counts stay centered and unbroken: '+language+'/'+scale+'x/'+confirmed+'/'+total+': '+JSON.stringify(count),
-          count.parts===(confirmed<total?2:0)&&count.fits&&count.financeFits&&count.centerDelta<=scale*1.25&&count.peerCenters.every(delta=>delta<=scale*0.5)&&
-          count.text.replace(/[^\d/]/g,'')===String(confirmed)+(confirmed<total?'/'+total:''));
+        check('Recorded battle totals stay centered without repeating result coverage: '+language+'/'+scale+'x/'+confirmed+'/'+total+': '+JSON.stringify(count),
+          count.parts===0&&count.fits&&count.metricCoverage===0&&count.centerDelta<=scale*1.25&&count.peerCenters.every(delta=>delta<=scale*0.5)&&
+          count.text.replace(/[^\d/]/g,'')===String(total)&&count.badge===(confirmed<total?confirmed+'/'+total:undefined));
       }
 
     }finally{await page.close();}

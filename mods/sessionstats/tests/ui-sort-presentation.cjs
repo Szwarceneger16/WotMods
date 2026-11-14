@@ -79,7 +79,7 @@ function run(){
   assert.strictEqual(f.credit.credits_costs.querySelector('.ss-cell-value').getAttribute('data-ss-sort-active'),'credits_costs','An individual cost uses its existing finance cell');
   f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:600,stats:{observed_battles:3,xp_base:{count:2,sum:600}}},{metric:'xp_base',statistic:'sum'},false);
   assert.strictEqual(f.meta.children[0].textContent,'Total Base XP: 600');
-  assert.strictEqual(f.meta.children[0].children[0].textContent,' (2/3)');
+  assert.strictEqual(f.meta.children[0].children.length,0,'A sorting total must not add another visible coverage ratio');
   assert(f.rows[0].children.every(node=>!node.getAttribute('data-ss-sort-active')),'An XP total must not highlight the average distribution cell');
   assert.strictEqual(context.groupSortValue({stats:{xp_base:{count:0,sum:0}}},{metric:'xp_base',statistic:'sum'}),null,'An empty legacy sum is unknown, not zero');
   assert.strictEqual(context.groupSortValue({stats:{xp_base:{count:1,sum:0}}},{metric:'xp_base',statistic:'sum'}),0,'A received zero remains known');

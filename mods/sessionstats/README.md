@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.9 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.10 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -54,7 +54,8 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [0.9.6 readability and loading refinements](docs/UI_REFINEMENTS_0.9.6.md), and
 [0.9.7 XP presentation and credit sorting](docs/UI_REFINEMENTS_0.9.7.md), and
 [0.9.8 battle references and compact headers](docs/UI_REFINEMENTS_0.9.8.md), and
-[0.9.9 permanent links and base/received credits](docs/UI_REFINEMENTS_0.9.9.md).
+[0.9.9 permanent links and base/received credits](docs/UI_REFINEMENTS_0.9.9.md), and
+[0.9.10 native rendering and single coverage](docs/UI_REFINEMENTS_0.9.10.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an

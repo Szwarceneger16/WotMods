@@ -35,14 +35,15 @@ module.exports=async({browser,nativeHost,check})=>{
       const summary=await page.locator('#ss-summary .ss-performance').evaluate(panel=>({
         keys:[...panel.querySelectorAll('.ss-metric-row[data-ss-metric]')].map(row=>row.getAttribute('data-ss-metric')),
         rows:[...panel.querySelectorAll('.ss-metric-row')].map(row=>({
-          key:row.getAttribute('data-ss-metric'),label:row.querySelector('.ss-metric-name').textContent,
+          key:row.getAttribute('data-ss-metric'),label:row.querySelector('.ss-metric-name').textContent,availability:row.getAttribute('aria-label'),
           numbers:[...row.querySelectorAll('.ss-metric-number')].map(node=>node.textContent)})),
         shared:panel.querySelectorAll('.ss-metric-head .ss-metric-count').length}));
       check('Summary permanently displays separate Base XP, Received XP and WN8 distributions'+caption,
         summary.keys.join('|')==='xp_base|xp_received|battle_wn8'&&summary.rows[0].numbers.join('|')==='0|0|0'&&
         summary.rows[1].numbers.join('|')==='100|150|200'&&summary.rows[2].numbers.join('|')==='0|0|0');
       check('Summary retains each XP metric\'s independent missing-result coverage'+caption,
-        summary.shared===0&&summary.rows[0].label.includes('1/3')&&summary.rows[1].label.includes('2/3')&&summary.rows[2].label.includes('1/3'));
+        summary.shared===0&&summary.rows.every((row,index)=>!row.label.includes('/')&&
+          row.availability===row.label+' Data available for '+[1,2,1][index]+' of 3 recorded battles.'));
       for(const group of ['vehicles','maps','tiers','battles']){
         await page.locator('#ss-group-'+group).click();await frames(page);
         const rows=await page.locator('#ss-groups .ss-group').first().locator('.ss-performance .ss-metric-row[data-ss-metric],.ss-performance .ss-battle-measure[data-ss-metric]').evaluateAll(rows=>rows.map(row=>({

@@ -12,12 +12,15 @@ module.exports=async({browser,nativeHost,check})=>{
   async function publish(group='maps',metric='off',statistic='avg',options={}){
     await page.evaluate(({group,metric,statistic,options,revision,metrics})=>{
       const payload=JSON.parse(JSON.stringify(__extremaBase)),scope=payload.scopes.launch;
-      payload.window_size=[1200,1050];scope.data_revision='permanent-extrema-'+revision;
+      payload.window_size=[options.width||1200,1050];scope.data_revision='permanent-extrema-'+revision;
+      // Native logical size is account-owned and intentionally survives snapshots.
+      // Give each width case a fresh owner so its requested size is actually used.
+      if(options.width)payload.account_key='DEMO:extrema-layout-'+revision;
       scope.ordering[group]={metric,statistic,direction:'desc',chronology:'newest'};
       function fill(stats,owner){
         const references={};
         metrics.forEach(key=>{
-          const min=key.indexOf('credits_net')===0?-500:0,max=12345;
+          const min=key.indexOf('credits_net')===0?-500:0,max=options.maximum||12345;
           stats[key]={count:3,min,max,avg:100,sum:300};
           references[key]={};
           ['min','max'].forEach(extreme=>{references[key][extreme]={
@@ -56,10 +59,10 @@ module.exports=async({browser,nativeHost,check})=>{
         const action=link('groups',metric,statistic);
         check('Permanent '+group+'/'+metric+'/'+statistic+' uses its complete-scope source independently of sorting',
           await action.count()===1&&await action.evaluate((node,{group,metric,statistic})=>{
-            const text=node.textContent.replace(/\s/g,''),box=node.getBoundingClientRect(),style=getComputedStyle(node);
+            const cell=node.parentNode,text=Array.from(cell.childNodes).filter(child=>child!==node).map(child=>child.textContent).join('').replace(/\s/g,''),box=node.getBoundingClientRect(),style=getComputedStyle(cell);
             return node.getAttribute('data-battle-id')===group+'-'+metric+'-'+statistic&&
               text===(statistic==='min'?'0':'12345')&&box.height>=22&&box.width>20&&
-              style.textAlign==='right'&&node.querySelector('.ss-extreme-figure')&&
+              style.textAlign==='right'&&cell.classList.contains('ss-extreme-cell')&&node.textContent===''&&
               node.getAttribute('aria-label').includes('Show battle')&&
               node.getAttribute('data-ss-help').includes('Synthetic off-page map')&&
               node.getAttribute('data-ss-help').includes('<b>Synthetic tank</b>')&&
@@ -118,15 +121,71 @@ module.exports=async({browser,nativeHost,check})=>{
     await page.keyboard.press('Escape');
     const geometry=await page.locator('#ss-groups .ss-metric-row').evaluateAll(rows=>rows.map(row=>{
       const cells=Array.from(row.children).slice(1),numbers=cells.map(cell=>{
-        const figure=cell.querySelector('.ss-extreme-figure')||cell,range=document.createRange();range.selectNodeContents(figure);
-        const box=range.getBoundingClientRect(),button=cell.querySelector('button');
+        const button=cell.querySelector('button'),figure=Array.from(cell.childNodes).find(child=>child!==button),range=document.createRange();range.selectNode(figure);
+        const box=range.getBoundingClientRect();
         return {box:{top:box.top,bottom:box.bottom,right:box.right},cell:cell.getBoundingClientRect().right,
-          font:parseFloat(getComputedStyle(button||cell).fontSize)};
+          font:parseFloat(getComputedStyle(cell).fontSize)};
       });
       return Math.max(...numbers.map(n=>n.box.top))-Math.min(...numbers.map(n=>n.box.top))<=1&&
         numbers.every(n=>n.box.right<=n.cell+1)&&numbers.every(n=>n.font===numbers[1].font);
     }));
     check('Clickable figures keep the Min/Average/Max baseline, font size and cell alignment',geometry.every(Boolean));
+    // Model the observed native defect: unsupported inline button captions
+    // collapse, although the button remains clickable. Explicit native labels
+    // and numeric cells' original text must be independent of that path.
+    const collapse=await page.addStyleTag({content:
+      '.ss-metric-battle-link > span:not(.ss-control-label):not(.ss-extreme-link-cue) { display:block !important; width:0 !important; height:0 !important; font-size:0 !important; line-height:0 !important; overflow:hidden !important; }'});
+    const model=await page.evaluate(()=>{
+      const sample=document.createElement('button');sample.className='ss-metric-battle-link';
+      const label=document.createElement('span');label.className='ss-extreme-figure';label.textContent='12 345';sample.appendChild(label);document.body.appendChild(sample);
+      const range=document.createRange();range.selectNodeContents(label);const box=range.getBoundingClientRect();sample.remove();
+      window.__extremeOriginalAppend=Node.prototype.appendChild;
+      Node.prototype.appendChild=function(child){
+        if(this.nodeType===1&&this.classList.contains('ss-metric-number')&&child.nodeType===1&&child.classList.contains('ss-metric-battle-link'))
+          this.__originalNativeValue=Array.from(this.childNodes);
+        return __extremeOriginalAppend.call(this,child);
+      };
+      return box.width===0&&box.height===0;
+    });
+    check('The native paint failure model reproduces the prior inline-caption blank while retaining its button',model);
+    for(const [language,messages]of Object.entries(catalogs))for(const width of [550,1200])for(const maximum of [12345,123456])for(const group of ['maps','vehicles','tiers']){
+      await publish(group,'off','avg',{language,messages,width,maximum});
+      const painted=await page.evaluate(({maximum,messages,width})=>{
+        if(Math.abs(document.querySelector('.ss-window').getBoundingClientRect().width-width)>0.5)return false;
+        const rows=Array.from(document.querySelectorAll('#ss-summary .ss-metric-row,#ss-groups .ss-metric-row'));
+        const values=rows.length===6&&rows.every(row=>{
+          const average=row.children[2];
+          if(average.querySelector('button')||average.classList.contains('ss-extreme-cell'))return false;
+          return [['min',1,'0'],['max',3,maximum.toLocaleString('en-US').replace(/,/g,'')]].every(([statistic,index,expected])=>{
+            const cell=row.children[index],button=cell.querySelector('.ss-metric-battle-link'),original=cell.__originalNativeValue;
+            if(!button||!original||!original.length||original.some(node=>node.parentNode!==cell)||button.textContent!=='')return false;
+            const actual=original.map(node=>node.textContent).join('').replace(/\s/g,'');
+            const range=document.createRange();range.selectNode(original[0]);const ink=range.getBoundingClientRect(),box=cell.getBoundingClientRect(),hit=button.getBoundingClientRect();
+            const visual=getComputedStyle(cell),overlay=getComputedStyle(button),cue=button.querySelector('.ss-extreme-link-cue'),corner=cue.getBoundingClientRect();
+            return actual===expected&&ink.width>3&&ink.height>=14&&ink.left>=box.left-1&&ink.right<=box.right+1&&
+              hit.width>=box.width-1&&hit.height>=22&&overlay.backgroundImage==='none'&&overlay.backgroundColor==='rgba(0, 0, 0, 0)'&&
+              visual.backgroundImage!=='none'&&overlay.borderStyle==='solid'&&parseFloat(overlay.borderWidth)>=1&&
+              getComputedStyle(cue).display==='block'&&(corner.right<=ink.left||corner.top>=ink.bottom-0.5)&&
+              (row.getAttribute('data-ss-metric')!=='battle_wn8'||statistic!=='min'||
+                original[0].classList.contains('ss-wn8-low-ink')&&getComputedStyle(cell).color==='rgb(0, 0, 0)');
+          });
+        });
+        const captions=Array.from(document.querySelectorAll('.ss-credit-extreme-actions .ss-metric-battle-link'));
+        return values&&captions.length===20&&captions.every(button=>{
+          const label=button.querySelector('.ss-control-label.ss-metric-action-label'),style=getComputedStyle(label),box=label.getBoundingClientRect();
+          const range=document.createRange();range.selectNodeContents(label);const ink=range.getBoundingClientRect();
+          const action=getComputedStyle(button),hit=button.getBoundingClientRect(),host=button.parentNode.getBoundingClientRect();
+          const inset=parseFloat(action.borderLeftWidth)+parseFloat(action.borderRightWidth)+parseFloat(action.paddingLeft)+parseFloat(action.paddingRight);
+          return label.textContent===messages['metric.'+button.getAttribute('data-ss-extreme')]&&style.display==='block'&&
+            parseFloat(style.fontSize)===11&&parseFloat(style.lineHeight)===16&&box.width>15&&ink.width>3&&ink.height>=11&&
+            action.flexBasis==='50%'&&action.maxWidth==='50%'&&Math.abs(hit.width-host.width/2)<=0.5&&
+            Math.abs(box.width-(hit.width-inset))<=0.5&&ink.left>=box.left-0.5&&ink.right<=box.right+0.5&&
+            ink.top>=box.top-0.5&&ink.bottom<=box.bottom+0.5&&action.borderStyle==='solid'&&action.backgroundImage!=='none';
+        });
+      },{maximum,messages,width});
+      check('Native-safe original figures and explicit credit actions remain painted '+language+'/'+width+'/'+maximum+'/'+group,painted);
+    }
+    await page.evaluate(()=>{Node.prototype.appendChild=__extremeOriginalAppend;delete window.__extremeOriginalAppend;});await collapse.evaluate(node=>node.remove());
     for(const invalid of [{metric:'xp_received'},{statistic:'min'},{value:null},{value:999},{id:''}]){
       await publish('maps','off','avg',{invalid});
       check('Invalid permanent reference offers no misleading button '+JSON.stringify(invalid),

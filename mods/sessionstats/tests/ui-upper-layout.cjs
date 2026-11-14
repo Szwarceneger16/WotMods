@@ -89,7 +89,8 @@ module.exports=async function ({browser,nativeHost,check}) {
         return {root,panels,pair,summary,kpis,filters,xpPickerCount,scopes,lower,lowerTriggers,overflow,badNumbers,
           periodHidden:document.getElementById('ss-started').getBoundingClientRect().height===0,
           values:[...credits.querySelectorAll('.ss-money-value .ss-cell-value')].map(node=>compact(node.textContent)),
-          coverage:[...credits.querySelectorAll('.ss-cell-coverage')].map(node=>compact(node.textContent)),
+          coverage:credits.querySelectorAll('.ss-cell-coverage').length,
+          availability:[...credits.querySelectorAll('.ss-money-value')].map(node=>node.getAttribute('aria-label')),
           xpValues:[...document.querySelectorAll('#ss-summary [data-ss-metric="xp_base"] .ss-metric-number,#ss-summary [data-ss-metric="xp_received"] .ss-metric-number')].map(node=>compact(node.textContent)),
           wn8:document.querySelector('#ss-summary .ss-kpi-value.ss-wn8').textContent,
         };
@@ -101,7 +102,8 @@ module.exports=async function ({browser,nativeHost,check}) {
       check('Summary sections keep capped widths and readable full values: '+caption,
         audit.panels[0].width<=461 && audit.pair.width<=651 && audit.panels[1].width<=301 && audit.panels[2].width<=351 &&
         audit.badNumbers.length===0 && audit.values.join('|')==='12345678|-12345678|-12345678' &&
-        audit.coverage.join('|')==='1/4|2/4|3/4' &&
+        audit.coverage===0 && audit.availability.every((value,index)=>value===
+          'Credits (received) '+['Income','Costs','Net'][index]+' Data available for '+[1,2,3][index]+' of 4 recorded battles.') &&
         audit.xpValues.length===6 && audit.xpValues.every(value=>value==='123456') &&
         audit.wn8==='10420');
       if(width>=470) check('Main battle, win-rate and WN8 KPIs remain horizontal: '+caption,

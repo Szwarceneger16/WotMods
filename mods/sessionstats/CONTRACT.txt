@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.9 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.10 (persistent data schema unchanged)
 Release date: 2026-11-14.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -82,7 +82,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.9', account_key: string, generated_at: unix seconds,
+ version: '0.9.10', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -115,9 +115,11 @@ received income is the existing settled result after verified sharing deductions
 Base net subtracts the same actual costs. This is not a counterfactual account
 without premium. Historical missing base income remains unknown, never zero or
 received income divided by a premium factor. Existing received values stay intact.
-Partial sums are sums of confirmed known values. Their coverage remains available
-in visible group details or help/ARIA; global totals and table headers omit repeated
-visible x/y while the received-results count remains above.
+Partial sums are sums of confirmed known values. Metric-specific availability
+remains in existing help/ARIA. Visible received/recorded coverage appears only
+in the global result headline and one generic badge beside a partial aggregate
+name; tables, metric labels, totals and the footer never repeat it. The single
+Battles KPI shows the recorded total used by its sorter.
 observed_battles includes durable beginnings with no outcome; battles counts known
 outcomes. Missing results remain listed with unknown outcome and unknown numeric
 values. All group/financial coverage uses observed_battles as denominator. Display

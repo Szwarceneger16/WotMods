@@ -1,5 +1,12 @@
 SESSION STATS — CHANGELOG
 
+0.9.10 • 2026-11-14
+• Preserve native Min/Max number painting with clearly marked source actions.
+• Show one global result count and one upper-left partial card badge.
+• Remove repeated visible coverage from tables, metric labels and footer.
+• Keep historical received earnings visible and omit unavailable base comparisons.
+• Verify legacy ledger upgrade and reconciliation preserve all existing metrics.
+
 0.9.9 • 2026-11-14
 • Use original native metal class emblems and elite badges alongside role icons.
 • Center the processing spinner over the native-aligned footer chart.
