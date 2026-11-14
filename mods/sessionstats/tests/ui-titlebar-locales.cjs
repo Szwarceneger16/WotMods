@@ -3,6 +3,14 @@ const fs=require('fs'),path=require('path');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;
   function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
 }));
+const detailStates=buttons=>buttons.evaluateAll(nodes=>nodes.map(node=>{
+  const card=node.closest('.ss-battle'),panel=card.querySelector('.ss-more-panel');
+  return {id:card.getAttribute('data-group-id'),index:card.getAttribute('data-list-index'),
+    expanded:node.getAttribute('aria-expanded'),text:node.textContent,
+    panelVisible:!!panel&&getComputedStyle(panel).display!=='none'&&panel.getBoundingClientRect().height>0};
+}));
+const matchesDetail=(state,owner,expanded,messages)=>!!state&&!!owner&&state.id===owner.id&&state.index===owner.index&&
+  state.expanded===String(expanded)&&state.text===messages[expanded?'more.less':'more.button']&&state.panelVisible===expanded;
 module.exports=async ({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   for(const {width,scale,wide} of [{width:1200,scale:1,wide:true},{width:1600,scale:1,wide:true},
@@ -123,17 +131,37 @@ module.exports=async ({browser,nativeHost,check})=>{
           check('Measuring Top paint restores the titlebar fixture offset: '+label,
             Math.abs(await page.locator('#ss-scroll').evaluate(node=>node.scrollTop)-beforeArrow)<=1);
         }
-        const buttons=page.locator('.ss-more-button');
-        for(let index=0;index<Math.min(2,await buttons.count());index++) {
-          const button=buttons.nth(index);
-          check('Collapsed battle details say More in '+label,await button.getAttribute('aria-expanded')==='false' && await button.textContent()===messages['more.button']);
+        // Lane balancing moves existing cards in DOM order after a panel
+        // changes height. Keep the canonical owners rather than live nth().
+        const allOwners=(await detailStates(page.locator('.ss-more-button'))).sort((a,b)=>Number(a.index)-Number(b.index));
+        const owners=allOwners.slice(0,2);
+        check('Localized detail fixture has two distinct canonical owners: '+label,
+          owners.length===2&&owners[0].id!==owners[1].id);
+        const buttons=owners.map(owner=>page.locator('.ss-battle[data-group-id='+JSON.stringify(owner.id)+'][data-list-index='+JSON.stringify(owner.index)+'] .ss-more-button'));
+        const readOwned=()=>Promise.all(buttons.map(async button=>(await detailStates(button))[0]));
+        const preservesOther=states=>matchesDetail(states[0],owners[0],false,messages)&&matchesDetail(states[1],owners[1],true,messages);
+        for(let index=0;index<buttons.length;index++) {
+          const button=buttons[index];
+          check('Collapsed battle details say More in '+label,matchesDetail((await detailStates(button))[0],owners[index],false,messages));
           await button.click();await frames(page);
-          check('Expanded battle details say Less in '+label,await button.getAttribute('aria-expanded')==='true' && await button.textContent()===messages['more.less']);
+          check('Expanded battle details say Less in '+label,matchesDetail((await detailStates(button))[0],owners[index],true,messages));
         }
-        await buttons.first().click();await frames(page);
+        await buttons[0].click();await frames(page);
         check('Closing one localized detail panel restores More and preserves the other: '+label,
-          await buttons.first().textContent()===messages['more.button'] && await buttons.nth(1).getAttribute('aria-expanded')==='true' &&
-          await buttons.nth(1).textContent()===messages['more.less']);
+          preservesOther(await readOwned()));
+        const extra=(await detailStates(page.locator('.ss-more-button'))).filter(state=>!owners.some(owner=>owner.id===state.id));
+        check('Unopened owners remain collapsed when lane order changes: '+label,
+          extra.length>0&&extra.every(state=>matchesDetail(state,allOwners.find(owner=>owner.id===state.id),false,messages)));
+        if(language==='en'&&width===1200&&scale===1){
+          // A real loss of the retained panel must still fail the same
+          // ownership predicate; stable locators must not hide a UI defect.
+          await buttons[1].click();await frames(page);
+          check('Losing the retained detail owner is rejected by the state contract: '+label,
+            !preservesOther(await readOwned()));
+          await buttons[1].click();await frames(page);
+          check('Restoring the retained owner recovers the independent detail state: '+label,
+            preservesOther(await readOwned()));
+        }
       }
     } finally {await page.close();}
   }
