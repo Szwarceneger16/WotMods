@@ -821,7 +821,11 @@ async function runFeatureSuite(file,browser) {
     check('Translated battle outcomes and finance headers for '+language,
       (await localized.locator('.ss-battle-outcome').allTextContents()).every(value=>
         ['win','loss','draw'].some(outcome=>value===messages['outcome.'+outcome].toUpperCase())) &&
-      await localized.locator('#ss-summary .ss-money-head .ss-money-label').textContent()===messages['finance.currency']);
+      await localized.locator('#ss-summary .ss-money-head .ss-table-heading-text').textContent()===messages['finance.period'] &&
+      await localized.locator('#ss-summary .ss-metric-head .ss-table-heading-text').textContent()===messages['performance.period'] &&
+      await localized.locator('.ss-battle .ss-money-head .ss-money-label').count()>0 &&
+      (await localized.locator('.ss-battle .ss-money-head .ss-money-label').allTextContents()).every(value=>
+        value===messages['finance.currency']));
     for(const width of [320,744]) {
       await localized.setViewportSize({width,height:900});
       await localized.evaluate(width=>{
