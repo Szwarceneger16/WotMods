@@ -19,6 +19,8 @@ MAX_BYTES = 2 * 1024 * 1024
 MAX_TEXT = 4096
 LANGUAGE = re.compile(r'\A[a-z]{2,3}(?:-[A-Z]{2})?\Z')
 CLIENT_LANGUAGE = re.compile(r'\A([a-zA-Z]{2,3})(?:[-_]([a-zA-Z]{2}))?\Z')
+PRESENTATION_ONLY_TEMPLATES = frozenset(('more.progress.change', 'more.progress.range',
+                                        'more.progress.target', 'sort.metric_stat', 'sort.active_value'))
 try:
     text_type = unicode
 except NameError:
@@ -143,8 +145,31 @@ def select_language(configured, client_language, catalogs):
     return base if base in SUPPORTED and base in catalogs else 'en'
 
 
+def calendar_settings(value):
+    """Bound optional native metadata before publishing it to the web view."""
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    if value.get('order') in ('DMY', 'MDY', 'YMD'):
+        result['order'] = value['order']
+    if value.get('separator') in ('.', '/', '-'):
+        result['separator'] = value['separator']
+    first = value.get('first_weekday')
+    if isinstance(first, int) and not isinstance(first, bool) and 0 <= first <= 6:
+        result['first_weekday'] = first
+    if isinstance(value.get('hour12'), bool):
+        result['hour12'] = value['hour12']
+    for key, count in (('weekdays', 7), ('months', 12), ('periods', 2)):
+        labels = value.get(key)
+        if (isinstance(labels, (list, tuple)) and len(labels) == count and
+                all(isinstance(label, text_type) and 0 < len(label) <= 64 and
+                    not any(ord(char) < 32 for char in label) for label in labels)):
+            result[key] = list(labels)
+    return result
+
+
 class Localizer(object):
-    def __init__(self, language='en', path=None, catalog=None, client_language=None, native_messages=None):
+    def __init__(self, language='en', path=None, catalog=None, client_language=None, native_messages=None, date_settings=None):
         defaults = bundled_catalog() if catalog is None else catalog
         catalogs = copy.deepcopy(defaults)
         # Retain the legacy argument for callers upgrading in place. External
@@ -155,6 +180,9 @@ class Localizer(object):
             LOG.warning('I18N selected language unavailable; using English.')
         self.messages = dict(ENGLISH)
         self.messages.update(catalogs.get(self.language, {}))
+        self.date_settings = calendar_settings(date_settings)
+        from .map_names import MapNames
+        self.map_names = MapNames(self.language)
         native_code = client_language_code(client_language)
         if native_code and self.language in (native_code, native_code.split('-')[0]):
             for key in ('outcome.win', 'outcome.loss', 'outcome.draw'):
@@ -173,6 +201,11 @@ class Localizer(object):
         # are recognized without rewriting or resetting any account history.
         for source in (ENGLISH, LEGACY_POLISH):
             for key, template in source.items():
+                # Generic UI formats such as "{0}: {1}" are not durable
+                # warning grammars. They would consume arbitrary notices and
+                # translate unrelated fragments before a real legacy pattern.
+                if key in PRESENTATION_ONLY_TEMPLATES:
+                    continue
                 if not _fields(template):
                     self._known[template] = key
                     continue
@@ -203,8 +236,14 @@ class Localizer(object):
         return value
 
     def snapshot(self, snapshot):
-        """Translate presentation fields only; never IDs or game-supplied names."""
+        """Translate fresh presentation fields; retain stable IDs and saved names."""
         snapshot['localization'] = {'language': self.language, 'selected': self.selected, 'messages': dict(self.messages)}
+        if self.date_settings:
+            snapshot['localization']['date_settings'] = copy.deepcopy(self.date_settings)
+            # Numeric/date preferences belong to the client and config. Words
+            # belong to the selected UI language, including explicit overrides.
+            for key in ('months', 'weekdays'):
+                snapshot['localization']['date_settings'].pop(key, None)
         # Legacy Polish and canonical English notices can describe the same
         # condition. Deduplicate after translation, without rewriting the ledger.
         warnings, seen = [], set()
@@ -220,16 +259,54 @@ class Localizer(object):
             return isinstance(value, text_type) and (value in fallbacks or any(
                 pattern.match(value) for pattern, key, unused in self._patterns
                 if key in ('unknown.vehicle_id', 'unknown.map_id')))
+        def translate_battle_list(battle_list):
+            if isinstance(battle_list, dict):
+                for battle in battle_list.get('items', []):
+                    for field in ('name', 'map'):
+                        value = battle.get(field)
+                        if is_fallback(value):
+                            battle[field] = self.translate(value)
+                    localized_map = self.map_names.name(battle.get('map_id'), battle.get('map'))
+                    if localized_map is not None:
+                        battle['map'] = localized_map
+        def translate_extrema(references):
+            if isinstance(references, dict):
+                for pair in references.values():
+                    if isinstance(pair, dict):
+                        translate_battle_list({'items': [value for value in pair.values() if isinstance(value, dict)]})
         for name, scope in snapshot.get('scopes', {}).items():
             scope['label'] = self.text('scope.' + name)
+            translate_extrema(scope.get('extrema_battles'))
+            history = scope.get('battle_history')
+            if isinstance(history, dict):
+                translate_battle_list(history.get('battle_list'))
             for grouping in ('vehicles', 'maps', 'battles', 'tiers'):
                 for row in scope.get(grouping, []):
                     for field in ('name', 'map'):
                         value = row.get(field)
                         if is_fallback(value):
                             row[field] = self.translate(row[field])
+                    if grouping == 'maps':
+                        localized_map = self.map_names.name(row.get('id'), row.get('name'))
+                        if localized_map is not None:
+                            row['name'] = localized_map
+                    elif grouping == 'battles':
+                        localized_map = self.map_names.name(row.get('map_id'), row.get('map'))
+                        if localized_map is not None:
+                            row['map'] = localized_map
+                    battle_list = row.get('battle_list') if grouping in ('maps', 'vehicles') else None
+                    translate_battle_list(battle_list)
+                    winner = row.get('sort_battle')
+                    if isinstance(winner, dict):
+                        translate_battle_list({'items': [winner]})
+                    translate_extrema(row.get('extrema_battles'))
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
+                    if grouping == 'maps' and isinstance(visual, dict):
+                        visual['alt'] = row.get('name') or self.text('visual.map')
+                    map_visual = row.get('map_visual')
+                    if grouping == 'battles' and isinstance(map_visual, dict):
+                        map_visual['alt'] = row.get('map') or self.text('visual.map')
                     if isinstance(outcome_visual, dict) and row.get('outcome') in ('win', 'loss', 'draw'):
                         outcome_visual['alt'] = self.text('outcome.' + row['outcome'])
                     visual_names = (ENGLISH['visual.vehicle'], ENGLISH['visual.map'],

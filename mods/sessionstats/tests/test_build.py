@@ -39,6 +39,37 @@ class BuildContracts(unittest.TestCase):
         readme = self.build.render_guide('README_PL.txt', (self.build.ROOT/'README_PL.txt').read_bytes(), version, '2.5.0.0')
         self.assertIn(('Version ' + version).encode('ascii'), readme)
 
+    def test_native_package_requires_its_offline_map_catalog_and_loader(self):
+        import json
+        import zipfile
+        package = self.directory/'map-resource.wotmod'
+        module = 'res/scripts/client/gui/mods/grz_session_stats/map_names.pyc'
+        resource = 'res/grz_session_stats/map_names.json'
+        entries = {
+            'res/scripts/client/gui/mods/mod_grz_session_stats.pyc': self.build.MAGIC27,
+            module: self.build.MAGIC27,
+            'res/gui/gen_resources/grz.sessionstats.json': (self.build.ROOT/'resources/grz.sessionstats.json').read_bytes(),
+            'res/gui/gameface/mods/grz_session_stats/SessionStats.html': b'layout',
+            'res/gui/gameface/mods/grz_session_stats/session_stats_camo.png': b'texture',
+            'res/grz_session_stats/wn8exp.json': (self.build.ROOT/'data/wn8exp.json').read_bytes(),
+            'res/grz_session_stats/languages.json': (self.build.ROOT/'data/languages.json').read_bytes(),
+            resource: (self.build.ROOT/'data/map_names.json').read_bytes(),
+        }
+        def write(values):
+            with zipfile.ZipFile(package, 'w', zipfile.ZIP_STORED) as archive:
+                for name, value in values.items():
+                    archive.writestr(name, value)
+        write(entries)
+        self.assertEqual(self.build.check_package(package), len(entries))
+        for missing in (module, resource):
+            write(dict((key, value) for key, value in entries.items() if key != missing))
+            with self.assertRaises((AssertionError, KeyError)):
+                self.build.check_package(package)
+        invalid = json.loads(entries[resource].decode('utf-8'))
+        invalid['maps']['59_asia_great_wall'].pop('uk')
+        write(dict(entries, **{resource: json.dumps(invalid).encode('utf-8')}))
+        self.assertRaises(AssertionError, self.build.check_package, package)
+
     def test_historical_changelog_is_not_rewritten(self):
         content = (self.build.ROOT/'ZMIANY.txt').read_bytes()
         self.assertEqual(self.build.render_guide('ZMIANY.txt', content, '0.2.8', '2.5.0.0'), content)

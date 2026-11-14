@@ -60,6 +60,16 @@ class AppearanceTests(unittest.TestCase):
                 self.assertEqual(result[key], source.read() + extra)
         self.assertEqual(result['scroll_speed'], 1.0)
 
+    def test_date_time_overrides_validate_each_field_and_preserve_auto_defaults(self):
+        expected = {'order': 'YMD', 'separator': '-', 'hour_format': '24h', 'first_weekday': 0}
+        self.assertEqual(style.validate_config({'date_time': expected})['date_time'], expected)
+        invalid = {'order': 'DYM', 'separator': '<script>', 'hour_format': True, 'first_weekday': True}
+        self.assertEqual(style.validate_config({'date_time': invalid})['date_time'],
+                         style.default_config()['date_time'])
+        for invalid in (-1, 7, 1.5, [], {}, None):
+            self.assertEqual(style.validate_config({'date_time': {'first_weekday': invalid}})['date_time']['first_weekday'], 'auto')
+        self.assertEqual(style.validate_config({'date_time': {'hour_format': '12h'}})['date_time']['hour_format'], '12h')
+
     def test_every_real_color_radius_opacity_is_tokenized(self):
         templates = style.PANEL_TEMPLATE + style.FOOTER_TEMPLATE
         # Exclude comments, where renderer notes can legitimately mention a color.
@@ -74,6 +84,28 @@ class AppearanceTests(unittest.TestCase):
         tokens = set(style._TOKEN.findall(templates + style.PANEL_OPACITY_RULE + style.FOOTER_OPACITY_RULE))
         for group in ('colors', 'radii', 'opacity'):
             self.assertEqual(set(style.DEFAULT_CONFIG[group]), set(key for section, key in tokens if section == group))
+
+    def test_close_strokes_use_native_safe_configurable_paint(self):
+        config = style.default_config()
+        config['colors']['close_text'] = '#123456'
+        config['colors']['close_hover_text'] = '#abcdef'
+        css = style.build_presentation(config)['panel_css']
+        self.assertIsNone(re.search(r'\bbackground(?:-color)?\s*:\s*currentcolor\s*;', css, re.I))
+        normal = re.search(r'\.ss-close \.ss-control-label:before,[^{]+\{([^}]+)\}', css).group(1)
+        active = re.search(r'\.ss-close:hover \.ss-control-label:before,[^{]+\{([^}]+)\}', css).group(1)
+        self.assertIn('background:#123456;', normal)
+        self.assertIn('background:#abcdef;', active)
+
+    def test_sort_highlight_has_an_independent_neutral_fill(self):
+        config = style.default_config()
+        self.assertEqual(config['colors']['sort_active_background'], '#252a23')
+        config['colors']['sort_active_background'] = '#123456'
+        config['colors']['button_confirm_background_end'] = '#abcdef'
+        css = style.build_presentation(config)['panel_css']
+        highlight = re.search(r'\.ss-group \.ss-sort-active-value \{([^}]+)\}', css).group(1)
+        self.assertIn('background:#123456;', highlight)
+        self.assertNotIn('#abcdef', highlight)
+        self.assertIn('1rem ' + config['colors']['session_tab_marker_background'], highlight)
 
     def test_defaults_and_results_do_not_share_mutable_state(self):
         a = style.default_config()
@@ -93,6 +125,37 @@ class AppearanceTests(unittest.TestCase):
         self.assertEqual(actual, expected)
         self.assertEqual(self.output.getvalue(), '')
 
+    def test_only_untouched_wide_preset_adopts_the_more_accessible_breakpoint(self):
+        old = {'wide_cards': dict((key, 800) for key in ('battles', 'vehicles', 'maps', 'tiers'))}
+        expected_bytes = json.dumps(old).encode('utf-8')
+        self.assertEqual(self.write(old)['wide_cards'], style.default_config()['wide_cards'])
+        with io.open(self.path, 'rb') as source:
+            self.assertEqual(source.read(), expected_bytes)
+        self.assertEqual(self.write({'wide_cards': {'battles': 800}})['wide_cards']['battles'], 800)
+        old['wide_cards']['battles'] = 820
+        self.assertEqual(self.write(old)['wide_cards'], old['wide_cards'])
+
+    def test_previous_spinner_pair_adopts_gray_without_overriding_custom_colors(self):
+        old = {'colors': {'garage_spinner_border': 'rgba(207,190,140,0.25)',
+                          'garage_spinner_border_top_color': '#dfd3a4'}}
+        actual = self.write(old)
+        for key in old['colors']:
+            self.assertEqual(actual['colors'][key], style.DEFAULT_CONFIG['colors'][key])
+        with io.open(self.path, 'r', encoding='utf-8') as source:
+            self.assertEqual(json.load(source), old)
+        old['colors']['garage_spinner_border_top_color'] = '#abcdef'
+        self.assertEqual(self.write(old)['colors']['garage_spinner_border_top_color'], '#abcdef')
+        self.assertEqual(self.write(old)['colors']['garage_spinner_border'], 'rgba(207,190,140,0.25)')
+
+    def test_previous_spinner_radius_adopts_the_round_overlay_without_rewriting_custom_settings(self):
+        old = {'radii': {'garage_spinner': 5, 'window': 9}}
+        actual = self.write(old)
+        self.assertEqual(actual['radii']['garage_spinner'], 8)
+        self.assertEqual(actual['radii']['window'], 9)
+        with io.open(self.path, 'r', encoding='utf-8') as source:
+            self.assertEqual(json.load(source), old)
+        self.assertEqual(self.write({'radii': {'garage_spinner': 3}})['radii']['garage_spinner'], 3)
+
     def test_invalid_leaf_keeps_valid_siblings_and_logs_only_field_reason(self):
         actual = self.write({'colors': {'window_background': 'SECRET-user-value',
                                        'window_border': '#246'},
@@ -101,7 +164,7 @@ class AppearanceTests(unittest.TestCase):
         self.assertEqual(actual['colors']['window_background'], '#111309')
         self.assertEqual(actual['colors']['window_border'], '#246')
         self.assertEqual(actual['radii']['window'], 6)
-        self.assertEqual(actual['radii']['group_card'], 5)
+        self.assertEqual(actual['radii']['group_card'], style.DEFAULT_CONFIG['radii']['group_card'])
         self.assertEqual(actual['scroll']['speed_multiplier'], 2)
         log = self.output.getvalue()
         self.assertIn('CONFIG field=colors.window_background', log)
@@ -168,6 +231,48 @@ class AppearanceTests(unittest.TestCase):
             for value in values:
                 result = style.validate_config({section: {key: value}})
                 self.assertEqual(result[section][key], style.DEFAULT_CONFIG[section][key])
+
+    def test_card_widths_are_optional_independent_and_bounded(self):
+        defaults = style.default_config()['cards']
+        self.assertEqual(defaults, {'battles': 500, 'vehicles': 560, 'maps': 560, 'tiers': 520})
+        actual = self.write({'cards': {'battles': 480, 'maps': 900}})
+        self.assertEqual(actual['cards'], dict(defaults, battles=480, maps=900))
+        presentation = style.build_presentation(actual)
+        self.assertEqual(presentation['card_widths'], actual['cards'])
+        presentation['card_widths']['maps'] = 600
+        self.assertEqual(actual['cards']['maps'], 900)
+        for invalid in (True, None, '620', 479, 901, float('nan'), float('inf')):
+            self.assertEqual(style.validate_config({'cards': {'battles': invalid}})['cards'], defaults)
+        self.assertEqual(style.validate_config({'cards': []})['cards'], defaults)
+
+    def test_load_upgrades_complete_previous_card_defaults_without_writing(self):
+        raw = style.default_config()
+        raw['cards'] = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        raw['language'] = 'pl'
+        raw['colors']['window_border'] = '#123456'
+        incoming = (json.dumps(raw, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+        actual = self.write(incoming)
+        expected = style.validate_config(raw)
+        expected['cards'] = style.default_config()['cards']
+        self.assertEqual(actual, expected)
+        self.assertEqual(style.load_config(self.path), expected)
+        with io.open(self.path, 'rb') as source:
+            self.assertEqual(source.read(), incoming)
+
+    def test_load_preserves_partial_custom_and_extended_card_maps(self):
+        previous = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        for cards in ({'battles': 620}, {'battles': 620, 'vehicles': 600}, dict(previous, vehicles=640),
+                      dict(previous, custom=700)):
+            raw = {'cards': cards}
+            incoming = json.dumps(raw).encode('utf-8')
+            self.assertEqual(self.write(incoming)['cards'], style.validate_config(raw)['cards'])
+            with io.open(self.path, 'rb') as source:
+                self.assertEqual(source.read(), incoming)
+
+    def test_validation_and_presentation_accept_explicit_previous_card_widths(self):
+        previous = {'battles': 620, 'vehicles': 600, 'maps': 560, 'tiers': 520}
+        self.assertEqual(style.validate_config({'cards': previous})['cards'], previous)
+        self.assertEqual(style.build_presentation({'cards': previous})['card_widths'], previous)
 
     def test_supported_colors_have_safe_normalized_css_spellings(self):
         cases = [('#AbC', '#abc'), (' #123ABC ', '#123abc'),

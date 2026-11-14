@@ -1,5 +1,196 @@
 SESSION STATS — CHANGELOG
 
+0.9.12 • 2026-11-14
+• Show premium account bonuses as absolute earned amounts rather than multipliers.
+• Translate vehicle role tooltips using the selected mod language with English fallback.
+• Warn in the filter section when received results lack the selected metric.
+• Center the active sorting caption and value within their existing header slot.
+• Keep black WN8 bold on its muted backing without a light outline or shadow ring.
+• Distribute performance rows evenly and remove empty financial action rows.
+• Open off-page summary source battles when Battles is already selected.
+
+0.9.11 • 2026-11-14
+• Replace framed performance links with rounded arrow cues and retain cell navigation.
+• Fit financial Min/Max buttons to their captions with equal surrounding spacing.
+• Derive selected sorting figures from their matching series, including retained cards.
+• Mark partial sorting samples and leave incomplete base-credit totals unavailable.
+• Correct one-based Crucible stage selection and retire obsolete next-stage placeholders.
+
+0.9.10 • 2026-11-14
+• Preserve native Min/Max number painting with clearly marked source actions.
+• Show one global result count and one upper-left partial card badge.
+• Remove repeated visible coverage from tables, metric labels and footer.
+• Keep historical received earnings visible and omit unavailable base comparisons.
+• Verify legacy ledger upgrade and reconciliation preserve all existing metrics.
+
+0.9.9 • 2026-11-14
+• Use original native metal class emblems and elite badges alongside role icons.
+• Center the processing spinner over the native-aligned footer chart.
+• Keep Min/Max source-battle actions available independently of sorting.
+• Center stacked battle counts and preserve readable large values.
+• Separate base/received credit income and net sorting with independent coverage.
+
+0.9.8 • 2026-11-14
+• Link aggregate Min/Max sorting values to the battle responsible for the result.
+• Remove redundant visible XP-total and global table-header coverage counts.
+• Move global performance and finance titles into their table headers.
+• Blend black WN8 figure backing into a muted olive gray.
+• Show native vehicle class and role icons with role explanations.
+• Keep compact headline statistics and selected sorting values in stable slots.
+
+0.9.7 • 2026-11-13
+• Arrange Base, Received and Free XP totals in three horizontal columns.
+• Always show Base XP and Received XP together in performance tables and battles.
+• Remove the XP display selector while preserving legacy saved data.
+• Use a muted translucent gray backing for black WN8 figures.
+• Clarify net credit income labels and add cost sorting with Min/Avg/Max/All.
+
+0.9.6 • 2026-11-13
+• Fill decorative result/map thumbnails without black side bands.
+• Compact the XP summary into Base, Received and Free XP total rows.
+• Put a light backing directly behind black WN8 figures for small-text contrast.
+• Add aggregate All sorting for XP and credits, including gross credits.
+• Present battle outcomes consistently in uppercase in all interface languages.
+• Show a centered panel-wide loading overlay with softly blurred results.
+
+0.9.5 • 2026-11-13
+• Keep the two XP totals and their coverage in explicit, non-overlapping rows.
+• Use readable two-column mission rows when compact card space permits.
+• Match map preview frames to the selected artwork's native proportions.
+• Retain a finer light edge around black WN8 numbers.
+• Keep sorting controls and aggregate KPI columns stable when metrics change.
+
+0.9.4 • 2026-11-12
+• Use a neutral sorting-highlight fill while preserving rating colors.
+• Paint WN8 captions like interface labels; retain numeric rating outlines.
+• Center wrapped filter rows and keep pinned filters at their normal-flow
+  origin through fast scrolling and delayed native geometry.
+• Resolve map display names and calendar text in the selected UI language,
+  preserving client/config numeric date formatting and saved history.
+• Show Base XP and Received XP totals together with independent coverage.
+• Size stacked battle details by content instead of horizontal flex bases.
+• Snap transparency pointer and keyboard input to five-percent ticks.
+
+0.9.3 • 2026-11-12
+• Put midnight on the outer 24-hour clock ring and noon on the inner ring,
+  with consistent hand position, pointer selection and keyboard navigation.
+• Align battle outcome/map artwork and More/Less in fixed caption-independent
+  slots across all interface languages, keeping compact cards readable.
+• Replace missing arrow-only chronology distinctions with explicit translated
+  boundary/direction captions, keeping the fixed filter row budget.
+• Retain explicit page navigation until native scrolling and layout settle;
+  keep cached/loaded page dividers visible below pinned filters.
+• Add selected XP totals with their own coverage below the main summary;
+  preserve the same row geometry for base and received XP.
+• Keep generated native appearance CSS within a bounded 128 KiB bridge limit.
+• Explain combined WN8 as an overall rating for the selected battle series,
+  separately from the arithmetic average of individual-battle ratings.
+
+0.9.2 • 2026-11-12
+• Make filter layout deterministic from the full control budget, preserving
+  rendered cards/scroll position and coalescing resize promotion into one frame.
+• Keep narrow Off choices selectable with a gray diagonal hatch.
+• Identify Combined WN8 separately from individual-battle Min/Average/Max.
+• Stack result/map captions on compact cards; keep inline artwork on wide cards.
+• Use WoT client date resources and independent explicit date_time overrides;
+  remove operating-system regional settings from automatic formatting.
+• Offer first/last battle ascending/descending chronology for aggregate groups;
+  keep expanded map/vehicle history pages in the same selected date direction.
+
+0.9.1 • 2026-11-11
+• Make verified native result illustrations clearer on opaque outcome frames.
+• Add battle-card map thumbnails with the same hover previews as Maps.
+• Remove individual-battle win-rate sorting; keep it for aggregate groups.
+• Center highlighted card figures and every wrapped filter row.
+• Keep shared Min/Average/Max WN8 captions neutral and color each value.
+• Visibly gray unavailable calendar/clock choices and clamp today to the
+  current valid minute when a previous day retained a later clock time.
+
+0.9.0 • 2026-11-11
+• Replace duplicate sorting captions with an orange mark on the existing value;
+  advanced WN8 ordering shows its exact Min/Average/Max in the main card figure.
+• Add win-rate ordering to Vehicles, Maps, Tiers and individual Battles.
+• Keep the calendar and centered graphical clock together, with short hints.
+• Disable future and inverted-range choices and validate typed bounds as well.
+• Avoid native pointer capture and defer feed work out of scrollbar mouse events.
+
+0.8.1 • 2026-11-11
+• Keep black WN8 legible on dark camouflage with a fine, light, zero-blur text
+  outline in the panel and native battle results. Other rating halos are unchanged.
+
+0.8.0 • 2026-11-11
+• Use a subtle, consistent WN8 text halo and a faint matching card outline.
+• Keep expanded missions readable below bonus tables when side-by-side content
+  would be too narrow, including native layout and interface scaling.
+• Frame the compact sorting switch and visibly gray inactive chronology.
+• Default Tiers to highest tier first, with both tier orders in the main selector.
+• Remove the duplicate recorded-battles caption from count-sorted groups.
+• Add a compact camouflage calendar with month/year grids and a graphical clock.
+• Follow native/system date order, separator, week start and 12/24-hour preferences;
+  retain manual date entry and limit calendar selection to 2010 through this year.
+• Prefer high-resolution local map artwork for hover previews; allow a tactical
+  minimap instead through maps.preview_mode, with safe local fallback.
+
+0.7.0 • 2026-11-10
+• Replace the wide sorting button with an olive-and-orange switch.
+• Keep metric sorting independent of chronology and show its actual WN8 value.
+• Sort vehicle and map groups by their recorded battle count.
+• Color WN8 text using the nine WoT-Life rating tiers, without rating fills.
+• Preview map thumbnails at four times their displayed size on hover.
+• Follow delayed battle destinations after loading without moving card layout.
+• Verify startup recovery of eight incomplete results, including partial failures.
+
+0.6.0 • 2026-11-10
+• Edit custom dates inline and choose a date and 24-hour time from a calendar.
+• Mark the selected battle with a visible localized banner as well as its frame.
+• Show a visible scrollbar and protect the minimum usable window dimensions.
+• Display filter-loading activity; hide aggregate statistics in Battles and use
+  a separate sorting toggle when all wide-screen controls fit on one row.
+• Make short map/vehicle histories compact and align bonus labels with values.
+• Add the first battle's timestamp to page boundaries and space the dashes out.
+
+0.5.1 • 2026-11-10
+• Keep a single empty-period message across repeated panel refreshes.
+• Keep selected battle frames visible through transient native focus changes;
+  dismiss them on an explicit outside click or a view/context change.
+• Load preceding result pages while scrolling upward from a middle page,
+  preserving the visible card position as earlier pages are inserted.
+• Make Back to top return to page one of the selected result order.
+
+0.5.0 • 2026-11-09
+• Append paged results continuously with numbered dashed boundaries, loading
+  indicators, cached page navigation and a native double-chevron top action.
+• Pin grouping/sort filters during scrolling and preserve the visible position.
+• Keep history pagination inside fixed-height cards without rebuilding the UI.
+• Pulse the selected battle outline for five seconds, then fade it by 30% until
+  focus moves away. Give wide-card space to missions instead of bonus columns.
+• Add map and vehicle battle-history lists with direct navigation and persistent
+  orange highlighting of the selected battle.
+• Support custom local dates in both timeline bounds and localized More/Less labels.
+• Add persistent maximize/restore, background transparency and wider two-column cards.
+• Preserve known mission-objective metadata when partial result retries omit fields.
+• Refresh all time-range captions immediately when the language changes.
+• Normalize filter heights, gray unavailable statistics and display the exact
+  per-battle value used by net-credit sorting.
+• Group the Transparency slider and fit the gray WN8 loader inside the stock
+  garage icon bounds. Adopt a second 720-pixel card preset at attainable widths.
+
+0.4.0 • 2026-11-04
+• Add daily, weekly, campaign and event mission results alongside Crucible outcomes,
+  Battle Pass points and bonuses. Identify personal operations and honors.
+• Include account-level bond awards in the same battle finances as vehicle earnings.
+• Replace the account reset tab with a timeline of saved points and prior reset boundaries.
+• Add a resize grip that respects the game's interface scale.
+• Show per-battle WN8 in the native Random Battle overview's bottom statistics.
+  Keep its label visible with a spinner while processing and a dash if unavailable.
+• Place the garage button just after built-in statistics in the native control
+  row, preserving the original notification spacing.
+• Put Battle Pass in a full-width strip above a wider bonus table and compact
+  mission cards. Stack each mission's progress below its name within one outline;
+  wrap the sections for narrow cards and unusually large rewards.
+• Allow several battle details to stay open together. Fill chronological gaps
+  beside expanded cards before returning to alternating columns below them.
+
 0.3.4 • 2026-10-30
 • Use the requested lowercase installed filename grz_sessions_stats.wotmod.
   ZIP downloads and internal metadata retain their release version.

@@ -1,0 +1,63 @@
+/* Own cell only; native personal-efficiency cells and handlers remain intact. */
+.grz-postbattle-wn8 {
+    display:flex;
+    align-items:center;
+    flex:0 0 auto;
+    padding:0 0 0 24rem;
+    margin:0;
+    color:#eeede9;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:22rem;
+    line-height:28rem;
+    pointer-events:none;
+}
+.grz-postbattle-wn8-label {
+    display:block;
+    flex:0 0 auto;
+    padding:0;
+    margin:0 7rem 0 0;
+    color:#c6c5bf;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:18rem;
+    line-height:24rem;
+}
+.grz-postbattle-wn8-slot {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-width:48rem;
+    min-height:28rem;
+}
+.grz-postbattle-wn8-value {
+    display:block;
+    color:#eeede9;
+    font-family:Warhelios, Arial, sans-serif;
+    font-size:22rem;
+    line-height:28rem;
+    font-weight:bold;
+    white-space:nowrap;
+}
+.grz-postbattle-wn8-spinner {
+    display:none;
+    width:18rem;
+    height:18rem;
+    background-image:url('coui://gui/maps/icons/library/spinner.png');
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:18rem 18rem;
+    animation:none;
+}
+.grz-postbattle-wn8-pending .grz-postbattle-wn8-value { display:none; }
+.grz-postbattle-wn8-pending .grz-postbattle-wn8-spinner {
+    display:block;
+    animation:grz-postbattle-wn8-spin 1s linear infinite;
+}
+.grz-postbattle-wn8-empty {
+    justify-content:center;
+    width:100%;
+    padding:8rem 0 0;
+}
+@keyframes grz-postbattle-wn8-spin {
+    from { transform:rotate(0deg); }
+    to { transform:rotate(360deg); }
+}

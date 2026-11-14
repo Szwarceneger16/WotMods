@@ -148,6 +148,50 @@ class RuntimeAppearanceTests(unittest.TestCase):
         self.refresh()
         self.assertEqual(self.mod.snapshot()['localization']['language'], 'en')
 
+    def test_calendar_settings_reload_from_native_api_without_changing_ui_language(self):
+        self.api.date_settings = lambda: {'order': 'MDY', 'separator': '/', 'first_weekday': 0, 'hour12': True}
+        self.write({'language': 'pl'})
+        self.start()
+        payload = self.mod.snapshot()['localization']
+        self.assertEqual(payload['language'], 'pl')
+        self.assertEqual(payload['date_settings'], self.api.date_settings())
+        self.api.date_settings = lambda: {'order': 'YMD', 'separator': '-', 'first_weekday': 1, 'hour12': False}
+        self.refresh()
+        self.assertEqual(self.mod.snapshot()['localization']['date_settings'], self.api.date_settings())
+        def unavailable():
+            raise RuntimeError('fixture native regional settings unavailable')
+        self.api.date_settings = unavailable
+        self.refresh()
+        self.assertEqual(self.mod.snapshot()['localization']['date_settings'],
+                         {'order': 'DMY', 'separator': '.', 'first_weekday': 1, 'hour12': False})
+        self.assertEqual(self.mod.snapshot()['localization']['language'], 'pl')
+
+    def test_date_time_config_overrides_client_and_reload_keeps_the_override(self):
+        self.api.client_language = lambda: 'pl'
+        self.api.date_settings = lambda: {'order': 'DMY', 'separator': '.', 'hour12': False, 'first_weekday': 1}
+        forced = {'order': 'YMD', 'separator': '-', 'hour_format': '12h', 'first_weekday': 0}
+        self.write({'language': 'pl', 'date_time': forced})
+        self.start()
+        expected = {'order': 'YMD', 'separator': '-', 'hour12': True, 'first_weekday': 0}
+        self.assertEqual(self.mod.snapshot()['localization']['date_settings'], expected)
+        self.api.date_settings = lambda: {'order': 'MDY', 'separator': '/', 'hour12': False, 'first_weekday': 1}
+        self.refresh()
+        self.assertEqual(self.mod.snapshot()['localization']['date_settings'], expected)
+        with io.open(self.path, 'r', encoding='utf-8') as source:
+            self.assertEqual(json.load(source)['date_time'], forced)
+
+    def test_legacy_config_uses_client_clock_without_rewriting_the_file(self):
+        self.api.client_language = lambda: 'pl'
+        self.write({'language': 'pl'})
+        with io.open(self.path, 'rb') as source:
+            original = source.read()
+        self.start()
+        settings = self.mod.snapshot()['localization']['date_settings']
+        self.assertEqual((settings['order'], settings['hour12']), ('DMY', False))
+        self.refresh()
+        with io.open(self.path, 'rb') as source:
+            self.assertEqual(source.read(), original)
+
     def test_malformed_edit_reverts_entire_presentation_and_logs_after_start(self):
         self.write({'scroll': {'speed_multiplier': 4}})
         self.start()

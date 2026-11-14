@@ -76,3 +76,9 @@ World of Tanks is a Wargaming game. The mod uses fonts supplied by the running
 client. Thumbnails reference vehicle/map resources installed in the client.
 Copied fonts, garage artwork and client files are not bundled. PODGLAD.html
 examples are synthetic and are not the user's statistics.
+Map-name facts in data/map_names.json are extracted from World of Tanks EU
+client 2.4.1.5514 arena catalogues (Wargaming), mirrored at unicum-gg/wot.src
+commit 7c135eea16a3c9f8be2097cb1a408de4ee9d6f94. Only map names and stable
+geometry identifiers are included, in seven client languages; no descriptions
+or artwork are redistributed. Exact source hashes and extraction instructions
+are recorded in data/map_names.json and docs/MAP_NAMES_SOURCE_EVIDENCE.md.

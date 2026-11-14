@@ -14,10 +14,10 @@ async function fixture(browser, retained = false) {
   await page.setContent(`<html style="font-size:1px"><head><style>
     body {margin:0;background:#121413;font:14px Arial,sans-serif;color:#aaa;}
     .App_footer_verified {display:flex;align-items:center;justify-content:flex-end;height:64px;padding:0 20px;background:linear-gradient(#262823,#171916);}
-    .Footer_controls {display:flex;align-items:center;}
-    .SessionStats_base_original {display:flex;align-items:center;width:54rem;height:36rem;}
+    .Footer_section_test {display:flex;align-items:center;}
+    .SessionStatistic_original {display:flex;align-items:center;width:54rem;height:36rem;}
     #native-button {border:0;background:transparent;color:#aaa;font:13px Arial,sans-serif;height:36px;}
-  </style></head><body><div class="App_footer_verified"><div class="Footer_controls"><div class="SessionStats_base_original">19</div><button id="native-button">EU III</button></div></div></body></html>`);
+  </style></head><body><div class="App_footer_verified"><div class="Footer_section_test"><div class="SessionStatistic_original">19</div><button id="native-button">EU III</button></div></div></body></html>`);
   await page.evaluate(retained => {
     window.testActions = [];
     window.testEvents = {};
@@ -96,20 +96,69 @@ async function setActivity(page, pending, processing, wrapped = false) {
       return {button:box(el),spinner:box(el.querySelector('.grz-session-footer-spinner')),
         icon:box(el.querySelector('.grz-session-footer-icon')),badge:box(el.querySelector('.grz-session-footer-rating')),
         bars:el.querySelectorAll('.grz-session-footer-bar').length,text:el.textContent.trim(),
-        pointer:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).pointerEvents};
+        pointer:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).pointerEvents,
+        spinnerColor:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopColor,
+        spinnerRadius:getComputedStyle(el.querySelector('.grz-session-footer-spinner')).borderTopLeftRadius};
     });
-    check('Busy button retains its 44 x 36 footprint, all bars and superscript WN8',
+    check('Busy button retains its 44 x 36 footprint, all bars and centered WN8 caption',
       geometry.button.width===44 && geometry.button.height===36 && geometry.bars===3 && geometry.text==='WN8');
-    check('Spinner fits above the bar glyph and left of WN8 without overlap or native clipping',
+    check('Muted gray spinner covers the chart center inside the fixed native slot',
       geometry.spinner.x>=geometry.button.x && geometry.spinner.y>=geometry.button.y &&
-      geometry.spinner.bottom<=geometry.icon.y && geometry.spinner.right<geometry.badge.x &&
-      geometry.spinner.right<=geometry.button.right && geometry.spinner.bottom<=geometry.button.bottom);
+      geometry.spinner.x+geometry.spinner.width/2===geometry.icon.x+geometry.icon.width/2 &&
+      geometry.spinner.y+geometry.spinner.height/2===geometry.icon.y+geometry.icon.height/2 &&
+      geometry.badge.right<geometry.spinner.x &&
+      geometry.spinner.right<=geometry.button.right && geometry.spinner.bottom<=geometry.button.bottom &&
+      geometry.spinnerColor==='rgb(150, 154, 157)' && geometry.spinnerRadius==='8px');
+    check('The active spinner is owned by the chart and replaces its bars',await spinner.evaluate(el=>
+      el.parentNode.classList.contains('grz-session-footer-icon') &&
+      Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='hidden')));
     check('Spinner cannot intercept native button input',geometry.pointer==='none');
+    for (const scale of [1,1.5,2]) {
+      await page.evaluate(scale => {document.documentElement.style.fontSize=scale+'px';},scale);
+      await setActivity(page,0,false);
+      const baseline=await button.evaluate(el => {
+        const box=node=>{const r=node.getBoundingClientRect();return [r.x,r.y,r.width,r.height];};
+        return {slot:box(el),native:box(document.getElementById('native-button'))};
+      });
+      for (const [pending,processing] of [[1,false],[9999,false],[2,true],[0,true],[0,false]]) {
+        await setActivity(page,pending,processing);
+        await button.hover();
+        const fixed=await button.evaluate(el => {
+          const box=node=>{const r=node.getBoundingClientRect();return [r.x,r.y,r.width,r.height];};
+          return {slot:box(el),native:box(document.getElementById('native-button'))};
+        });
+        check('Fixed footer slot and native neighbor at '+scale+'x, pending='+pending+', processing='+processing,
+          JSON.stringify(fixed)===JSON.stringify(baseline) && fixed.slot[2]===44*scale && fixed.slot[3]===36*scale);
+        if (pending || processing) {
+          for (const time of [0,125,250,375,500,625,750,875]) {
+            check('Spinner stays centered over the chart without changing native geometry at '+scale+'x/'+time+'ms',
+              await spinner.evaluate((el,time) => {
+                el.getAnimations().forEach(animation=>{animation.pause();animation.currentTime=time;});
+                const button=el.closest('.grz-session-footer-button'),box=el.getBoundingClientRect(),slot=button.getBoundingClientRect();
+                const badge=button.querySelector('.grz-session-footer-rating'),range=document.createRange();range.selectNodeContents(badge);
+                const ink=range.getBoundingClientRect(),icon=el.parentNode.getBoundingClientRect();
+                return box.left>=slot.left && box.right<=slot.right && box.top>=slot.top &&
+                  box.bottom<=slot.bottom && ink.right<box.left &&
+                  Math.abs(box.x+box.width/2-icon.x-icon.width/2)<0.01 &&
+                  Math.abs(box.y+box.height/2-icon.y-icon.height/2)<0.01 &&
+                  Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='hidden');
+              },time));
+          }
+        }
+      }
+      await button.evaluate(el=>{el.disabled=true;});
+      const disabled=await button.boundingBox();
+      check('Disabled footer button keeps the fixed slot at '+scale+'x',
+        disabled.width===44*scale && disabled.height===36*scale);
+      await button.evaluate(el=>{el.disabled=false;});
+    }
+    await page.evaluate(()=>{document.documentElement.style.fontSize='1px';});
+    await setActivity(page,3,false);
     if (process.env.GRZ_ACTIVITY_SCREENSHOT) {
       await page.locator('.App_footer_verified').screenshot({path:process.env.GRZ_ACTIVITY_SCREENSHOT});
     }
     await spinner.evaluate(el => {el.getAnimations().forEach(a=>a.play());});
-    await button.click({position:{x:15,y:7}});
+    await button.click({position:{x:32,y:18}});
     await button.focus();
     await page.keyboard.press('Enter');
     check('Mouse over the spinner and keyboard still open statistics exactly once each',
@@ -125,14 +174,15 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await page.evaluate(scale=>{document.documentElement.style.fontSize=scale+'px';},scale);
       check('Spinner and button scale with native rem at '+scale+'x',
         (await button.boundingBox()).width===44*scale &&
-        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===10*scale,scale));
+        await spinner.evaluate((el,scale)=>parseFloat(getComputedStyle(el).width)===16*scale,scale));
     }
     await page.evaluate(()=>{document.documentElement.style.fontSize='1px';});
     await setActivity(page,0,false);
     check('Completing work restores the exact idle label and removes the CSS animation',
       await button.getAttribute('title')==='Session statistics: battles, win rate and WN8' &&
       await button.getAttribute('aria-busy')==='false' &&
-      await spinner.evaluate(el=>getComputedStyle(el).display==='none' && el.getAnimations().length===0));
+      await spinner.evaluate(el=>getComputedStyle(el).display==='none' && el.getAnimations().length===0 &&
+        Array.from(el.parentNode.querySelectorAll('.grz-session-footer-bar')).every(bar=>getComputedStyle(bar).visibility==='visible')));
 
     await page.evaluate(()=>{delete testModel.activity;emitChange();});
     check('An older model without activity keeps a usable idle button without a warning',
@@ -156,7 +206,7 @@ async function setActivity(page, pending, processing, wrapped = false) {
       await spinner.isVisible() && (await button.getAttribute('title')).includes('Waiting for results: 1') &&
       await page.evaluate(()=>JSON.stringify(testCallbacks)===JSON.stringify([['add',41],['remove',41],['add',57]])));
     check('Native footer content is preserved throughout activity transitions',
-      await page.locator('.SessionStats_base_original').textContent()==='19' && await page.locator('#native-button').count()===1);
+      await page.locator('.SessionStatistic_original').textContent()==='19' && await page.locator('#native-button').count()===1);
     const languages=JSON.parse(fs.readFileSync(path.join(root,'data/languages.json'),'utf8')).languages;
     for(const [language,messages] of Object.entries(languages)) {
       await page.evaluate(messages=>{

@@ -1,0 +1,102 @@
+/* Exercise shipped preview code with synthetic registry URLs; no client art is bundled. */
+const assert = require('assert'), fs = require('fs'), path = require('path'), vm = require('vm');
+function sourceFunction(text, name) {
+  const start = text.indexOf('    function ' + name + '(');
+  const end = text.indexOf('\n    }\n', start) + 7;
+  assert(start >= 0 && end > start, 'Exercise shipped ' + name);
+  return text.slice(start, end);
+}
+function run() {
+  class Node {
+    constructor() { this.style = {}; this.attributes = {}; this.children = []; this.nodeType = 1; }
+    setAttribute(key, value) { this.attributes[key] = String(value); }
+    getAttribute(key) { return this.attributes[key] || null; }
+    removeAttribute(key) { delete this.attributes[key]; }
+  }
+  const root = new Node(), preview = new Node(), image = new Node(); preview.id = 'ss-map-preview';
+  let bounds = {left: 40, top: 30, width: 700, height: 730};
+  root.getBoundingClientRect = () => bounds;
+  root.contains = node => { while(node && node!==root)node=node.parentNode;return node===root; };
+  const context = { root, mapPreview: preview, mapPreviewImage: image, mapPreviewTarget: null,
+    state: {group: 'maps', nativeScale: 1}, hideHelp() {}, t: (key, args) => key + args[0],
+    element: (tag, className, text) => { const node = new Node(); node.className = className || ''; node.textContent=text||'';return node; },
+    append(parent, node) { parent.children.push(node); node.parentNode = parent; return node; } };
+  vm.createContext(context);
+  const source = fs.readFileSync(path.join(__dirname, '../ui/session_stats.js'), 'utf8');
+  vm.runInContext(['nativeVisualSource', 'appendVisual', 'appendBattleMap', 'hideMapPreview', 'showMapPreview']
+    .map(name => sourceFunction(source, name)).join('\n'), context);
+  const small = 'img://gui/maps/icons/map/small/synthetic.png';
+  const screen = 'img://gui/maps/icons/map/screen/synthetic.dds';
+  const minimap = 'img://gui/maps/icons/map/synthetic.png';
+  function thumbnail(extra) {
+    context.appendVisual(root, {name: 'Synthetic map', visual: {kind: 'map', src: small, ...extra}});
+    const node = root.children[root.children.length - 1];
+    node.getBoundingClientRect = () => ({left: 60, top: 90, right: 114, width: 54, height: 32});
+    return node;
+  }
+  let target = thumbnail({preview_src: screen, preview_mode: 'image'});
+  assert.strictEqual(target.style.backgroundImage, 'url("' + small + '")', 'Card keeps the small native thumbnail');
+  assert.strictEqual(target.style.backgroundSize, 'cover', 'Small decorative photographs fill the fixed thumbnail');
+  const sourceCount=root.children.length;
+  context.appendVisual(root,{visual:{kind:'map',src:minimap}});
+  assert.strictEqual(root.children[sourceCount].style.backgroundSize,undefined,'Tactical thumbnails retain CSS containment');
+  context.showMapPreview(target);
+  assert.strictEqual(image.style.backgroundImage, 'url("' + screen + '")', 'Hover selects verified high-resolution DDS');
+  assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '135.75px');
+  assert.strictEqual(image.style.backgroundSize, 'cover', 'Decorative loading-art variants fill their reviewed frame without bars');
+  target = thumbnail({preview_src: small, preview_mode: 'image'});
+  context.showMapPreview(target);
+  assert.strictEqual(parseFloat(preview.style.height), (216 - 2) / (5 / 3) + 2, 'Small-icon fallback keeps the reviewed small-art aspect');
+  target = thumbnail({preview_src: minimap, preview_mode: 'image'});
+  context.showMapPreview(target);
+  assert.strictEqual(preview.style.height, '216px', 'A default lobby image retains its square category frame in image fallback mode');
+  target = thumbnail({preview_src: 'img://gui/maps/icons/map/future/synthetic.dds', preview_mode: 'image'});
+  context.showMapPreview(target);
+  assert.strictEqual(parseFloat(preview.style.height), (216 - 2) / (54 / 32) + 2, 'An unknown branch does not inherit an assumed loading-art ratio');
+  target = thumbnail({preview_src: minimap, preview_mode: 'minimap'});
+  context.showMapPreview(target);
+  assert.strictEqual(image.style.backgroundImage, 'url("' + minimap + '")');
+  assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '216px');
+  assert.strictEqual(image.style.backgroundSize, 'contain', 'Switching to a minimap never keeps decorative photo cropping');
+  context.hideMapPreview(); bounds = {left: 40, top: 30, width: 150, height: 140};
+  context.showMapPreview(target);
+  assert.strictEqual(preview.style.width, '124px'); assert.strictEqual(preview.style.height, '124px');
+  assert(parseFloat(preview.style.left) >= 8 && parseFloat(preview.style.top) >= 8);
+  assert(parseFloat(preview.style.left) + 124 <= bounds.width - 8);
+  assert(parseFloat(preview.style.top) + 124 <= bounds.height - 8);
+  for (const invalid of ['https://example.test/map.png', 'data:image/png;base64,AA==',
+    'img://gui/maps/icons/vehicle/test.png', 'img://gui/maps/icons/map/../vehicle/test.png',
+    'img://gui/maps/icons/map/./test.png', 'img://gui/maps/icons/map/screen//test.png',
+    'img://gui/maps/icons/map/test.png?size=large', 'img://gui/maps/icons/map/test.png#foo',
+    'img://gui/maps/icons/map/test:other.png', 'img://gui/maps/icons/map/test.png"); color:red;']) {
+    target = thumbnail({preview_src: invalid, preview_mode: 'minimap'});
+    assert.strictEqual(target.getAttribute('data-ss-map-preview'), small, 'Invalid preview falls back: ' + invalid);
+    assert.strictEqual(target.getAttribute('data-ss-map-preview-mode'), 'image');
+  }
+  target = thumbnail({});
+  assert.strictEqual(target.getAttribute('data-ss-map-preview'), small, 'Older snapshots retain hover support');
+  const count = root.children.length;
+  context.appendVisual(root, {visual: {kind: 'map', src: 'https://example.test/map.png', preview_src: screen}});
+  assert.strictEqual(root.children.length, count, 'Invalid base image cannot create a thumbnail');
+  context.state.group = 'battles'; bounds = {left: 40, top: 30, width: 700, height: 730};
+  context.appendBattleMap(root, {map: 'Synthetic map', map_visual: {
+    kind: 'map', src: small, preview_src: screen, preview_mode: 'image'}});
+  const battleMap=root.children[root.children.length - 1];
+  target = battleMap.children[0];
+  target.getBoundingClientRect = () => ({left: 60, top: 90, right: 114, width: 54, height: 32});
+  assert(target.className.includes('ss-battle-map-thumb'), 'Battle map reuses the native thumbnail renderer');
+  assert.strictEqual(battleMap.children[1].textContent,'Synthetic map','The map has a visible caption accompanying its own thumbnail');
+  context.showMapPreview(target);
+  assert.strictEqual(image.style.backgroundImage, 'url("' + screen + '")', 'Battles share the high-resolution hover');
+  assert.strictEqual(preview.style.width, '216px'); assert.strictEqual(preview.style.height, '135.75px');
+  const battleCount = root.children.length;
+  context.appendBattleMap(root, {map_visual: {kind: 'vehicle', src: small}});
+  context.appendBattleMap(root, {map_visual: {kind: 'map', src: 'https://example.test/map.png'}});
+  context.appendBattleMap(root, {map: 'Unresolved map'});
+  assert.strictEqual(root.children.length, battleCount, 'Missing or unsafe battle map metadata creates no invented image');
+  context.state.group = 'vehicles'; context.showMapPreview(target);
+  assert.strictEqual(preview.style.display, 'none', 'Battle hover cannot leak into another group');
+  console.log('Map preview quality: verified native sources, filled photo thumbnails, square bounded minimap and safe fallback passed.');
+}
+module.exports = run;
+if (require.main === module) { run(); }

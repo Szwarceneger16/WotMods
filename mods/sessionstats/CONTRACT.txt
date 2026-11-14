@@ -1,7 +1,7 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.3.4 (persistent data schema unchanged)
-Release date: 2026-10-26.
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.12 (persistent data schema unchanged)
+Release date: 2026-11-14.
 
-Target: World of Tanks PC Wargaming EU 2.4.1.0, Python 2.7 runtime.
+Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
 All game-independent code must also run under Python 3 for development.
 Project files belong below this directory. Never include credentials or game account names in logs.
 
@@ -46,6 +46,7 @@ NORMALIZED RECORD
  free_xp: number or None,
  currencies: {
   credits: {income: number or None, costs: number or None, net: number or None,
+            income_base: optional number or None, net_base: optional number or None,
             breakdown: {repair: number or None, ammo: number or None,
                         consumables: number or None, directives: number or None}},
   bonds: {income: number or None, costs: number or None, net: number or None},
@@ -54,6 +55,11 @@ NORMALIZED RECORD
  complete: boolean, reconcile: boolean, xp_bonus_applied: boolean,
  warnings: [short diagnostic strings]
 }
+Optional battle details contain only bounded mission identifiers, localized labels,
+statuses, numeric Battle Pass/bonus values and the suicide violation flag.
+Timeline markers are optional account-local ledger metadata. Legacy reset boundaries
+are exposed as points. The selected half-open range is view state.
+
 Missing field is unknown, never implicitly a numerical zero. A duplicate partial update
 must not overwrite previously known fields with None. An authoritative update marked
 reconcile=True can revise previously known values even if some other fields remain missing.
@@ -76,7 +82,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.3.4', account_key: string, generated_at: unix seconds,
+ version: '0.9.12', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -91,7 +97,10 @@ STATS = {
  battles:int, observed_battles:int, missing_results:int, partial_results:int,
  wins:int, losses:int, draws:int, win_rate:number or null,
  wn8:number or null, wn8_count:int,
- xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES, credits_net:SERIES,
+ xp_base:SERIES, xp_received:SERIES, free_xp:SERIES, battle_wn8:SERIES,
+ credits_income_base:SERIES, credits_income_received:SERIES,
+ credits_net_base:SERIES, credits_net_received:SERIES, credits_costs:SERIES,
+ credits_net:SERIES, credits_gross:SERIES (legacy received aliases),
  currencies:{credits:MONEY, bonds:MONEY, gold:MONEY}
 }
 SERIES = {min:number or null, avg:number or null, max:number or null,
@@ -100,7 +109,17 @@ MONEY = {income:number or null, costs:number or null, net:number or null,
          income_count:int, costs_count:int, net_count:int,
          breakdown:{repair:number or null, ammo:number or null,
                     consumables:number or null, directives:number or null}}
-Partial sums are sums of confirmed known values and must show coverage e.g. 15/16.
+Credits MONEY also has income_base/net_base and their independent *_count fields.
+Base income is raw originalCredits before bonuses, analogous to raw originalXP;
+received income is the existing settled result after verified sharing deductions.
+Base net subtracts the same actual costs. This is not a counterfactual account
+without premium. Historical missing base income remains unknown, never zero or
+received income divided by a premium factor. Existing received values stay intact.
+Partial sums are sums of confirmed known values. Metric-specific availability
+remains in existing help/ARIA. Visible received/recorded coverage appears only
+in the global result headline and one generic badge beside a partial aggregate
+name; tables, metric labels, totals and the footer never repeat it. The single
+Battles KPI shows the recorded total used by its sorter.
 observed_battles includes durable beginnings with no outcome; battles counts known
 outcomes. Missing results remain listed with unknown outcome and unknown numeric
 values. All group/financial coverage uses observed_battles as denominator. Display
@@ -109,6 +128,16 @@ never silently present the known subset as the whole registered session.
 GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, started_at:latest battle time, first_started_at:earliest battle time, stats:STATS}
 BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
               outcome:string, tier:int or null, stats:STATS}
+Scopes and aggregate groups expose extrema_battles = {metric:{min:REFERENCE,max:REFERENCE}}
+independently of active sorting. REFERENCE = {id, name, map, map_id, started_at,
+outcome, wn8, metric, statistic, value}. Canonical XP, WN8 and all five credit
+metrics have independent indexed winners over the complete selected period;
+ties select the smallest stable battle ID. Missing metrics omit their reference.
+Legacy sort_battle may remain for old consumers; new permanent UI actions do not
+depend on it. Average/All have no invented source reference.
+Presentation may add vehicle_meta = {class, tier, class_icon, role:{key, name,
+group_name, description, icon}} from the live descriptor and native resources.
+These are derived snapshot fields; do not migrate or rewrite stored battle records.
 Runtime adds appearance to the snapshot, including snapshots without an active service.
 It is presentation state only; do not persist it in battle/session records or alter history.
 
@@ -150,7 +179,7 @@ is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.
-The installed package is mods/2.4.1.0/grz_sessions_stats.wotmod. Bundle complete defaults
+The installed package is mods/2.4.1.1/grz_sessions_stats.wotmod. Bundle complete defaults
 outside the archive in mods/configs, together with optional language overrides.
 Create a missing main file from legacy adjacent JSON or defaults; never overwrite an
 existing central file during initialization. Never copy or load legacy external language catalogs.
@@ -172,7 +201,7 @@ radii, opacity and wheel behavior. Static CSS remains the fallback if this optio
 or bridge cannot be used. Successful defaults must be equivalent to both base stylesheets,
 apart from neutral opacity:1 declarations for the panel and garage button.
 
-Schema 1 contains 140 color keys, 12 radii keys, 3 opacity keys and
+Schema 1 contains 145 color keys, 15 radii keys, 5 opacity keys and
 scroll.speed_multiplier. Colors accept #RGB, #RRGGBB, #RRGGBBAA, rgb(), rgba(),
 or transparent; RGB channels are integers 0..255, alpha 0..1. Convert 8-digit hex to
 rgba() before rendering. Reject arbitrary CSS declarations, selectors, URLs and scripts.
@@ -233,13 +262,17 @@ User preferences (scope, group, XP type, sorting) can remain in JS and be sent o
 `reset` requires confirmation in UI, resets manual scope only. `close` destroys window.
 Root `window.GRZSessionStats.update(payload)` allows offline DOM QA.
 Preview data are injected ONLY by standalone preview, never silently shown inside game.
-Window title Session statistics; top session toggles; base/received XP toggle.
+Window title Session statistics; top session toggles. Base and Received XP are
+always visible together; there is no XP display selector or live mode handler.
 Single vertically scrolling content: compact global stats + full details always visible,
-then Vehicles | Maps | Battles switch; Vehicles default. All group details always visible.
+then Vehicles | Maps | Tiers | Battles switch; Vehicles default. All group details always visible.
 No separate Summary tab, accordions or 'more details'. Summary and aggregate group
 headline columns: Battles, Win rate, WN8. Sessions, vehicles and maps retain XP/WN8
-min/average/max. A battle row shows its outcome and exactly one XP and one WN8 value,
-without Battles=1 or Win rate=0/100%. Both XP choices work in all groupings.
+min/average/max for both XP metrics and battle WN8. A battle row shows its outcome,
+one Base XP value, one Received XP value and one WN8 value,
+without Battles=1 or Win rate=0/100%; individual Battles reject win-rate ordering.
+Legacy xp_mode payload/preferences remain readable but do not hide either metric.
+XP sorting selects its own metric independently of the visible rows.
 WN8 full integer, never k/truncation/leading zeroes.
 Use Gameface-safe flex/block CSS; no grid, gap, sticky, inline-block, fit-content,
 font-feature-settings. Warhelios native font, warm cream/olive/gold.
@@ -381,13 +414,22 @@ or persisted-data migration.
 
 RESULT ORDERING (0.3.0)
 Each scope includes period_id, pagination and ordering for vehicles/maps/battles/tiers.
-ordering[group] = {metric:off|xp_base|xp_received|credits_net|battle_wn8,
-                   statistic:min|avg|max, direction:asc|desc, chronology:newest|oldest}.
+ordering[group] = {metric:off|xp_base|xp_received|credits_income_base|credits_income_received|credits_net_base|credits_net_received|credits_costs|battle_wn8|battles|win_rate,
+                   statistic:min|avg|max|sum, direction:asc|desc, chronology:newest|oldest|first_desc|last_asc|tier_desc|tier_asc}.
 The sort command carries these four fields plus scope, group, account_key and period_id.
 Validate account ownership and current period before changing transient presentation state.
 A successful request resets that grouping to page zero; pagination and totals remain period-wide.
-Metric ordering uses the selected per-battle series statistic, with missing values last.
-Chronology uses the latest/earliest battle for groups and the start time for individual battles.
+Metric ordering uses the selected series statistic, with missing values last.
+All (sum) is available only for aggregate XP and credit income/costs, never WN8,
+win rate, battle counts or individual battles. Gross credits are the income series;
+net credits subtract actual costs from the selected base/received income. Legacy
+credits_gross and credits_net remain received aliases. Credits costs use the nonnegative expense
+series; descending costs ranks the largest expense first, although the finance table
+prints expenses with a minus sign. Each retains independent known-value coverage.
+Disabling an aggregate metric may retain sum; selecting a nonadditive metric resets it to avg.
+Group chronology independently selects the first or last battle and ascending or descending
+dates. Legacy newest=last descending, oldest=first ascending; first_desc and last_asc
+complete the four group modes. Individual Battles retain newest/oldest only.
 Stable IDs resolve remaining ties. Tiers use the original recorded vehicle_tier, including XI;
 unknown tier metadata has a separate group. No persistent schema or saved data is changed.
 
@@ -403,3 +445,36 @@ byte-string locale codes on Python 2 as well as Unicode, with the same allowlist
 On failure, preserve the previous file and selected language and notify locally.
 Reload the panel and footer labels after success; never reset history, periods or sort state.
 Manual config changes remain supported. The old external language JSON is ignored.
+
+GROUP BATTLE HISTORY AND ACTIVE SORT VALUES
+set_vehicle_battles(scope, vehicle_id, page, period_id) follows set_map_battles.
+The vehicle_battles UI action carries account_key, scope, vehicle_id, zero-based
+page and period_id. Visible subscribed group rows expose battle_list with
+items {id, name, map, started_at, outcome, wn8}, page, pages, total, page_size.
+Both group histories retain one chronological index and slice at most ten rows.
+Their direction follows the group chronology (oldest/last_asc ascending, otherwise
+descending), including when an advanced metric is active. battle_list includes chronology.
+A direction change resets subscribed history pages; optional chronology on page commands
+rejects callbacks retained from a different order.
+Existing battle_select resolves the current Battles page and returns the guarded
+request identity; selecting a target retains an orange frame in the same period.
+Active aggregate metric sorting also publishes sort_value, the exact scalar
+used by its selected comparator (null if unavailable). Mark the existing matching
+value instead of repeating it below the name. Active WN8 ordering replaces the
+large headline with its selected Min/Average/Max; finance tables continue to show
+totals. Credit All selects the existing income/net total; per-battle Min/Avg/Max
+credit values and XP All retain an explicit caption when no matching table cell exists.
+Win-rate ordering is aggregate-only and matches known-outcome percentages; unknown
+results remain last in either direction. Default group headlines identify Combined
+WN8, recalculated from summed actual/expected values, separately from battle averages.
+
+CONTINUOUS PAGE REPLIES
+The page action accepts an optional safe ASCII request_id of 1..64 characters.
+Accepted identity is echoed at scope.pagination[group].request_id and retires
+on sorting, battle selection or period/range replacement. scope.data_revision
+is an opaque per-index generation/counter; content mutations/rebuilds change it,
+while page/sort/drill-down navigation leaves it unchanged. Client caches must
+never merge pages across account, period, group, ordering, locale or revision.
+Each scope may also publish one latest battle_history={kind,id,battle_list};
+it returns at most ten rows for a requested map/vehicle even when that card
+is outside the current global page. The main global page remains unchanged.

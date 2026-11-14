@@ -3,6 +3,7 @@
 
 No fixture or demo data is included in the game .wotmod. This tool is optional.
 """
+import base64
 import copy
 from datetime import datetime, timezone
 from html import escape
@@ -17,6 +18,7 @@ sys.path.insert(0, str(ROOT/'src'))
 from grz_session_stats.core import StatsService, aggregate_stats
 from grz_session_stats.appearance import CONFIG_FILENAME, load_config, build_presentation
 from grz_session_stats.localization import Localizer
+from grz_session_stats.date_locale import resolve_date_settings
 
 
 def snapshots():
@@ -27,14 +29,16 @@ def snapshots():
         {'IDNum':202, 'expDamage':1650, 'expFrag':0.95, 'expSpot':1.2, 'expDef':0.8, 'expWinRate':51},
         {'IDNum':303, 'expDamage':1750, 'expFrag':1.0, 'expSpot':1.6, 'expDef':0.75, 'expWinRate':51}]}
     tanks = [(101, 'Leopard 1'), (202, 'E 50 M'), (303, 'Bat.-Châtillon 25 t')]
-    maps = [('malinovka','Malinovka'), ('murovanka','Murovanka'), ('prokhorovka','Prokhorovka'),
-            ('himmelsdorf','Himmelsdorf'), ('redshire','Redshire')]
+    maps = [('02_malinovka','Malinovka'), ('11_murovanka','Murovanka'), ('05_prohorovka','Prokhorovka'),
+            ('04_himmelsdorf','Himmelsdorf'), ('34_redshire','Redshire')]
     start = datetime(2026,10,20,16,10,tzinfo=timezone.utc).timestamp()
     clock = [start-86400]
     def make_record(i, offset):
         tank = tanks[(i // 3) % 3]
         map_info = maps[i % len(maps)]
         credit_income = 57680+i*1417
+        # Mix known, zero and unavailable synthetic base earnings.
+        credit_base = None if i % 7 == 0 else 0 if i == 1 else 34000+i*733
         repair, ammo, consumables = 7900+i*163, 21200+(i%4)*2280, 3000
         costs = repair+ammo+consumables
         xp_base = 346+((i*137)%907)
@@ -47,6 +51,7 @@ def snapshots():
                 'complete':True, 'warnings':[],
                 'currencies':{
                     'credits':{'income':credit_income, 'costs':costs,'net':credit_income-costs,
+                               'income_base':credit_base, 'net_base':credit_base-costs if credit_base is not None else None,
                                'breakdown':{'repair':repair,'ammo':ammo,'consumables':consumables,'directives':0}},
                     'bonds':{'income':7 if i%2==0 else 0, 'costs':6 if i%5==0 else 0,
                              'net':(7 if i%2==0 else 0)-(6 if i%5==0 else 0)},
@@ -80,8 +85,13 @@ def main():
     config = load_config(str(ROOT/CONFIG_FILENAME))
     presentation = build_presentation(config)
     localizer = Localizer(config['language'])
+    localizer.date_settings = resolve_date_settings(localizer.language, overrides=config['date_time'])
     fixtures = {'normal':normal,'reset':reset}
     (output/'demo_snapshot.json').write_text(json.dumps(fixtures,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
+    localized = {}
+    for language in ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'):
+        translator = Localizer(language, date_settings=localizer.date_settings)
+        localized[language] = dict((key, translator.snapshot(copy.deepcopy(snapshot))) for key, snapshot in fixtures.items())
     # Keep regression fixtures canonical; localize the generated preview itself.
     for snapshot in fixtures.values():
         localizer.snapshot(snapshot)
@@ -89,13 +99,14 @@ def main():
     # The standalone page has an outer demo toolbar/background. Compile the
     # configured panel first, then retain that page's own host styles last.
     # Runtime appearance is separately covered by the native-model UI tests.
-    css = presentation['panel_css']
+    camo = base64.b64encode((ROOT/'ui'/'session_stats_camo.png').read_bytes()).decode('ascii')
+    css = presentation['panel_css'].replace('url("session_stats_camo.png")', 'url("data:image/png;base64,'+camo+'")')
     js = (ROOT/'ui'/'session_stats.js').read_text(encoding='utf-8')
     html = html.replace('<link rel="stylesheet" href="session_stats.css">', '<style>\n'+css+'\n</style>')
     html = re.sub(r'<script(?: type="module")? src="session_stats.js"></script>',
                   lambda m:'<script>\n'+js+'\n</script>', html)
     controller = (output/'controller.js').read_text(encoding='utf-8')
-    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
+    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';window.GRZ_DEMO_LOCALIZED = '+json.dumps(localized,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
     html = html.replace('<body>', '<body>\n<div class="demo-toolbar"><span data-i18n="preview.label">Preview · synthetic data</span><button id="demo-reopen" type="button" data-i18n="preview.open">Open panel</button><button id="demo-restart" type="button" data-i18n="preview.restore">Restore example</button></div>')
     html = html.replace('</body>',demo+'\n<script>\n'+controller+'\n</script>\n</body>')
     preview_css = '''

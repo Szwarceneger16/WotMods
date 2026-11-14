@@ -30,8 +30,28 @@ def two_module_registry():
     return configured
 
 
-class PlanTests(unittest.TestCase):
+class SourceVersionFixture(unittest.TestCase):
     def setUp(self):
+        source = tempfile.TemporaryDirectory()
+        self.addCleanup(source.cleanup)
+        self.source = Path(source.name)
+        # Release scenarios use synthetic prior installers. Their source
+        # baselines must not change when a real mod bumps its VERSION file.
+        config = json.loads(coordinator.REGISTRY.read_text(encoding='utf-8'))
+        for module in config['modules']:
+            version_file = self.source / module['base_version_file']
+            version_file.parent.mkdir(parents=True, exist_ok=True)
+            # The real registry validates every entry before historical tests
+            # scope it down to their two synthetic installers.
+            version_file.write_text(PREVIOUS.get(module['id'], '0.0.0') + '\n', encoding='ascii')
+        source_root = patch.object(coordinator, 'ROOT', self.source)
+        source_root.start()
+        self.addCleanup(source_root.stop)
+
+
+class PlanTests(SourceVersionFixture):
+    def setUp(self):
+        super().setUp()
         self.registry = two_module_registry()
 
     def make(self, paths, previous=PREVIOUS, tag='sessionstats-v0.3.15',
@@ -154,6 +174,13 @@ class PlanTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             coordinator.next_version('1.8.x', '1.8.22')
 
+    def test_plan_reads_explicit_source_version_jump(self):
+        module = next(m for m in self.registry['modules'] if m['id'] == 'sessionstats')
+        (self.source / module['base_version_file']).write_text('0.5.0\n', encoding='ascii')
+        result = self.make(['mods/sessionstats/src/main.py'])
+        self.assertEqual(result['versions']['sessionstats'], '0.5.0')
+        self.assertEqual(result['matrix'], [{'mod': 'sessionstats', 'version': '0.5.0'}])
+
     def test_new_module_requires_registered_safe_verifier(self):
         rogue = json.loads(json.dumps(self.registry))
         rogue['modules'].append({'id': 'thirdmod', 'display_name': 'Third',
@@ -241,8 +268,9 @@ class PlanTests(unittest.TestCase):
             self.assertFalse(args.output.exists())
 
 
-class AssemblyTests(unittest.TestCase):
+class AssemblyTests(SourceVersionFixture):
     def setUp(self):
+        super().setUp()
         configured = two_module_registry()
         for scoped_patch in (
             patch.object(coordinator, 'registry', return_value=configured),

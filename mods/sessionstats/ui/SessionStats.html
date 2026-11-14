@@ -8,23 +8,40 @@
 </head>
 <body>
   <div id="grz-session-stats" class="ss-window">
+    <div id="ss-window-background" class="ss-window-background" aria-hidden="true"></div>
     <header id="ss-titlebar" class="ss-titlebar">
-      <h1 data-i18n="title">Session statistics</h1>
-      <span class="ss-game-mode" data-i18n="mode.random">Random battles</span>
-      <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" data-i18n="close.symbol">×</span></button>
+      <div class="ss-title-identity">
+        <h1 data-i18n="title">Session statistics</h1>
+        <span class="ss-game-mode" data-i18n="mode.random">Random battles</span>
+      </div>
+      <div id="ss-title-actions" class="ss-title-actions">
+        <div id="ss-time-point-controls" class="ss-time-point-controls" style="display:none">
+          <button id="ss-time-point" class="ss-control ss-button ss-time-point" type="button"><span class="ss-control-label" data-i18n="timeline.create">Create time point</span></button>
+          <input id="ss-time-point-name" class="ss-time-point-name" type="text" maxlength="80" autocomplete="off" data-i18n-aria="timeline.name" aria-label="Time point name">
+        </div>
+        <div class="ss-background-control">
+          <span id="ss-background-transparency-label" class="ss-background-caption" data-i18n="window.background">Transparency</span>
+          <div id="ss-background-transparency" class="ss-background-slider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Background transparency" data-i18n-aria="window.background_transparency" title="Background transparency" data-i18n-title="window.background_transparency">
+            <div id="ss-background-transparency-track" class="ss-background-track"><div id="ss-background-transparency-thumb" class="ss-background-thumb"></div></div>
+          </div>
+          <span id="ss-background-transparency-value" class="ss-background-value" aria-hidden="true">0%</span>
+        </div>
+        <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
+      </div>
+      <button id="ss-maximize" class="ss-control ss-window-toggle" type="button" tabindex="0" aria-pressed="false" aria-label="Maximize window" data-i18n-aria="window.maximize" title="Maximize window" data-i18n-title="window.maximize"><span id="ss-maximize-symbol" class="ss-window-toggle-symbol" aria-hidden="true"></span></button>
+      <button id="ss-close" class="ss-control ss-close" type="button" tabindex="0" aria-label="Close" data-i18n-aria="close"><span class="ss-control-label" aria-hidden="true" data-i18n="close.symbol">×</span></button>
     </header>
     <div class="ss-controls">
-      <div class="ss-scopes" role="group" aria-label="Session period" data-i18n-aria="scope.group">
-        <button id="ss-scope-launch" class="ss-control ss-scope is-active" title="Since game launch — current account" data-i18n-title="scope.launch.title" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="scope.launch">Since launch</span></button>
-        <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
-        <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
-      </div>
       <div class="ss-toolbar">
+        <div class="ss-scopes" role="group" aria-label="Session period" data-i18n-aria="scope.group">
+          <button id="ss-scope-launch" class="ss-control ss-scope is-active" title="Since game launch — current account" data-i18n-title="scope.launch.title" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="scope.launch">Since launch</span></button>
+          <button id="ss-scope-manual" class="ss-control ss-scope" title="Since manual reset — current account" data-i18n-title="scope.manual.title" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.manual">Since reset</span></button>
+          <button id="ss-scope-instance" title="All accounts in this installation; saved until manual reset" data-i18n-title="scope.instance.title" class="ss-control ss-scope" style="display:none" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="scope.instance">Installation</span></button>
+        </div>
         <span id="ss-started" class="ss-period" data-i18n="waiting.results">Waiting for battle results…</span>
-        <div class="ss-language-row"><span class="ss-language-caption" data-i18n="language.label">Language</span><div id="ss-language" class="ss-select ss-language-select"></div></div>
-        <div class="ss-xp-picker" role="group" aria-label="Experience type" data-i18n-aria="xp.group">
-          <button id="ss-xp-base" class="ss-control ss-small-toggle is-active" type="button" tabindex="0" aria-pressed="true"><span class="ss-control-label" data-i18n="xp.base">Base XP</span></button>
-          <button id="ss-xp-received" class="ss-control ss-small-toggle" type="button" tabindex="0" aria-pressed="false"><span class="ss-control-label" data-i18n="xp.received">Received XP</span></button>
+        <div id="ss-timeline" class="ss-timeline" role="group" aria-label="Timeline" data-i18n-aria="scope.timeline" style="display:none">
+          <div class="ss-timeline-field"><span data-i18n="timeline.from">From</span><div id="ss-timeline-from" class="ss-select"></div></div>
+          <div class="ss-timeline-field"><span data-i18n="timeline.to">To</span><div id="ss-timeline-to" class="ss-select"></div></div>
         </div>
       </div>
     </div>
@@ -32,32 +49,50 @@
       <div id="ss-summary" class="ss-summary" role="region" aria-label="Whole period" data-i18n-aria="stats.period">
         <p class="ss-empty" data-i18n="waiting.game">Waiting for game data.</p>
       </div>
-      <nav id="ss-group-tabs" class="ss-group-tabs" aria-label="Group results" data-i18n-aria="groups.label">
-        <button id="ss-group-vehicles" type="button" tabindex="0" class="ss-control ss-group-tab is-active" aria-pressed="true"><span class="ss-control-label" data-i18n="groups.vehicles">Vehicles</span></button>
-        <button id="ss-group-maps" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.maps">Maps</span></button>
-        <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
-        <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
-      </nav>
-      <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
-      <div id="ss-pagination" class="ss-pagination" style="display:none">
-        <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
-        <div class="ss-page-center">
-          <div id="ss-sort-chronology" class="ss-select"></div>
+      <div id="ss-filter-panel" class="ss-filter-panel">
+        <nav id="ss-group-tabs" class="ss-group-tabs" aria-label="Group results" data-i18n-aria="groups.label">
+          <button id="ss-group-vehicles" type="button" tabindex="0" class="ss-control ss-group-tab is-active" aria-pressed="true"><span class="ss-control-label" data-i18n="groups.vehicles">Vehicles</span></button>
+          <button id="ss-group-maps" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.maps">Maps</span></button>
+          <button id="ss-group-tiers" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="groups.tiers">Tiers</span></button>
+          <button id="ss-group-battles" type="button" tabindex="0" class="ss-control ss-group-tab" aria-pressed="false"><span class="ss-control-label" data-i18n="metric.battles">Battles</span></button>
+        </nav>
+        <div id="ss-list-controls" class="ss-list-controls">
+          <div class="ss-list-meta"><span id="ss-list-meta"></span><span id="ss-page-label" aria-live="polite"></span></div>
+          <div id="ss-pagination" class="ss-pagination" style="display:none">
+            <button id="ss-page-previous" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.previous">Previous</span></button>
+            <div class="ss-page-center">
+              <div id="ss-sort-chronology" class="ss-select"></div>
+            </div>
+            <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
+          </div>
+          <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
+            <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
+            <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
+            <button id="ss-sort-off" class="ss-control ss-button ss-sort-off" style="display:none" type="button" role="switch" aria-checked="false" aria-pressed="false" aria-label="Sort results" data-i18n-aria="sort.label"><span class="ss-sort-switch-track" aria-hidden="true"><span class="ss-sort-switch-thumb"></span></span><span class="ss-control-label" aria-hidden="true">Off</span></button>
+            <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
+          </div>
         </div>
-        <button id="ss-page-next" class="ss-control ss-button" type="button" tabindex="0"><span class="ss-control-label" data-i18n="page.next">Next</span></button>
-      </div>
-      <div id="ss-sorting" class="ss-sorting" role="group" aria-label="Sort results" data-i18n-aria="sort.label" style="display:none">
-        <div class="ss-sort-field ss-sort-statistic"><span class="ss-sort-caption" data-i18n="sort.statistic">Statistic</span><div id="ss-sort-statistic" class="ss-select"></div></div>
-        <div class="ss-sort-field ss-sort-metric"><span class="ss-sort-caption" data-i18n="sort.metric">Sort by</span><div id="ss-sort-metric" class="ss-select"></div></div>
-        <div class="ss-sort-field ss-sort-direction"><span class="ss-sort-caption" data-i18n="sort.direction">Order</span><div id="ss-sort-direction" class="ss-select"></div></div>
+        <div id="ss-sort-data-warning" class="ss-sort-data-warning" role="status" aria-live="polite" style="display:none"></div>
       </div>
       <div id="ss-groups" role="region" aria-label="Results by vehicle" data-i18n-aria="groups.vehicles.aria"></div>
     </div>
+    <div id="ss-filter-loading" class="ss-filter-loading" role="status" aria-live="polite" aria-label="Loading page…" data-i18n-aria="page.loading" aria-hidden="true" style="visibility:hidden"><div class="ss-filter-loading-card"><span class="ss-page-spinner" aria-hidden="true"></span><span class="ss-filter-loading-label" data-i18n="page.loading">Loading page…</span></div></div>
+    <div id="ss-scrollbar" class="ss-scrollbar" style="display:none" role="scrollbar" tabindex="0" aria-controls="ss-scroll" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Statistics and results" data-i18n-aria="stats.region"><span id="ss-scrollbar-thumb" class="ss-scrollbar-thumb" aria-hidden="true"></span></div>
+    <button id="ss-scroll-top" class="ss-control ss-scroll-top" style="display:none" type="button" tabindex="0" aria-label="Scroll to top" data-i18n-aria="page.top" title="Scroll to top" data-i18n-title="page.top"><span class="ss-scroll-top-icon" aria-hidden="true"></span></button>
     <footer class="ss-footer">
+      <span id="ss-version" class="ss-version" style="display:none"></span>
       <span id="ss-status" class="ss-status" role="status" aria-live="polite" data-i18n="waiting.data">Waiting for data</span>
       <button id="ss-refresh" class="ss-control ss-button ss-quiet" type="button" tabindex="0"><span class="ss-control-label" data-i18n="refresh">Refresh</span></button>
       <button id="ss-reset" class="ss-control ss-button ss-reset" type="button" tabindex="0" disabled><span class="ss-control-label" data-i18n="reset">Reset period</span></button>
     </footer>
+    <button id="ss-resize-grip" class="ss-resize-grip" data-corner="se" type="button" data-i18n-aria="window.resize" data-i18n-title="window.resize" aria-label="Resize window (drag or use arrow keys)"></button>
+    <button class="ss-resize-grip ss-resize-nw" data-corner="nw" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-ne" data-corner="ne" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-sw" data-corner="sw" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-n" data-corner="n" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-e" data-corner="e" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-s" data-corner="s" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
+    <button class="ss-resize-grip ss-resize-edge ss-resize-w" data-corner="w" type="button" data-i18n-aria="window.resize" aria-label="Resize window"></button>
     <div id="ss-reset-overlay" class="ss-modal-overlay" style="display:none">
       <div class="ss-confirm" role="dialog" aria-modal="true" aria-labelledby="ss-confirm-title">
         <h2 id="ss-confirm-title" data-i18n="reset.manual.title">Reset “Since reset”?</h2>

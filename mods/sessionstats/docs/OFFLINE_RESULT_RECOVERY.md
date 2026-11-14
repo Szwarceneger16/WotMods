@@ -57,6 +57,18 @@ precede untried results. Shared-cache cooldown, an unready account and disconnec
 do not increase a battle's exponential backoff; request limits receive a longer
 pause. Ordinary read errors retain the entry and bounded retries.
 
+The account's pending count includes both entries with no final result and received
+results that still lack a required combat, XP or finance field. A usable WN8 does
+not prove that all those fields are complete. The count therefore need not equal
+the number of unread garage notifications. Recovery needs a readable native result
+response; a notification by itself is not a substitute for that response.
+
+A cache that is temporarily unavailable during login does not disable recovery.
+Later account/garage events and polling discover it again. Eight restored entries
+are requested one at a time without requiring the user to open their notifications;
+cooldown and response latency can extend the catch-up time. One unavailable or
+partially returned entry must not prevent untried entries from being requested.
+
 A valid stream arriving after our request expires can still fill unknown data,
 but cannot change newer confirmed values or remove a newer request's token. This
 fill uses `reconcile=False`. Diagnostics contain states and known client codes,

@@ -15,9 +15,14 @@ async function makePage(browser, native) {
     page.on('pageerror', error => errors.push(String(error)));
     const snapshot = JSON.parse(JSON.stringify(fixtures.normal));
     snapshot.viewport = {width:1440,height:950,scale:1};
+    snapshot.window_size = [700,900];
+    snapshot.appearance = snapshot.appearance || {};
+    snapshot.appearance.window_settings = {background_transparency:0,maximized:false,restored_width:700,restored_height:900};
     for (const scope of Object.values(snapshot.scopes)) {
         const sample = scope.battles[0];
         scope.battles = Array.from({length:95}, (_, index) => ({...sample,id:'wheel-'+index,started_at:1700000000-index}));
+        // This suite exercises legacy client batching, not native page replies.
+        if(scope.pagination)delete scope.pagination.battles;
     }
     if (native) {
         await page.addInitScript(snapshot => {
@@ -30,13 +35,14 @@ async function makePage(browser, native) {
     }
     await page.route('http://grz-wheel.test/**', async route => {
         const name = new URL(route.request().url()).pathname.slice(1);
-        if (!['SessionStats.html','session_stats.css','session_stats.js'].includes(name)) { await route.abort(); return; }
-        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
+        if (!['SessionStats.html','session_stats.css','session_stats.js','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+        await route.fulfill({status:200,contentType:name.endsWith('.js')?'text/javascript':name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html',body:fs.readFileSync(path.join(root,'ui',name))});
     });
     await page.goto('http://grz-wheel.test/SessionStats.html');
     await page.waitForFunction(native => window.GRZSessionStats && window.GRZSessionStats.getState().nativeBound === native, native);
     if (!native) { await page.evaluate(snapshot => window.GRZSessionStats.update(snapshot), snapshot); }
     await page.locator('#ss-group-battles').click();
+    await twoFrames(page);
     await page.evaluate(() => {
         window.__wheelAudit = [];
         document.getElementById('grz-session-stats').addEventListener('wheel', function(event) {
@@ -51,19 +57,24 @@ async function twoFrames(page) {
 }
 
 async function wheel(page, deltaY, start, deltaX=0, selector='#ss-scroll') {
+    // Finish navigation's deferred logical scroll restoration before choosing
+    // the programmatic baseline used by this isolated trusted-input probe.
+    await twoFrames(page);
     if (start !== undefined) { await page.locator('#ss-scroll').evaluate((el,start) => { el.scrollTop=start; }, start); }
-    const before = await page.locator('#ss-scroll').evaluate(el=>el.scrollTop);
+    const baseline = await page.locator('#ss-scroll').evaluate(el=>({
+        scrollTop:el.scrollTop,rows:document.querySelectorAll('#ss-groups .ss-group').length}));
     const count = await page.evaluate(()=>window.__wheelAudit.length);
     const rect = await page.locator(selector).boundingBox();
     await page.mouse.move(rect.x+rect.width/2, rect.y+Math.min(40,rect.height/2));
     await page.mouse.wheel(deltaX,deltaY);
     await page.waitForFunction(count=>window.__wheelAudit.length>count, count);
     await twoFrames(page);
-    return page.evaluate(before=>{
+    return page.evaluate(baseline=>{
         const node=document.getElementById('ss-scroll');
-        return {before,after:node.scrollTop,max:node.scrollHeight-node.clientHeight,page:node.clientHeight,
+        return {before:baseline.scrollTop,after:node.scrollTop,max:node.scrollHeight-node.clientHeight,page:node.clientHeight,
+            rowsBefore:baseline.rows,rowsAfter:document.querySelectorAll('#ss-groups .ss-group').length,
             audit:window.__wheelAudit[window.__wheelAudit.length-1]};
-    }, before);
+    }, baseline);
 }
 
 async function synthetic(page, values) {
@@ -95,10 +106,27 @@ async function synthetic(page, values) {
         for (let i=0;i<3;i++) { result=await wheel(native,-40,i===0?400:undefined); }
         check('Three native wheel events traverse three quarters of the view without duplicate movement',Math.abs(result.after-400-result.page*3/4)<=3);
 
-        await native.locator('#grz-session-stats').evaluate(el=>{el.style.height='440px';});
+        const fullListHeight=result.page;
+        // Resize through the same saved settings path as the native host.
+        // Both heights fit the viewport and respect the logical minimum.
+        await native.evaluate(()=>{
+            const snapshot=JSON.parse(model.payload);snapshot.window_size=[700,730];
+            snapshot.appearance.window_settings.restored_height=730;
+            model.payload=JSON.stringify(snapshot);__events['viewEnv.onDataChanged']();
+        });
         result=await wheel(native,-1,400);
-        check('The step adapts to a shorter panel instead of a fixed pixel or device delta',result.page<350 && Math.abs(result.after-result.before-result.page/4)<=1 && result.audit.prevented);
-        await native.locator('#grz-session-stats').evaluate(el=>{el.style.height='';});
+        const shortPanel=await native.locator('#grz-session-stats').evaluate(el=>el.getBoundingClientRect().height);
+        check('The wheel step follows the shorter visible list after a supported panel resize: '+JSON.stringify({shortPanel,fullListHeight,...result}),
+            shortPanel===730 && result.page===fullListHeight-170 &&
+            Math.abs(result.after-result.before-result.page/4)<=1 && result.audit.prevented);
+        await native.evaluate(()=>{
+            const snapshot=JSON.parse(model.payload);snapshot.window_size=[700,900];
+            snapshot.appearance.window_settings.restored_height=900;
+            model.payload=JSON.stringify(snapshot);__events['viewEnv.onDataChanged']();
+        });
+        await twoFrames(native);
+        check('Restoring the panel height restores the visible list used by subsequent wheel probes',
+            await native.locator('#ss-scroll').evaluate(el=>el.clientHeight)===fullListHeight);
 
         result=await synthetic(native,{deltaY:-3,deltaMode:1});
         check('Line-mode native input uses the same readable wheel step',Math.abs(result.after-result.before-result.page/4)<=1 && result.prevented);
@@ -122,10 +150,13 @@ async function synthetic(page, values) {
         check('The reset dialog consumes wheel input without moving its background',result.after===400 && result.audit.prevented);
         await native.locator('#ss-reset-cancel').click();
         await native.locator('#ss-scope-launch').click();
+        await twoFrames(native);
         check('Long history starts with a bounded batch',await native.locator('#ss-groups .ss-group').count()===40);
         let nearEnd=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight-201);
-        await wheel(native,-1,nearEnd);
-        check('Native wheel toward the end exposes the next history batch',await native.locator('#ss-groups .ss-group').count()>=80);
+        result=await wheel(native,-1,nearEnd);
+        const batchCount=await native.locator('#ss-groups .ss-group').count();
+        check('Native wheel toward the end exposes the next history batch'+
+            (batchCount>=80 ? '' : ' '+JSON.stringify({nearEnd,batchCount,...result})),batchCount>=80);
         nearEnd=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight-201);
         await wheel(native,-1,nearEnd);
         const end=await native.locator('#ss-scroll').evaluate(el=>el.scrollHeight-el.clientHeight);

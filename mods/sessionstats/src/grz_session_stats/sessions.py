@@ -36,8 +36,11 @@ class InstallationSession(object):
     def begin(self, account_key, context):
         fields = ('started_at', 'vehicle_id', 'map_id', 'vehicle_name',
                   'vehicle_tier', 'vehicle_type', 'map_name')
+        metadata = dict((key, context.get(key)) for key in fields)
+        if context.get('details'):
+            metadata['details'] = context['details']
         return self.service.begin_battle(self.battle_key(account_key, context['arena_id']),
-                                         mode='random', **dict((key, context.get(key)) for key in fields))
+                                         mode='random', **metadata)
 
     def result(self, account_key, record, allow_new=False):
         identifier = self.battle_key(account_key, record['arena_id'])
