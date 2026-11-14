@@ -16,7 +16,8 @@ module.exports=async ({browser,nativeHost,check})=>{
         for(const group of ['vehicles','maps','tiers']) {
           const sample=scope[group][0];scope[group]=[12500,-23456,0,null].map((value,index)=>{
             const item=JSON.parse(JSON.stringify(sample));item.id='synthetic-sort-'+group+'-'+index;item.name='Synthetic '+index;item.sort_value=value;
-            item.stats.currencies.credits.net=999999;item.stats.credits_net_received={count:0,min:null,avg:null,max:null,sum:null};return item;
+            item.stats.currencies.credits.net=999999;item.stats.observed_battles=item.stats.battles=value===null?0:1;
+            item.stats.credits_net_received={count:value===null?0:1,min:value,avg:value,max:value,sum:value};return item;
           });
           scope.ordering[group]={metric:'credits_net_received',statistic:'max',direction:'desc',chronology:'newest'};
           scope.pagination[group]={page:0,pages:1,page_size:40,total:4};
@@ -110,8 +111,9 @@ module.exports=async ({browser,nativeHost,check})=>{
             });model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},statistic);await frames(page);
           check('Changing WN8 '+statistic+' marks the existing selected distribution cell',
             await page.locator('.ss-group').first().locator('[data-ss-metric="battle_wn8"]').locator('[data-ss-sort-active="battle_wn8"]').evaluate(node=>
-              !['transparent','rgba(0, 0, 0, 0)'].includes(getComputedStyle(node).backgroundColor)&&
-              getComputedStyle(node).boxShadow!=='none'));
+              !node.classList.contains('ss-extreme-cell')||getComputedStyle(node).boxShadow==='none'&&
+              node.querySelectorAll('.ss-extreme-link-cue').length===1&&
+              !['transparent','rgba(0, 0, 0, 0)'].includes(getComputedStyle(node.querySelector('.ss-extreme-link-cue')).backgroundColor)));
           const expectedLabel=messages['sort.metric_stat'].replace(/\{([0-9])\}/g,(_,index)=>[messages['metric.'+statistic],messages['metric.wn8']][index]);
           check('Selected '+statistic+' is visible without a duplicate WN8 caption',
             await page.locator('.ss-group-wn8-kpi .ss-kpi-label').first().textContent()===expectedLabel&&

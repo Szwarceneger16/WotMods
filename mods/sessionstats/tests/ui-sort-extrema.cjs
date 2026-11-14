@@ -118,6 +118,15 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-help-tooltip').isVisible()&&
       await page.locator('#ss-help-tooltip').textContent().then(text=>text.includes('<b>Synthetic tank</b>'))&&
       await page.locator('#ss-help-tooltip b').count()===0);
+    check('Focused source keeps its small rounded arrow cue without a cell border or outline',
+      await link('groups','xp_base','max').evaluate(button=>{
+        const style=getComputedStyle(button),cue=button.querySelector('.ss-extreme-link-cue'),visual=getComputedStyle(cue),
+          shaft=getComputedStyle(cue,':before'),head=getComputedStyle(cue,':after');
+        return parseFloat(style.borderWidth)===0&&style.outlineStyle==='none'&&style.boxShadow==='none'&&
+          parseFloat(visual.borderRadius)>0&&visual.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+          shaft.content!=='none'&&parseFloat(shaft.width)>=8&&parseFloat(shaft.height)===1&&shaft.transform!=='none'&&
+          head.content!=='none'&&parseFloat(head.borderTopWidth)===1&&parseFloat(head.borderRightWidth)===1;
+      }));
     await page.keyboard.press('Escape');
     const geometry=await page.locator('#ss-groups .ss-metric-row').evaluateAll(rows=>rows.map(row=>{
       const cells=Array.from(row.children).slice(1),numbers=cells.map(cell=>{
@@ -126,10 +135,11 @@ module.exports=async({browser,nativeHost,check})=>{
         return {box:{top:box.top,bottom:box.bottom,right:box.right},cell:cell.getBoundingClientRect().right,
           font:parseFloat(getComputedStyle(cell).fontSize)};
       });
-      return Math.max(...numbers.map(n=>n.box.top))-Math.min(...numbers.map(n=>n.box.top))<=1&&
-        numbers.every(n=>n.box.right<=n.cell+1)&&numbers.every(n=>n.font===numbers[1].font);
+      return {metric:row.getAttribute('data-ss-metric'),numbers,pass:
+        Math.max(...numbers.map(n=>n.box.top))-Math.min(...numbers.map(n=>n.box.top))<=1&&
+        numbers.every(n=>n.box.right<=n.cell+1)&&numbers.every(n=>n.font===numbers[1].font)};
     }));
-    check('Clickable figures keep the Min/Average/Max baseline, font size and cell alignment',geometry.every(Boolean));
+    check('Clickable figures keep the Min/Average/Max baseline, font size and cell alignment: '+JSON.stringify(geometry.filter(row=>!row.pass)),geometry.every(row=>row.pass));
     // Model the observed native defect: unsupported inline button captions
     // collapse, although the button remains clickable. Explicit native labels
     // and numeric cells' original text must be independent of that path.
@@ -164,21 +174,31 @@ module.exports=async({browser,nativeHost,check})=>{
             const visual=getComputedStyle(cell),overlay=getComputedStyle(button),cue=button.querySelector('.ss-extreme-link-cue'),corner=cue.getBoundingClientRect();
             return actual===expected&&ink.width>3&&ink.height>=14&&ink.left>=box.left-1&&ink.right<=box.right+1&&
               hit.width>=box.width-1&&hit.height>=22&&overlay.backgroundImage==='none'&&overlay.backgroundColor==='rgba(0, 0, 0, 0)'&&
-              visual.backgroundImage!=='none'&&overlay.borderStyle==='solid'&&parseFloat(overlay.borderWidth)>=1&&
-              getComputedStyle(cue).display==='block'&&(corner.right<=ink.left||corner.top>=ink.bottom-0.5)&&
+              parseFloat(overlay.borderWidth)===0&&overlay.outlineStyle==='none'&&overlay.boxShadow==='none'&&
+              visual.boxShadow==='none'&&getComputedStyle(cue).display==='block'&&
+              parseFloat(getComputedStyle(cue).borderWidth)===0&&getComputedStyle(cue).outlineStyle==='none'&&
+              getComputedStyle(cue).backgroundColor!=='rgba(0, 0, 0, 0)'&&parseFloat(getComputedStyle(cue).borderRadius)>0&&
+              Math.abs(corner.width-16)<=0.5&&Math.abs(corner.height-18)<=0.5&&
+              corner.left>=box.left&&corner.right<=ink.left-1&&Math.abs((corner.top+corner.bottom)-(box.top+box.bottom))<=1&&
               (row.getAttribute('data-ss-metric')!=='battle_wn8'||statistic!=='min'||
                 original[0].classList.contains('ss-wn8-low-ink')&&getComputedStyle(cell).color==='rgb(0, 0, 0)');
           });
         });
         const captions=Array.from(document.querySelectorAll('.ss-credit-extreme-actions .ss-metric-battle-link'));
-        return values&&captions.length===20&&captions.every(button=>{
+        const spaces=Array.from(document.querySelectorAll('.ss-credit-extreme-actions')).every(actions=>{
+          const spacers=Array.from(actions.querySelectorAll(':scope > .ss-credit-extreme-spacer'));
+          const widths=spacers.map(node=>node.getBoundingClientRect().width);
+          return spacers.length===3&&Math.max(...widths)-Math.min(...widths)<=0.5&&widths.every(width=>width>=0);
+        });
+        return values&&spaces&&captions.length===20&&captions.every(button=>{
           const label=button.querySelector('.ss-control-label.ss-metric-action-label'),style=getComputedStyle(label),box=label.getBoundingClientRect();
           const range=document.createRange();range.selectNodeContents(label);const ink=range.getBoundingClientRect();
           const action=getComputedStyle(button),hit=button.getBoundingClientRect(),host=button.parentNode.getBoundingClientRect();
           const inset=parseFloat(action.borderLeftWidth)+parseFloat(action.borderRightWidth)+parseFloat(action.paddingLeft)+parseFloat(action.paddingRight);
           return label.textContent===messages['metric.'+button.getAttribute('data-ss-extreme')]&&style.display==='block'&&
             parseFloat(style.fontSize)===11&&parseFloat(style.lineHeight)===16&&box.width>15&&ink.width>3&&ink.height>=11&&
-            action.flexBasis==='50%'&&action.maxWidth==='50%'&&Math.abs(hit.width-host.width/2)<=0.5&&
+            action.flexBasis==='auto'&&action.maxWidth==='none'&&Math.abs(hit.width-ink.width-inset)<=1.5&&
+            parseFloat(action.paddingLeft)===4&&parseFloat(action.paddingRight)===4&&
             Math.abs(box.width-(hit.width-inset))<=0.5&&ink.left>=box.left-0.5&&ink.right<=box.right+0.5&&
             ink.top>=box.top-0.5&&ink.bottom<=box.bottom+0.5&&action.borderStyle==='solid'&&action.backgroundImage!=='none';
         });
@@ -186,6 +206,48 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Native-safe original figures and explicit credit actions remain painted '+language+'/'+width+'/'+maximum+'/'+group,painted);
     }
     await page.evaluate(()=>{Node.prototype.appendChild=__extremeOriginalAppend;delete window.__extremeOriginalAppend;});await collapse.evaluate(node=>node.remove());
+    // Timeline history can contain old received-only records and a few newer
+    // base results. A retained card's cached sorting scalar must never choose
+    // the displayed figure for a newly selected statistic.
+    for(const count of [3,1,0]){
+      await publish('maps','credits_income_base','min');
+      await page.evaluate(count=>{
+        const payload=JSON.parse(model.payload),scope=payload.scopes.timeline=JSON.parse(JSON.stringify(payload.scopes.launch));
+        scope.from_point=scope.to_point='';scope.time_points=[];
+        const item=scope.maps[0],data=count===3?{min:1000,avg:2000,max:4000,sum:6000}:
+          count===1?{min:51624,avg:51624,max:51624,sum:51624}:{min:null,avg:null,max:null,sum:null};
+        item.sort_value=999999;item.stats.battles=item.stats.observed_battles=27;
+        item.stats.credits_income_base={count,...data};delete item.extrema_battles;
+        Object.assign(item.stats.currencies.credits,{income_base:null,income_base_count:count,net_base:null,net_base_count:count,
+          income:2432480,income_count:27,costs:1429892,costs_count:27,net:1002588,net_count:27});
+        model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
+      },count);
+      await page.locator('#ss-scope-manual').click();await frames(page);
+      check('Timeline regression uses the full Beginning-to-Now history with '+count+' base samples',
+        (await page.locator('#ss-timeline-from .ss-select-trigger').textContent())==='Beginning of history'&&
+        (await page.locator('#ss-timeline-to .ss-select-trigger').textContent())==='Now');
+      for(const statistic of ['min','avg','max']){
+        await page.evaluate(statistic=>{
+          const payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
+          scope.ordering.maps={metric:'credits_income_base',statistic,direction:'desc',chronology:'newest'};
+          scope.data_revision+='-'+statistic;model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
+        },statistic);await frames(page);
+        const expected=count===3?{min:'1000',avg:'2000',max:'4000'}[statistic]:count===1?'51624':'—';
+        const result=await page.locator('#ss-groups .ss-group').evaluate(card=>{
+          const badge=card.querySelector('.ss-group-sort-value');
+          return {number:badge.querySelector('.ss-group-sort-number').textContent.replace(/\s/g,''),
+            caption:badge.querySelector('.ss-group-sort-caption').textContent,
+            accessible:badge.getAttribute('aria-label'),help:card.querySelector('.ss-info-button').getAttribute('data-ss-help')||'',
+            income:card.querySelector('[data-ss-metric="credits_income_base"] > .ss-cell-value')?.textContent};
+        });
+        check('Timeline '+statistic+' reads its current series instead of stale sort_value with '+count+' samples',result.number===expected);
+        check('Partial timeline '+statistic+' explains its actual sample size without repeating a visible ratio',
+          result.caption.endsWith(' *')&&result.accessible.includes('Data available for '+count+' of 27 recorded battles.')&&
+          result.help.includes('Data available for '+count+' of 27 recorded battles.')&&!/\d+\/\d+/.test(result.caption));
+        if(count>0)check('Partial base income is not displayed as a complete 27-battle total',result.income==='—');
+      }
+      await page.locator('#ss-scope-launch').click();
+    }
     for(const invalid of [{metric:'xp_received'},{statistic:'min'},{value:null},{value:999},{id:''}]){
       await publish('maps','off','avg',{invalid});
       check('Invalid permanent reference offers no misleading button '+JSON.stringify(invalid),

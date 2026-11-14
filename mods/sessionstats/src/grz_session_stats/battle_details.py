@@ -73,6 +73,44 @@ def _clean_objectives(value):
     return result
 
 
+def _repair_crucible_context(details, missions):
+    """Retire an old next-stage snapshot when the battle identifies its stage."""
+    active = details.get('active_crucible')
+    if not active:
+        return
+    chain = active.rsplit(':', 1)[0]
+    candidates = []
+    for key, row in missions.items():
+        match = CRUCIBLE_ID.match(key)
+        if (match and not match.group(2) and key.rsplit(':', 1)[0] == chain and
+                (row.get('status') in ('progress', 'reset', 'failed', 'completed', 'honors') or
+                 row.get('status') == 'observed' and row.get('progress_state') in PROGRESS_STATES)):
+            candidates.append(key)
+    if len(candidates) != 1:
+        return
+    actual = candidates[0]
+    next_stage = int(actual.rsplit(':', 1)[1]) + 1
+    placeholders = [key for key in missions if CRUCIBLE_ID.match(key) and not key.endswith(':fail') and
+                    key.rsplit(':', 1)[0] == chain and int(key.rsplit(':', 1)[1]) == next_stage]
+    if len(placeholders) != 1 or active not in (actual, placeholders[0]):
+        return
+    phantom = placeholders[0]
+    placeholder = missions[phantom]
+    if (placeholder.get('status', 'observed') != 'observed' or placeholder.get('progress_state') == 'changed' or
+            any(item.get('delta', 0) != 0 for item in placeholder.get('objectives', ())) or
+            (placeholder.get('before') is not None and placeholder.get('after') is not None and
+             placeholder['before'] != placeholder['after'])):
+        return
+    # Old versions indexed a one-based native counter directly into questsIDs.
+    # Only the shared name/operation belong to both stages; the next stage's
+    # description and objectives must never be attached to the actual result.
+    for field in ('name', 'operation'):
+        if field in placeholder and field not in missions[actual]:
+            missions[actual][field] = placeholder[field]
+    del missions[phantom]
+    details['active_crucible'] = actual
+
+
 def clean_details(value):
     """Use the same whitelist for intake, storage and display."""
     value = _mapping(value)
@@ -128,6 +166,13 @@ def clean_details(value):
     return clean
 
 
+def display_details(value):
+    """Repair old presentation metadata without invalidating saved generations."""
+    details = clean_details(value)
+    _repair_crucible_context(details, details.get('missions', {}))
+    return details
+
+
 def merge_details(existing, incoming, revise):
     merged = dict(existing)
     for field, value in incoming.items():
@@ -163,7 +208,7 @@ def merge_details(existing, incoming, revise):
             merged[field] = combined
         elif field not in merged:
             merged[field] = value
-    return clean_details(merged)
+    return display_details(merged)
 
 
 def _pass_points(avatar):
@@ -575,10 +620,12 @@ def game_active_crucible():
     if challenge is None:
         return {}
     stage = controller.getChallengeProgress(challenge.challengeID).get('quests')
-    if not isinstance(stage, integer_types) or not 0 <= stage < len(challenge.questsIDs):
+    if isinstance(stage, bool) or not isinstance(stage, integer_types) or not 1 <= stage <= len(challenge.questsIDs):
         return {}
-    quest_id = _text(challenge.questsIDs[stage])
-    row = {'kind': 'crucible', 'stage': stage + 1}
+    # The native QUEST token is the current one-based stage. The lobby renders
+    # completed stages as quests - 1, including while the last stage is active.
+    quest_id = _text(challenge.questsIDs[stage - 1])
+    row = {'kind': 'crucible', 'stage': stage}
     missions = {quest_id: row}
     try:
         row['name'] = challenge.name

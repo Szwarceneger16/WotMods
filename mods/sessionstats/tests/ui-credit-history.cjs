@@ -9,7 +9,7 @@ function actualAvailability(){
   assert(context.hasBaseCredits({net_base:0,net_base_count:1}),'A recorded zero net is available');
   assert(!context.hasBaseCredits({income_base:0,income_base_count:0,net_base:0,net_base_count:0}),'An empty zero sum is not an amount');
   assert(!context.hasBaseCredits({income_base:500,net_base:200}),'Amounts without availability do not invent a base comparison');
-  assert(!context.hasBaseCredits({income_base:null,income_base_count:1,net_base:NaN,net_base_count:1}),'Missing amounts cannot form a comparison');
+  assert(context.hasBaseCredits({income_base:null,income_base_count:1,net_base:null,net_base_count:1}),'Known partial samples retain their row even when the whole-period totals are unavailable');
 }
 module.exports=async({browser,nativeHost,check})=>{
   actualAvailability();check('Actual source distinguishes recorded base zero from absent or unavailable base amounts',true);
@@ -18,6 +18,8 @@ module.exports=async({browser,nativeHost,check})=>{
     {name:'legacy-0.9.8',visible:false},
     {name:'empty-zero-series',income:0,incomeCount:0,net:0,netCount:0,visible:false},
     {name:'known-zero',income:0,incomeCount:1,net:-41385,netCount:1,visible:true},
+    {name:'complete-zero',income:0,incomeCount:1,net:-41385,netCount:1,visible:true,complete:true},
+    {name:'partial-masked',income:null,incomeCount:1,net:null,netCount:1,visible:true},
     {name:'income-only',income:42000,incomeCount:2,net:null,netCount:0,visible:true},
     {name:'net-only',income:null,incomeCount:0,net:500,netCount:1,visible:true},
   ];
@@ -30,8 +32,9 @@ module.exports=async({browser,nativeHost,check})=>{
         const payload=JSON.parse(JSON.stringify(original)),scope=payload.scopes.launch;
         payload.localization={language,selected:language,messages};payload.window_size=[1200,1100];
         function prepare(stats){
-          stats.battles=2;stats.observed_battles=3;
-          const credits={income:78935,income_count:2,costs:41385,costs_count:2,net:37550,net_count:2};
+          const receivedCount=scenario.complete?1:2;
+          stats.battles=receivedCount;stats.observed_battles=scenario.complete?1:3;
+          const credits={income:78935,income_count:receivedCount,costs:41385,costs_count:receivedCount,net:37550,net_count:receivedCount};
           if('income'in scenario){credits.income_base=scenario.income;credits.income_base_count=scenario.incomeCount;}
           if('net'in scenario){credits.net_base=scenario.net;credits.net_base_count=scenario.netCount;}
           stats.currencies.credits=credits;
@@ -62,7 +65,10 @@ module.exports=async({browser,nativeHost,check})=>{
         },{messages,visible:scenario.visible});
         check('Base comparison follows real availability and received profits/currencies survive '+language+'/'+scenario.name+'/'+group,
           [result.summary,result.card].every(x=>x.base===scenario.visible&&x.received.join('|')==='78935|-41385|+37550'&&x.bonds.join('|')==='14|-6|+8'&&x.gold.join('|')==='501|0|+501'&&x.costOwners===1&&x.help&&x.availability));
-        if(scenario.name==='known-zero')check('Known zero base earnings remain visible '+language+'/'+group,result.card.baseValues.join('|')==='0|-41385|-41385');
+        if(scenario.visible&&!scenario.complete)check('Partial base samples never pretend to be complete period totals '+language+'/'+scenario.name+'/'+group,
+          [result.summary,result.card].every(x=>x.baseValues.join('|')==='—|-41385|—'));
+        if(scenario.name==='complete-zero')check('A complete known-zero base result stays visible '+language+'/'+group,
+          [result.summary,result.card].every(x=>x.baseValues.join('|')==='0|-41385|-41385'));
       }
       if(language==='en'&&['legacy-0.9.8','known-zero'].includes(scenario.name))snapshots[scenario.name]=await page.evaluate(()=>JSON.parse(model.payload));
     }

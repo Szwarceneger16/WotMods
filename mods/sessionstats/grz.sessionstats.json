@@ -152,7 +152,10 @@
     "date_unavailable_text": "#969c96",
     "date_unavailable_border": "#464c46",
     "date_unavailable_background": "#2b302b",
-    "loading_scrim_background": "rgba(17,19,9,0.45)"
+    "loading_scrim_background": "rgba(17,19,9,0.45)",
+    "extreme_link_background": "#303726",
+    "extreme_link_hover_background": "#50583b",
+    "extreme_link_text": "#c4c7ac"
   },
   "radii": {
     "window": 8,
@@ -169,7 +172,8 @@
     "battle_outcome": 5,
     "panel_footer": 7,
     "confirmation": 8,
-    "garage_spinner": 8
+    "garage_spinner": 8,
+    "extreme_link": 4
   },
   "opacity": {
     "window": 1.0,

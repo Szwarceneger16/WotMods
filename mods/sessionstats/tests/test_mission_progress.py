@@ -12,13 +12,50 @@ import test_runtime as runtime_fixtures
 from test_runtime import Obj
 from test_normalize import raw_result
 from grz_session_stats.battle_details import (
-    _common_objectives, _personal_mission_rows, clean_details, merge_details, result_details)
+    _common_objectives, _personal_mission_rows, clean_details, display_details, merge_details, result_details)
 from grz_session_stats.core import StatsService
 from grz_session_stats.normalize import normalize_result
 
 
 class MissionProgressTests(unittest.TestCase):
     inject_module = runtime_fixtures.NativeBindingTests.__dict__['inject_module']
+
+    def test_legacy_crucible_display_repairs_only_the_unconfirmed_next_stage(self):
+        actual, phantom = 'challenge:8:1', 'challenge:8:2'
+        original = {'active_crucible': phantom, 'missions': {
+            phantom: {'kind': 'crucible', 'stage': 2, 'name': 'Fixture challenge',
+                      'description': 'Next stage only'},
+            actual: {'kind': 'crucible', 'stage': 1, 'status': 'failed'}}}
+        before = copy.deepcopy(original)
+        self.assertEqual(clean_details(original), original)
+        displayed = display_details(original)
+        self.assertEqual(displayed, {'active_crucible': actual, 'missions': {
+            actual: {'kind': 'crucible', 'stage': 1, 'name': 'Fixture challenge', 'status': 'failed'}}})
+        self.assertEqual(original, before)
+        self.assertEqual(display_details(displayed), displayed)
+        for state in ('unavailable', 'unchanged'):
+            unconfirmed = copy.deepcopy(original)
+            unconfirmed['missions'][actual].update(status='observed', progress_state=state)
+            shown = display_details(unconfirmed)
+            self.assertEqual(list(shown['missions']), [actual])
+            self.assertEqual(shown['missions'][actual]['status'], 'observed')
+            self.assertEqual(shown['missions'][actual]['progress_state'], state)
+        for field, value in (('status', 'completed'), ('progress_state', 'changed'),
+                             ('objectives', [{'key': 'battlesCount', 'unit': 'battles', 'delta': 1}])):
+            separate = copy.deepcopy(original)
+            separate['missions'][phantom][field] = value
+            self.assertEqual(display_details(separate), clean_details(separate))
+        for unrelated in ('challenge:9:1', 'challenge:8:3', 'daily:fixture'):
+            separate = copy.deepcopy(original)
+            separate['missions'][unrelated] = separate['missions'].pop(actual)
+            self.assertEqual(display_details(separate), clean_details(separate))
+
+    def test_crucible_display_retains_multiple_confirmed_stage_results(self):
+        details = {'active_crucible': 'challenge:8:3', 'missions': {
+            'challenge:8:3': {'kind': 'crucible', 'stage': 3},
+            'challenge:8:2': {'kind': 'crucible', 'stage': 2, 'status': 'failed'},
+            'challenge:8:1': {'kind': 'crucible', 'stage': 1, 'status': 'completed'}}}
+        self.assertEqual(display_details(details), details)
 
     def quest(self, *conditions):
         return Obj(bonusCond=Obj(getConditions=lambda: Obj(items=list(conditions))))

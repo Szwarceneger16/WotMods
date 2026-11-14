@@ -11,6 +11,7 @@ from .core import (_number, _text, _OUTCOMES, _CURRENCIES, _BREAKDOWN,
                    _CREDIT_METRICS, _CREDIT_ALIASES, aggregate_stats, wn8_from_totals)
 from .localization import message
 from .loading import complete
+from .battle_details import display_details
 
 PAGE_SIZE = 40
 MAP_BATTLE_PAGE_SIZE = 10
@@ -225,6 +226,10 @@ class Totals(object):
                 else:
                     values[key] = series.sum()
                     values[key + '_count'] = series.count
+                    if key in ('income_base', 'net_base'):
+                        values[key + '_complete'] = bool(series.count) and series.count == result['observed_battles']
+                        if not values[key + '_complete']:
+                            values[key] = None
             result['currencies'][currency] = values
         return result
 
@@ -438,6 +443,9 @@ class ScopeIndex(object):
             return group.totals.counts['wins'] * 100.0 / count if count else None
         field = dict(_CREDIT_METRICS).get(metric)
         series = group.totals.money['credits'][field] if field else group.totals.series.get(metric)
+        if (field in ('income_base', 'net_base') and options['statistic'] == 'sum' and
+                (not series.count or series.count != group.totals.counts['observed_battles'])):
+            return None
         return series.snapshot().get(options['statistic']) if series else None
 
     def _ordered(self, kind, options):
@@ -587,7 +595,7 @@ class ScopeIndex(object):
                                  'started_at': record.get('started_at'), 'outcome': record.get('outcome'),
                                  'tier': record.get('vehicle_tier'), 'stats': aggregate_stats([record], self.table)}
                     if record.get('details'):
-                        row['details'] = record['details']
+                        row['details'] = display_details(record['details'])
                     if record.get('xp_bonus_applied'):
                         row['xp_bonus_applied'] = True
                     rows.append(row)

@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.10 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.11 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -28,15 +28,21 @@ The account and region determine which history and time points are shown.
 
 Advanced sorting marks the existing card value in orange when that value is
 already present. Additional credit or XP-total figures use a stable header slot.
-Min/Max offers a compact link to the battle that produced the result, across
-Maps, Vehicles and Tiers. For WN8, the large figure shows the selected Min/Average/Max while
+Min/Max offers a rounded arrow cue beside the number to open its source battle,
+across Maps, Vehicles and Tiers. The whole numeric cell remains clickable; only
+the small cue changes its background on hover or focus. Financial Min/Max buttons
+fit their captions and have equal surrounding spacing. For WN8, the large figure shows the selected Min/Average/Max while
 that sort is active; otherwise the **Combined WN8** headline recalculates a rating
 from all group results and expected vehicle values. It differs from the arithmetic
 mean of individual-battle WN8 in the table. The card information button explains
-this distinction. **All** sorts aggregate XP, credit income or credit costs by the sum of
+this distinction. **All** sorts aggregate XP, received credit income or credit costs by the sum of
 known values. Credit income and net sorting separately offer Base (before bonuses)
-and Received (settled income); historical missing Base values remain unknown.
-Both net variants subtract actual battle costs. All is not offered for
+and Received (settled income). Base totals and Base **All** sorting stay unavailable
+until every recorded battle in the group has the corresponding Base value;
+historical missing Base values remain unknown. Base Min/Average/Max still use the
+known sample, marked with `*` when incomplete; hover for its coverage. One known
+battle therefore has equal Min/Average/Max. Both net variants subtract actual
+battle costs. All is not offered for
 WN8, win rate or individual battles. Credit sums mark the existing finance total;
 XP sums show an explicit total in the header, with missing-value coverage.
 A compact summary table shows total base XP, total received XP and Free XP in three
@@ -55,7 +61,8 @@ unknown outcomes stay last. More: [sorting](docs/SORTING_AND_TIERS.md),
 [0.9.7 XP presentation and credit sorting](docs/UI_REFINEMENTS_0.9.7.md), and
 [0.9.8 battle references and compact headers](docs/UI_REFINEMENTS_0.9.8.md), and
 [0.9.9 permanent links and base/received credits](docs/UI_REFINEMENTS_0.9.9.md), and
-[0.9.10 native rendering and single coverage](docs/UI_REFINEMENTS_0.9.10.md).
+[0.9.10 native rendering and single coverage](docs/UI_REFINEMENTS_0.9.10.md), and
+[0.9.11 source arrows and historical data corrections](docs/UI_REFINEMENTS_0.9.11.md).
 
 An expanded **Maps** card lists battles on that map within the selected period.
 **Show battle** opens the chosen result in **Battles**. **Less** collapses an

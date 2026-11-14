@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.9.10 • 2026-11-14 • target: Wargaming EU 2.4.1.1
+Version 0.9.11 • 2026-11-14 • target: Wargaming EU 2.4.1.1
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface

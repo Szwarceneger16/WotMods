@@ -36,10 +36,11 @@ function run(){
     }
     return {card,meta,kpis,rows,head,money,credit};
   }
-  const options={metric:'battle_wn8',statistic:'max'},item={sort_value:8834,stats:{wn8:2732,battle_wn8:{max:8834},win_rate:0}};
+  const statItem=(metric,value)=>({sort_value:999999,stats:{battles:1,observed_battles:1,[metric]:{count:value===null?0:1,min:value,avg:value,max:value,sum:value}}});
+  const options={metric:'battle_wn8',statistic:'max'},item={sort_value:8834,stats:{wn8:2732,battle_wn8:{count:1,max:8834},win_rate:0}};
   assert.strictEqual(context.cardSortValue(item,options),8834);
   assert.strictEqual(context.sortMetricLabel(options,false),'Max WN8');
-  assert.strictEqual(context.cardSortValue({sort_value:null,stats:{win_rate:100}},{metric:'win_rate'}),null,'An authoritative unknown cannot become a plausible win');
+  assert.strictEqual(context.cardSortValue({sort_value:100,stats:{win_rate:null}},{metric:'win_rate'}),null,'An unavailable outcome cannot inherit a stale cached win rate');
   assert.strictEqual(context.cardSortValue({stats:{win_rate:0}},{metric:'win_rate'}),0,'Zero win rate is known');
   let f=fixture();context.highlightCardSort(f.card,f.meta,item,options,false);
   assert.strictEqual(f.kpis[2].getAttribute('data-ss-sort-active'),'battle_wn8');
@@ -56,7 +57,7 @@ function run(){
     assert.strictEqual(f.kpis[1].getAttribute('data-ss-sort-active'),battle?null:'win_rate','Only aggregate cards support win-rate highlighting');
     assert.strictEqual(f.kpis[0].getAttribute('data-ss-sort-active'),null);assert.strictEqual(f.meta.children.length,0);
   }
-  f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric:'credits_net_received',statistic:'avg'},false);
+  f=fixture();context.highlightCardSort(f.card,f.meta,statItem('credits_net_received',5),{metric:'credits_net_received',statistic:'avg'},false);
   assert.strictEqual(f.meta.children.length,1,'Per-battle credit statistics have no equivalent in the aggregate finance table');
   assert.strictEqual(f.meta.children[0].textContent,'Avg Credits income (net, received) / battle: 5');
   assert.strictEqual(f.credit.credits_net_received.querySelector('.ss-cell-value').getAttribute('data-ss-sort-active'),null,'A group total must not pretend to be the sorting average');
@@ -67,10 +68,10 @@ function run(){
     assert.strictEqual(f.credit[metric].querySelector('.ss-cell-value').getAttribute('data-ss-sort-active'),metric,'All credits mark the actual aggregate total');
     assert.strictEqual(f.meta.children.length,0,'An already displayed total needs no duplicate per-battle caption');
   }
-  f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:5},{metric:'credits_income_received',statistic:'avg'},false);
+  f=fixture();context.highlightCardSort(f.card,f.meta,statItem('credits_income_received',5),{metric:'credits_income_received',statistic:'avg'},false);
   assert.strictEqual(f.meta.children[0].textContent,'Avg Credits income (received) / battle: 5');
   for(const statistic of ['min','avg','max'])for(const value of [1200,0,null]){
-    f=fixture();context.highlightCardSort(f.card,f.meta,{sort_value:value},{metric:'credits_costs',statistic},false);
+    f=fixture();context.highlightCardSort(f.card,f.meta,statItem('credits_costs',value),{metric:'credits_costs',statistic},false);
     assert.strictEqual(f.meta.children[0].textContent,messages[statistic==='avg'?'sort.avg':'metric.'+statistic]+' Credits costs / battle: '+(value===null?'—':value),
       'Cost statistics expose their positive expense magnitude, including known zero and unavailable values');
     assert.strictEqual(f.credit.credits_costs.querySelector('.ss-cell-value').getAttribute('data-ss-sort-active'),null,'A cost average must not mark the total expense cell');
@@ -85,8 +86,8 @@ function run(){
   assert.strictEqual(context.groupSortValue({stats:{xp_base:{count:1,sum:0}}},{metric:'xp_base',statistic:'sum'}),0,'A received zero remains known');
   assert.strictEqual(context.groupSortValue({stats:{credits_gross:{count:1,sum:500}}},{metric:'credits_income_received',statistic:'sum'}),500,'Old gross series remains received');
   assert.strictEqual(context.groupSortValue({stats:{credits_net:{count:1,sum:50}}},{metric:'credits_net_received',statistic:'sum'}),50,'Old net series remains received');
-  assert.strictEqual(context.groupSortValue({stats:{credits_gross:{count:1,sum:500}}},{metric:'credits_income_base',statistic:'sum'}),undefined,'Old received income cannot invent base earnings');
-  assert.strictEqual(context.groupSortValue({stats:{credits_income_base:{count:1,sum:0}}},{metric:'credits_income_base',statistic:'sum'}),0,'Known zero base earnings stay available');
+  assert.strictEqual(context.groupSortValue({stats:{credits_gross:{count:1,sum:500}}},{metric:'credits_income_base',statistic:'sum'}),null,'Old received income cannot invent base earnings');
+  assert.strictEqual(context.groupSortValue({stats:{battles:1,credits_income_base:{count:1,sum:0}}},{metric:'credits_income_base',statistic:'sum'}),0,'Known zero base earnings stay available');
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'battle_wn8'},true);
   assert.strictEqual(f.rows[2].getAttribute('data-ss-sort-active'),'battle_wn8');assert.strictEqual(f.meta.children.length,0);
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'off'},false);

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import copy
 import shutil
 import sys
 import tempfile
@@ -10,7 +11,8 @@ from test_core import EXPECTED, result
 from test_normalize import raw_result
 import test_runtime as runtime_fixtures
 from test_runtime import Clock, Obj
-from grz_session_stats.battle_details import game_mission_metadata
+from grz_session_stats import battle_details
+from grz_session_stats.battle_details import game_active_crucible, game_mission_metadata
 from grz_session_stats.core import StatsService
 from grz_session_stats.sessions import InstallationSession
 from grz_session_stats.normalize import normalize_result
@@ -100,6 +102,80 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertEqual(restored.result_context('1')['active_crucible'], active)
         mission = restored.timeline_snapshot()['battles'][0]['details']['missions'][active]
         self.assertEqual(mission, {'kind': 'crucible', 'stage': 2, 'name': 'Fixture mission', 'status': 'completed'})
+
+    def test_native_current_crucible_counter_selects_first_middle_and_last_stage(self):
+        self.modules = {}
+        originals = self.modules
+
+        def restore_modules():
+            for name, original in originals.items():
+                if original is None:
+                    sys.modules.pop(name, None)
+                else:
+                    sys.modules[name] = original
+
+        self.addCleanup(restore_modules)
+        challenge = Obj(challengeID=8, questsIDs=['challenge:8:1', 'challenge:8:2', 'challenge:8:3'],
+                        name='Fixture challenge')
+        progress = {'quests': 1}
+        controller = Obj(isEnabled=True, activeChallengeID=8,
+                         getChallenge=lambda unused: challenge, getChallengeProgress=lambda unused: progress)
+        self.inject_module('helpers', dependency=Obj(instance=lambda unused: controller))
+        self.inject_module('skeletons.gui.challenges', IChallengesController=object())
+        resolver = battle_details.game_mission_metadata
+        self.addCleanup(setattr, battle_details, 'game_mission_metadata', resolver)
+        battle_details.game_mission_metadata = lambda unused: None
+        for stage in (1, 2, 3):
+            progress['quests'] = stage
+            active = 'challenge:8:{0}'.format(stage)
+            details = game_active_crucible()
+            self.assertEqual(details['active_crucible'], active)
+            self.assertEqual(details['missions'], {
+                active: {'kind': 'crucible', 'stage': stage, 'name': 'Fixture challenge'}})
+        for invalid in (0, -1, 4, None, True, '1'):
+            progress['quests'] = invalid
+            self.assertEqual(game_active_crucible(), {})
+
+    def test_legacy_next_stage_placeholder_is_repaired_by_result_and_stays_repaired(self):
+        actual, phantom = 'challenge:8:1', 'challenge:8:2'
+        context = {'active_crucible': phantom, 'missions': {
+            phantom: {'name': 'Fixture challenge', 'kind': 'crucible', 'stage': 2,
+                      'description': 'Next stage objective'}}}
+        self.clock.value = 110
+        self.assertTrue(self.service.begin_battle('1', 110, mode='random', details=context))
+        report = battle_details.result_details({'questsProgress': {
+            actual + ':fail': ('group', {}, {'bonusCount': 1})}}, {}, active=phantom)
+        self.assertTrue(self.service.record_result(result(details=report)))
+        expected = {'active_crucible': actual, 'missions': {
+            actual: {'name': 'Fixture challenge', 'kind': 'crucible', 'stage': 1, 'status': 'failed'}}}
+        self.assertEqual(self.service.timeline_snapshot()['battles'][0]['details'], expected)
+        self.service.record_result(result(details=context, reconcile=True))
+        self.clock.value = 120
+        restored = self.open_service('second')
+        self.assertEqual(restored.result_context('1')['active_crucible'], actual)
+        self.assertEqual(restored.timeline_snapshot()['battles'][0]['details'], expected)
+
+    def test_saved_legacy_duplicate_loads_and_displays_a_single_actual_mission(self):
+        actual, phantom = 'challenge:8:1', 'challenge:8:2'
+        self.clock.value = 110
+        self.assertTrue(self.service.record_result(result()))
+        legacy = copy.deepcopy(self.service._state)
+        details = {'active_crucible': phantom, 'missions': {
+            phantom: {'name': 'Fixture challenge', 'kind': 'crucible', 'stage': 2,
+                      'description': 'Next stage objective'},
+            actual: {'kind': 'crucible', 'stage': 1, 'status': 'failed'}}}
+        legacy['battles']['1']['details'] = details
+        self.service.store.save(legacy)
+        self.clock.value = 120
+        restored = self.open_service('second')
+        self.assertTrue(restored.ready)
+        self.assertEqual(restored._state['battles']['1']['details'], details)
+        scopes = restored.snapshot()['scopes']
+        for scope in (scopes['manual'], restored.timeline_snapshot()):
+            displayed = scope['battles'][0]['details']
+            self.assertEqual(displayed['active_crucible'], actual)
+            self.assertEqual(displayed['missions'], {
+                actual: {'name': 'Fixture challenge', 'kind': 'crucible', 'stage': 1, 'status': 'failed'}})
 
     def test_all_mission_sources_resolve_to_named_outcomes_and_fossa_honors(self):
         self.modules = {}

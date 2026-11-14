@@ -176,7 +176,10 @@ DEFAULT_CONFIG = {'schema_version': 1,
             'garage_wn8_hover_text': '#eee6c9',
             'garage_spinner_border': 'rgba(150,154,157,0.25)',
             'garage_spinner_border_top_color': '#969a9d',
-            'loading_scrim_background': 'rgba(17,19,9,0.45)'},
+            'loading_scrim_background': 'rgba(17,19,9,0.45)',
+            'extreme_link_background': '#303726',
+            'extreme_link_hover_background': '#50583b',
+            'extreme_link_text': '#c4c7ac'},
  'radii': {'window': 8,
            'titlebar': 7,
            'control': 5,
@@ -191,7 +194,8 @@ DEFAULT_CONFIG = {'schema_version': 1,
            'battle_outcome': 5,
            'panel_footer': 7,
            'confirmation': 8,
-           'garage_spinner': 8},
+           'garage_spinner': 8,
+           'extreme_link': 4},
  'opacity': {'window': 1.0, 'garage_button': 1.0, 'disabled_controls': 0.45, 'target_dimmed': 0.7, 'date_unavailable': 1.0},
  'scroll': {'speed_multiplier': 1.0},
  'maps': {'preview_mode': 'image'},
@@ -296,6 +300,7 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-summary-main { flex:0 1 460rem; width:460rem; max-width:100%; min-width:0; padding:0 6rem; margin:0 0 8rem; }
 .ss-summary-details { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; flex:0 1 650rem; width:650rem; max-width:100%; min-width:0; }
 .ss-summary-details > .ss-performance { flex:0 1 300rem; width:300rem; max-width:100%; min-width:0; padding:4rem 12rem 0 0; margin:0 0 8rem; }
+.ss-summary-details > .ss-performance.ss-long-metrics { flex-basis:330rem; width:330rem; }
 .ss-summary-details > .ss-economy { flex:0 1 350rem; width:350rem; max-width:100%; min-width:0; padding:4rem 0 0; margin:0 0 8rem; border:0; }
 .ss-summary-wrap .ss-summary-layout { flex-direction:column; align-items:center; }
 .ss-summary-wrap .ss-summary-main, .ss-summary-wrap .ss-summary-details { flex-basis:auto; }
@@ -339,8 +344,9 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-money-label { display:block; width:19%; font-size:13rem; color:{{colors.money_label_text}}; }
 .ss-money-value { display:block; width:27%; text-align:right; font-size:14rem; }
 /* Base and received credit totals share compact, permanent extrema actions. */
-.ss-credit-extreme-actions { display:flex; align-items:center; justify-content:flex-end; min-height:18rem; width:100%; }
-.ss-credit-extreme-actions > .ss-metric-battle-link { flex:0 1 50%; width:50%; min-width:0; max-width:50%; height:18rem; min-height:18rem; padding:0 1rem; font-size:11rem; line-height:16rem; }
+.ss-credit-extreme-actions { display:flex; align-items:center; min-height:18rem; width:100%; }
+.ss-credit-extreme-spacer { display:block; flex:1 1 0; min-width:0; }
+.ss-credit-extreme-actions > .ss-metric-battle-link { flex:0 0 auto; width:auto; min-width:0; max-width:none; height:18rem; min-height:18rem; padding:0 4rem; font-size:11rem; line-height:16rem; }
 .ss-credit-extreme-actions .ss-control-label, .ss-credit-extreme-actions .ss-metric-action-label { font-size:11rem; line-height:16rem; white-space:nowrap; }
 .ss-credit-cell > .ss-cell-value { white-space:normal; overflow-wrap:break-word; }
 .ss-positive { color:{{colors.positive_text}}; }
@@ -722,14 +728,17 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 .ss-metric-battle-link { display:block; min-width:0; width:100%; min-height:26rem; margin:0; padding:3rem 0; border:1rem solid {{colors.button_border}}; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.button_background_start}},{{colors.button_background_middle}} 48%,{{colors.button_background_end}}); color:{{colors.button_text}}; font-family:Warhelios, Arial, sans-serif; font-size:14rem; font-weight:normal; line-height:20rem; text-align:center; cursor:pointer; }
 .ss-metric-battle-link:hover, .ss-metric-battle-link:focus { outline:1rem solid {{colors.session_tab_marker_background}}; outline-offset:-1rem; border-color:{{colors.session_tab_marker_background}}; }
 .ss-metric-extreme-action .ss-metric-action-label { display:block; width:100%; min-width:0; height:16rem; font-size:11rem; line-height:16rem; text-align:center; }
-.ss-metric-number.ss-extreme-cell { position:relative; border-radius:{{radii.control}}rem; background:linear-gradient({{colors.table_header_background_start}},{{colors.table_header_background_end}}); }
-.ss-group .ss-extreme-cell.ss-sort-active-value { background:{{colors.sort_active_background}}; box-shadow:inset 0 0 0 1rem {{colors.session_tab_marker_background}}; }
-.ss-extreme-cell > .ss-metric-battle-link { position:absolute; left:0; top:0; width:100%; height:100%; min-height:22rem; padding:0; background:none; }
-.ss-group .ss-extreme-cell.ss-sort-active-value > .ss-metric-battle-link { border-color:{{colors.session_tab_marker_background}}; }
-.ss-extreme-link-cue { display:block; position:absolute; left:2rem; bottom:0; width:3rem; height:3rem; pointer-events:none; }
-.ss-extreme-link-cue:before { content:""; display:block; position:absolute; left:0; top:1rem; width:4rem; height:1rem; background:{{colors.list_meta_text}}; transform:rotate(-45deg); }
-.ss-extreme-link-cue:after { content:""; display:block; position:absolute; right:0; top:0; width:3rem; height:3rem; border-top:1rem solid {{colors.list_meta_text}}; border-right:1rem solid {{colors.list_meta_text}}; }
-.ss-extreme-cell > .ss-metric-battle-link:hover, .ss-extreme-cell > .ss-metric-battle-link:focus { background:none; }
+.ss-metric-number.ss-extreme-cell { position:relative; padding-left:20rem; }
+.ss-group .ss-extreme-cell.ss-sort-active-value { background:none; box-shadow:none; }
+.ss-extreme-cell > .ss-metric-battle-link,
+.ss-extreme-cell > .ss-metric-battle-link:hover,
+.ss-extreme-cell > .ss-metric-battle-link:focus { position:absolute; left:0; top:0; width:100%; height:100%; min-height:22rem; padding:0; background:none; border:0; outline:none; box-shadow:none; }
+.ss-extreme-link-cue { display:block; position:absolute; left:2rem; top:50%; margin-top:-9rem; width:16rem; height:18rem; border:0; outline:none; box-shadow:none; border-radius:{{radii.extreme_link}}rem; background:{{colors.extreme_link_background}}; pointer-events:none; }
+.ss-extreme-link-cue:before { content:""; display:block; position:absolute; left:3rem; top:9rem; width:10rem; height:1rem; background:{{colors.extreme_link_text}}; transform:rotate(-45deg); }
+.ss-extreme-link-cue:after { content:""; display:block; position:absolute; left:7rem; top:4rem; width:5rem; height:5rem; border-top:1rem solid {{colors.extreme_link_text}}; border-right:1rem solid {{colors.extreme_link_text}}; }
+.ss-extreme-cell > .ss-metric-battle-link:hover .ss-extreme-link-cue,
+.ss-extreme-cell > .ss-metric-battle-link:focus .ss-extreme-link-cue,
+.ss-extreme-cell.ss-sort-active-value .ss-extreme-link-cue { background:{{colors.extreme_link_hover_background}}; }
 .ss-group-stats > .ss-map-more-button { flex:0 0 72rem; width:72rem; min-width:72rem; margin-left:4rem; padding:3rem 4rem; font-size:11rem; line-height:16rem; }
 .ss-group-stats > .ss-map-more-button .ss-control-label { font-size:11rem; line-height:16rem; }
 .ss-aggregate.ss-compact-headline .ss-group-header { flex-wrap:wrap; }
@@ -841,12 +850,13 @@ button:disabled { opacity:{{opacity.disabled_controls}}; }
 /* Cards respond to their own configured/available width, independently of the
    full game viewport. Keep complete numbers at the regular reading size. */
 .ss-group .ss-details { flex-direction:row; flex-wrap:wrap; }
-.ss-group .ss-performance { flex:1 1 246rem; min-width:0; width:auto; }
+.ss-group .ss-performance { flex:1 1 300rem; min-width:0; width:auto; }
+.ss-group .ss-performance.ss-long-metrics { flex-basis:330rem; }
 .ss-group .ss-economy { flex:1 1 296rem; min-width:0; width:auto; }
 .ss-group .ss-economy.ss-long-finance { flex-basis:304rem; }
-.ss-group .ss-metric-name { width:32%; padding-left:1rem; padding-right:0; }
-.ss-group .ss-metric-number { width:22.666%; padding-right:2rem; }
-.ss-group .ss-long-metrics .ss-metric-row .ss-metric-number { font-size:14rem; }
+.ss-group .ss-metric-name { width:28%; padding-left:1rem; padding-right:0; }
+.ss-group .ss-metric-number { width:24%; padding-right:2rem; }
+.ss-long-metrics .ss-metric-row .ss-metric-number { font-size:14rem; }
 .ss-group .ss-battle-performance { flex:0 0 176rem; padding-right:7rem; }
 /* Reclaim cell insets before widening a table: translated currency names and
    complete signed eight-digit amounts must fit the same compact card. */

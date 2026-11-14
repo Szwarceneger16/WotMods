@@ -147,8 +147,9 @@ class CreditProjectionTests(unittest.TestCase):
             self.assertEqual(actual[metric], expected[metric], metric)
             self.assertEqual(actual[metric]['count'], count, metric)
         self.assertEqual(actual['credits_income_base']['sum'], 90)
-        self.assertEqual(actual['currencies']['credits']['income_base'], 90)
+        self.assertIsNone(actual['currencies']['credits']['income_base'])
         self.assertEqual(actual['currencies']['credits']['income_base_count'], 4)
+        self.assertFalse(actual['currencies']['credits']['income_base_complete'])
         self.assertEqual(actual['credits_gross'], actual['credits_income_received'])
         self.assertEqual(actual['credits_net'], actual['credits_net_received'])
 
@@ -244,6 +245,144 @@ class CreditProjectionTests(unittest.TestCase):
             for kind in ('maps', 'vehicles', 'tiers'):
                 self.assertEqual(localized[kind][0]['extrema_battles']['xp_base']['min']['map'], names[language])
         self.assertEqual(payload['scopes']['launch']['extrema_battles']['credits_income_base']['min']['map'], 'Saved native name')
+
+
+class HistoricalCreditCoverageTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.mkdtemp(prefix='grz-credit-history-')
+        self.clock = Clock(1000)
+        self.service = self.reopen()
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+
+    def reopen(self):
+        return StatsService(self.directory, 'synthetic-account', 'synthetic-launch', EXPECTED,
+                            self.clock, started_at=100, timeline_enabled=True)
+
+    def finish_timeline(self):
+        while self.service.timeline_loading:
+            self.service.advance_timeline(budget=1.0, max_steps=512)
+        return self.service.timeline_snapshot()
+
+    def test_one_new_base_value_is_not_a_whole_history_total(self):
+        # Model the old-history/new-report boundary without copying user data.
+        for position in range(26):
+            self.assertTrue(self.service.record_result(credit_result(
+                'old-%02d' % position, None, 90000, 50000, started_at=110 + position)))
+        self.assertTrue(self.service.record_result(credit_result(
+            'new', 51624, 92480, 44064, started_at=200)))
+        self.service = self.reopen()
+        scope = self.service.timeline_snapshot()
+        owners = [scope['summary']]
+        owners.extend(row['stats'] for kind in ('vehicles', 'maps', 'tiers') for row in scope[kind])
+        for stats in owners:
+            credits = stats['currencies']['credits']
+            self.assertEqual(stats['observed_battles'], 27)
+            self.assertEqual(credits['income'], 2432480)
+            self.assertEqual(credits['costs'], 1344064)
+            self.assertEqual(credits['net'], 1088416)
+            self.assertIsNone(credits['income_base'])
+            self.assertIsNone(credits['net_base'])
+            self.assertFalse(credits['income_base_complete'])
+            self.assertFalse(credits['net_base_complete'])
+            self.assertEqual(credits['income_base_count'], 1)
+            self.assertEqual(stats['credits_income_base'],
+                             {'min': 51624, 'avg': 51624.0, 'max': 51624, 'sum': 51624, 'count': 1})
+            self.assertEqual(stats['credits_net_base']['sum'], 7560)
+        period_id = scope['period_id']
+        for kind in ('vehicles', 'maps', 'tiers'):
+            for statistic in ('min', 'avg', 'max'):
+                order = dict(DEFAULT_ORDER, metric='credits_income_base', statistic=statistic)
+                self.assertTrue(self.service.set_order('timeline', kind, order, period_id))
+                shown = self.service.timeline_snapshot()[kind][0]
+                self.assertEqual(shown['sort_value'], 51624)
+                self.assertEqual(shown['stats']['credits_income_base']['count'], 1)
+
+    def test_timeline_statistic_changes_select_the_correct_known_sample_and_refresh_after_enrichment(self):
+        for identifier, base, received, cost, started_at in (
+                ('old', None, 1000, 90, 110), ('a', 100, 400, 30, 120),
+                ('b', 200, 600, 60, 130), ('c', 900, 1800, 100, 140)):
+            self.assertTrue(self.service.record_result(credit_result(
+                identifier, base, received, cost, started_at=started_at)))
+        # Beginning-of-history includes the legacy result with no originals.
+        for start, end, dates in (('', '', {}),
+                                  ('', '__custom__', {'to_date': 135}),
+                                  ('__custom__', '', {'from_date': 120})):
+            self.assertTrue(self.service.set_timeline_range(start, end, **dates))
+            scope = self.finish_timeline()
+            known = [100, 200, 900] if end != '__custom__' else [100, 200]
+            expected = {'min': min(known), 'avg': sum(known) / float(len(known)),
+                        'max': max(known), 'sum': sum(known)}
+            complete = start == '__custom__'
+            for kind in ('vehicles', 'maps', 'tiers'):
+                for statistic in ('max', 'min', 'avg', 'sum', 'min', 'max'):
+                    options = dict(DEFAULT_ORDER, metric='credits_income_base', statistic=statistic)
+                    self.assertTrue(self.service.set_order('timeline', kind, options, scope['period_id']))
+                    shown = self.service.timeline_snapshot()[kind][0]
+                    self.assertEqual(shown['sort_value'], None if statistic == 'sum' and not complete
+                                     else expected[statistic])
+                    self.assertEqual(shown['stats']['credits_income_base']['count'], len(known))
+                    if statistic in ('min', 'max'):
+                        self.assertEqual(shown['sort_battle']['value'], expected[statistic])
+            money = scope['summary']['currencies']['credits']
+            self.assertEqual(money['income_base_complete'], complete)
+            self.assertEqual(money['net_base_complete'], complete)
+            self.assertEqual(money['income_base'], sum(known) if complete else None)
+        self.assertTrue(self.service.set_timeline_range('', ''))
+        before = self.service.timeline_snapshot()
+        self.assertIsNone(before['summary']['currencies']['credits']['income_base'])
+        # Passive native report enrichment replaces no other saved metrics and
+        # invalidates the full-period sample and total completeness together.
+        self.assertTrue(self.service.record_result(credit_result(
+            'old', 0, None, None, started_at=110, reconcile=True)))
+        after = self.service.timeline_snapshot()
+        self.assertTrue(after['summary']['currencies']['credits']['income_base_complete'])
+        self.assertTrue(after['summary']['currencies']['credits']['net_base_complete'])
+        self.assertEqual(after['summary']['currencies']['credits']['income_base'], 1200)
+        self.assertEqual(after['summary']['currencies']['credits']['net_base'], 920)
+        self.assertEqual(after['summary']['credits_income_received'], before['summary']['credits_income_received'])
+        self.assertEqual(after['summary']['credits_income_base']['min'], 0)
+        self.assertEqual(after['summary']['credits_income_base']['avg'], 300)
+
+    def test_base_total_completeness_includes_pending_battles_and_known_zero(self):
+        rows = [credit_result('zero', 0, 0, 10),
+                credit_result('pending', None, None, None, outcome=None, complete=False)]
+        table = ExpectedTable(EXPECTED)
+        index = ScopeIndex('synthetic', table)
+        index.build([contribution(row, table) for row in rows])
+        stats = aggregate_stats(rows, table)
+        self.assertEqual(index.totals.snapshot(), stats)
+        self.assertIsNone(stats['currencies']['credits']['income_base'])
+        self.assertFalse(stats['currencies']['credits']['income_base_complete'])
+        self.assertEqual(stats['credits_income_base']['sum'], 0)
+        known = aggregate_stats(rows[:1], table)['currencies']['credits']
+        self.assertEqual(known['income_base'], 0)
+        self.assertEqual(known['net_base'], -10)
+        self.assertTrue(known['income_base_complete'])
+        self.assertTrue(known['net_base_complete'])
+        missing_costs = aggregate_stats(rows[:1] + [credit_result('cost-pending', 100, 200, None)], table)
+        money = missing_costs['currencies']['credits']
+        self.assertEqual(money['income_base'], 100)
+        self.assertTrue(money['income_base_complete'])
+        self.assertIsNone(money['net_base'])
+        self.assertFalse(money['net_base_complete'])
+        self.assertEqual(missing_costs['credits_net_base']['sum'], -10)
+
+    def test_partial_base_sum_sorts_as_unavailable_while_known_zero_stays_numeric(self):
+        rows = [credit_result('partial-known', 900, 1000, 10, vehicle_id=1),
+                credit_result('partial-unknown', None, 2000, 20, vehicle_id=1),
+                credit_result('complete-zero', 0, 0, 0, vehicle_id=2)]
+        table = ExpectedTable(EXPECTED)
+        index = ScopeIndex('synthetic', table)
+        index.build([contribution(row, table) for row in rows])
+        for metric in ('credits_income_base', 'credits_net_base'):
+            for direction in ('asc', 'desc'):
+                options = dict(DEFAULT_ORDER, metric=metric, statistic='sum', direction=direction)
+                groups = index.snapshot('Synthetic', 0, orders={'vehicles': options})['vehicles']
+                self.assertEqual([group['id'] for group in groups], ['2', '1'])
+                self.assertEqual([group['sort_value'] for group in groups], [0, None])
+                self.assertEqual(groups[1]['stats'][metric]['count'], 1)
 
 
 if __name__ == '__main__':

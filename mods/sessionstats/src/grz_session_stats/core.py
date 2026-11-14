@@ -133,13 +133,20 @@ class ExpectedTable(object):
         return expected
 
 
-def _money(records, currency):
+def _money(records, currency, observed_count):
     money = {}
     for key in ('income', 'costs', 'net') + (('income_base', 'net_base') if currency == 'credits' else ()):
         values = [record.get('currencies', {}).get(currency, {}).get(key) for record in records]
         known = [value for value in values if value is not None]
         money[key] = _number(sum(known)) if known else None
         money[key + '_count'] = len(known)
+        if key in ('income_base', 'net_base'):
+            # Original earnings were not stored by older versions. A subtotal
+            # from new reports must not look comparable to all received costs
+            # or earnings. Keep the known sample in the independent series.
+            money[key + '_complete'] = bool(known) and len(known) == observed_count
+            if not money[key + '_complete']:
+                money[key] = None
     money['breakdown'] = {}
     money['breakdown_counts'] = {}
     for key in _BREAKDOWN:
@@ -186,7 +193,7 @@ def aggregate_stats(records, expected_table):
     stats['wn8_count'] = len(per_battle)
     stats['wn8'] = wn8_from_totals(actual, reference) if per_battle else None
     stats['battle_wn8'] = _series(per_battle)
-    stats['currencies'] = dict((currency, _money(records, currency)) for currency in _CURRENCIES)
+    stats['currencies'] = dict((currency, _money(records, currency, len(observed))) for currency in _CURRENCIES)
     return stats
 
 

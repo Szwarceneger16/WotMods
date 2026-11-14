@@ -193,7 +193,8 @@ async function audit(page,mode,group) {
     const base=first.querySelector('.ss-money-value[data-ss-metric="credits_income_base"]').closest('.ss-money-row');
     const baseValues=[...base.querySelectorAll('.ss-cell-value')].map(node=>normalize(node.textContent)),
       baseIncome=sample.income-Math.floor(sample.income/4),baseNet=baseIncome-sample.costs;
-    if(baseValues.join('|')!==[baseIncome,-sample.costs,(baseNet>=0?'+':'')+baseNet].join('|')) {
+    const expectedBase=group==='battles' ? [baseIncome,-sample.costs,(baseNet>=0?'+':'')+baseNet] : ['—',-sample.costs,'—'];
+    if(baseValues.join('|')!==expectedBase.join('|')) {
       issues.push({kind:'incomplete-base-finance-values',values:baseValues});
     }
     const baseCounts=[...base.querySelectorAll('.ss-money-value')].map(node=>node.getAttribute('aria-label'));
@@ -215,8 +216,19 @@ async function audit(page,mode,group) {
       performance.right>economy.left+limit)) {
       issues.push({kind:'unbalanced-card-finance',performance:performance.width/scale,economy:economy.width/scale});
     }
-    if(group!=='battles' && !stress && cardWidth>=559 && (performance.width/scale<240 || economy.width/scale<296 ||
-      performance.right>economy.left+limit)) issues.push({kind:'unbalanced-group-finance',performance:performance.width/scale,economy:economy.width/scale});
+    if(group!=='battles' && !stress && cardWidth>=559) {
+      const bounds=detail.getBoundingClientRect(),contained=[performance,economy].every(box=>
+        box.left>=bounds.left-limit&&box.right<=bounds.right+limit&&box.top>=bounds.top-limit&&box.bottom<=bounds.bottom+limit);
+      const horizontal=performance.width/scale>=300&&economy.width/scale>=296&&
+        performance.right<=economy.left+limit&&Math.abs(performance.top-economy.top)<=limit;
+      // The arrow reserves its own leading space, so a medium-width card can
+      // wrap the two complete columns. Stacking is valid only when both stay
+      // contained and the economy starts below the performance block.
+      const stacked=performance.width/scale>=300&&economy.width/scale>=296&&economy.top>=performance.bottom-limit&&
+        Math.abs(performance.left-economy.left)<=limit&&Math.abs(performance.width-economy.width)<=limit;
+      if(!contained||(!horizontal&&!stacked)) issues.push({kind:'unbalanced-group-finance',
+        performance:performance.toJSON(),economy:economy.toJSON(),bounds:bounds.toJSON(),horizontal,stacked});
+    }
     const columns=panel.querySelector('.ss-card-columns');
     const axis=columns && getComputedStyle(columns,':before');
     const arrow=columns && getComputedStyle(columns,':after');

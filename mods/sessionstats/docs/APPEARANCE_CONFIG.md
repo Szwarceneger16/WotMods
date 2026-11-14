@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.10
+# Appearance and scrolling configuration — 0.9.11
 
 ## File placement and applying changes
 
@@ -27,8 +27,8 @@ are logged as `CONFIG_SETUP` without stopping collection or modifying source fil
 Configuration loads at startup, when opening the panel and after **Refresh**.
 Save the file, then reopen or refresh the panel. There is no per-frame polling.
 
-The full supplied JSON contains **the current appearance as defaults**: 145 colors,
-15 corner radii, five opacity settings, a scrolling multiplier, two card-width
+The full supplied JSON contains **the current appearance as defaults**: 148 colors,
+16 corner radii, five opacity settings, a scrolling multiplier, two card-width
 presets and persistent window preferences. An unavailable file,
 empty object `{}` and omitted fields use the built-in defaults. Partial nested
 sections are supported; include only the fields you want to override.
@@ -58,6 +58,10 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.table_row_following_border_top` | `"#2e3522"` | Subtle row separator |
 | `colors.table_row_hover_background` | `"#252d1b"` | Hovered row background |
 | `colors.metric_value_text` | `"#ebe7d4"` | Performance-table numbers |
+| `colors.extreme_link_background` | `"#303726"` | Rounded source-arrow cue background |
+| `colors.extreme_link_hover_background` | `"#50583b"` | Source-arrow cue on hover, focus or active sorting |
+| `colors.extreme_link_text` | `"#c4c7ac"` | Source-arrow strokes |
+| `radii.extreme_link` | `4` | Source-arrow cue corner radius |
 | `colors.sort_active_background` | `"#252a23"` | Neutral fill behind the active sorting value; the orange outline remains separate |
 | `colors.loading_scrim_background` | `"rgba(17,19,9,0.45)"` | Panel-wide loading scrim; retained results also use a slight blur where supported |
 | `colors.positive_text` | `"#c0d889"` | Positive balance |

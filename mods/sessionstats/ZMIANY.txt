@@ -1,5 +1,12 @@
 SESSION STATS — CHANGELOG
 
+0.9.11 • 2026-11-14
+• Replace framed performance links with rounded arrow cues and retain cell navigation.
+• Fit financial Min/Max buttons to their captions with equal surrounding spacing.
+• Derive selected sorting figures from their matching series, including retained cards.
+• Mark partial sorting samples and leave incomplete base-credit totals unavailable.
+• Correct one-based Crucible stage selection and retire obsolete next-stage placeholders.
+
 0.9.10 • 2026-11-14
 • Preserve native Min/Max number painting with clearly marked source actions.
 • Show one global result count and one upper-left partial card badge.
