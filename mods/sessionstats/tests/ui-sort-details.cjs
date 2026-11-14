@@ -55,15 +55,15 @@ module.exports=async ({browser,nativeHost,check})=>{
         const expected=values.map(value=>{
           const amount=value===null ? messages['format.missing'] : (value>0 ? '+' : value<0 ? '-' : '')+
             String(Math.abs(value)).replace(/\B(?=(\d{3})+(?!\d))/g,messages['format.thousands']);
-          return messages['sort.value_per_battle'].replace(/\{([0-9])\}/g,(_,index)=>[statLabel,messages['sort.credits'],amount][index]);
+          return {text:messages['sort.value_per_battle'].replace(/\{([0-9])\}/g,(_,index)=>[statLabel,messages['sort.credits'],amount][index]),amount};
         });
         const audit=await page.locator('.ss-group-sort-value').evaluateAll((nodes,scale)=>nodes.map(node=>{
           const box=node.getBoundingClientRect(),card=node.closest('.ss-group').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
-          return {text:node.textContent,font:parseFloat(getComputedStyle(node).fontSize)/scale,
+          return {text:node.getAttribute('aria-label')||node.textContent,visible:node.querySelector('.ss-group-sort-number').textContent,inHeader:!!node.closest('.ss-group-header .ss-group-sort-host'),font:parseFloat(getComputedStyle(node).fontSize)/scale,
             fits:box.width>0 && box.left>=card.left-1 && box.right<=card.right+1 && [...range.getClientRects()].every(text=>text.left>=box.left-1 && text.right<=box.right+1)};
         }),scale);
         check('Net sort displays the full per-battle '+statistic+' value rather than its aggregate total for '+group+' '+caption+': '+JSON.stringify(audit),
-          audit.length===4 && audit.every((item,index)=>item.text===expected[index] && item.font>=11 && item.fits));
+          audit.length===4 && audit.every((item,index)=>item.text===expected[index].text && item.visible===expected[index].amount && item.inHeader && item.font>=11 && item.fits));
         check('An active aggregate metric restores Statistic access: '+group+' '+caption,
           await page.locator('#ss-sort-statistic .ss-select-trigger').isEnabled() && await page.locator('#ss-sort-statistic .ss-select-trigger').getAttribute('aria-disabled')==='false');
       }

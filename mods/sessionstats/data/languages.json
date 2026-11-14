@@ -365,7 +365,13 @@
       "sort.value_total": "Total {0}: {1}",
       "sort.credits_costs": "Credits costs",
       "sort.credits.caption": "Credits income (net)",
-      "sort.credits_gross.caption": "Credits income (gross)"
+      "sort.credits_gross.caption": "Credits income (gross)",
+      "sort.extreme_battle": "Battle for {0}",
+      "sort.card_first": "First battle",
+      "sort.card_last": "Last battle",
+      "sort.card_source": "Source battle",
+      "sort.card_base_xp": "Base XP",
+      "sort.card_received_xp": "Rec. XP"
     },
     "pl": {
       "title": "Statystyki sesji",
@@ -731,7 +737,13 @@
       "sort.value_total": "{0} łącznie: {1}",
       "sort.credits_costs": "Koszty kredytów",
       "sort.credits.caption": "Dochód kr. (netto)",
-      "sort.credits_gross.caption": "Przychód kr. (brutto)"
+      "sort.credits_gross.caption": "Przychód kr. (brutto)",
+      "sort.extreme_battle": "Bitwa dla {0}",
+      "sort.card_first": "Pierwsza bitwa",
+      "sort.card_last": "Ostatnia bitwa",
+      "sort.card_source": "Bitwa źródłowa",
+      "sort.card_base_xp": "Bazowe PD",
+      "sort.card_received_xp": "Otrz. PD"
     },
     "ru": {
       "title": "Статистика сессии",
@@ -1097,7 +1109,13 @@
       "sort.value_total": "Всего {0}: {1}",
       "sort.credits_costs": "Расход кредитов",
       "sort.credits.caption": "Доход кр. (нетто)",
-      "sort.credits_gross.caption": "Доход кр. (брутто)"
+      "sort.credits_gross.caption": "Доход кр. (брутто)",
+      "sort.extreme_battle": "Бой для {0}",
+      "sort.card_first": "Первый бой",
+      "sort.card_last": "Последний бой",
+      "sort.card_source": "Бой-источник",
+      "sort.card_base_xp": "Баз. опыт",
+      "sort.card_received_xp": "Получ. опыт"
     },
     "fr": {
       "title": "Statistiques de session",
@@ -1463,7 +1481,13 @@
       "sort.value_total": "Total {0} : {1}",
       "sort.credits_costs": "Coûts crédits",
       "sort.credits.caption": "Revenus crédits (nets)",
-      "sort.credits_gross.caption": "Revenus crédits (bruts)"
+      "sort.credits_gross.caption": "Revenus crédits (bruts)",
+      "sort.extreme_battle": "Bataille pour {0}",
+      "sort.card_first": "Première bataille",
+      "sort.card_last": "Dernière bataille",
+      "sort.card_source": "Bataille source",
+      "sort.card_base_xp": "EXP base",
+      "sort.card_received_xp": "EXP reçue"
     },
     "de": {
       "title": "Sitzungsstatistik",
@@ -1829,7 +1853,13 @@
       "sort.value_total": "{0} gesamt: {1}",
       "sort.credits_costs": "Kreditkosten",
       "sort.credits.caption": "Kreditertrag (netto)",
-      "sort.credits_gross.caption": "Kreditertrag (brutto)"
+      "sort.credits_gross.caption": "Kreditertrag (brutto)",
+      "sort.extreme_battle": "Gefecht für {0}",
+      "sort.card_first": "Erstes Gefecht",
+      "sort.card_last": "Letztes Gefecht",
+      "sort.card_source": "Quellgefecht",
+      "sort.card_base_xp": "Basis-EP",
+      "sort.card_received_xp": "Erh. EP"
     },
     "es": {
       "title": "Estadísticas de sesión",
@@ -2195,7 +2225,13 @@
       "sort.value_total": "Total {0}: {1}",
       "sort.credits_costs": "Costes créditos",
       "sort.credits.caption": "Ingreso créditos (neto)",
-      "sort.credits_gross.caption": "Ingreso créditos (bruto)"
+      "sort.credits_gross.caption": "Ingreso créditos (bruto)",
+      "sort.extreme_battle": "Batalla de {0}",
+      "sort.card_first": "Primera batalla",
+      "sort.card_last": "Última batalla",
+      "sort.card_source": "Batalla origen",
+      "sort.card_base_xp": "EXP base",
+      "sort.card_received_xp": "EXP recib."
     },
     "uk": {
       "title": "Статистика сесії",
@@ -2561,7 +2597,13 @@
       "sort.value_total": "Усього {0}: {1}",
       "sort.credits_costs": "Витрати кредитів",
       "sort.credits.caption": "Дохід кредитів (нетто)",
-      "sort.credits_gross.caption": "Дохід кредитів (брутто)"
+      "sort.credits_gross.caption": "Дохід кредитів (брутто)",
+      "sort.extreme_battle": "Бій для {0}",
+      "sort.card_first": "Перша битва",
+      "sort.card_last": "Остання битва",
+      "sort.card_source": "Бій-джерело",
+      "sort.card_base_xp": "Баз. досвід",
+      "sort.card_received_xp": "Отр. досвід"
     }
   }
 }

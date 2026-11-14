@@ -38,7 +38,7 @@ function assertWN8Source(){
       assert(!Object.keys(node.style).some(key=>/background|border|padding|width|height/i.test(key)),'Rating paint cannot change fill or geometry');
       const ink=node.querySelector('.ss-wn8-low-ink');
       assert.strictEqual(Boolean(ink),color==='#000000',file+' only black figures have a backing');
-      if(ink){assert.strictEqual(ink.style.backgroundColor,'rgba(190,190,180,0.65)');assert.strictEqual(ink.style.fontWeight,'bold');}
+      if(ink){assert.strictEqual(ink.style.backgroundColor,'rgba(180,192,166,0.65)');assert.strictEqual(ink.style.fontWeight,'bold');}
       const caption=new Node('span');context.paintWN8(caption,0);context.paintWN8Caption(caption,minimum);
       assert.strictEqual(caption.style.color,color==='#000000'?'':color,file+' black captions use their configured label color');
       assert.strictEqual(caption.style.textShadow,'none',file+' captions never inherit a numeric halo');
@@ -135,15 +135,15 @@ module.exports=async({browser,nativeHost,check})=>{
           const background=ink.style.backgroundColor,shadow=ink.style.boxShadow;
           ink.style.backgroundColor='transparent';ink.style.boxShadow='none';const after=node.getBoundingClientRect();
           ink.style.backgroundColor=background;ink.style.boxShadow=shadow;
-          return css.color==='rgb(0, 0, 0)'&&background==='rgba(190, 190, 180, 0.65)'&&Number(css.fontWeight)>=700&&
+          return css.color==='rgb(0, 0, 0)'&&background==='rgba(180, 192, 166, 0.65)'&&Number(css.fontWeight)>=700&&
             ink.textContent===node.textContent&&before.width===after.width&&before.height===after.height;
         })));
-      check('Black WN8 uses a muted translucent gray with readable contrast even over black in '+group,
+      check('Black WN8 uses a muted translucent gray-green with readable contrast even over black in '+group,
         await page.locator('.ss-wn8-low-ink').evaluateAll(nodes=>nodes.length>0&&nodes.every(node=>{
           const values=getComputedStyle(node).backgroundColor.match(/[\d.]+/g).map(Number),alpha=values.length===4?values[3]:1;
           const linear=values.slice(0,3).map(channel=>{const value=channel*alpha/255;return value<=0.04045?value/12.92:Math.pow((value+0.055)/1.055,2.4);});
           const contrast=(0.2126*linear[0]+0.7152*linear[1]+0.0722*linear[2]+0.05)/0.05;
-          return alpha<=0.7&&values[0]<=200&&Math.abs(values[0]-values[1])<=10&&contrast>=4.5;
+          return alpha<=0.7&&values[1]>values[0]&&values[0]>values[2]&&values[1]-values[2]<=32&&contrast>=4.5;
         })));
       if(group==='vehicles'||group==='maps')check('Every nested history rating retains its own palette in '+group,
         await page.locator('.ss-map-battles').first().locator('.ss-map-battle-wn8-value[data-wn8-value]').count()===bands.length);

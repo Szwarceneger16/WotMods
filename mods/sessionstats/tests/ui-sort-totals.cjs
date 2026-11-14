@@ -45,9 +45,10 @@ module.exports=async({browser,nativeHost,check})=>{
               row.children[column].getAttribute('data-ss-sort-active')===metric,{metric,column})&&
             await page.locator('.ss-group-sort-value').count()===0);
         }else{
-          const caption=await page.locator('.ss-group-sort-value').textContent();
+          const caption=await page.locator('.ss-group-sort-value').getAttribute('aria-label');
+          const visible=await page.locator('.ss-group-sort-value .ss-group-sort-number').textContent();
           check('XP All shows an explicit total without highlighting Avg '+group+'/'+metric,
-            caption.includes(metric==='xp_base'?'600':'0')&&caption.includes('Total')&&
+            caption.includes(metric==='xp_base'?'600':'0')&&caption.includes('Total')&&visible===(metric==='xp_base'?'600':'0')&&
             await page.locator('.ss-metric-row [data-ss-sort-active]').count()===0);
         }
       }

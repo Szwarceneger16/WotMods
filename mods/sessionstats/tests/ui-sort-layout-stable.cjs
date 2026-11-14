@@ -11,7 +11,7 @@ const frames=page=>page.evaluate(()=>new Promise((resolve,reject)=>{let left=6;
   }requestAnimationFrame(next);}));
 module.exports=async({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  const metrics=[['battles','avg'],['win_rate','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['off','avg']];
+  const metrics=[['battles','avg'],['win_rate','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['credits_net','avg'],['credits_costs','max'],['xp_received','sum'],['off','avg']];
   for(const scale of [1,2]){
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     try{
@@ -46,7 +46,7 @@ module.exports=async({browser,nativeHost,check})=>{
             await page.evaluate(({group,metric,statistic})=>{
               const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
               scope.ordering[group]={metric,statistic,direction:'desc',chronology:'newest'};
-              scope[group].forEach(item=>{item.sort_value=metric==='battle_wn8'?(statistic==='min'?334:5035):8;});
+              scope[group].forEach(item=>{item.sort_value=metric==='battle_wn8'?(statistic==='min'?334:5035):metric==='xp_received'&&statistic==='sum'?12345678:metric.indexOf('credits_')===0?149678:8;});
               model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();document.getElementById('ss-group-'+group).onclick();
             },{group,metric,statistic});await frames(page);
             const value=await page.evaluate(()=>{
@@ -60,17 +60,21 @@ module.exports=async({browser,nativeHost,check})=>{
                 const fit=[...labelRange.getClientRects()].every(part=>part.left>=labelBox.left-1&&part.right<=labelBox.right+1&&part.top>=labelBox.top-1&&part.bottom<=labelBox.bottom+1)&&text.left>=box.left-1&&text.right<=box.right+1;return {fits:fit,box:rect(node,cardBox),label:rect(node.querySelector('.ss-kpi-label'),cardBox),value:rect(number,cardBox),centered:Math.abs((text.left+text.right-box.left-box.right)/2)<=1};
               });
               const field=document.querySelector('.ss-sort-statistic'),trigger=document.querySelector('#ss-sort-statistic .ss-select-trigger');
-              return {controls,kpis,header:rect(card.querySelector('.ss-group-header'),cardBox),sorting:rect(document.getElementById('ss-sorting'),barBox),
+              const host=card.querySelector('.ss-group-sort-host');
+              const hostBox=host.getBoundingClientRect(),parts=host.querySelectorAll('.ss-group-sort-caption,.ss-group-sort-number,.ss-count-coverage');
+              const hostFits=[...parts].every(node=>{const box=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
+                return [...range.getClientRects()].every(part=>part.left>=box.left-1&&part.right<=box.right+1&&part.top>=box.top-1&&part.bottom<=box.bottom+1);});
+              return {controls,kpis,host:rect(host,cardBox),hostFits,card:rect(card,cardBox),header:rect(card.querySelector('.ss-group-header'),cardBox),sorting:rect(document.getElementById('ss-sorting'),barBox),
                 hidden:getComputedStyle(field).visibility==='hidden',aria:field.getAttribute('aria-hidden'),disabled:trigger.disabled};
             });
             const caption=language+'/'+scale+'x/'+width+'/'+group+'/'+metric+'/'+statistic;
             if(!baseline)baseline=value;
             const same=(left,right)=>left.length===right.length&&left.every((part,index)=>Array.isArray(part)?same(part,right[index]):Math.abs(part-right[index])<=scale*0.1);
-            const unchanged=same(value.controls,baseline.controls)&&same(value.sorting,baseline.sorting)&&same(value.header,baseline.header)&&
+            const unchanged=same(value.controls,baseline.controls)&&same(value.sorting,baseline.sorting)&&same(value.header,baseline.header)&&same(value.host,baseline.host)&&same(value.card,baseline.card)&&
               value.kpis.every((item,index)=>same(item.box,baseline.kpis[index].box)&&same(item.label,baseline.kpis[index].label)&&same(item.value,baseline.kpis[index].value));
             check('Metric changes preserve filter boxes and aggregate header slots '+caption+(unchanged?'':': '+JSON.stringify(value)),unchanged);
-            const centered=value.kpis.every(item=>item.centered&&item.fits);
-            check('Every aggregate figure uses the same centered slot before/after highlighting '+caption+(centered?'':': '+JSON.stringify(value)),centered);
+            const centered=value.kpis.every(item=>item.centered&&item.fits)&&value.hostFits;
+            check('Every aggregate figure and active-value/date caption fits its fixed slot '+caption+(centered?'':': '+JSON.stringify(value)),centered);
             if(metric==='battles'||metric==='win_rate')check('Inapplicable Statistic reserves space without becoming visible or focusable '+caption,
               value.hidden&&value.aria==='true'&&value.disabled);
           }
@@ -83,6 +87,21 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.evaluate(()=>{const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.maps.metric='win_rate';model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});
       check('An inapplicable statistic closes its old menu and leaves keyboard navigation',await page.locator('#ss-sort-statistic .ss-select-trigger').getAttribute('aria-expanded')==='false'&&
         await page.locator('#ss-sort-statistic .ss-select-trigger').isDisabled()&&!await page.locator('#ss-sort-statistic .ss-select-options').isVisible());
+      for(const [confirmed,total] of [[0,137],[123456,137000]]){
+        await page.evaluate(({confirmed,total})=>{const payload=JSON.parse(model.payload);payload.scopes.launch.maps.forEach(item=>{
+          item.stats.battles=confirmed;item.stats.observed_battles=total;
+        });model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();},{confirmed,total});await frames(page);
+        const count=await page.locator('.ss-group-count').first().evaluate(node=>{
+          const value=node.querySelector('.ss-kpi-value'),parts=[...value.children];
+          return {text:value.textContent,parts:parts.length,fits:parts.every(part=>{
+            const box=part.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(part);
+            return [...range.getClientRects()].every(text=>text.left>=box.left-1&&text.right<=box.right+1&&text.top>=box.top-1&&text.bottom<=box.bottom+1);
+          })};
+        });
+        check('The compact battle-count slot retains full zero/large partial counts at '+scale+'x: '+JSON.stringify(count),
+          count.parts===2&&count.fits&&count.text.replace(/[\s\u00a0]/g,'')===confirmed+'/'+total);
+      }
+
     }finally{await page.close();}
   }
 };

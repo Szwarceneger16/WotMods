@@ -284,8 +284,9 @@ async function runFeatureSuite(file,browser) {
     (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
     (await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help')).includes('Incomplete statistics') &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
-  check('Financial coverage includes the registered battle with no result',
-    (await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').allTextContents()).includes('16/17'));
+  check('Financial coverage includes the missing result in help instead of repeating a visible header count',
+    await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').count()===0&&
+    (await page.locator('#ss-summary .ss-economy .ss-info-button').getAttribute('data-ss-help')).includes('Data available for 16 of 17 recorded battles.'));
   await page.locator('#ss-group-battles').click();
   const missingCard=(await battleCards(page)).find(row=>row.id==='missing-result-fixture');
   check('Unrecovered battle stays listed with unknown outcome and dashes rather than fabricated zeros',
@@ -305,7 +306,8 @@ async function runFeatureSuite(file,browser) {
     expanded:card.querySelector('.ss-vehicle-more-button') && card.querySelector('.ss-vehicle-more-button').getAttribute('aria-expanded'),
     hidden:card.querySelector('.ss-vehicle-battles') && getComputedStyle(card.querySelector('.ss-vehicle-battles')).display==='none',
     missionDetails:card.querySelectorAll('.ss-more-panel,.ss-more-mission,details').length,
-    otherAccordions:card.querySelectorAll('[aria-expanded]:not(.ss-info-button):not(.ss-vehicle-more-button)').length})));
+    otherAccordions:Array.from(card.querySelectorAll('[aria-expanded]:not(.ss-info-button):not(.ss-vehicle-more-button)')).filter(node=>
+      !(node.classList.contains('ss-hover-help')&&node.getAttribute('aria-controls')==='ss-help-tooltip'&&node.hasAttribute('data-ss-help'))).length})));
   check('Vehicle aggregates expose only a closed battle-history control without inline mission accordions: '+JSON.stringify(aggregateHistory),
     aggregateHistory.length>0 && aggregateHistory.every(card=>card.buttons===1 && card.expanded==='false' && card.hidden &&
       card.missionDetails===0 && card.otherAccordions===0) && await page.locator('details').count()===0);

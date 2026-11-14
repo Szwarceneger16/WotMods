@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.7 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.8 (persistent data schema unchanged)
 Release date: 2026-11-11.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -81,7 +81,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.7', account_key: string, generated_at: unix seconds,
+ version: '0.9.8', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -106,7 +106,9 @@ MONEY = {income:number or null, costs:number or null, net:number or null,
          income_count:int, costs_count:int, net_count:int,
          breakdown:{repair:number or null, ammo:number or null,
                     consumables:number or null, directives:number or null}}
-Partial sums are sums of confirmed known values and must show coverage e.g. 15/16.
+Partial sums are sums of confirmed known values. Their coverage remains available
+in visible group details or help/ARIA; global totals and table headers omit repeated
+visible x/y while the received-results count remains above.
 observed_battles includes durable beginnings with no outcome; battles counts known
 outcomes. Missing results remain listed with unknown outcome and unknown numeric
 values. All group/financial coverage uses observed_battles as denominator. Display
@@ -115,6 +117,12 @@ never silently present the known subset as the whole registered session.
 GROUP = {id:string, name:unicode, tier:integer or null, type:string or null, started_at:latest battle time, first_started_at:earliest battle time, stats:STATS}
 BATTLE_ROW = {id:string, name:vehicle_name, map:map_name, started_at:seconds,
               outcome:string, tier:int or null, stats:STATS}
+Aggregate Min/Max may add sort_battle = {id, name, map, map_id, started_at, outcome,
+wn8, metric, statistic, value}. It is indexed over the complete selected period;
+ties select the smallest stable battle ID. Average/All have no source reference.
+Presentation may add vehicle_meta = {class, tier, class_icon, role:{key, name,
+group_name, description, icon}} from the live descriptor and native resources.
+These are derived snapshot fields; do not migrate or rewrite stored battle records.
 Runtime adds appearance to the snapshot, including snapshots without an active service.
 It is presentation state only; do not persist it in battle/session records or alter history.
 

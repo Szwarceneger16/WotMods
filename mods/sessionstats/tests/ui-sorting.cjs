@@ -125,4 +125,5 @@ module.exports=async ({browser,nativeHost,check})=>{
   check('Keyboard selection emits a sorting command',await page.evaluate(()=>__grzCommands.filter(c=>c.action==='sort').pop().metric==='off'));
   check('The native document contains no unsupported select elements',await page.locator('select').count()===0);
   await page.close();
+  await require('./ui-sort-extrema.cjs')({browser,nativeHost,check});
 };

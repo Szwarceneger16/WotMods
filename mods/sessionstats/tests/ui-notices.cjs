@@ -52,8 +52,11 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
   check('Unavailable XP stays unknown instead of becoming zero',
     (await page.locator('#ss-summary [data-ss-metric="xp_base"]').first().locator('.ss-metric-number').allTextContents()).every(v=>v==='—'));
   check('Finance coverage explains its own independent available count',
-    await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').getAttribute('aria-label')===
-      'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.');
+    await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').count()===0&&
+    await page.locator('#ss-summary .ss-money-head .ss-summary-table-heading').getAttribute('aria-label')===
+      'Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.'&&
+    await page.locator('#ss-summary .ss-economy .ss-info-button').getAttribute('data-ss-help').then(text=>
+      text.includes('Data available for '+stats.currencies.credits.income_count+' of '+stats.observed_battles+' recorded battles.')));
   const performance=page.locator('#ss-summary .ss-performance');
   const info=performance.locator('.ss-info-button');
   await performance.hover({position:{x:5,y:5}});

@@ -1,5 +1,5 @@
 SESSION STATS — WORLD OF TANKS PC MOD
-Version 0.9.7 • 2026-11-13 • target: Wargaming EU 2.4.1.1
+Version 0.9.8 • 2026-11-14 • target: Wargaming EU 2.4.1.1
 
 RELEASE STATUS
 This installable .wotmod contains CPython 2.7.18 bytecode, a dedicated Gameface
@@ -85,8 +85,8 @@ changes the language and wheel speed while preserving all other defaults.
 
 HOW THE PANEL WORKS
 • The header shows completed battles, win rate and the full WN8 number.
-  Base/Received/Free XP totals use three horizontal columns, each retaining
-  its own received-value coverage. It does not add a meaningless WN8 total.
+  Base/Received/Free XP totals use three horizontal columns; their availability
+  is retained in overview help without repeating visible x/y captions.
 • Two default period tabs: "Since launch" and "Timeline". Both belong to the
   active account. The optional installation tab has its own persistent manual
   reset and is hidden by default.
@@ -103,9 +103,11 @@ HOW THE PANEL WORKS
 • Vehicle and map names have thumbnails from local game resources. No additional
   image pack is required. Missing images leave the correct name and statistics
   visible without substituting unrelated artwork.
+  Vehicle class and role icons also use original client resources. Hover or focus
+  the icons for their meaning; role definitions use the game client's language.
 • Each period, vehicle and map shows minimum/average/maximum XP and individual
   battle WN8.
-• Battles show one XP value, one WN8 value and victory, defeat or draw. A single
+• Battles show Base XP, Received XP, one WN8 value and victory, defeat or draw. A single
   result is not repeated across three columns; individual battles have no win rate.
 • Every grouping includes free XP and credit/bond income, costs and net amounts.
   Gold appears when the result confirms a battle-related transaction.

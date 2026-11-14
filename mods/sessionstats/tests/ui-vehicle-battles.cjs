@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
 const commands=(page,action)=>page.evaluate(action=>__grzCommands.filter(item=>item.action===action),action);
 module.exports=async ({browser,nativeHost,check})=>{
+  await require('./ui-vehicle-metadata.cjs')({browser,nativeHost,check});
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
   const page=await nativeHost(browser,{initialViewport:{width:3840,height:2560},viewport:{width:3840,height:2560,scale:1},realTimers:true});
   try {

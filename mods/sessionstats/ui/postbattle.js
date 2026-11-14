@@ -40,9 +40,9 @@
             node.appendChild(ink);
         }
         // Use the panel's figure-only backing for the black rating band.
-        ink.style.backgroundColor = 'rgba(190,190,180,0.65)';
+        ink.style.backgroundColor = 'rgba(180,192,166,0.65)';
         ink.style.borderRadius = '2rem';
-        ink.style.boxShadow = '0 0 0 1rem rgba(190,190,180,0.65)';
+        ink.style.boxShadow = '0 0 0 1rem rgba(180,192,166,0.65)';
         ink.style.fontWeight = 'bold';
     }
     function paintWN8(node, value) {

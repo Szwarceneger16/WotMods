@@ -7,6 +7,9 @@ Verified EU client sources (2.4.1.5493):
   gui/shared/utils/functions.py: getArenaImage, getAbsoluteUrl
   gui/impl/backport/backport_r.py: image -> wulf.getImagePath
   items/vehicles.py: getVehicleType and VehicleType.compactDescr
+  gui/shared/gui_items/Vehicle.py: role, roleLabel, getType44x44IconResource
+  gui/shared/formatters: getRoleText; formatters/icons.py: getRoleIcon
+  R.strings.menu.roleExp.roleDescr supplies the original client definition.
 Assets / Gameface loader: Kurzdor/wot.assets 2.4.1.0 #977,
   commit 3605bd36c53d10c16be5d93f5414aa5fd129e84e.
 
@@ -18,6 +21,7 @@ from __future__ import absolute_import, unicode_literals
 from .localization import message
 
 import re
+import copy
 
 try:
     text_type = unicode
@@ -27,13 +31,47 @@ except NameError:
     integer_types = (int,)
 
 _PREFIXES = {'vehicle': 'gui/maps/icons/vehicle/', 'map': 'gui/maps/icons/map/',
-             'outcome': 'gui/maps/icons/library/'}
+             'outcome': 'gui/maps/icons/library/',
+             'vehicle_class': 'gui/maps/icons/vehicleTypes/',
+             'vehicle_role': 'gui/maps/icons/roleExp/roles/24x24/'}
 _OUTCOME_FILES = dict((key, _PREFIXES['outcome'] + 'BgBattleResultIcon' + name + '-1.png')
                       for key, name in (('win', 'Victory'), ('loss', 'Defeat'), ('draw', 'Draw')))
 _SAFE_PATH = re.compile(r'^[A-Za-z0-9_./-]+\Z')
 _SAFE_GEOMETRY = re.compile(r'^[A-Za-z0-9_-]{1,128}\Z')
 _DECIMAL = re.compile(r'^[0-9]+\Z')
 _DEFAULT_RESOLVER = None
+_CLASSES = dict((key, key) for key in ('lightTank', 'mediumTank', 'heavyTank', 'AT_SPG', 'SPG'))
+_CLASSES['AT-SPG'] = 'AT_SPG'
+_ROLE_KEY = re.compile(r'\Arole_[A-Za-z0-9_]{1,64}\Z')
+
+
+def canonical_vehicle_class(value):
+    """Normalize the client's AT-SPG spelling without inferring from a name."""
+    return _CLASSES.get(_text(value)) if isinstance(value, (bytes, text_type)) else None
+
+
+def _native_role_text(value, limit=240):
+    """Retain resolved client paragraphs, never native markup or format tokens."""
+    if not isinstance(value, (bytes, text_type)):
+        return None
+    try:
+        value = _text(value)[:16384].replace('&zwnbsp;', '')
+        try:
+            from HTMLParser import HTMLParser
+            value = HTMLParser().unescape(value)
+        except ImportError:
+            from html import unescape
+            value = unescape(value)
+        value = re.sub(r'<br\s*/?>|</p\s*>', '\n', value, flags=re.I)
+        value = re.sub(r'<[^>]*>', ' ', value)
+        value = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufeff\u200b\u2060]', ' ', value)
+        value = '\n'.join(' '.join(line.split()) for line in value.splitlines() if line.strip())
+        if (not value or re.search(r'#[A-Za-z][A-Za-z0-9_]*:', value) or
+                re.search(r'%\([^)]+\)[A-Za-z]|%[sd]|\{[^{}]+\}', value)):
+            return None
+        return value[:limit]
+    except Exception:
+        return None
 
 
 def _text(value):
@@ -91,7 +129,8 @@ class NativeVisualResolver(object):
     """A small, lazily initialized adapter around the client's resource registry."""
 
     def __init__(self, resources=None, vehicle_getter=None, image_getter=None,
-                 icon_name_getter=None, absolute_url_getter=None, file_exists=None):
+                 icon_name_getter=None, absolute_url_getter=None, file_exists=None,
+                 role_label_getter=None, role_name_getter=None, text_getter=None):
         if resources is None:
             from gui.impl.gen.resources import R
             resources = R
@@ -110,10 +149,120 @@ class NativeVisualResolver(object):
         self._icon_name_getter = icon_name_getter
         self._absolute_url_getter = absolute_url_getter
         self._file_exists = file_exists
+        self._role_label_getter = role_label_getter
+        self._role_name_getter = role_name_getter
+        self._text_getter = text_getter
         self._vehicles = {}
+        self._vehicle_metadata = {}
         self._maps = {}
         self._map_previews = {}
         self._outcomes = {}
+
+    def vehicle_metadata(self, compact):
+        """Resolve class/role from the live descriptor for historic as well as new rows.
+
+        Vehicle.roleLabel maps descriptor.type.role through ROLE_TYPE_TO_LABEL.
+        getRoleText supplies the groupName placeholder used by native role names.
+        Definitions are the running client's localized text, as in Hangar Sync.
+        """
+        compact = _compact_id(compact)
+        if compact is None:
+            return None
+        if compact in self._vehicle_metadata:
+            return copy.deepcopy(self._vehicle_metadata[compact])
+        try:
+            if self._vehicle_getter is None:
+                from items.vehicles import getVehicleType
+                self._vehicle_getter = getVehicleType
+            vehicle = self._vehicle_getter(compact)
+            if getattr(vehicle, 'compactDescr', None) != compact:
+                return None
+            try:
+                kind = canonical_vehicle_class(getattr(vehicle, 'classTag', None))
+            except Exception:
+                kind = None
+            if not kind:
+                try:
+                    kinds = set(canonical_vehicle_class(tag) for tag in getattr(vehicle, 'tags', ()))
+                    kinds.discard(None)
+                    kind = next(iter(kinds)) if len(kinds) == 1 else None
+                except Exception:
+                    pass
+            result = {}
+            try:
+                tier = getattr(vehicle, 'level', None)
+            except Exception:
+                tier = None
+            if not isinstance(tier, bool) and isinstance(tier, integer_types) and 1 <= tier <= 11:
+                result['tier'] = tier
+            if kind:
+                result['class'] = kind
+                try:
+                    root = self._resources.images.gui.maps.icons.vehicleTypes
+                    for branch in ('c_44x44', 'big'):
+                        try:
+                            icon = self._resource_url(getattr(root, branch).dyn(kind), 'vehicle_class')
+                            if icon:
+                                result['class_icon'] = {'kind': 'vehicle_class', 'src': icon}
+                                break
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+            key = None
+            try:
+                if self._role_label_getter is None:
+                    from constants import ROLE_TYPE_TO_LABEL
+                    self._role_label_getter = lambda descriptor: ROLE_TYPE_TO_LABEL.get(descriptor.role)
+                key = self._role_label_getter(vehicle)
+                if not isinstance(key, (bytes, text_type)) or not _ROLE_KEY.match(_text(key)):
+                    key = None
+                else:
+                    key = _text(key)
+            except Exception:
+                pass
+            if key:
+                role = {'key': key}
+                try:
+                    if self._role_name_getter is None:
+                        from gui.shared.formatters import getRoleText
+                        self._role_name_getter = getRoleText
+                    name = _native_role_text(self._role_name_getter(key))
+                    if name:
+                        role['name'] = name
+                except Exception:
+                    pass
+                try:
+                    if self._text_getter is None:
+                        from gui.impl.backport import text
+                        self._text_getter = text
+                    strings = self._resources.strings.menu.roleExp
+                    for field, branch, bound in (('group_name', 'roleGroupName', 240),
+                                                 ('description', 'roleDescr', 1400)):
+                        try:
+                            value = _native_role_text(self._text_getter(getattr(strings, branch).dyn(key)()), bound)
+                            if value:
+                                role[field] = value
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                if key != 'role_SPG':
+                    try:
+                        # Native getRoleIcon intentionally omits SPG; no fake glyph.
+                        node = self._resources.images.gui.maps.icons.roleExp.roles.c_24x24.dyn(key)
+                        icon = self._resource_url(node, 'vehicle_role')
+                        if icon:
+                            role['icon'] = {'kind': 'vehicle_role', 'src': icon}
+                    except Exception:
+                        pass
+                result['role'] = role
+                if (result.get('class_icon') and role.get('name') and role.get('description') and
+                        (role.get('icon') or key == 'role_SPG')):
+                    self._vehicle_metadata[compact] = copy.deepcopy(result)
+            return result or None
+        except Exception:
+            return None
 
     def _resource_url(self, node, kind):
         try:
@@ -290,6 +439,17 @@ def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mod
             image['preview_mode'] = preview['mode']
         return image
 
+    def vehicle_metadata(identifier):
+        if resolver is None or identifier is None:
+            return None
+        key = ('vehicle_metadata', _text(identifier))
+        if key not in cache:
+            try:
+                cache[key] = resolver.vehicle_metadata(identifier)
+            except Exception:
+                cache[key] = None
+        return copy.deepcopy(cache[key])
+
     for scope in payload['scopes'].values():
         if not isinstance(scope, dict):
             continue
@@ -303,22 +463,32 @@ def enrich_snapshot(payload, battle_records=None, resolver=None, map_preview_mod
                 row.pop('visual', None)
                 row.pop('map_visual', None)
                 row.pop('outcome_visual', None)
+                row.pop('vehicle_meta', None)
                 if grouping == 'battles' and row.get('outcome') in ('win', 'loss', 'draw'):
                     outcome = visual('outcome', row['outcome'], message('outcome.' + row['outcome']))
                     if outcome is not None:
                         row['outcome_visual'] = outcome
                 if grouping == 'vehicles':
                     image = visual('vehicle', row.get('id'), row.get('name'))
+                    metadata = vehicle_metadata(row.get('id'))
                 elif grouping == 'maps':
                     image = map_visual(row.get('id'), row.get('name'))
+                    metadata = None
                 else:
                     record = records.get(_text(row.get('id')), {})
                     if not isinstance(record, dict):
                         continue
                     image = visual('vehicle', record.get('vehicle_id'), row.get('name'))
+                    metadata = vehicle_metadata(record.get('vehicle_id'))
                     map_image = map_visual(record.get('map_id'), record.get('map_name') or row.get('map'))
                     if map_image is not None:
                         row['map_visual'] = map_image
                 if image is not None:
                     row['visual'] = image
+                if metadata:
+                    row['vehicle_meta'] = metadata
+                    if metadata.get('class'):
+                        row['type'] = metadata['class']
+                    if metadata.get('tier') and not row.get('tier'):
+                        row['tier'] = metadata['tier']
     return payload

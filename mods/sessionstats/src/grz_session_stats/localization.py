@@ -290,6 +290,9 @@ class Localizer(object):
                             row['map'] = localized_map
                     battle_list = row.get('battle_list') if grouping in ('maps', 'vehicles') else None
                     translate_battle_list(battle_list)
+                    winner = row.get('sort_battle')
+                    if isinstance(winner, dict):
+                        translate_battle_list({'items': [winner]})
                     visual = row.get('visual')
                     outcome_visual = row.get('outcome_visual')
                     if grouping == 'maps' and isinstance(visual, dict):

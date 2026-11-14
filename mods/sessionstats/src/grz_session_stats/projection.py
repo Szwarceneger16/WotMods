@@ -44,6 +44,19 @@ _COUNTS = ('battles', 'observed_battles', 'missing_results', 'partial_results',
            'wins', 'losses', 'draws', 'wn8_count')
 _XP = ('xp_base', 'xp_received', 'free_xp', 'battle_wn8')
 _RATING = ('damage', 'frags', 'spots', 'defense', 'wins')
+_EXTREMA = ('xp_base', 'xp_received', 'battle_wn8', 'credits_net', 'credits_gross', 'credits_costs')
+
+
+def _extremum_values(item):
+    record, rating = item[:2]
+    if record.get('mode') != 'random' or record.get('outcome') not in _OUTCOMES:
+        return
+    credit = record.get('currencies', {}).get('credits', {})
+    for key, value in (('xp_base', record.get('xp_base')), ('xp_received', record.get('xp_received')),
+                       ('battle_wn8', rating), ('credits_net', credit.get('net')),
+                       ('credits_gross', credit.get('income')), ('credits_costs', credit.get('costs'))):
+        if value is not None:
+            yield key, value
 
 
 class Series(object):
@@ -219,12 +232,14 @@ class Group(object):
         self.battle_order = [] if kind in ('maps', 'vehicles') else None
         self.totals = Totals()
         self.starts = Series()
+        self.extrema = dict((key, []) for key in _EXTREMA)
 
     def build(self, items):
         complete(self.build_steps(items))
 
     def build_steps(self, items):
         self.records, self.order = {}, []
+        self.extrema = dict((key, []) for key in _EXTREMA)
         if self.battle_order is not None:
             self.battle_order = []
         for position, item in enumerate(items):
@@ -233,11 +248,16 @@ class Group(object):
             self.order.append((bool(row.get(self.name_field)), row.get('_updated_at', 0), row['arena_id']))
             if self.battle_order is not None:
                 self.battle_order.append((row.get('started_at') or 0, row['arena_id']))
+            for metric, value in _extremum_values(item):
+                self.extrema[metric].append((value, row['arena_id']))
             if position % 128 == 0:
                 yield None
         self.order.sort()
         if self.battle_order is not None:
             self.battle_order.sort()
+        for values in self.extrema.values():
+            values.sort()
+            yield None
         for step in self.starts.build_steps(item[0].get('started_at') for item in items):
             yield step
         yield None
@@ -261,6 +281,22 @@ class Group(object):
                 _remove(self.battle_order, battle_key)
         self.totals.change(item, direction)
         self.starts.change(record.get('started_at'), direction)
+        for metric, value in _extremum_values(item):
+            pair = (value, identifier)
+            if direction > 0:
+                bisect.insort(self.extrema[metric], pair)
+            else:
+                _remove(self.extrema[metric], pair)
+
+    def extremum(self, options):
+        statistic = options.get('statistic')
+        values = self.extrema.get(options.get('metric'))
+        if statistic not in ('min', 'max') or not values:
+            return None
+        # Tied values always name the smallest stable battle ID, independently
+        # of chronology and pagination. Corrections remove their original pair.
+        position = 0 if statistic == 'min' else bisect.bisect_left(values, (values[-1][0], ''))
+        return values[position]
 
     def metadata(self):
         latest = self.records[self.order[-1][-1]]
@@ -450,6 +486,19 @@ class ScopeIndex(object):
     def vehicle_battles(self, identifier, page, options=None):
         return self._group_battles('vehicles', identifier, page, options)
 
+    def _sort_battle(self, group, options):
+        winner = group.extremum(options)
+        if winner is None:
+            return None
+        value, identifier = winner
+        record, item = self.records[identifier]
+        return {'id': identifier,
+                'name': (record.get('vehicle_name') or message('unknown.vehicle'))[:256],
+                'map': (record.get('map_name') or message('unknown.map'))[:256],
+                'map_id': record.get('map_id'), 'started_at': record.get('started_at'),
+                'outcome': record.get('outcome'), 'wn8': item[1],
+                'metric': options['metric'], 'statistic': options['statistic'], 'value': value}
+
     def _group_battles(self, kind, identifier, page, options=None):
         group = self.groups[kind].get(identifier)
         if group is None:
@@ -518,6 +567,9 @@ class ScopeIndex(object):
                 if options['metric'] != 'off':
                     for row, group in zip(rows, visible):
                         row['sort_value'] = self._group_sort_value(group, options)
+                        winner = self._sort_battle(group, options)
+                        if winner is not None:
+                            row['sort_battle'] = winner
                 expanded_pages = map_pages if kind == 'maps' else vehicle_pages if kind == 'vehicles' else None
                 if expanded_pages:
                     for row in rows:
