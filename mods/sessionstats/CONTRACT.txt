@@ -1,5 +1,5 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.15 (persistent data schema unchanged)
-Release date: 2026-11-14.
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.16 (persistent data schema unchanged)
+Release date: 2026-11-15.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
 All game-independent code must also run under Python 3 for development.
@@ -82,7 +82,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.15', account_key: string, generated_at: unix seconds,
+ version: '0.9.16', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -176,6 +176,24 @@ arbitrary unknown values. A valid same-lifecycle late stream may fill unknowns w
 reconcile=False, without revising newer facts or clearing a replacement request token.
 Unavailable results remain explicit gaps, not fabricated statistics. Server retention
 is not established by synthetic tests. See docs/OFFLINE_RESULT_RECOVERY.md.
+
+RESULT RECOVERY DIAGNOSTICS (0.9.16)
+Recompute complete from merged known fields and _result_seen, using the same
+predicate as normalization; repair stale derived flags incrementally on load.
+Do not newly require optional historical Base credits or mission details.
+Visible active-account battle rows may add recovery={report_state,status,attempts,
+last_attempt,next_attempt,code,source,reason,retry_allowed}. report_state is
+never_received|outcome_missing|partial_report|complete; transport status is separate.
+Existing snapshot.recovery pending/in_flight/states remains compatible. No full
+per-battle recovery ledger is included in snapshots or mixed-account instance rows.
+retry_result carries account_key and arena_id; accept only a known pending battle
+of the active ready account, in the garage and outside replay. Preserve native
+cooldown on Retry and Refresh. Native window ownership guards remain required.
+Bounded retry hints persist independently below each account-hashed recovery
+directory, retaining checksum/backup/stale-writer protection. Failed hint writes
+must not make battle history read-only. No unchanged-tick writes. Unavailable
+reports back off up to 24h; due old work follows at most three live requests.
+See docs/RESULT_RECOVERY_0.9.16.md for semantics, source evidence and live checks.
 
 APPEARANCE CONFIGURATION
 The user-facing file is mods/configs/grz.sessionstats.json in the verified game root.

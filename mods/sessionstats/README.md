@@ -1,6 +1,6 @@
 # Session Stats for World of Tanks
 
-Version 0.9.15 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.16 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
 appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
 These legacy filenames are retained for existing package and documentation links;
@@ -25,6 +25,13 @@ be earlier than the end. **Beginning of history** and **Now** leave the
 corresponding end open.
 Earlier manual resets appear as time points and saved battles remain available.
 The account and region determine which history and time points are shown.
+
+Missing and partial Battles cards explain their recovery state in a compact label
+and hover help. **Retry result** retries that account-local battle in the garage,
+using the same bounded native queue as **Refresh**. Attempts and retry delays
+survive restarts; repeated unavailable reports back off without removing history.
+Complementary partial reports now recompute coverage from their merged facts.
+See [result recovery and live acceptance](docs/RESULT_RECOVERY_0.9.16.md).
 
 Advanced sorting marks the existing card value in orange when that value is
 already present. Additional credit or XP-total figures use a compact gold value
