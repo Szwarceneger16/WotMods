@@ -1517,7 +1517,8 @@ class Runtime(object):
                 'next_attempt': (max(pause, self.retries.get(key, (0, 0))[1]) or None) if state != 'complete' else None,
                 'code': detail.get('code'), 'source': detail.get('source'),
                 'reason': reason or diagnosis['reason'],
-                'retry_allowed': (state != 'complete' and key not in self.inflight and
+                'retry_allowed': (self.running and self.api is not None and
+                                  state != 'complete' and key not in self.inflight and
                                   not self.api.in_battle() and not self.api.is_replay() and pause <= now)}
 
     def _retry_result(self, arena_id):
