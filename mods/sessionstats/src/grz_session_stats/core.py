@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from .battle_details import clean_details, merge_details
 from .localization import message
+from .normalize import result_complete
 
 import bisect
 import copy
@@ -17,7 +18,8 @@ import uuid
 from .loading import complete, items, values
 
 from . import VERSION
-from .storage import GenerationStore, StateDelta, SCHEMA_VERSION, StorageError
+from .storage import (GenerationStore, StateDelta, SCHEMA_VERSION, StorageError,
+                      MAX_TRANSACTION_BYTES, canonical_bytes)
 
 try:
     text_type = unicode
@@ -250,7 +252,10 @@ def _merge_known(existing, incoming, revise=False):
     """Unknown updates never erase facts; authoritative readings may revise."""
     merged = copy.deepcopy(existing)
     for key, value in incoming.items():
-        if key in ('complete', 'xp_bonus_applied'):
+        if key == 'complete':
+            # Derived from merged retained data at the record boundary below.
+            continue
+        elif key == 'xp_bonus_applied':
             merged[key] = bool(merged.get(key)) or bool(value)
         elif key == 'warnings':
             merged[key] = list(value) if revise else sorted(set(merged.get(key, []) + value))
@@ -381,6 +386,9 @@ class StatsService(object):
         for step in self.store.prepare_steps():
             yield step
         self.launch_id = self._requested_launch
+        self.loading_phase = 'completeness'
+        for step in self._repair_completeness_steps():
+            yield step
         self.loading_phase = 'indexes'
         for step in self._rebuild_indexes_steps():
             yield step
@@ -392,6 +400,48 @@ class StatsService(object):
         self._received_records.clear()
         self.last_error = None
         self.loading_phase = 'ready'
+
+    def _repair_completeness_steps(self):
+        """Correct derived legacy flags once; keep facts and period ownership."""
+        changes = {}
+        encoded_size = 0
+        # Leave room for account metadata in the journal's bounded transaction.
+        # The count bound also caps each loading step's serialization work.
+        budget = MAX_TRANSACTION_BYTES // 2
+        for arena_id, record in items(self._state['battles']):
+            if record.get('_result_seen') is True:
+                coverage = result_complete(record, result_seen=True)
+                if record.get('complete') != coverage:
+                    repaired = dict(record, complete=coverage,
+                                    revision=record.get('revision', 0) + 1)
+                    size = len(canonical_bytes({arena_id: repaired}))
+                    if changes and (len(changes) >= 64 or encoded_size + size > budget):
+                        self._commit_completeness_batch(changes)
+                        changes, encoded_size = {}, 0
+                        yield None
+                    changes[arena_id] = repaired
+                    encoded_size += size
+            yield None
+        if changes:
+            self._commit_completeness_batch(changes)
+            yield None
+
+    def _commit_completeness_batch(self, changes):
+        candidate = self._candidate()
+        fields = dict((key, value) for key, value in candidate.items()
+                      if key not in ('launch_sessions', 'manual_sessions', 'battles'))
+        # A legacy full snapshot can contain a single record or metadata larger
+        # than today's journal transaction. Use one full checkpoint in that
+        # unusual case instead of making preserved history read-only.
+        if len(canonical_bytes(StateDelta(fields, changes))) + 1 > MAX_TRANSACTION_BYTES:
+            candidate['battles'] = dict(candidate['battles'])
+            candidate['battles'].update(changes)
+            saved = self._commit(candidate)
+        else:
+            saved = self._commit(candidate, changes)
+        if not saved:
+            raise StorageError(message('core.load'))
+        candidate['battles'].update(changes)
 
     def _open_launch_steps(self, launch_id, current_time):
         self.launch_id = launch_id
@@ -986,7 +1036,6 @@ class StatsService(object):
         if merged.get('_manual_id') is None:
             merged['_manual_id'] = manual_id
         merged['_result_seen'] = bool(old.get('_result_seen')) or is_result
-        merged.setdefault('complete', False)
         merged.setdefault('warnings', [])
         # Infer a net value only when both components are confirmed. Reconcile it
         # when an authoritative update revises a component but does not supply net.
@@ -998,6 +1047,7 @@ class StatsService(object):
                                        (revise and update.get(net) is None and
                                         (update.get(income) is not None or update.get('costs') is not None))):
                     values[net] = values[income] - values['costs']
+        merged['complete'] = result_complete(merged, result_seen=merged['_result_seen'])
         if merged == old:
             return False
         merged['revision'] = old.get('revision', 0) + 1

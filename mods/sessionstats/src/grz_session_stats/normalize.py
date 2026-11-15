@@ -174,11 +174,55 @@ def _personal_vehicle(personal, context):
         compact = _integer(value.get('typeCompDescr')) or _integer(key)
         if compact is not None:
             choices.append((compact, value))
-    if len(choices) == 1:
-        return choices[0]
     wanted = _integer(context.get('vehicle_id'))
+    if len(choices) == 1 and (wanted is None or choices[0][0] == wanted):
+        return choices[0]
     matching = [item for item in choices if item[0] == wanted]
     return matching[0] if len(matching) == 1 else (None, None)
+
+
+_REQUIRED_COMBAT = ('damage', 'frags', 'spots', 'defense')
+_REQUIRED_XP = ('xp_base', 'xp_received', 'free_xp')
+_REQUIRED_CURRENCIES = ('credits', 'bonds', 'gold')
+
+
+def result_complete(record, result_seen=True):
+    """Coverage of retained confirmed fields, independent of update authority.
+
+    Original credit income is optional for historical records. Never infer it
+    from received income, and never let a caller-supplied complete flag supply
+    evidence for absent combat, XP or financial values.
+    """
+    if not result_seen or not isinstance(record, dict) or record.get('outcome') not in ('win', 'loss', 'draw'):
+        return False
+    if any(_number(record.get(key)) is None for key in _REQUIRED_COMBAT + _REQUIRED_XP):
+        return False
+    currencies = record.get('currencies')
+    if not isinstance(currencies, dict):
+        return False
+    return all(isinstance(currencies.get(key), dict) and
+               _number(currencies[key].get('net'), nonnegative=False) is not None
+               for key in _REQUIRED_CURRENCIES)
+
+
+def report_diagnostics(record, result_seen=None):
+    """Return bounded presentation codes without copying any result values."""
+    record = record if isinstance(record, dict) else {}
+    if result_seen is None:
+        result_seen = record.get('_result_seen') is True
+    if not result_seen:
+        return {'report_status': 'never_received', 'reason': 'never_received'}
+    if record.get('outcome') not in ('win', 'loss', 'draw'):
+        return {'report_status': 'outcome_missing', 'reason': 'outcome_missing'}
+    if result_complete(record, result_seen):
+        return {'report_status': 'complete', 'reason': 'complete'}
+    if any(_number(record.get(key)) is None for key in _REQUIRED_COMBAT):
+        reason = 'missing_combat'
+    elif any(_number(record.get(key)) is None for key in _REQUIRED_XP):
+        reason = 'missing_xp'
+    else:
+        reason = 'missing_finance'
+    return {'report_status': 'partial_report', 'reason': reason}
 
 
 def arena_start(arena_id):
@@ -190,8 +234,9 @@ def arena_start(arena_id):
     return stamp if 946684800 <= stamp <= 4102444800 else None
 
 
-def normalize_result(results, context=None, random_bonus_type=1,
-                     vehicle_resolver=None, map_resolver=None, mission_resolver=None):
+def _normalize_result(results, context=None, random_bonus_type=1,
+                      vehicle_resolver=None, map_resolver=None, mission_resolver=None,
+                      diagnostics=None):
     """Return a normalized random-battle record, or None if it is not ours.
 
     context may contain account_dbid, started_at, vehicle_id and map metadata
@@ -199,27 +244,36 @@ def normalize_result(results, context=None, random_bonus_type=1,
     with an unknown outcome can be retained for reconciliation but is not a win.
     """
     context = context or {}
-    if not isinstance(results, dict) or context.get('replay'):
+
+    def diagnose(reason, ignored=False):
+        if isinstance(diagnostics, dict):
+            diagnostics.clear()
+            diagnostics.update(reason=reason, ignored=ignored)
         return None
+
+    if not isinstance(results, dict):
+        return diagnose('invalid_container')
+    if context.get('replay'):
+        return diagnose('replay', True)
     common = results.get('common')
     if not isinstance(common, dict):
-        return None
+        return diagnose('invalid_common')
     bonus = _integer(common.get('bonusType'))
     if bonus != random_bonus_type:
-        return None
+        return diagnose('unsupported_mode', bonus is not None)
     arena_id = _integer(results.get('arenaUniqueID'))
     if arena_id is None:
-        return None
+        return diagnose('missing_arena_id')
     personal = results.get('personal')
     if not isinstance(personal, dict):
-        return None
-    avatar = personal.get('avatar') or {}
+        return diagnose('invalid_personal')
+    avatar = personal.get('avatar', {})
     if not isinstance(avatar, dict):
-        return None
+        return diagnose('invalid_avatar')
     expected_dbid = _integer(context.get('account_dbid'))
     actual_dbid = _integer(avatar.get('accountDBID'))
     if expected_dbid is not None and actual_dbid != expected_dbid:
-        return None
+        return diagnose('account_missing' if actual_dbid is None else 'wrong_account', actual_dbid is not None)
     vehicle_id, data = _personal_vehicle(personal, context)
     if data is None:
         if context.get('_loading') and not context.get('_candidate'):
@@ -238,11 +292,16 @@ def normalize_result(results, context=None, random_bonus_type=1,
             if candidates:
                 # Preserve only normalized player data, never the raw server
                 # payload. Select the correct vehicle after stored context loads.
+                diagnose('deferred_vehicle')
                 return {'arena_id': text_type(arena_id), 'mode': 'random', 'complete': False,
                         'started_at': arena_start(arena_id) or _number(context.get('started_at')),
                         'vehicle_id': None, 'xp_received': None,
                         '_deferred_candidates': candidates}
-        return None
+        wanted = _integer(context.get('vehicle_id'))
+        available = any(isinstance(value, dict) and
+                        (_integer(value.get('typeCompDescr')) or _integer(key)) is not None
+                        for key, value in personal.items() if key != 'avatar')
+        return diagnose('vehicle_mismatch' if wanted is not None and available else 'missing_vehicle')
     warnings = []
     team = _integer(avatar.get('team')) or _integer(data.get('team'))
     winner = _number(common.get('winnerTeam'))
@@ -308,7 +367,23 @@ def normalize_result(results, context=None, random_bonus_type=1,
         if arena_start(arena_id) is None:
             fields.append('started_at')
         result['_deferred_context'] = {'fields': fields, 'duration': duration}
-    required = ('damage', 'frags', 'spots', 'defense', 'xp_base', 'xp_received', 'free_xp')
-    result['complete'] = bool(outcome and all(result[key] is not None for key in required)
-                              and all(value['net'] is not None for value in result['currencies'].values()))
+    result['complete'] = result_complete(result)
+    reason = report_diagnostics(result, result_seen=True)['reason']
+    if outcome is None:
+        reason = 'winner_missing' if winner not in (0, 1, 2) else 'team_missing'
+    diagnose(reason)
     return result
+
+
+def normalize_result(results, context=None, random_bonus_type=1,
+                     vehicle_resolver=None, map_resolver=None, mission_resolver=None,
+                     diagnostics=None):
+    """Normalize known fields; optional diagnostics contain fixed codes only."""
+    try:
+        return _normalize_result(results, context, random_bonus_type, vehicle_resolver,
+                                 map_resolver, mission_resolver, diagnostics)
+    except (AttributeError, KeyError, TypeError, ValueError, OverflowError):
+        if isinstance(diagnostics, dict):
+            diagnostics.clear()
+            diagnostics.update(reason='malformed_structure', ignored=False)
+        return None
