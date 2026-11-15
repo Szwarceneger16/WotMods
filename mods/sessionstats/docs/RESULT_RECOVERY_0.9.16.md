@@ -68,6 +68,10 @@ Evicting a hint never removes its battle. Payload enrichment is limited to visib
 battle rows; no entire diagnostic ledger is sent to the frontend. Account and
 region isolation, original sessions, duplicate handling, cache-consumer callbacks
 and other mods' wrappers retain the existing boundaries.
+One optional top-level `recovery.selected` acknowledgment keeps the most recently
+retried retained off-page card current. It is owned by the active account and
+contains diagnostics for only that existing battle. Metadata-only changes patch
+the existing card nodes, preserving scroll position, focus and recorded values.
 
 ## Client source verification
 

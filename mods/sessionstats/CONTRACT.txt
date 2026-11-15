@@ -186,6 +186,9 @@ last_attempt,next_attempt,code,source,reason,retry_allowed}. report_state is
 never_received|outcome_missing|partial_report|complete; transport status is separate.
 Existing snapshot.recovery pending/in_flight/states remains compatible. No full
 per-battle recovery ledger is included in snapshots or mixed-account instance rows.
+An optional recovery.selected={id,...recovery} acknowledges the most recent
+manual retry only, owned by the active account; retained off-page cards may merge
+its diagnostics into their existing row without replacing recorded result data.
 retry_result carries account_key and arena_id; accept only a known pending battle
 of the active ready account, in the garage and outside replay. Preserve native
 cooldown on Retry and Refresh. Native window ownership guards remain required.
