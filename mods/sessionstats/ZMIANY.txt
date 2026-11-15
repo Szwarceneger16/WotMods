@@ -1,5 +1,12 @@
 SESSION STATS — CHANGELOG
 
+0.9.16 • 2026-11-15
+• Recompute report completeness after merging complementary partial results and repair already-covered historical entries.
+• Explain each missing/partial report separately from its win/loss/draw outcome, with local per-battle diagnostics and Retry result.
+• Preserve bounded recovery attempts and delays across restarts and respect shared cache cooldown during manual retries.
+• Back off repeatedly unavailable reports and fairly interleave current results with historical recovery.
+• Keep unknown statistics unknown and retain original account, launch and timeline membership.
+
 0.9.15 • 2026-11-15
 • Keep extrema figures and source arrows in one explicit non-wrapping row, with value painting outside the button.
 • Show custom help after 500 ms from entering the same action, without restarting on pointer movement.

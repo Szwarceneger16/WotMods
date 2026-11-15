@@ -397,6 +397,10 @@ button:disabled { opacity:0.45; }
 .ss-battle-map-visual .ss-battle-map-thumb { width:54rem; height:30rem; margin:0; }
 .ss-battle-map-label { display:block; flex:0 0 28rem; height:28rem; min-width:0; width:100%; max-width:100%; margin-top:1rem; color:#b4b599; font-size:11rem; line-height:14rem; text-align:center; white-space:normal; overflow-wrap:break-word; }
 .ss-battle .ss-more-button { flex:0 0 82rem; width:82rem; min-width:82rem; max-width:82rem; padding-left:5rem; padding-right:5rem; }
+.ss-recovery { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:28rem; padding:2rem 0; }
+.ss-recovery-status { display:block; flex:1 1 0rem; min-width:0; padding-right:8rem; font-size:12rem; line-height:17rem; white-space:normal; overflow-wrap:break-word; cursor:help; }
+.ss-recovery .ss-recovery-retry { flex:0 1 auto; min-width:82rem; max-width:55%; min-height:26rem; padding:3rem 7rem; }
+.ss-recovery-retry .ss-control-label { white-space:normal; overflow-wrap:break-word; }
 .ss-battle.ss-battle-inline-captions .ss-battle-outcome { flex:0 0 160rem; width:160rem; max-width:160rem; height:38rem; }
 .ss-battle.ss-battle-inline-captions .ss-outcome-art { flex-direction:row; }
 .ss-battle.ss-battle-inline-captions .ss-outcome-image { width:64rem; height:38rem; }

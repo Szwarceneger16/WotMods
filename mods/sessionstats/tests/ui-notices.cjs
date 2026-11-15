@@ -259,6 +259,82 @@ module.exports=async({browser,nativeHost,check:reportCheck})=>{
   partial.currencies.credits.net_count=2;await render(payload);
   check('Different financial availability retains the independent count for each semantic value',await page.locator('#ss-groups .ss-group').first().locator('.ss-money-row').filter({has:page.locator('.ss-money-value[data-ss-metric="credits_income_received"]')}).locator('.ss-money-value').evaluateAll(cells=>cells.every((cell,index)=>
     (cell.getAttribute('aria-label') || '').endsWith('Data available for '+[3,3,2][index]+' of 4 recorded battles.') && !cell.textContent.includes('/'))));
+  // Recovery metadata remains separate from the outcome and numeric report.
+  payload=copy();payload.warnings=[];payload.account_key='recovery-fixture';
+  payload.recovery={pending:3,in_flight:1,states:{unavailable:1,rejected:1,partial_report:1}};
+  payload.viewport={width:1440,height:900,scale:1};payload.window_size=[860,800];
+  const recoveryScope=payload.scopes.launch;
+  recoveryScope.pending=3;
+  Object.assign(recoveryScope.summary,{battles:2,observed_battles:4,missing_results:2,partial_results:1});
+  const recoverySample=JSON.parse(JSON.stringify(recoveryScope.battles[0]));
+  recoveryScope.battles=['unavailable','rejected','partial_report','complete'].map((status,index)=>{
+    const item=JSON.parse(JSON.stringify(recoverySample));item.id='recovery-'+index;
+    item.outcome=index<2?null:index===2?'win':'loss';
+    item.recovery={report_state:['never_received','outcome_missing','partial_report','complete'][index],status,
+      reason:['never_received','winner_missing','missing_xp','complete'][index],attempts:index+1,
+      code:index===0?-10:null,source:'cache',last_attempt:1700000000,next_attempt:1700000300,retry_allowed:index<3};
+    return item;
+  });
+  recoveryScope.pagination.battles={page:0,pages:1,total:4,page_size:40};
+  await page.setViewportSize({width:1440,height:900});await render(payload);
+  await page.locator('#ss-group-battles').click();
+  check('Only incomplete reports display a compact recovery state and individual retry',
+    await page.locator('.ss-recovery').count()===3&&
+    await page.locator('[data-group-id="recovery-0"] .ss-recovery-status').textContent()==='Report unavailable'&&
+    await page.locator('[data-group-id="recovery-1"] .ss-recovery-status').textContent()==='Report not recognized'&&
+    await page.locator('[data-group-id="recovery-2"] .ss-recovery-status').textContent()==='Partial report');
+  check('A known victory and an unknown outcome remain independent from report completeness',
+    await page.locator('[data-group-id="recovery-2"] .ss-outcome-label').textContent()==='VICTORY'&&
+    await page.locator('[data-group-id="recovery-1"] .ss-outcome-label').textContent()==='UNKNOWN RESULT');
+  check('Recovery summary separates complete, known partial and unknown reports without another coverage fraction',
+    await page.locator('.ss-recovery-summary').textContent()==='Complete 1 · Partial 1 · Unknown 2 · Fetching (account) 1');
+  const recovering=page.locator('[data-group-id="recovery-0"]'),reason=page.locator('[data-group-id="recovery-1"] .ss-recovery-status');
+  await reason.focus();
+  check('Recovery help exposes the exact report reason and attempt timestamps accessibly',
+    await page.locator('#ss-help-tooltip').isVisible()&&
+    await page.locator('#ss-help-tooltip').textContent().then(text=>text.includes('The winning team is missing.')&&text.includes('Attempts: 2')&&text.includes('Next attempt:')&&text.includes('Server availability and retention are not guaranteed.')));
+  await recovering.locator('.ss-recovery-retry').click();
+  check('Individual retry dispatches exactly the visible battle and active account',await page.evaluate(()=>{
+    const requests=__grzCommands.filter(command=>command.action==='retry_result');
+    return requests.length===1&&requests[0].arena_id==='recovery-0'&&requests[0].account_key==='recovery-fixture';
+  }));
+  await page.evaluate(()=>{
+    const card=document.querySelector('[data-group-id="recovery-0"]');
+    window.__recoveryCard=card;window.__recoveryRetry=card.querySelector('.ss-recovery-retry');
+    window.__recoveryStatus=card.querySelector('.ss-recovery-status');
+    card.querySelector('.ss-more-button').click();
+    window.__recoveryMore=card.querySelector('.ss-more-panel');
+  });
+  payload.recovery.in_flight=1;payload.generated_at+=5;
+  Object.assign(recoveryScope.battles[0].recovery,{status:'in_flight',retry_allowed:false});
+  await render(payload);
+  check('Metadata-only polling preserves the card, focused state owner and expanded details',await page.evaluate(()=>
+    __recoveryCard===document.querySelector('[data-group-id="recovery-0"]')&&
+    __recoveryStatus===__recoveryCard.querySelector('.ss-recovery-status')&&
+    __recoveryMore===__recoveryCard.querySelector('.ss-more-panel')&&__recoveryMore.style.display==='flex'&&
+    __recoveryRetry.disabled&&__recoveryStatus.textContent==='Fetching report'));
+  await page.evaluate(()=>__recoveryRetry.onclick());
+  check('A queued click cannot dispatch another request while fetching',await page.evaluate(()=>__grzCommands.filter(command=>command.action==='retry_result').length===1));
+  const catalogs=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
+  for(const [language,messages]of Object.entries(catalogs)){
+    payload.localization={language,selected:language,messages};await render(payload);
+    check('Recovery states, reasons and retry labels follow the selected catalog '+language,
+      await page.locator('[data-group-id="recovery-1"] .ss-recovery-status').textContent()===messages['recovery.status.rejected']&&
+      await page.locator('[data-group-id="recovery-1"] .ss-recovery-status').getAttribute('data-ss-help').then(text=>text.includes(messages['recovery.reason.winner_missing']))&&
+      await page.locator('[data-group-id="recovery-1"] .ss-recovery-retry').textContent()===messages['recovery.retry']);
+    for(const width of [550,860]){
+      payload.viewport.width=width+20;payload.window_size=[width,800];await render(payload);
+      check('Recovery text and retry control fit their card '+language+'/'+width,await page.locator('.ss-recovery').evaluateAll(rows=>rows.every(row=>{
+        const box=row.getBoundingClientRect();return [...row.children].every(node=>{const rect=node.getBoundingClientRect();
+          return rect.width>0&&rect.height>0&&rect.left>=box.left-1&&rect.right<=box.right+1;});
+      })));
+    }
+  }
+  payload.account_key='another-account';payload.localization={language:'en',messages:{}};await render(payload);
+  await page.evaluate(()=>__recoveryRetry.onclick());
+  check('Retained retry handlers cannot write after account/context replacement',await page.evaluate(()=>__grzCommands.filter(command=>command.action==='retry_result').length===1));
+  // Restore the regular fixture before the existing lifetime cleanup check.
+  payload=copy();await render(payload);await page.locator('#ss-group-vehicles').click();
   await page.locator('#ss-close').focus();
   const cleanupIcon=page.locator('#ss-summary .ss-performance .ss-info-button');
   await cleanupIcon.hover({position:{x:3,y:5}});

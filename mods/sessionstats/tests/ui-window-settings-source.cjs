@@ -19,7 +19,7 @@ function assertAccountWindowSource(source=shipped()) {
       viewport:{width:1800,height:1200,scale:1},window_size:[700,620]}};
   const context={state,nodes,root,document:{documentElement:{style:{}}},window:{innerWidth:1800,innerHeight:1200,requestAnimationFrame(){}},
     hasNumber:value=>typeof value==='number' && Number.isFinite(value),t:key=>key,
-    closeSelect(){},historyOnlyUpdate(){return false;},showReset(){},cancelWindowCommit(){},finishBackgroundDrag(){},
+    closeSelect(){},recoveryOnlyUpdate(){return false;},historyOnlyUpdate(){return false;},showReset(){},cancelWindowCommit(){},finishBackgroundDrag(){},
     cancelUITimer(){},invalidateCardFlow(){},retireFeed(){},resetViewScroll(){},cancelBattleNavigation(){},applyLanguage(){},
     setActionError(message){throw Error('Unexpected snapshot error: '+message);},
     setStatus(message){throw Error(message);},windowSaveFailed(){throw Error('Unexpected rejected window save');},

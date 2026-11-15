@@ -25,9 +25,10 @@ import time
 import uuid
 
 from . import VERSION
-from .normalize import arena_start, normalize_result, _number, _integer, text_type
+from .normalize import arena_start, normalize_result, report_diagnostics, _number, _integer, text_type
 from .monitor import ResultMonitor
 from .storage import check_json_depth
+from .recovery import RecoveryStore, MAX_ATTEMPTS, MAX_DELAY, valid_id, clean_entry
 
 LOG = logging.getLogger('grz.sessionstats')
 LAUNCH_ID = uuid.uuid4().hex
@@ -378,6 +379,13 @@ class Runtime(object):
         self._started_at = None
         self._cache_observer = None
         self._recovery_states = {}
+        self._recovery_details = {}
+        self._recovery_stores = {}
+        self._recovery_pause = {}
+        self._recovery_live_streak = 0
+        self._retry_target = None
+        self._retry_selection = None
+        self._recovery_dirty = False
         self._instance_tab_enabled = False
         self._instance_session = None
         self._installation_dir = installation_dir
@@ -462,6 +470,8 @@ class Runtime(object):
         return (len(waiting), bool(processing))
 
     def _publish_activity(self):
+        if self._recovery_dirty:
+            self._window_call('refresh')
         self._publish_appearance()
         self._publish_postbattle()
         try:
@@ -708,6 +718,8 @@ class Runtime(object):
             return False
         try:
             result = getattr(self.window, method)(*args)
+            if method == 'refresh':
+                self._recovery_dirty = False
             self.compatibility_warnings.pop('window:' + method, None)
             return result
         except Exception:
@@ -811,6 +823,13 @@ class Runtime(object):
         self._observed_arenas.clear()
         self._queued_crucible = None
         self._recovery_states.clear()
+        self._recovery_details.clear()
+        self._recovery_stores.clear()
+        self._recovery_pause.clear()
+        self._recovery_live_streak = 0
+        self._retry_target = None
+        self._retry_selection = None
+        self._recovery_dirty = False
         self.retries.clear()
         self.compatibility_warnings.clear()
         self._diagnostics.clear()
@@ -1005,6 +1024,7 @@ class Runtime(object):
             self.active_key = key
             self.active_service = self.services[key]
             self._publish_activity()
+        self._ensure_recovery(key)
         self._ensure_cache_observer()
         self._ensure_installation_session()
         self._schedule_loading()
@@ -1268,11 +1288,16 @@ class Runtime(object):
             except Exception:
                 self._warn_once('missions', 'Mission names are unavailable.', visible=False)
 
-        record = normalize_result(results, context=context,
+        diagnostics = {}
+        record = normalize_result(results, context=context, diagnostics=diagnostics,
                                   random_bonus_type=self.api.random_bonus_type,
                                   vehicle_resolver=self.api.vehicle_info, map_resolver=self.api.map_info,
                                   mission_resolver=resolve_missions if callable(resolver) else None)
         if record is None:
+            key = (account_key, arena_id)
+            if (not diagnostics.get('ignored') and arena_id in service.pending_arena_ids()):
+                self._update_recovery(key, status='rejected', code=None,
+                                      reason=diagnostics.get('reason'), source=source)
             return False
         if source == 'late_cache':
             # An expired request can still carry the only available result.
@@ -1324,6 +1349,18 @@ class Runtime(object):
                                     message('runtime.bonus'),
                                     exception=True)
         changed = service.record_result(record)
+        key = (account_key, record['arena_id'])
+        persisted = getattr(service, '_state', {}).get('battles', {}).get(record['arena_id'])
+        diagnosis = report_diagnostics(persisted) if persisted else report_diagnostics(record, result_seen=True)
+        reason = diagnostics.get('reason')
+        if diagnosis['report_status'] == 'complete':
+            reason = 'complete'
+        elif diagnosis['report_status'] != 'outcome_missing':
+            reason = diagnosis['reason']
+        self._update_recovery(key, status=diagnosis['report_status'], code=None,
+                              source=source, reason=reason or diagnosis['reason'])
+        if diagnosis['report_status'] == 'complete' and source != 'late_cache':
+            self.retries.pop(key, None)
         installation_changed = self._record_installation(account_key, record, is_result=True)
         LOG.info('Result normalized: source=%s complete=%s changed=%s', source, record.get('complete'), changed)
         if service.last_error:
@@ -1410,20 +1447,133 @@ class Runtime(object):
             self._service_diagnostics()
             self._schedule_tick()
 
+    def _ensure_recovery(self, account_key):
+        if account_key in self._recovery_stores:
+            return self._recovery_stores[account_key]
+        hints = RecoveryStore(self.data_dir, account_key)
+        self._recovery_stores[account_key] = hints
+        now = self.now()
+        self._recovery_pause[account_key] = min(now + MAX_DELAY, hints.pause_until)
+        for arena_id, entry in hints.entries.items():
+            detail = dict(entry)
+            detail['last_attempt'] = min(now, detail['last_attempt'])
+            detail['next_attempt'] = min(now + MAX_DELAY, detail['next_attempt'])
+            if detail['status'] == 'in_flight':
+                detail['status'] = 'queued'
+            key = (account_key, arena_id)
+            self._recovery_details[key] = detail
+            if detail['status'] != 'complete':
+                self.retries[key] = (detail['failures'], detail['next_attempt'])
+                self._recovery_states[key] = (detail['status'], detail['code'])
+        if hints.warning:
+            self._warn_once('recovery:storage', 'Recovery diagnostics could not be restored; battle history is preserved.', visible=False)
+        return hints
+
+    def _update_recovery(self, key, **updates):
+        hints = self._ensure_recovery(key[0])
+        previous = self._recovery_details.get(key, {})
+        detail = dict(previous)
+        detail.update(updates)
+        detail.setdefault('attempts', 0)
+        detail.setdefault('last_attempt', 0)
+        count, due = self.retries.get(key, (0, 0))
+        detail['failures'] = count
+        detail['next_attempt'] = due if detail.get('status') != 'complete' else 0
+        detail = clean_entry(detail)
+        self._recovery_details[key] = detail
+        if detail != previous and key[0] == self.active_key:
+            self._recovery_dirty = True
+        status = detail.get('status', 'queued')
+        if status == 'complete':
+            self._recovery_states.pop(key, None)
+        else:
+            self._recovery_states[key] = (status, detail.get('code'))
+        hints.put(key[1], detail, self._recovery_pause.get(key[0], 0))
+        for arena_id in hints.evicted:
+            evicted_key = (key[0], arena_id)
+            if evicted_key not in self.inflight:
+                self._recovery_details.pop(evicted_key, None)
+                self._recovery_states.pop(evicted_key, None)
+        if hints.warning:
+            self._warn_once('recovery:storage', 'Recovery diagnostics could not be saved; battle history is preserved.', visible=False)
+        return detail
+
+    def _recovery_view(self, arena_id, record):
+        key = (self.active_key, str(arena_id))
+        detail = self._recovery_details.get(key, {})
+        diagnosis = report_diagnostics(record)
+        state = diagnosis['report_status']
+        status = detail.get('status', 'queued') if state != 'complete' else 'complete'
+        now = self.now()
+        pause = self._recovery_pause.get(self.active_key, 0)
+        if key in self.inflight:
+            status = 'in_flight'
+        elif state != 'complete' and pause > now and status not in ('cooldown', 'rate_limited', 'not_ready', 'disconnected'):
+            status = 'cooldown'
+        reason = detail.get('reason') if state == 'outcome_missing' or detail.get('status') in ('rejected', 'not_returned', 'not_ready') else None
+        return {'report_state': state, 'status': status,
+                'attempts': detail.get('attempts', 0),
+                'last_attempt': detail.get('last_attempt') or None,
+                'next_attempt': (max(pause, self.retries.get(key, (0, 0))[1]) or None) if state != 'complete' else None,
+                'code': detail.get('code'), 'source': detail.get('source'),
+                'reason': reason or diagnosis['reason'],
+                'retry_allowed': (self.running and self.api is not None and
+                                  state != 'complete' and key not in self.inflight and
+                                  not self.api.in_battle() and not self.api.is_replay() and pause <= now)}
+
+    def _retry_result(self, arena_id):
+        if isinstance(arena_id, bytes) and not isinstance(arena_id, text_type):
+            try:
+                arena_id = arena_id.decode('ascii')
+            except UnicodeError:
+                return False
+        if (not valid_id(arena_id) or self.active_service is None or
+                self.api.in_battle() or self.api.is_replay() or
+                getattr(self.active_service, 'loading', False) or
+                arena_id not in self.active_service.pending_arena_ids()):
+            return False
+        key = (self.active_key, arena_id)
+        self._retry_selection = key
+        if key in self.inflight:
+            return False
+        now = self.now()
+        count, due = self.retries.get(key, (0, 0))
+        detail = self._recovery_details.get(key, {})
+        # Manual work may shorten local unavailable backoff, never a pause
+        # imposed by the native cache or the minimum spacing between reads.
+        earliest = max(now, detail.get('last_attempt', 0) + TICK_SECONDS,
+                       self._recovery_pause.get(self.active_key, 0))
+        if detail.get('status') in ('cooldown', 'rate_limited', 'not_ready', 'disconnected'):
+            earliest = max(earliest, due)
+        self.retries[key] = (count, earliest)
+        self._retry_target = key
+        self._update_recovery(key)
+        self._poll_one(self.active_service, self.active_key)
+        return True
+
     def _poll_one(self, service, account_key):
+        if not self.running or self.api.in_battle() or self.api.is_replay():
+            return
         if getattr(service, 'loading', False) or not getattr(service, 'ready', True):
             return
+        self._ensure_recovery(account_key)
         now = self.now()
         for key, request in list(self.inflight.items()):
             if request['expires'] <= now:
                 self.inflight.pop(key, None)
+                self._update_recovery(key, status='not_returned', reason='timeout')
         if self.inflight:
+            return
+        if self._recovery_pause.get(account_key, 0) > now:
             return
         pending = service.pending_arena_ids()
         # Native requests are serialized with the stock UI and other mods.
         # Prefer live battles, then the earliest due result, so the first old
         # failure cannot repeatedly jump ahead of untried results.
-        pending.sort(key=lambda arena_id: ((account_key, str(arena_id)) not in self._observed_arenas,
+        prefer_old = self._recovery_live_streak >= 3
+        pending.sort(key=lambda arena_id: ((account_key, str(arena_id)) != self._retry_target,
+                     ((account_key, str(arena_id)) in self._observed_arenas) if prefer_old else
+                     ((account_key, str(arena_id)) not in self._observed_arenas),
                      self.retries.get((account_key, str(arena_id)), (0, 0))[1],
                      -(arena_start(arena_id) or 0), str(arena_id)))
         for arena_id in pending:
@@ -1434,7 +1584,14 @@ class Runtime(object):
                 continue
             request = {'expires': now + 30}
             self.inflight[key] = request
-            self.retries[key] = (count + 1, now + min(300, 5 * (2 ** min(count, 6))))
+            self.retries[key] = (min(MAX_ATTEMPTS, count + 1), now + min(300, 5 * (2 ** min(count, 6))))
+            detail = self._recovery_details.get(key, {})
+            self._update_recovery(key, status='in_flight', reason=None,
+                                  attempts=min(MAX_ATTEMPTS, detail.get('attempts', 0) + 1),
+                                  last_attempt=now)
+            if key == self._retry_target:
+                self._retry_target = None
+            self._recovery_live_streak = self._recovery_live_streak + 1 if key in self._observed_arenas else 0
 
             lifecycle = self._lifecycle
 
@@ -1465,17 +1622,21 @@ class Runtime(object):
                     code, raw = args[:2]
                     if _number(code, nonnegative=False) is None:
                         self.monitor.fault('cache_status', 'battleResultsCache.status', 'numeric status', type(code).__name__, 'cache')
+                        self._update_recovery(key, status='rejected', code=None, reason='invalid_status')
                     elif code > 0:
                         if isinstance(raw, dict) and str(raw.get('arenaUniqueID')) == key[1]:
                             self._process(raw, key[0], service, source='cache')
                             if key[1] not in service.pending_arena_ids():
                                 self.retries.pop(key, None)
                                 self._recovery_states.pop(key, None)
+                            elif self._recovery_details.get(key, {}).get('status') == 'in_flight':
+                                self._update_recovery(key, status='not_returned', code=None)
                         else:
                             self.monitor.check(raw, {'account_dbid': int(key[0].rsplit(':', 1)[1])},
                                                self.api.random_bonus_type, 'cache')
                             self.monitor.fault('cache_identity', 'battleResultsCache.arenaUniqueID',
                                                'requested battle identity', 'missing or mismatched', 'cache')
+                            self._update_recovery(key, status='rejected', code=None, reason='identity_mismatch')
                     else:
                         status_getter = getattr(self.api, 'result_status', None)
                         status = status_getter(code) if callable(status_getter) else 'not_returned'
@@ -1484,13 +1645,23 @@ class Runtime(object):
                         if status in ('cooldown', 'not_ready', 'disconnected', 'rate_limited'):
                             delay = 30 if status == 'rate_limited' else TICK_SECONDS
                             self.retries[key] = (count, self.now() + delay)
+                            self._recovery_pause[key[0]] = max(self._recovery_pause.get(key[0], 0), self.now() + delay)
+                        detail = self._recovery_details.get(key, {})
+                        unavailable_count = detail.get('unavailable_count', 0)
+                        if status == 'unavailable':
+                            unavailable_count = min(MAX_ATTEMPTS, unavailable_count + 1)
+                            if unavailable_count >= 3:
+                                delay = min(MAX_DELAY, 1800 * (2 ** min(unavailable_count - 3, 6)))
+                                self.retries[key] = (count + 1, self.now() + delay)
                         safe_code = code if code in (-14, -13, -10, -7, -6, -5, -4, -3, -2, -1, 0) else 'unknown'
                         marker = (status, safe_code)
                         if self._recovery_states.get(key) != marker:
-                            self._recovery_states[key] = marker
                             LOG.info('Result recovery: status=%s code=%s attempt=%s pending=%s',
                                      status, safe_code, count + 1, len(service.pending_arena_ids()))
+                        self._update_recovery(key, status=status, code=code if safe_code != 'unknown' else None,
+                                              reason=None, unavailable_count=unavailable_count)
                 except Exception:
+                    self._update_recovery(key, status='rejected', code=None, reason='malformed_structure')
                     self._warn_once('results:cache_callback', message('runtime.pending'), exception=True)
                     self.monitor.fault('cache_callback', 'battleResultsCache.callback', 'status and result', 'exception', 'cache')
                 finally:
@@ -1506,6 +1677,8 @@ class Runtime(object):
             if not requested:
                 if self.inflight.get(key) is request:
                     self.inflight.pop(key, None)
+                    self.retries[key] = (count, self.now() + TICK_SECONDS)
+                    self._update_recovery(key, status='not_ready', code=None, reason='request_failed')
                 self._warn_once('results:cache', message('runtime.cache'))
             else:
                 self.compatibility_warnings.pop('results:cache', None)
@@ -1535,9 +1708,22 @@ class Runtime(object):
                               'in_flight': sum(1 for key in self.inflight if key[0] == self.active_key),
                               'states': {}}
         for arena_id in pending:
-            status = self._recovery_states.get((self.active_key, str(arena_id)), ('queued', None))[0]
+            key = (self.active_key, str(arena_id))
+            status = 'in_flight' if key in self.inflight else self._recovery_states.get(key, ('queued', None))[0]
             states = result['recovery']['states']
             states[status] = states.get(status, 0) + 1
+        source = getattr(self.active_service, '_state', {}).get('battles', {})
+        selected = self._retry_selection
+        if selected and selected[0] == self.active_key and selected[1] in source:
+            result['recovery']['selected'] = self._recovery_view(selected[1], source[selected[1]])
+            result['recovery']['selected']['id'] = selected[1]
+        for scope_name, scope in result['scopes'].items():
+            if scope_name == 'instance':
+                continue
+            for row in scope.get('battles', []):
+                record = source.get(row['id'])
+                if record is not None:
+                    row['recovery'] = self._recovery_view(row['id'], record)
         backlog = len(pending - waiting)
         if backlog:
             warnings.append(message('runtime.backlog').format(backlog))
@@ -1717,13 +1903,26 @@ class Runtime(object):
             # failed publication. The UI rolls back to persisted settings.
             self._load_appearance()
             self._window_call('refresh')
+        elif action == 'retry_result' and self.active_service is not None:
+            if getter('account_key') != self.active_key:
+                return
+            if self._retry_result(getter('arena_id')):
+                self._window_call('refresh')
         elif action == 'refresh':
             self._load_appearance()
             self._refresh_posted()
             if self.active_service is not None and not self.api.in_battle():
                 for key in list(self.retries):
                     if key[0] == self.active_key:
-                        self.retries[key] = (0, 0)
+                        count, due = self.retries[key]
+                        detail = self._recovery_details.get(key, {})
+                        earliest = max(self.now(), detail.get('last_attempt', 0) + TICK_SECONDS,
+                                       self._recovery_pause.get(self.active_key, 0))
+                        if detail.get('status') in ('cooldown', 'rate_limited', 'not_ready', 'disconnected'):
+                            earliest = max(earliest, due)
+                        self.retries[key] = (count, earliest)
+                        if key in self._recovery_details:
+                            self._recovery_details[key]['next_attempt'] = earliest
                 self._poll_one(self.active_service, self.active_key)
             self._window_call('refresh')
         elif action == 'resize':

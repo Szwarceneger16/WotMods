@@ -301,7 +301,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.summary(next_launch, 'manual')['xp_received']['sum'], 4600)
 
     def test_authoritative_partial_components_recalculate_derived_net(self):
-        self.service.record_result(result(complete=False))
+        self.service.record_result(result(complete=False, free_xp=None))
         self.service.record_result({'arena_id': '1', 'complete': False, 'reconcile': True,
                                     'currencies': {'credits': {'income': -50, 'net': None}}})
         self.assertEqual(self.summary()['currencies']['credits']['net'], -70)
