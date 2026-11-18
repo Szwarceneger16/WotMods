@@ -1,0 +1,49 @@
+name: Validate Hangar Sync PR
+
+on:
+  pull_request:
+    branches: [main, feature/sessionstats-battle-details-timeline]
+    paths:
+      - 'mods/hangarsync/**'
+      - 'scripts/hangarsync/**'
+      - 'tests/test_hangarsync_*.py'
+      - '.github/workflows/hangarsync-ci.yml'
+      - '.github/workflows/hangarsync-build.yml'
+      - 'scripts/sessionstats/python27.sh'
+      - 'scripts/privacy_audit.py'
+      - '.github/workflows/wot-updates.yml'
+      - 'scripts/wot_updates.py'
+      - 'scripts/wot_dispatch.py'
+      - 'tests/test_wot_updates.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  updates:
+    uses: ./.github/workflows/wot-updates.yml
+    with:
+      strict: false
+  hangarsync:
+    name: Test, build and audit Hangar Sync
+    needs: updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: hangarsync-ci-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout candidate source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Compile verified CPython 2.7.18
+        # This shared compiler helper does not build or run Session Stats.
+        run: bash scripts/sessionstats/python27.sh
+      - name: Check Hangar Sync workflow and privacy boundaries
+        run: python3 -m unittest discover -s tests -p 'test_hangarsync_*.py' -v
+      - name: Test, build, audit and reproduce Hangar Sync
+        # Candidate packages are checked locally and never uploaded for installation.
+        run: bash scripts/hangarsync/validate.sh

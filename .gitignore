@@ -30,8 +30,11 @@ __pycache__/
 /res_mods/
 /mods/*
 !/mods/sessionstats/
+!/mods/hangarsync/
 !/mods/sessionstats/third_party/openwg/net.openwg.gameface_1.2.2.wotmod
 /mods/sessionstats/dist/
+/mods/hangarsync/dist/
+/mods/hangarsync/GRZ_Hangar_Sync.json
 /mods/sessionstats/tests/*-report.json
 /mods/sessionstats/preview/PODGLAD.html
 /mods/sessionstats/preview/demo_snapshot.json
