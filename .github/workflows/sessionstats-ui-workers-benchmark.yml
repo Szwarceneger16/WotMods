@@ -1,0 +1,118 @@
+name: Compare Session Stats UI workers
+
+on:
+  pull_request:
+    branches: [feature/sessionstats-battle-details-timeline]
+    paths:
+      - '.github/workflows/sessionstats-ui-workers-benchmark.yml'
+      - 'mods/sessionstats/tests/ui-feature-pool.cjs'
+      - 'mods/sessionstats/tests/ui-feature-pool-test.cjs'
+      - 'mods/sessionstats/tests/ui_contract.cjs'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Workers ${{ matrix.first }} then ${{ matrix.second }}
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ci/sessionstats-ui-worker-profile'
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - first: 2
+            second: 3
+          - first: 3
+            second: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restore and verify CPython
+        uses: ./.github/actions/python27
+      - name: Run both worker counts on the same four-core runner
+        env:
+          APP_SHA: d247a31fbc131b51c68c05ae938cbf6688396685
+          FIRST: ${{ matrix.first }}
+          SECOND: ${{ matrix.second }}
+        run: |
+          set -euo pipefail
+          test "$(nproc)" -eq 4
+          printf 'Benchmark application %s, %s logical CPUs\n' "$APP_SHA" "$(nproc)"
+          lscpu | sed -n '/^Model name:/p'
+          output="$RUNNER_TEMP/ui-worker-results"
+          fixture="$RUNNER_TEMP/sessionstats-ui-source"
+          mkdir -p "$output"
+          git worktree add --detach "$fixture" "$APP_SHA"
+          for file in ui-feature-pool.cjs ui-feature-pool-test.cjs ui_contract.cjs; do
+            cp "mods/sessionstats/tests/$file" "$fixture/mods/sessionstats/tests/$file"
+          done
+          cd "$fixture"
+          node mods/sessionstats/tests/ui-feature-pool-test.cjs
+          bash scripts/sessionstats/validate.sh preview
+          python3 -I scripts/sessionstats/browser_qa.py --prepare
+
+          measure() {
+            local phase="$1" started="$SECONDS" status=0
+            bash scripts/sessionstats/validate.sh "$phase" >"$result/$phase.log" 2>&1 || status=$?
+            printf '%s %s\n' "$status" "$((SECONDS - started))" >"$result/$phase.time"
+            return "$status"
+          }
+
+          pool=mods/sessionstats/tests/ui-feature-pool.cjs
+          report=mods/sessionstats/tests/ui-report.json
+          cp "$pool" "$output/pool-source.cjs"
+          printf '| Workers | All phases (s) | Python 3 | Python 2.7 | Browser |\n|---:|---:|---:|---:|---:|\n' >> "$GITHUB_STEP_SUMMARY"
+          failed=0
+          for workers in "$FIRST" "$SECOND"; do
+            result="$output/workers-$workers"
+            mkdir "$result"
+            sed "s/^const DEFAULT_FEATURE_WORKERS = [23];$/const DEFAULT_FEATURE_WORKERS = $workers;/" "$output/pool-source.cjs" > "$pool"
+            sed -n "/^const DEFAULT_FEATURE_WORKERS = $workers;$/p" "$pool" | cmp - <(printf 'const DEFAULT_FEATURE_WORKERS = %s;\n' "$workers")
+            rm -f "$report"
+
+            phase_started=$SECONDS
+            measure python3 &
+            python3_pid=$!
+            measure python27 &
+            python27_pid=$!
+            browser_status=0
+            measure browser || browser_status=$?
+            python3_status=0
+            wait "$python3_pid" || python3_status=$?
+            python27_status=0
+            wait "$python27_pid" || python27_status=$?
+
+            read -r _ python3_time < "$result/python3.time"
+            read -r _ python27_time < "$result/python27.time"
+            read -r _ browser_time < "$result/browser.time"
+            if [[ -f "$report" ]]; then
+              cp "$report" "$result/ui-report.json"
+            elif (( browser_status == 0 )); then
+              echo 'The successful browser phase did not produce a UI report'
+              browser_status=1
+            fi
+            printf 'UI benchmark workers=%s whole=%s python3=%s python27=%s browser=%s statuses=%s/%s/%s\n' \
+              "$workers" "$((SECONDS - phase_started))" "$python3_time" "$python27_time" "$browser_time" \
+              "$python3_status" "$python27_status" "$browser_status" | tee "$result/timing.txt"
+            printf '| %s | %s | %s s (%s) | %s s (%s) | %s s (%s) |\n' \
+              "$workers" "$((SECONDS - phase_started))" \
+              "$python3_time" "$python3_status" "$python27_time" "$python27_status" "$browser_time" "$browser_status" >> "$GITHUB_STEP_SUMMARY"
+            sed -n -E '/^Running browser suite:|^UI (feature passed:|worker profile:)|AssertionError|TimeoutError|^Browser QA failed:/p' "$result/browser.log"
+            if (( python3_status || python27_status || browser_status )); then
+              failed=1
+            fi
+          done
+          exit "$failed"
+      - name: Upload browser timings and reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-benchmark-${{ matrix.first }}-${{ matrix.second }}
+          path: ${{ runner.temp }}/ui-worker-results
+          if-no-files-found: error
+          retention-days: 14
