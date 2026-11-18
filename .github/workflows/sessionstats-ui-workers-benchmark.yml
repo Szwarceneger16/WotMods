@@ -1,13 +1,8 @@
 name: Verify Session Stats UI worker schedule
 
 on:
-  pull_request:
-    branches: [feature/sessionstats-battle-details-timeline]
-    paths:
-      - '.github/workflows/sessionstats-ui-workers-benchmark.yml'
-      - 'mods/sessionstats/tests/ui-feature-pool.cjs'
-      - 'mods/sessionstats/tests/ui-feature-pool-test.cjs'
-      - 'mods/sessionstats/tests/ui_contract.cjs'
+  push:
+    branches: [ci/sessionstats-ui-worker-profile]
 
 permissions:
   contents: read
@@ -15,7 +10,7 @@ permissions:
 jobs:
   benchmark:
     name: Mixed schedule sample ${{ matrix.sample }}
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ci/sessionstats-ui-worker-profile'
+    if: github.repository == 'Szwarceneger16/WotMods'
     runs-on: ubuntu-24.04
     cache-mode: read
     timeout-minutes: 25
