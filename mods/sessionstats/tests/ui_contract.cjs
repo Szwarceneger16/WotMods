@@ -234,9 +234,9 @@ async function runFeatureSuite(file,browser) {
 }
 
 
-async function runFeatureBatch(files,phase){
+async function runFeatureBatch(files,phase,workerCount){
   try{
-    const reports=await runFeaturePool(files,{script:__filename,reportDirectory:qaDirectory,hints:FEATURE_DURATION_HINTS,phase});
+    const reports=await runFeaturePool(files,{script:__filename,reportDirectory:qaDirectory,hints:FEATURE_DURATION_HINTS,phase,workerCount});
     for(const report of reports){
       checks.push(...report.checks);errors.push(...report.errors);
       featureFailures.push(...report.featureFailures);featureResults.push(...report.features);
@@ -788,7 +788,8 @@ const FEATURE_DURATION_HINTS = {
       __grzRemovedCallbacks.join(',')===(mode==='throw-once'?'71':''),callback));
     await degraded.close();
   }
-  await runFeatureBatch(FEATURE_PHASES[0],1);
+  // Sorting already runs several browser flows concurrently inside this phase.
+  await runFeatureBatch(FEATURE_PHASES[0],1,2);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));
@@ -1020,7 +1021,7 @@ const FEATURE_DURATION_HINTS = {
   check('Legacy payload without localization restores English',
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
-  await runFeatureBatch(FEATURE_PHASES[1],2);
+  await runFeatureBatch(FEATURE_PHASES[1],2,3);
   check('Every independent feature suite reported exactly once',coverageMatches(
     ['./ui-locale-screenshots.cjs',...FEATURE_PHASES.flat()],featureResults.map(result=>result.file)));
   check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);

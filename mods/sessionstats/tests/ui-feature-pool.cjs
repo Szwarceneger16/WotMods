@@ -5,8 +5,6 @@ const path=require('path');
 const {spawn}=require('child_process');
 const {performance}=require('node:perf_hooks');
 
-const DEFAULT_FEATURE_WORKERS = 2;
-
 function assertManifest(files){
   assert(Array.isArray(files)&&files.length>0,'A feature manifest must be nonempty');
   assert(files.every(file=>typeof file==='string'&&/^\.\/ui-[a-z0-9-]+\.cjs$/.test(file)),
@@ -14,7 +12,7 @@ function assertManifest(files){
   assert(new Set(files).size===files.length,'A feature manifest must not contain duplicates');
 }
 
-function partitionFeatures(files,hints={},workerCount=DEFAULT_FEATURE_WORKERS){
+function partitionFeatures(files,hints={},workerCount=2){
   assertManifest(files);
   assert(workerCount===2||workerCount===3,'Feature worker count must be 2 or 3');
   const buckets=Array.from({length:Math.min(workerCount,files.length)},()=>({weight:0,items:[]}));
