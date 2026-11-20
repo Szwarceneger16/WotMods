@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every browser check with pinned Chromium, fonts and OS dependencies."""
+"""Run CI browser checks with pinned Chromium, fonts and OS dependencies."""
 import argparse
 import json
 import os
@@ -22,6 +22,7 @@ UI_TESTS = ('ui_contract', 'ui-wheel', 'ui-footer', 'ui-footer-activity',
 PULL_TIMEOUT = 600
 PREPARE_TIMEOUT = 300
 TEST_TIMEOUT = 900
+MATRIX_TIMEOUT = 150 * 60
 HOST_CA = Path('/etc/ssl/certs/ca-certificates.crt')
 
 
@@ -52,11 +53,13 @@ def python_runtime():
             'version': sys.version}
 
 
-def docker_command(command, *, runtime, workspace, temporary, name):
+def docker_command(command, *, runtime, workspace, temporary, name, offline=False):
     """Build a container command without forwarding host credentials or sockets."""
     args = ['docker', 'run', '--rm', '--init', '--platform', 'linux/amd64',
             '--shm-size=1g', '--name', name, '--user', '{}:{}'.format(os.getuid(), os.getgid()),
             '--workdir', str(workspace)]
+    if offline:
+        args += ['--network', 'none']
     mounts = [(workspace, str(workspace), False),
               (temporary, str(temporary), False)]
     mounts += [(source, target, True) for source, target in runtime['mounts']]
@@ -78,6 +81,8 @@ def docker_command(command, *, runtime, workspace, temporary, name):
         'PATH': '/host-python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         **runtime['environment'],
     }
+    if offline:
+        environment['GITHUB_ACTIONS'] = 'true'
     if HOST_CA.is_file():
         environment['NODE_EXTRA_CA_CERTS'] = '/host-ca-certificates.crt'
     for key, value in sorted(environment.items()):
@@ -89,11 +94,11 @@ def execute(command, timeout):
     subprocess.run(command, check=True, timeout=timeout)
 
 
-def container(command, *, runtime, workspace, temporary, timeout):
+def container(command, *, runtime, workspace, temporary, timeout, offline=False):
     name = 'sessionstats-browser-' + uuid.uuid4().hex
     try:
         execute(docker_command(command, runtime=runtime, workspace=workspace,
-                               temporary=temporary, name=name), timeout)
+                               temporary=temporary, name=name, offline=offline), timeout)
     finally:
         # Killing a timed-out Docker CLI does not stop its container. Remove
         # this invocation's unique name only; never prune unrelated containers.
@@ -149,7 +154,26 @@ for (const name of %s) {
 """ % json.dumps(UI_TESTS)
 
 
-def run(prepare=False):
+def e2e_command(profile, report_dir, shard):
+    suite = 'full' if profile in ('full', 'exhaustive') else 'build'
+    capture = {'build': 'failures', 'smoke': 'all', 'full': 'final', 'exhaustive': 'final'}[profile]
+    command = ['node', 'scripts/sessionstats/local-e2e/run.cjs', '--suite', suite,
+               '--engine', 'chromium', '--python', '/host-python/bin/python3',
+               '--capture', capture, '--out', str(report_dir)]
+    if suite == 'full':
+        command += ['--image-format', 'jpeg', '--jpeg-quality', '48']
+    if profile == 'exhaustive':
+        command += ['--all-ranges']
+    if shard or profile == 'smoke':
+        command += ['--shard', shard or '1/1']
+    return command
+
+
+def run(prepare=False, *, e2e=None, report_dir=None, shard=None):
+    if report_dir is not None:
+        report_dir = report_dir.resolve()
+        if ROOT not in report_dir.parents:
+            raise RuntimeError('The CI report directory must be inside the workspace')
     if not shutil.which('docker'):
         raise RuntimeError('Docker is required for the pinned browser QA runtime')
     runtime = python_runtime()
@@ -164,16 +188,29 @@ def run(prepare=False):
                    '--no-fund', '--save-exact', 'playwright@' + PLAYWRIGHT_VERSION],
                   timeout=PREPARE_TIMEOUT, **options)
         container(['node', '-e', smoke_script(runtime)], timeout=PREPARE_TIMEOUT, **options)
-        if not prepare:
+        if e2e:
+            timeout = MATRIX_TIMEOUT if e2e in ('full', 'exhaustive') else TEST_TIMEOUT
+            container(e2e_command(e2e, report_dir or temporary / 'report', shard),
+                      timeout=timeout, offline=True, **options)
+        elif not prepare:
             container(['node', '-e', test_script()], timeout=TEST_TIMEOUT, **options)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prepare', action='store_true', help='Install and smoke-test the runtime only')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--prepare', action='store_true', help='Install and smoke-test the runtime only')
+    modes.add_argument('--e2e', choices=('build', 'smoke', 'full', 'exhaustive'),
+                       help='Render a short CI check or an on-demand matrix')
+    parser.add_argument('--report-dir', type=Path, help='Keep the report under this workspace path')
+    parser.add_argument('--shard', help='Render the given full-matrix shard (N/M)')
     args = parser.parse_args()
+    if args.report_dir is not None and not args.e2e:
+        parser.error('--report-dir requires --e2e')
+    if args.shard and args.e2e not in ('full', 'exhaustive'):
+        parser.error('--shard requires --e2e full or --e2e exhaustive')
     try:
-        run(prepare=args.prepare)
+        run(prepare=args.prepare, e2e=args.e2e, report_dir=args.report_dir, shard=args.shard)
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         print('Browser QA failed: ' + str(error), file=sys.stderr)
         return 1

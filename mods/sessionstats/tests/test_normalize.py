@@ -66,6 +66,19 @@ class NormalizerTests(unittest.TestCase):
                                              'consumables': 10000, 'directives': 5000})
         self.assertTrue(any('Deferred credits' in item for item in record['warnings']))
 
+    def test_bond_directive_resupply_is_in_equipment_total_and_subtracted_once(self):
+        raw = raw_result()
+        # Native autoEquipCrystals reads autoEquipCost[2]. The booster tuple is
+        # the directive subset of that amount, not a second bond payment.
+        raw['personal'][1]['autoEquipCost'] = (0, 0, 12)
+        raw['personal'][1]['autoEquipBoostersCost'] = (0, 0, 12)
+        bonds = normalize_result(raw)['currencies']['bonds']
+        self.assertEqual(bonds, {'income': 40, 'costs': 12, 'net': 28})
+        del raw['personal'][1]['autoEquipCost']
+        bonds = normalize_result(raw)['currencies']['bonds']
+        self.assertIsNone(bonds['costs'])
+        self.assertIsNone(bonds['net'])
+
     def test_credit_replay_rounds_first_deduction_but_preserves_subcoeff(self):
         raw = raw_result()
         personal = raw['personal'][1]

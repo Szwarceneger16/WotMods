@@ -91,7 +91,7 @@ class AccountSessionTests(unittest.TestCase):
         before = [copy.deepcopy(service._state) for service in (first, second)]
         shared = self.scopes()['instance']
         records = first.launch_records() + second.launch_records()
-        self.assertEqual(shared['summary'], aggregate_stats(records, first.expected_table))
+        self.assertEqual(shared['summary'], aggregate_stats(records, first.expected_table, include_currency_series=True))
         self.assertEqual(shared['summary']['battles'], 2)
         self.assertEqual(self.scopes()['manual']['summary']['battles'], 1)
         self.assertEqual(len(set(row['id'] for row in shared['battles'])), 2)

@@ -2,12 +2,12 @@
 from __future__ import unicode_literals
 import copy
 import unittest
-from test_history_performance import HistoryPerformanceTests
+from test_history_performance import HistoryPerformanceFixture
 from test_core import result, aggregate_stats, EXPECTED
 from grz_session_stats.projection import DEFAULT_ORDER
 
 
-class TierTests(HistoryPerformanceTests):
+class TierTests(HistoryPerformanceFixture, unittest.TestCase):
     def test_tiers_include_eleven_and_unknown_without_losing_battles(self):
         for i, tier in enumerate((8, 8, 10, 11, None)):
             self.assertTrue(self.service.record_result(result(str(i),vehicle_tier=tier)))

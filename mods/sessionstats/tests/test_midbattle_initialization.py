@@ -2,6 +2,7 @@
 """Live observation can begin before an account service or mod is initialized."""
 from __future__ import unicode_literals
 
+import copy
 import os
 import unittest
 
@@ -14,6 +15,7 @@ class MidbattleInitializationTests(unittest.TestCase):
     setUp = fixtures.RuntimeTests.__dict__['setUp']
     tearDown = fixtures.RuntimeTests.__dict__['tearDown']
     no_footer = fixtures.RuntimeTests.__dict__['no_footer']
+    garage = fixtures.RuntimeTests.__dict__['garage']
 
     def enter_ongoing_battle(self):
         self.clock.value = START + 60
@@ -22,6 +24,12 @@ class MidbattleInitializationTests(unittest.TestCase):
                             'vehicle_id': 1, 'map_id': '17_map', 'mode': 'random'}
 
     def assert_observed_and_completed(self):
+        account_key = '{}:{}'.format(self.api.region, self.api.dbid)
+        self.assertNotIn(account_key, self.mod.services)
+        fixtures.wait_for_combat_capture(self.mod, account_key)
+        self.assertEqual(self.mod._combat_intake.pending(account_key)[0][1], 'begin')
+        self.garage()
+        self.assertEqual(self.mod.active_key, account_key)
         service = self.mod.active_service
         for scope in ('launch', 'manual'):
             stats = service.snapshot()['scopes'][scope]['summary']
@@ -31,10 +39,12 @@ class MidbattleInitializationTests(unittest.TestCase):
         for scope in ('launch', 'manual'):
             self.assertEqual(service.snapshot()['scopes'][scope]['summary']['battles'], 1)
         self.assertEqual(self.mod._instance_session.snapshot()[0]['summary']['battles'], 1)
-        sequence = service.store.sequence
+        record = copy.deepcopy(service._state['battles'][ARENA_ID])
+        self.api.battle = True
         self.api.events.onAvatarReady()
         self.api.events.onBattleResultsReceived(True, raw_result(dbid=self.api.dbid))
-        self.assertEqual(service.store.sequence, sequence)
+        self.garage()
+        self.assertEqual(service._state['battles'][ARENA_ID], record)
         self.assertEqual(service._state['battles'][ARENA_ID]['started_at'], START)
 
     def test_mod_starts_during_an_ongoing_battle(self):
@@ -52,7 +62,6 @@ class MidbattleInitializationTests(unittest.TestCase):
         self.api.dbid = 8
         self.mod._installation_dir = self.directory
         self.api.events.onAvatarReady()
-        self.assertEqual(self.mod.active_key, 'EU:8')
         self.assert_observed_and_completed()
 
 

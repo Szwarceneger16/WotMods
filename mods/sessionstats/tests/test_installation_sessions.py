@@ -49,7 +49,10 @@ class InstallationLedgerTests(unittest.TestCase):
         self.clock.value = 200
         restored = self.open('run-b')
         self.assertEqual(self.stats(restored)['battles'], 2)
-        self.assertEqual(restored.snapshot()[0], self.session.snapshot()[0])
+        previous = copy.deepcopy(self.session.snapshot()[0])
+        current = copy.deepcopy(restored.snapshot()[0])
+        self.assertNotEqual(current.pop('data_revision'), previous.pop('data_revision'))
+        self.assertEqual(current, previous)
 
     def test_manual_installation_reset_survives_restart_and_excludes_late_old_results(self):
         self.record(complete=False)
@@ -161,14 +164,28 @@ class InstallationRuntimeTests(unittest.TestCase):
     def test_installation_storage_failure_does_not_block_account_results(self):
         self.enable_instance()
         self.scopes()
+
         def fail(unused):
             raise StorageError('injected installation write failure')
-        self.mod._instance_session.service.store.save = fail
-        self.battle()
-        snapshot = self.mod.snapshot()
-        self.assertEqual(snapshot['scopes']['manual']['summary']['battles'], 1)
-        self.assertTrue(snapshot['warnings'])
-        self.assertEqual(snapshot['scopes']['instance']['summary']['battles'], 0)
+
+        store = self.mod._instance_session.service.store
+        save = store.save
+        store.save = fail
+        try:
+            service, unused = self.battle()
+            self.garage()
+            snapshot = self.mod.snapshot()
+            self.assertEqual(snapshot['scopes']['manual']['summary']['battles'], 1)
+            self.assertTrue(snapshot['warnings'])
+            self.assertEqual(snapshot['scopes']['instance']['summary']['battles'], 0)
+            self.assertTrue(self.mod._combat_intake.pending(self.mod.active_key))
+        finally:
+            store.save = save
+        sequence = service.store.sequence
+        self.garage()
+        self.assertEqual(service.store.sequence, sequence)
+        self.assertEqual(self.scopes()['instance']['summary']['battles'], 1)
+        self.assertEqual(self.mod._combat_intake.pending(self.mod.active_key), [])
 
     def test_hidden_tab_does_not_stop_collection_or_erase_saved_installation_results(self):
         self.enable_instance()

@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 import types
 import unittest
 
@@ -20,6 +21,24 @@ from test_normalize import raw_result, ARENA_ID, START
 
 EXPECTED = {'header': {'version': 'fixture'}, 'data': [
     {'IDNum': 1, 'expDamage': 1000, 'expFrag': 1, 'expSpot': 1, 'expDef': 1, 'expWinRate': 50}]}
+
+
+def wait_for_combat_capture(mod, account_key=None):
+    intake = mod._combat_intake
+    if intake is None:
+        return
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if account_key is not None:
+            if not intake.waiting(account_key):
+                return
+            time.sleep(0.005)
+            continue
+        with intake._condition:
+            if not intake._queue:
+                return
+        time.sleep(0.005)
+    raise AssertionError('The combat intake worker did not settle')
 
 
 class Obj(object):
@@ -92,7 +111,7 @@ class FakeWindow(object):
 
 class FakeAPI(object):
     EVENT_NAMES = ('onAccountBecomePlayer', 'onAccountShowGUI', 'onClientSynchronize',
-                   'onAvatarReady', 'onAvatarBecomePlayer', 'onAccountBecomeNonPlayer',
+                   'onArenaCreated', 'onAvatarReady', 'onAvatarBecomePlayer', 'onAccountBecomeNonPlayer',
                    'onBattleResultsReceived')
 
     def __init__(self):
@@ -184,6 +203,7 @@ class RuntimeTests(unittest.TestCase):
         return None
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         logging.disable(self.log_level)
         shutil.rmtree(self.directory)
@@ -191,6 +211,21 @@ class RuntimeTests(unittest.TestCase):
     def summary(self, scope='launch', service=None):
         service = service or self.mod.active_service
         return service.snapshot()['scopes'][scope]['summary']
+
+    def test_crucible_stage_is_captured_before_lobby_state_is_cleared(self):
+        stage = 'challenge:8:2'
+        self.api.active_crucible = lambda: {
+            'active_crucible': stage, 'missions': {stage: {'kind': 'crucible', 'stage': 2}}}
+        self.api.events.onArenaCreated()
+        self.api.active_crucible = lambda: {}
+        self.begin()
+        self.garage()
+        raw = raw_result()
+        raw['personal']['avatar']['questsProgress'] = {stage + ':fail': ('group', {}, {'bonusCount': 1})}
+        self.api.events.onBattleResultsReceived(True, raw)
+        details = self.mod.snapshot()['scopes']['timeline']['battles'][0]['details']
+        self.assertEqual(details['active_crucible'], stage)
+        self.assertEqual(details['missions'][stage]['status'], 'failed')
 
     def test_missing_account_snapshot_uses_current_package_version(self):
         self.mod.active_service = None
@@ -208,6 +243,7 @@ class RuntimeTests(unittest.TestCase):
         self.api.events.onAvatarReady()
 
     def garage(self):
+        wait_for_combat_capture(self.mod)
         self.api.battle = False
         self.api.events.onAccountShowGUI()
 
@@ -262,8 +298,9 @@ class RuntimeTests(unittest.TestCase):
 
     def test_begin_is_saved_and_late_result_keeps_pre_reset_membership(self):
         self.begin()
-        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
         self.garage()
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
         self.clock.value += 200
         self.mod.on_action({'action': 'reset'})
         self.api.events.onBattleResultsReceived(True, raw_result())
@@ -287,6 +324,24 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.summary()['xp_base']['sum'], 650)
         self.assertEqual(self.summary()['currencies']['bonds']['net'], 28)
         self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+
+    def test_inflight_cache_result_is_captured_during_the_next_battle(self):
+        self.begin()
+        self.garage()
+        self.tick()
+        unused_arena, receive = self.api.pending_callbacks.pop()
+        service = self.mod.active_service
+        sequence = service.store.sequence
+        second = str((12346 << 32) | (START + 20))
+        self.begin(second)
+        receive(1, raw_result())
+        wait_for_combat_capture(self.mod)
+        self.assertEqual(service.store.sequence, sequence)
+        self.assertEqual(self.summary()['battles'], 0)
+        self.assertFalse(self.mod.inflight)
+        self.garage()
+        self.assertEqual(self.summary()['battles'], 1)
+        self.assertEqual(service.pending_arena_ids(), [second])
 
     def test_two_out_of_order_results_keep_independent_identifiers(self):
         second = str((12346 << 32) | (START + 20))

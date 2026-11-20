@@ -128,18 +128,15 @@ class LanguageFileTests(unittest.TestCase):
         self.assertEqual(os.listdir(self.directory),['settings.json'])
 
 
-class NativeLanguageTests(unittest.TestCase):
-    inject_module=paging.NativePaginationTests.__dict__['inject_module']
-    payload=paging.NativePaginationTests.__dict__['payload']
+class NativeLanguageTests(paging.NativePaginationFixture, unittest.TestCase):
     def setUp(self):
-        paging.NativePaginationTests.__dict__['setUp'](self)
+        super(NativeLanguageTests, self).setUp()
         self.path=os.path.join(self.directory,'grz.sessionstats.json')
         self.document={'language':'en','colors':{'window_border':'#123456'},'scroll':{'speed_multiplier':2},'sessions':{'instance_tab':True}}
         with io.open(self.path,'wb') as handle: handle.write(json.dumps(self.document).encode('utf-8'))
         self.mod.data_dir=self.directory
         self.mod._appearance_override_path=self.path
         self.mod._load_appearance();self.window.refresh()
-    def tearDown(self): paging.NativePaginationTests.__dict__['tearDown'](self)
     def command(self,code,account='EU:7'):
         self.window._model.onAction({'action':'language','language':code,'account_key':account})
     def test_gui_choice_persists_and_updates_immediately_without_changing_history(self):

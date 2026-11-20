@@ -33,13 +33,20 @@ class InstallationSession(object):
         identity = text_type(account_key) + '\x00' + text_type(arena_id)
         return 'installation-' + hashlib.sha256(identity.encode('utf-8')).hexdigest()
 
-    def begin(self, account_key, context):
+    def begin(self, account_key, context, capture=None, receipt=None):
         fields = ('started_at', 'vehicle_id', 'map_id', 'vehicle_name',
                   'vehicle_tier', 'vehicle_type', 'map_name')
-        return self.service.begin_battle(self.battle_key(account_key, context['arena_id']),
-                                         mode='random', **dict((key, context.get(key)) for key in fields))
+        metadata = dict((key, context.get(key)) for key in fields)
+        if context.get('details'):
+            metadata['details'] = context['details']
+        arena_id = self.battle_key(account_key, context['arena_id'])
+        if capture is not None:
+            return self.service.replay_combat_capture(
+                dict(metadata, arena_id=arena_id, mode='random', complete=False),
+                capture['at'], capture['launch_id'], is_result=False, receipt=receipt)
+        return self.service.begin_battle(arena_id, mode='random', **metadata)
 
-    def result(self, account_key, record, allow_new=False):
+    def result(self, account_key, record, allow_new=False, capture=None, receipt=None):
         identifier = self.battle_key(account_key, record['arena_id'])
         # An old result first delivered here may belong to another installation.
         # Accept known beginnings or a battle observed by this runtime only.
@@ -50,6 +57,9 @@ class InstallationSession(object):
             record['_deferred_candidates'] = [dict(candidate, arena_id=identifier) for candidate in record['_deferred_candidates']]
         if self.service.loading and not allow_new:
             record['_require_known'] = True
+        if capture is not None:
+            return self.service.replay_combat_capture(
+                record, capture['at'], capture['launch_id'], is_result=True, receipt=receipt)
         return self.service.record_result(record)
 
     def snapshot(self):

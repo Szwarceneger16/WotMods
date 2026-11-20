@@ -143,22 +143,49 @@
             reportFailure('command');
         }
     }
+    function footerSection(node, footer) {
+        while (node && node !== footer) {
+            if (/(^|\s)Footer_section_/.test(node.getAttribute('class') || '')) { return node; }
+            node = node.parentNode;
+        }
+        return null;
+    }
     function footerParent() {
         var footer = document.querySelector('[class*="App_footer_"]');
         if (!footer) { return null; }
-        var anchor = footer.querySelector('[class*="SessionStats"], [class*="sessionStats"], [class*="SessionStatistics"]');
-        if (anchor) {
-            /* Keep the new button in the existing button's row whenever it is found. */
-            var current = anchor;
-            while (current.parentNode && current.parentNode !== footer &&
-                    current.parentNode.getAttribute &&
-                    /SessionStats|sessionStats|SessionStatistics/.test(current.parentNode.getAttribute('class') || '')) {
-                current = current.parentNode;
-            }
-            return { parent:current.parentNode, before:current };
+        // Verified mono/hangar/footer: SessionStatistic (singular) is followed
+        // by a divider, server, menu, divider and notificationCenter in the
+        // right Footer_section. Keep the native row and all its spacing intact.
+        var anchor = footer.querySelector('[class^="SessionStatistic_"], [class*=" SessionStatistic_"]');
+        var section = footerSection(anchor, footer), current = anchor;
+        if (section) {
+            while (current.parentNode !== section) { current = current.parentNode; }
+            return {parent:section, before:current.nextSibling};
         }
-        /* Verified footer container, normal flow. A changed child prefix may place us last. */
-        return { parent:footer, before:null };
+        // Some modes disable native session statistics. Its original slot is
+        // immediately before this section's first divider, not after notices.
+        var menu = footer.querySelector('[data-test-id="menu"], [data-test-id="notificationCenter"]');
+        section = footerSection(menu, footer);
+        if (!section) { return null; }
+        var children = section.children;
+        for (var index = 0; index < children.length; index += 1) {
+            if (/(^|\s)Footer_divider_/.test(children[index].getAttribute('class') || '')) {
+                return {parent:section, before:children[index]};
+            }
+        }
+        // Keep a known notification/menu-only row usable without adding a new
+        // sibling to the space-between footer's left/chat/right section layout.
+        current = menu;
+        while (current.parentNode !== section) { current = current.parentNode; }
+        return {parent:section, before:current};
+    }
+    function placeButton(insertion) {
+        // Only our node moves. Native slots retain their classes, spacing,
+        // handlers and relative order, including when the footer is rebuilt.
+        if (insertion.before !== button &&
+                (button.parentNode !== insertion.parent || button.nextSibling !== insertion.before)) {
+            insertion.parent.insertBefore(button, insertion.before);
+        }
     }
     function removeButton() {
         clearAppearance();
@@ -210,9 +237,10 @@
         if (!feature) { removeButton(); }
     }
     function ensureButton() {
-        if (button && document.documentElement.contains(button)) { return; }
         var insertion = footerParent();
-        if (!insertion || !feature) { return; }
+        if (!insertion || !feature) { removeButton(); return; }
+        if (button && document.documentElement.contains(button)) { placeButton(insertion); return; }
+        if (button) { removeButton(); }
         button = document.createElement('button');
         button.id = 'grz-session-stats-footer-button';
         button.className = 'grz-session-footer-button';
@@ -239,9 +267,9 @@
         var spinner = document.createElement('span');
         spinner.className = 'grz-session-footer-spinner';
         spinner.setAttribute('aria-hidden', 'true');
-        button.appendChild(spinner);
+        icon.appendChild(spinner);
         button.onclick = openWindow;
-        insertion.parent.insertBefore(button, insertion.before);
+        placeButton(insertion);
     }
     function update() {
         if (destroyed) { return; }

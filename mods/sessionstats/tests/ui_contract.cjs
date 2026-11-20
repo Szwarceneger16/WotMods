@@ -4,13 +4,22 @@ const path = require('path');
 const assert = require('assert');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
+// Diagnostic raster bytes belong outside the source/release input tree.
+const qaDirectory = fs.mkdtempSync(path.join(require('os').tmpdir(),'grz-session-ui-'));
 const fixtures = JSON.parse(fs.readFileSync(path.join(root,'preview/demo_snapshot.json'),'utf8'));
 const errors = [];
+let activeFeature = 'main contract';
+function collectPageErrors(page) {
+  const owner = activeFeature;
+  page.on('pageerror', error => {
+    errors.push(String(error));
+    console.error('Browser pageerror: '+JSON.stringify({owner,url:page.url(),message:String(error),stack:error.stack}));
+  });
+}
 const checks = [];
 const check = (name, pass) => { assert(pass, name); checks.push(name); };
 const captions = {
   'ss-close':'×', 'ss-scope-launch':'Since launch', 'ss-scope-manual':'Since reset',
-  'ss-xp-base':'Base XP', 'ss-xp-received':'Received XP',
   'ss-group-vehicles':'Vehicles', 'ss-group-maps':'Maps', 'ss-group-battles':'Battles',
   'ss-refresh':'Refresh', 'ss-reset':'Reset period',
   'ss-reset-cancel':'Cancel', 'ss-reset-confirm':'Reset period'
@@ -20,8 +29,8 @@ const captions = {
 async function serveUI(page) {
   await page.route('http://grz-session.test/**',async route=>{
     const name=new URL(route.request().url()).pathname.slice(1);
-    if(!['SessionStats.html','session_stats.js','session_stats.css'].includes(name)) { await route.abort(); return; }
-    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':'text/html');
+    if(!['SessionStats.html','session_stats.js','session_stats.css','session_stats_camo.png'].includes(name)) { await route.abort(); return; }
+    const contentType=name.endsWith('.js')?'text/javascript':(name.endsWith('.css')?'text/css':name.endsWith('.png')?'image/png':'text/html');
     await route.fulfill({status:200,contentType,body:fs.readFileSync(path.join(root,'ui',name))});
   });
 }
@@ -42,6 +51,14 @@ async function controlLayout(page) {
   }),captions);
 }
 
+async function settleScroll(page) {
+  // Fixture-written offsets must follow the render's owned restoration and
+  // its optional follow-up measurement; trusted user input has separate tests.
+  await page.evaluate(()=>new Promise(resolve=>{let remaining=4;
+    function next(){if(--remaining)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
+  }));
+}
+
 async function battleCards(page) {
   return page.locator('#ss-groups .ss-group').evaluateAll(groups=>groups.map(group=>({
     id:group.getAttribute('data-group-id'),
@@ -52,10 +69,15 @@ async function battleCards(page) {
     aggregateRows:group.querySelectorAll('.ss-metric-head,.ss-metric-row').length,
     aggregateKPIs:group.querySelectorAll('.ss-group-kpi').length,
     outcome:group.querySelector('.ss-battle-outcome') && group.querySelector('.ss-battle-outcome').textContent,
-    money:Array.from(group.querySelectorAll('.ss-money-row')).map(row=>({
-      label:row.querySelector('.ss-money-label').textContent,
-      values:Array.from(row.querySelectorAll('.ss-cell-value')).map(value=>value.textContent)
-    }))
+    money:Array.from(group.querySelectorAll('.ss-money-row')).flatMap(row=>
+      row.classList.contains('ss-credit-pair') ? ['base','received'].map(basis=>({
+        label:row.querySelector('.ss-credit-label-column [data-ss-credit-row="'+basis+'"]').textContent,
+        values:['credits_income_'+basis,'credits_costs','credits_net_'+basis].map(metric=>
+          row.querySelector('.ss-money-value[data-ss-metric="'+metric+'"] > .ss-cell-value').textContent)
+      })) : [{
+        label:row.querySelector('.ss-money-label').textContent,
+        values:Array.from(row.querySelectorAll('.ss-cell-value')).map(value=>value.textContent)
+      }])
   })));
 }
 
@@ -69,12 +91,19 @@ async function numericTextOverflow(page) {
       const cell=value.classList.contains('ss-cell-value')?value.parentNode:value;
       const box=cell.getBoundingClientRect(), style=getComputedStyle(cell);
       if(box.width===0 || box.height===0) { continue; }
-      const range=document.createRange(); range.selectNodeContents(value);
-      const text=range.getBoundingClientRect();
+      // Numeric action overlays fill the cell but contain no value text.
+      // Measure the original text/WN8 figure nodes rather than their hit area.
+      const contents=value.classList.contains('ss-metric-number')?
+        Array.from(value.childNodes).filter(node=>node.nodeType!==1 || !node.classList.contains('ss-metric-battle-link')):[value];
       const left=box.left+parseFloat(style.paddingLeft)+parseFloat(style.borderLeftWidth);
       const right=box.right-parseFloat(style.paddingRight)-parseFloat(style.borderRightWidth);
-      if(text.left<left-1 || text.right>right+1) {
-        bad.push({className:cell.className,value:value.textContent,textWidth:text.width,available:right-left});
+      for(const content of contents) {
+        const range=document.createRange(); range.selectNodeContents(content);
+        const text=range.getBoundingClientRect();
+        if(text.left<left-1 || text.right>right+1) {
+          bad.push({className:cell.className,value:value.textContent,textWidth:text.width,available:right-left});
+          break;
+        }
       }
     }
     return bad.slice(0,12);
@@ -83,7 +112,7 @@ async function numericTextOverflow(page) {
 
 async function nativeHost(browser, options) {
   const native=await browser.newPage({viewport:options.initialViewport || {width:1440,height:900}});
-  native.on('pageerror',e=>errors.push(String(e)));
+  collectPageErrors(native);
   const snapshot=JSON.parse(JSON.stringify(fixtures.normal));
   snapshot.viewport=options.viewport || {width:1440,height:900};
   await native.addInitScript(({snapshot,options})=>{
@@ -186,11 +215,169 @@ async function nativeHost(browser, options) {
   return native;
 }
 
+// Keep independent feature regressions visible in one run; each assertion
+// still fails the job after the remaining suites have produced diagnostics.
+const featureFailures=[];
+const featureResults=[];
+const {assertManifest,coverageMatches,runFeaturePool}=require('./ui-feature-pool.cjs');
+async function runFeatureSuite(file,browser) {
+  const started=Date.now(),before=checks.length;
+  const previousFeature=activeFeature;activeFeature=file;
+  let failure=null;
+  console.log('UI feature started: '+file);
+  try {
+    await require(file)({browser,nativeHost,check});
+    console.log('UI feature passed: '+file+' ('+(checks.length-before)+' checks, '+(Date.now()-started)+' ms)');
+  } catch(error) { failure=String(error.message||error);featureFailures.push(file+': '+failure);console.error(file,error); }
+  finally {featureResults.push({file,passed:failure===null,checks:checks.length-before,error:failure});activeFeature=previousFeature;}
+}
+
+
+async function runFeatureBatch(files){
+  try{
+    const reports=await runFeaturePool(files,{script:__filename,reportDirectory:qaDirectory,hints:FEATURE_DURATION_HINTS});
+    for(const report of reports){
+      checks.push(...report.checks);errors.push(...report.errors);
+      featureFailures.push(...report.featureFailures);featureResults.push(...report.features);
+    }
+  }catch(error){
+    featureFailures.push('parallel feature batch: '+error.message);console.error(error);
+  }
+}
+
+async function runAssignedFeatures(reportPath,files){
+  assertManifest(files);
+  assert(path.isAbsolute(reportPath),'The parent must supply an absolute report path');
+  let browser,completed=false;
+  try{
+    browser=await chromium.launch({executablePath:process.env.GRZ_CHROME,headless:true,args:['--no-sandbox']});
+    for(const file of files)await runFeatureSuite(file,browser);
+    completed=true;
+  }catch(error){featureFailures.push('worker: '+String(error.message||error));console.error(error);}
+  finally{
+    if(browser)try{await browser.close();}catch(error){errors.push(String(error));}
+    fs.rmSync(qaDirectory,{recursive:true,force:true});
+    const report={schema_version:1,completed,features:featureResults,checks,errors,featureFailures};
+    fs.writeFileSync(reportPath+'.tmp',JSON.stringify(report)+'\n');
+    fs.renameSync(reportPath+'.tmp',reportPath);
+  }
+  if(!completed||featureFailures.length||errors.length)process.exitCode=1;
+}
+
+// Scheduling hints only balance workers; every declared feature still runs.
+const FEATURE_PHASES = [
+  [
+    "./ui-connection.cjs",
+    "./ui-postbattle.cjs",
+    "./ui-language.cjs",
+    "./ui-sorting.cjs",
+    "./ui-filter-ux.cjs",
+    "./ui-filter-layout-stable.cjs",
+    "./ui-filter-position.cjs",
+    "./ui-chronology.cjs",
+    "./ui-chronology-labels.cjs",
+    "./ui-sort-details.cjs",
+    "./ui-dual-xp.cjs",
+    "./ui-sort-layout-stable.cjs",
+    "./ui-help-click.cjs",
+    "./ui-scroll-state.cjs",
+    "./ui-pagination.cjs",
+    "./ui-bidirectional-pages.cjs",
+    "./ui-feed-anchor.cjs",
+    "./ui-outcomes.cjs",
+    "./ui-loading.cjs",
+    "./ui-empty-state.cjs",
+    "./ui-notices.cjs",
+    "./ui-coverage-once.cjs"
+  ],
+  [
+    "./ui-timeline-details.cjs",
+    "./ui-wide-cards.cjs",
+    "./ui-window-settings.cjs",
+    "./ui-transparency-steps.cjs",
+    "./ui-scrollbar.cjs",
+    "./ui-titlebar-locales.cjs",
+    "./ui-map-battles.cjs",
+    "./ui-map-language.cjs",
+    "./ui-switch-map.cjs",
+    "./ui-wn8-colors.cjs",
+    "./ui-vehicle-battles.cjs",
+    "./ui-history-inplace.cjs",
+    "./ui-detail-widths.cjs",
+    "./ui-compact-details.cjs",
+    "./ui-version.cjs",
+    "./ui-custom-date-source.cjs",
+    "./ui-custom-dates.cjs",
+    "./ui-clock-hours-source.cjs",
+    "./ui-clock-hours.cjs",
+    "./ui-mission-progress.cjs",
+    "./ui-upper-layout.cjs",
+    "./ui-summary-xp-total.cjs",
+    "./ui-resize-input.cjs",
+    "./ui-retained-raf.cjs"
+  ]
+];
+const FEATURE_DURATION_HINTS = {
+  "./ui-connection.cjs": 3,
+  "./ui-postbattle.cjs": 2,
+  "./ui-language.cjs": 3,
+  "./ui-sorting.cjs": 150,
+  "./ui-filter-ux.cjs": 40,
+  "./ui-filter-layout-stable.cjs": 15,
+  "./ui-filter-position.cjs": 38,
+  "./ui-chronology.cjs": 5,
+  "./ui-chronology-labels.cjs": 21,
+  "./ui-sort-details.cjs": 24,
+  "./ui-dual-xp.cjs": 13,
+  "./ui-sort-layout-stable.cjs": 59,
+  "./ui-help-click.cjs": 4,
+  "./ui-scroll-state.cjs": 5,
+  "./ui-pagination.cjs": 58,
+  "./ui-bidirectional-pages.cjs": 6,
+  "./ui-feed-anchor.cjs": 1,
+  "./ui-outcomes.cjs": 25,
+  "./ui-loading.cjs": 1,
+  "./ui-empty-state.cjs": 2,
+  "./ui-notices.cjs": 11,
+  "./ui-coverage-once.cjs": 21,
+  "./ui-timeline-details.cjs": 22,
+  "./ui-wide-cards.cjs": 25,
+  "./ui-window-settings.cjs": 17,
+  "./ui-transparency-steps.cjs": 9,
+  "./ui-scrollbar.cjs": 6,
+  "./ui-titlebar-locales.cjs": 11,
+  "./ui-map-battles.cjs": 38,
+  "./ui-map-language.cjs": 11,
+  "./ui-switch-map.cjs": 15,
+  "./ui-wn8-colors.cjs": 3,
+  "./ui-vehicle-battles.cjs": 49,
+  "./ui-history-inplace.cjs": 3,
+  "./ui-detail-widths.cjs": 21,
+  "./ui-compact-details.cjs": 91,
+  "./ui-version.cjs": 2,
+  "./ui-custom-date-source.cjs": 1,
+  "./ui-custom-dates.cjs": 44,
+  "./ui-clock-hours-source.cjs": 1,
+  "./ui-clock-hours.cjs": 3,
+  "./ui-mission-progress.cjs": 2,
+  "./ui-upper-layout.cjs": 56,
+  "./ui-summary-xp-total.cjs": 10,
+  "./ui-resize-input.cjs": 1,
+  "./ui-retained-raf.cjs": 1
+};
+
 (async function () {
+  if(process.argv[2]==='--feature-worker'){
+    assert(process.argv.length===5,'Feature workers require a report and exact manifest');
+    await runAssignedFeatures(process.argv[3],JSON.parse(process.argv[4]));return;
+  }
+  assert(process.argv.length===2,'Unknown browser QA arguments');
+  await require('./ui-feature-pool-test.cjs')(check);
   const browser = await chromium.launch({executablePath:process.env.GRZ_CHROME,headless:true,args:['--no-sandbox']});
   try {
+  await runFeatureSuite('./ui-locale-screenshots.cjs',browser);
   const page = await browser.newPage({viewport:{width:744,height:730},colorScheme:'dark',timezoneId:'UTC'});
-  page.on('pageerror',e=>errors.push(String(e)));
+  collectPageErrors(page);
   await serveUI(page);
   await page.goto('http://grz-session.test/SessionStats.html');
   await page.waitForFunction(()=>window.GRZSessionStats);
@@ -220,7 +407,7 @@ async function nativeHost(browser, options) {
   check('Missing anonymous button text fixture rejects v0.2 markup',textRegression.legacyFails);
   check('Every caption survives the observed direct-text failure',textRegression.captionsSurvive);
   let controls=await controlLayout(page);
-  check('All twelve controls have explicit caption nodes',controls.length===12 && controls.every(c=>c.explicit && !c.directText));
+  check('All ten controls have explicit caption nodes',controls.length===10 && controls.every(c=>c.explicit && !c.directText));
   check('Visible controls have flex boxes, block captions and nonzero fitted labels',controls.filter(c=>c.visible).every(c=>c.flex && c.block && c.fits));
   check('Panel and captions use normal Warhelios rather than PFDINMax',controls.every(c=>c.font==='Warhelios') && await page.evaluate(()=>getComputedStyle(document.body).fontFamily.split(',')[0].trim()==='Warhelios'));
   check('Native content avoids unsupported main, section and article tags',await page.locator('#grz-session-stats main,#grz-session-stats section,#grz-session-stats article').count()===0);
@@ -234,7 +421,7 @@ async function nativeHost(browser, options) {
   const kpis=()=>page.locator('#ss-summary .ss-kpi-value').allTextContents();
   let values=await kpis();
   check('Launch has 16 completed battles',values[0]==='16');
-  check('Default view is tanks/base XP',(await page.evaluate(()=>GRZSessionStats.getState())).group==='vehicles' && (await page.evaluate(()=>GRZSessionStats.getState())).xp==='base');
+  check('Default view is tanks with no XP-mode switch',(await page.evaluate(()=>GRZSessionStats.getState())).group==='vehicles' && await page.locator('.ss-xp-picker,#ss-xp-base,#ss-xp-received').count()===0);
   check('Full integer WN8 is shown',values[2]==='2236');
   check('Summary and tank details are present without expanding',await page.locator('#ss-summary .ss-details').isVisible() && await page.locator('#ss-groups .ss-details').count()===3);
   const missingFixture=JSON.parse(JSON.stringify(fixtures.normal));
@@ -249,15 +436,21 @@ async function nativeHost(browser, options) {
     started_at:missingScope.started_at+1,outcome:null,stats:missingStats});
   await page.evaluate(p=>GRZSessionStats.update(p),missingFixture);
   check('Missing battle exposes 16 of 17 results and marks averages incomplete',
-    (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('results 16 / 17') &&
-    (await page.locator('#ss-summary').innerText()).includes('Incomplete statistics') &&
+    (await kpis())[0]==='16 / 17' && (await page.locator('#ss-status').innerText()).includes('Pending: 1') &&
+    !(await page.locator('#ss-status').innerText()).includes('16 / 17') &&
+    await page.locator('#ss-summary .ss-summary-main .ss-info-button').getAttribute('data-ss-help').then(text=>
+      text.includes('Results: 16/17.')&&text.length<=400) &&
     (await page.locator('#ss-summary .ss-kpi-label').allTextContents()).includes('Win rate*'));
-  check('Financial coverage includes the registered battle with no result',
-    (await page.locator('#ss-summary .ss-money-row .ss-cell-coverage').allTextContents()).includes('16/17'));
+  check('Financial coverage includes the missing result in help instead of repeating a visible header count',
+    await page.locator('#ss-summary .ss-money-head .ss-cell-coverage').count()===0&&
+    await page.locator('#ss-summary .ss-economy .ss-info-button').getAttribute('data-ss-help').then(text=>
+      text.includes('Results: 16/17.')&&text.length<=400)&&
+    await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_income_received"]').getAttribute('aria-label').then(text=>
+      !!text&&text.includes('Data available for 16 of 17 recorded battles.')));
   await page.locator('#ss-group-battles').click();
   const missingCard=(await battleCards(page)).find(row=>row.id==='missing-result-fixture');
   check('Unrecovered battle stays listed with unknown outcome and dashes rather than fabricated zeros',
-    missingCard && missingCard.outcome==='Unknown result' && missingCard.values.every(row=>row.value==='—') &&
+    missingCard && missingCard.outcome==='UNKNOWN RESULT' && missingCard.values.every(row=>row.value==='—') &&
     missingCard.money.every(row=>row.values.every(value=>value==='—')));
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   await page.locator('#ss-group-vehicles').click();
@@ -268,17 +461,30 @@ async function nativeHost(browser, options) {
         group:label.closest('.ss-group')?label.closest('.ss-group').getAttribute('data-group-id'):'summary'};
     }).filter(label=>label.height>label.lineHeight+1));
   check('Aggregate metric labels stay on one line in the standard-width panel'+(wrappedMetricLabels.length?' '+JSON.stringify(wrappedMetricLabels):''),wrappedMetricLabels.length===0);
-  check('No more-details buttons or accordions',await page.locator('details,.ss-group [aria-expanded]').count()===0);
+  const aggregateHistory=await page.locator('#ss-groups .ss-group').evaluateAll(cards=>cards.map(card=>({
+    id:card.dataset.groupId,buttons:card.querySelectorAll('.ss-vehicle-more-button').length,
+    expanded:card.querySelector('.ss-vehicle-more-button') && card.querySelector('.ss-vehicle-more-button').getAttribute('aria-expanded'),
+    hidden:card.querySelector('.ss-vehicle-battles') && getComputedStyle(card.querySelector('.ss-vehicle-battles')).display==='none',
+    missionDetails:card.querySelectorAll('.ss-more-panel,.ss-more-mission,details').length,
+    otherAccordions:Array.from(card.querySelectorAll('[aria-expanded]:not(.ss-info-button):not(.ss-vehicle-more-button)')).filter(node=>
+      !(node.classList.contains('ss-hover-help')&&node.getAttribute('aria-controls')==='ss-help-tooltip'&&node.hasAttribute('data-ss-help'))).length})));
+  check('Vehicle aggregates expose only a closed battle-history control without inline mission accordions: '+JSON.stringify(aggregateHistory),
+    aggregateHistory.length>0 && aggregateHistory.every(card=>card.buttons===1 && card.expanded==='false' && card.hidden &&
+      card.missionDetails===0 && card.otherAccordions===0) && await page.locator('details').count()===0);
   check('One vertical scroll area works',await page.locator('#ss-scroll').evaluate(el=>el.scrollHeight>el.clientHeight));
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-compact.png')});
-  const before=await page.locator('#ss-summary .ss-metric-row').first().innerText();
-  await page.locator('#ss-xp-received').click();
-  const after=await page.locator('#ss-summary .ss-metric-row').first().innerText();
-  check('Received XP differs from base XP',before!==after && after.includes('Received XP'));
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-compact.png')});
+  const baseSummary=await page.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"]').innerText();
+  const receivedSummary=await page.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_received"]').innerText();
+  check('Both distinct XP series are visible together in the summary',baseSummary.includes('Base XP') && receivedSummary.includes('Received XP') && baseSummary!==receivedSummary);
   await page.locator('#ss-group-maps').click();
   check('Map grouping contains all five maps',await page.locator('#ss-groups .ss-group').count()===5);
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=el.scrollHeight);
-  check('Mouse/scroll position can reach last group',await page.locator('#ss-scroll').evaluate(el=>el.scrollTop>0));
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const scrollReach=await page.locator('#ss-scroll').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight,
+    lastBottom:document.querySelector('#ss-groups .ss-group:last-child').getBoundingClientRect().bottom,bottom:el.getBoundingClientRect().bottom}));
+  check('Mouse/scroll position can reach last group: '+JSON.stringify(scrollReach),
+    scrollReach.top>0 && Math.abs(scrollReach.top-scrollReach.max)<=1 && scrollReach.lastBottom<=scrollReach.bottom+1);
   await page.locator('#ss-scope-manual').click();
   check('Manual session contains previous launch too',(await kpis())[0]==='25');
   check('Changing scope keeps selected grouping',(await page.evaluate(()=>GRZSessionStats.getState())).group==='maps');
@@ -286,28 +492,29 @@ async function nativeHost(browser, options) {
   check('Per-battle list available',await page.locator('#ss-groups .ss-group').count()===25);
   let battles=await battleCards(page);
   const expectedBattles=new Map(fixtures.normal.scopes.manual.battles.map(row=>[row.id,row]));
-  check('Each battle shows one XP and one WN8 value without min/mean/max rows',
-    battles.every(row=>row.values.length===2 && row.aggregateRows===0));
-  check('Received XP and WN8 match each individual battle result',battles.every(row=>{
+  check('Each battle shows both XP values and one WN8 value without min/mean/max rows',
+    battles.every(row=>row.values.length===3 && row.aggregateRows===0));
+  check('Base XP, Received XP and WN8 match each individual battle result together',battles.every(row=>{
     const stats=expectedBattles.get(row.id).stats;
-    return row.values[0].label==='Received XP' && row.values[0].value===formattedInteger(stats.xp_received.sum) &&
-      row.values[1].label==='WN8' && row.values[1].value===String(Math.round(stats.wn8));
+    return row.values[0].label==='Base XP' && row.values[0].value===formattedInteger(stats.xp_base.sum) &&
+      row.values[1].label==='Received XP' && row.values[1].value===formattedInteger(stats.xp_received.sum) &&
+      row.values[2].label==='WN8' && row.values[2].value===String(Math.round(stats.wn8));
   }));
   check('Battle header shows the actual outcome without one-battle count or win-rate KPIs',battles.every(row=>{
-    const outcomes={win:'Victory',loss:'Defeat',draw:'Draw'};
+    const outcomes={win:'VICTORY',loss:'DEFEAT',draw:'DRAW'};
     return row.aggregateKPIs===0 && row.outcome===outcomes[expectedBattles.get(row.id).outcome];
   }));
   check('Aggregate summary still has min/mean/max while the battle list is selected',
     (await page.locator('#ss-summary .ss-metric-head .ss-metric-number').allTextContents()).join('|')==='Min|Average|Max' &&
-    await page.locator('#ss-summary .ss-metric-row').count()===2);
-  await page.locator('#ss-xp-base').click();
+    await page.locator('#ss-summary .ss-metric-row').count()===3);
   battles=await battleCards(page);
-  check('XP switch changes every battle to its single base-XP result',battles.every(row=>
+  check('Base XP remains visible alongside Received XP in every battle',battles.every(row=>
     row.values[0].label==='Base XP' && row.values[0].value===formattedInteger(expectedBattles.get(row.id).stats.xp_base.sum)));
   const knownBattle=battles.find(row=>row.id==='2000015');
   check('Battle finances retain separate income, costs and net including bonds',
-    knownBattle.money[0].label==='Credits' && knownBattle.money[0].values.join('|')==='78\u00a0935|-41\u00a0385|+37\u00a0550' &&
-    knownBattle.money[1].label==='Bonds' && knownBattle.money[1].values.join('|')==='0|-6|-6');
+    knownBattle.money[0].label==='Credits (base)' && knownBattle.money[0].values.join('|')==='44\u00a0995|-41\u00a0385|+3\u00a0610' &&
+    knownBattle.money[1].label==='Credits (received)' && knownBattle.money[1].values.join('|')==='78\u00a0935|-41\u00a0385|+37\u00a0550' &&
+    knownBattle.money[2].label==='Bonds' && knownBattle.money[2].values.join('|')==='0|-6|-6');
   await page.locator('#ss-reset').click();
   controls=await controlLayout(page);
   check('Reset and confirmation captions also have visible fitted boxes',controls.filter(c=>['ss-reset','ss-reset-cancel','ss-reset-confirm'].includes(c.id)).every(c=>c.visible && c.flex && c.block && c.fits));
@@ -323,6 +530,18 @@ async function nativeHost(browser, options) {
   await page.locator('#demo-reopen').click();
   check('Preview can reopen',await page.locator('#grz-session-stats').isVisible());
   await page.locator('#demo-restart').click();
+
+  const oversizedFigure='9876543210987654321098765432109876543210';
+  await page.evaluate(text=>{
+    const cell=document.querySelector('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-metric-number');
+    window.__numericOverflowProbe={node:cell.firstChild,text:cell.firstChild.textContent};
+    cell.firstChild.textContent=text;
+  },oversizedFigure);
+  let rejectedOverflow;
+  try { rejectedOverflow=await numericTextOverflow(page); }
+  finally { await page.evaluate(()=>{__numericOverflowProbe.node.textContent=__numericOverflowProbe.text;delete window.__numericOverflowProbe;}); }
+  check('Text geometry still rejects real oversized figures beneath full-cell action overlays',
+    rejectedOverflow.some(row=>row.className.includes('ss-extreme-cell')&&row.value===oversizedFigure&&row.textWidth>row.available+1));
 
   const overflow=[],textOverflow=[];
   for(const width of [744,620,560,420,360,320]) {
@@ -377,12 +596,17 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   await page.setViewportSize({width:744,height:730});
   await page.locator('#ss-group-vehicles').click();
-  await page.locator('#ss-xp-base').click();
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=0);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-final.png')});
+  await settleScroll(page);
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-final.png')});
   await page.locator('#ss-group-battles').click();
-  await page.locator('#ss-scroll').evaluate(el=>el.scrollTop=document.getElementById('ss-group-tabs').offsetTop-el.offsetTop);
-  await page.locator('#grz-session-stats').screenshot({path:path.join(root,'preview/qa-battles.png')});
+  await settleScroll(page);
+  await page.locator('#ss-scroll').evaluate(el=>{const first=document.querySelector('#ss-groups .ss-group');
+    el.scrollTop+=first.getBoundingClientRect().top-el.getBoundingClientRect().top-document.getElementById('ss-filter-panel').getBoundingClientRect().height-8;
+  });
+  await settleScroll(page);
+  await page.locator('#grz-session-stats').screenshot({path:path.join(qaDirectory,'qa-battles.png')});
   await page.locator('#ss-group-vehicles').click();
 
   const malformed=await page.evaluate(()=>GRZSessionStats.update('{bad json'));
@@ -393,11 +617,11 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.wn8=805;GRZSessionStats.update(q);},fixtures.normal);
   check('WN8 below 1000 has no artificial padding',(await kpis())[2]==='805');
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.currencies.bonds.net=null;q.scopes.launch.summary.currencies.bonds.net_count=0;GRZSessionStats.update(q);},fixtures.normal);
-  check('Missing bond net is a dash, not zero',(await page.locator('#ss-summary .ss-money-row').nth(1).innerText()).includes('—'));
+  check('Missing bond net is a dash, not zero',(await page.locator('#ss-summary .ss-money-row').filter({has:page.locator('.ss-money-label',{hasText:'Bonds'})}).locator('.ss-money-value > .ss-cell-value').last().textContent())==='—');
   await page.evaluate(p=>{const q=JSON.parse(JSON.stringify(p));q.scopes.launch.summary.currencies.credits.net=-5484;GRZSessionStats.update(q);},fixtures.normal);
   check('Negative balance and costs use the client-readable ASCII minus',
-    (await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value').nth(2).innerText())==='-5\u00a0484' &&
-    (await page.locator('#ss-summary .ss-money-row').first().locator('.ss-money-value').nth(1).innerText()).startsWith('-'));
+    (await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_net_received"] > .ss-cell-value').textContent())==='-5\u00a0484' &&
+    (await page.locator('#ss-summary .ss-money-value[data-ss-metric="credits_costs"] > .ss-cell-value').textContent()).startsWith('-'));
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
 
   // Missing data must not turn into a fabricated zero when a battle uses a
@@ -419,26 +643,23 @@ async function nativeHost(browser, options) {
     q.scopes.launch.battles=[zero,missing];
     GRZSessionStats.update(q);
   },fixtures.normal);
-  for(const xpMode of ['base','received']) {
-    await page.locator('#ss-xp-'+xpMode).click();
-    battles=await battleCards(page);
-    check('Known zero XP/WN8 remain zero in a single battle ('+xpMode+')',
-      battles.find(row=>row.id==='qa-battle-zero').values.every(value=>value.value==='0'));
-    const missing=battles.find(row=>row.id==='qa-battle-missing');
-    check('Unavailable XP/WN8 remain dashes in a single battle ('+xpMode+')',
-      missing.values.every(value=>value.value==='—'));
-    check('Unknown battle outcome and unavailable bond balance stay explicit ('+xpMode+')',
-      missing.outcome==='Unknown result' && missing.money[1].values[2]==='—');
-  }
+  battles=await battleCards(page);
+  check('Known zero Base XP, Received XP and WN8 remain zero in a single battle',
+    battles.find(row=>row.id==='qa-battle-zero').values.length===3 &&
+    battles.find(row=>row.id==='qa-battle-zero').values.every(value=>value.value==='0'));
+  const missing=battles.find(row=>row.id==='qa-battle-missing');
+  check('Unavailable Base XP, Received XP and WN8 remain dashes in a single battle',
+    missing.values.length===3 && missing.values.every(value=>value.value==='—'));
+  check('Unknown battle outcome and unavailable bond balance stay explicit',
+    missing.outcome==='UNKNOWN RESULT' && missing.money.find(row=>row.label==='Bonds').values[2]==='—');
   await page.evaluate(p=>GRZSessionStats.update(p),fixtures.normal);
   for(const grouping of ['maps','vehicles']) {
     await page.locator('#ss-group-'+grouping).click();
     check('Min/mean/max battle statistics remain available for '+grouping,
       await page.locator('#ss-groups .ss-battle-measure').count()===0 &&
       (await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-head .ss-metric-number').allTextContents()).join('|')==='Min|Average|Max' &&
-      await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row').count()===2);
+      await page.locator('#ss-groups .ss-group').first().locator('.ss-metric-row').count()===3);
   }
-  await page.locator('#ss-xp-base').click();
 
   // Synthetic local names test only the visual contract and layout. They are not
   // bundled game art or evidence of a successfully loaded native WoT texture.
@@ -457,6 +678,7 @@ async function nativeHost(browser, options) {
   }
   await page.locator('#ss-group-vehicles').click();
   await page.setViewportSize({width:320,height:820});
+  await page.waitForFunction(()=>document.querySelector('#ss-groups .ss-group').classList.contains('ss-compact-headline'));
   check('Thumbnail leaves tank identity and KPIs within the narrow panel',await page.locator('#ss-groups .ss-group').first().evaluate(group=>{
     const panel=document.getElementById('grz-session-stats').getBoundingClientRect();
     return Array.from(group.querySelectorAll('.ss-group-thumb,.ss-group-name,.ss-group-kpi')).every(node=>{
@@ -485,9 +707,11 @@ async function nativeHost(browser, options) {
   await page.evaluate(p=>{
     const q=JSON.parse(JSON.stringify(p));const list=q.scopes.launch.battles;const long=[];
     for(let n=0;n<200;n++){const row=JSON.parse(JSON.stringify(list[n%list.length]));row.id='long-'+n;row.started_at=1800000000-n;long.push(row);}
-    q.scopes.launch.battles=long;GRZSessionStats.update(q);
+    q.scopes.launch.battles=long;if(q.scopes.launch.pagination)delete q.scopes.launch.pagination.battles;
+    GRZSessionStats.update(q);
   },fixtures.normal);
   check('Long battle history starts with a bounded batch',await page.locator('#ss-groups .ss-group').count()===40);
+  await settleScroll(page);
   await page.locator('#ss-scroll').evaluate(el=>{el.scrollTop=el.scrollHeight;el.dispatchEvent(new Event('scroll'));});
   await page.waitForFunction(()=>document.querySelectorAll('#ss-groups .ss-group').length>40);
   check('Scrolling appends more battles without a button',await page.locator('#ss-groups .ss-group').count()>40);
@@ -499,8 +723,8 @@ async function nativeHost(browser, options) {
   await native.locator('#ss-groups .ss-group').first().waitFor();
   check('Fake native host binds model payload',(await native.evaluate(()=>GRZSessionStats.getState())).nativeBound===true);
   check('Python GUI scale takes precedence over optional rem helper',await native.evaluate(()=>document.documentElement.style.fontSize==='1.25px' && __grzHelperCalls.rem===0));
-  check('Initial one-pixel native surface does not clip the measured panel',await native.evaluate(()=>__nativeSize[0]===875 && __nativeSize[1]===775));
-  check('Native document height follows the panel instead of the initial surface',await native.evaluate(()=>document.documentElement.classList.contains('ss-native-document') && document.body.getBoundingClientRect().height===775 && document.documentElement.getBoundingClientRect().height===775));
+  check('Initial one-pixel native surface respects the minimum and parent height cap',await native.evaluate(()=>__nativeSize[0]===875 && __nativeSize[1]===880));
+  check('Native document height follows the viewport-capped panel instead of the initial surface',await native.evaluate(()=>document.documentElement.classList.contains('ss-native-document') && document.body.getBoundingClientRect().height===880 && document.documentElement.getBoundingClientRect().height===880));
   await native.setViewportSize({width:1440,height:900});
   await native.locator('#ss-titlebar h1').dispatchEvent('mousedown',{button:0});
   await native.evaluate(()=>document.dispatchEvent(new MouseEvent('mousemove',{clientX:410,clientY:250,bubbles:true})));
@@ -527,7 +751,10 @@ async function nativeHost(browser, options) {
   await native.locator('#ss-refresh').click();
   check('Native commands are sent as one map',await native.evaluate(()=>__grzCommands.some(x=>x.action==='refresh' && typeof x==='object')));
   await native.evaluate(()=>__grzEvents['self.onScaleUpdated']());
-  await native.waitForFunction(()=>document.documentElement.style.fontSize==='1.5px' && __nativeSize[1]===880);
+  // Font size changes synchronously; the native resize follows two animation
+  // frames later. Height is capped at 880px at both scales, so also wait for
+  // the changed width before checking the completed native layout.
+  await native.waitForFunction(()=>document.documentElement.style.fontSize==='1.5px' && __nativeSize[0]===1050 && __nativeSize[1]===880);
   check('Scale change refreshes the viewport and stays within the parent',await native.evaluate(()=>__grzCommands.some(x=>x.action==='viewport') && __nativeSize[0]===1050 && __nativeSize[1]===880));
   check('Native diagnostics are bounded to three stages',await native.evaluate(()=>{
     const messages=__grzCommands.filter(x=>x.action==='diagnostic');
@@ -560,13 +787,7 @@ async function nativeHost(browser, options) {
       __grzRemovedCallbacks.join(',')===(mode==='throw-once'?'71':''),callback));
     await degraded.close();
   }
-  await require('./ui-connection.cjs')({browser,nativeHost,check});
-  await require('./ui-language.cjs')({browser,nativeHost,check});
-  await require('./ui-sorting.cjs')({browser,nativeHost,check});
-  await require('./ui-pagination.cjs')({browser,nativeHost,check});
-  await require('./ui-outcomes.cjs')({browser,nativeHost,check});
-  await require('./ui-loading.cjs')({browser,nativeHost,check});
-  await require('./ui-notices.cjs')({browser,nativeHost,check});
+  await runFeatureBatch(FEATURE_PHASES[0]);
   const loading=await nativeHost(browser,{pendingDom:true});
   check('Loading panel owns a DOM-ready listener before model binding',await loading.evaluate(()=>
     !GRZSessionStats.getState().nativeBound && __grzEngineOn.join(',')==='self.onDomBuilt'));
@@ -634,7 +855,7 @@ async function nativeHost(browser, options) {
   await synchronous.close();
   for(const helpers of ['absent','throw']) {
     const degraded=await nativeHost(browser,{helpers,noFocus:true,drag:helpers});
-    check('Python resize is still sent when native helpers are '+helpers,await degraded.evaluate(()=>__grzCommands.some(x=>x.action==='resize' && x.width==='700' && x.height==='620')));
+    check('Python resize is still sent when native helpers are '+helpers,await degraded.evaluate(()=>__grzCommands.some(x=>x.action==='resize' && x.width==='700' && x.height==='730')));
     await degraded.locator('#ss-scope-manual').click();
     await degraded.locator('#ss-reset').click();
     await degraded.locator('#ss-reset-cancel').click();
@@ -736,7 +957,9 @@ async function nativeHost(browser, options) {
       await localized.title()===messages.title &&
       await localized.locator('html').getAttribute('lang')===language &&
       await localized.locator('#ss-close').getAttribute('aria-label')===messages.close &&
-      await localized.locator('#ss-xp-received .ss-control-label').textContent()===messages['xp.received']);
+      await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-cell-value').textContent()===messages['xp.base'] &&
+      await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_received"] .ss-cell-value').textContent()===messages['xp.received'] &&
+      await localized.locator('.ss-xp-picker').count()===0);
     await localized.locator('#ss-scope-instance').click();
     await localized.locator('#ss-reset').click();
     check('Translated installation reset and persistence explanation for '+language,
@@ -751,8 +974,13 @@ async function nativeHost(browser, options) {
     await localized.locator('#ss-group-battles').click();
     check('Translated battle outcomes and finance headers for '+language,
       (await localized.locator('.ss-battle-outcome').allTextContents()).every(value=>
-        ['win','loss','draw'].some(outcome=>value===messages['outcome.'+outcome])) &&
-      await localized.locator('#ss-summary .ss-money-head .ss-money-label').textContent()===messages['finance.currency']);
+        ['win','loss','draw'].some(outcome=>value===messages['outcome.'+outcome].toUpperCase())) &&
+      await localized.locator('#ss-summary-finance-statistic .ss-select-trigger').getAttribute('aria-label')===messages['finance.period']+': '+messages['finance.statistic'] &&
+      await localized.locator('#ss-summary-finance-statistic .ss-select-trigger .ss-control-label').textContent()===messages['finance.statistic_all'] &&
+      await localized.locator('#ss-summary .ss-metric-head .ss-table-heading-text').textContent()===messages['performance.period'] &&
+      await localized.locator('.ss-battle .ss-money-head .ss-money-label').count()>0 &&
+      (await localized.locator('.ss-battle .ss-money-head .ss-money-label').allTextContents()).every(value=>
+        value===messages['finance.currency']));
     for(const width of [320,744]) {
       await localized.setViewportSize({width,height:900});
       await localized.evaluate(width=>{
@@ -764,8 +992,15 @@ async function nativeHost(browser, options) {
           const box=control.getBoundingClientRect(), label=control.querySelector('.ss-control-label');
           if(!box.width || !box.height || !label)return true;
           const text=label.getBoundingClientRect();
+          const helpOwner=document.getElementById(control.getAttribute('aria-controls'));
+          const ownedHelp=control.classList.contains('ss-hover-help') &&
+            (control.getAttribute('data-ss-help') || '').trim().length>0 &&
+            (control.getAttribute('aria-label') || '').trim().length>0 &&
+            helpOwner && helpOwner.getAttribute('role')==='tooltip' &&
+            ['true','false'].includes(control.getAttribute('aria-expanded'));
           return text.left>=box.left-1 && text.right<=box.right+1 &&
-            text.top>=box.top-1 && text.bottom<=box.bottom+1 && control.title.length>0;
+            text.top>=box.top-1 && text.bottom<=box.bottom+1 &&
+            (control.title.trim().length>0 || ownedHelp);
         })));
     }
     await localized.evaluate(()=>GRZSessionStats.update('invalid JSON'));
@@ -777,19 +1012,24 @@ async function nativeHost(browser, options) {
   await localized.evaluate(payload=>GRZSessionStats.update(payload),custom);
   check('Partial catalogs fall back to English and custom text cannot inject markup',
     await localized.locator('#ss-refresh .ss-control-label').textContent()==='Reload' &&
-    await localized.locator('#ss-xp-base .ss-control-label').textContent()==='Base XP' &&
+    await localized.locator('#ss-summary .ss-metric-row[data-ss-metric="xp_base"] .ss-cell-value').textContent()==='Base XP' &&
     await localized.locator('.ss-titlebar h1').textContent()===custom.localization.messages.title &&
     await localized.locator('.ss-titlebar h1 img').count()===0);
   await localized.evaluate(payload=>GRZSessionStats.update(payload),fixtures.normal);
   check('Legacy payload without localization restores English',
     await localized.title()==='Session statistics' && await localized.locator('html').getAttribute('lang')==='en');
   await localized.close();
-  check('No browser JavaScript errors',errors.length===0);
+  await runFeatureBatch(FEATURE_PHASES[1]);
+  check('Every independent feature suite reported exactly once',coverageMatches(
+    ['./ui-locale-screenshots.cjs',...FEATURE_PHASES.flat()],featureResults.map(result=>result.file)));
+  check('All independent feature suites passed'+(featureFailures.length ? ': '+featureFailures.join('; ') : ''),featureFailures.length===0);
+  check('No browser JavaScript errors: '+JSON.stringify(errors),errors.length===0);
   const report={passed:checks.length,checks,errors,overflow,textOverflow,largeTextOverflow,live_gameface_tested:false,
     regression_fixture:'Models the observed loss of direct button text; actual Coherent rendering still needs an in-game check.'};
   fs.writeFileSync(path.join(root,'tests/ui-report.json'),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report,null,2));
   } finally {
     await browser.close();
+    fs.rmSync(qaDirectory,{recursive:true,force:true});
   }
 })().catch(error=>{console.error(error);process.exitCode=1;});

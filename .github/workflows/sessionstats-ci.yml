@@ -30,6 +30,7 @@ on:
       - 'tests/test_release_ruleset.py'
       - 'tests/test_unified_release_workflow.py'
       - '.github/workflows/sessionstats-ci.yml'
+      - '.github/workflows/sessionstats-matrix.yml'
       - '.github/actions/python27/**'
       - 'tests/test_ci_optimizations.py'
       - '.github/workflows/wotmods-release.yml'
@@ -81,7 +82,7 @@ jobs:
           - name: Test Session Stats on Python 2.7
             if: steps.source.outputs.enabled == 'true'
             run: bash scripts/sessionstats/validate.sh python27
-          - name: Run complete pinned browser QA
+          - name: Run short Session Stats Chromium smoke
             if: steps.source.outputs.enabled == 'true'
             run: bash scripts/sessionstats/validate.sh browser
       - name: Build twice and verify all six release assets

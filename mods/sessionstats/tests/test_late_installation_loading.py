@@ -9,7 +9,7 @@ import unittest
 from test_core import Clock, EXPECTED
 from test_config_path import changed
 from test_normalize import raw_result, START, ARENA_ID
-from test_runtime import FakeAPI, FakeWindow
+from test_runtime import FakeAPI, FakeWindow, wait_for_combat_capture
 from grz_session_stats import config_path, runtime
 from grz_session_stats.sessions import InstallationSession
 
@@ -24,6 +24,7 @@ class LateInstallationLoadingTests(unittest.TestCase):
         self.mod = self.open()
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         self.resolver.__exit__(None, None, None)
         shutil.rmtree(self.directory)
@@ -43,14 +44,17 @@ class LateInstallationLoadingTests(unittest.TestCase):
         self.mod._on_avatar()
         self.assertIsNone(self.mod._instance_session)
         self.assertTrue(self.mod.active_service.loading)
+        wait_for_combat_capture(self.mod)
 
     def discover(self):
         self.mod._installation_dir = self.directory
-        self.mod._ensure_service()
+        self.api.battle = False
+        self.api.events.onAccountShowGUI()
         self.assertIsNotNone(self.mod._instance_session)
 
     def finish(self):
         self.api.battle = False
+        self.api.events.onAccountShowGUI()
         for unused in range(10000):
             if self.mod._load_id is None:
                 break
@@ -58,8 +62,10 @@ class LateInstallationLoadingTests(unittest.TestCase):
         self.assertFalse(self.mod._loading_services())
         self.assertTrue(self.mod.active_service.ready, self.mod.active_service.last_error)
         self.assertTrue(self.mod._instance_session.service.ready)
+        self.api.fire(self.mod._tick_id)
 
     def restart(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         self.api.battle = False
         self.clock.value = START + 86400
@@ -95,6 +101,7 @@ class LateInstallationLoadingTests(unittest.TestCase):
         first = self.mod.active_service
         self.clock.value = START + 400
         self.mod._on_results(True, raw_result())
+        wait_for_combat_capture(self.mod)
         self.discover()
         self.api.battle = False
         self.api.dbid = 8

@@ -85,11 +85,18 @@ def check_package(path):
         assert registry[0]['id'] == 'R.mods.grz.sessionstats.views.SessionStats'
         layout = registry[0]['path'].replace('coui://', 'res/')
         assert layout in names, 'Registered layout missing'
+        assert layout.rsplit('/', 1)[0]+'/session_stats_camo.png' in names, 'Panel texture missing'
         expected = json.loads(package.read('res/grz_session_stats/wn8exp.json'))
         assert len(expected['data']) >= 300
         languages = json.loads(package.read('res/grz_session_stats/languages.json'))
         assert set(languages['languages']) == {'en', 'ru', 'fr', 'pl', 'de', 'es', 'uk'}
         assert isinstance(languages['languages']['en'].get('title'), str)
+        map_catalog = json.loads(package.read('res/grz_session_stats/map_names.json'))
+        assert map_catalog['schema_version'] == 1
+        maps = map_catalog['maps']
+        assert len(maps) >= 68 and all(set(labels) == set(languages['languages']) for labels in maps.values())
+        assert maps['59_asia_great_wall']['en'] == "Empire's Border"
+        assert 'res/scripts/client/gui/mods/grz_session_stats/map_names.pyc' in names
     return len(names)
 
 
@@ -112,14 +119,15 @@ def main():
     dist = ROOT / 'dist'
     dist.mkdir(exist_ok=True)
     package = dist / ('grz.sessionstats_'+version_tag+'.wotmod')
-    required = ['SessionStats.html', 'session_stats.css', 'session_stats.js', 'footer.js', 'footer.css']
+    required = ['SessionStats.html', 'session_stats.css', 'session_stats.js',
+                'session_stats_camo.png', 'footer.js', 'footer.css', 'postbattle.js', 'postbattle.css']
     for name in required:
         if not (ROOT/'ui'/name).is_file():
             raise RuntimeError('UI file missing: '+name)
     source_paths = sorted((ROOT/'src').rglob('*.py'))
-    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'visuals',
+    expected_modules = ['core', 'storage', 'runtime', 'normalize', 'views', 'footer', 'postbattle', 'visuals',
                         'health', 'monitor', 'diagnostics', 'appearance', 'config_path', 'config_files',
-                        'localization', 'language_defaults']
+                        'localization', 'language_defaults', 'map_names']
     for name in expected_modules:
         if not (ROOT/'src'/'grz_session_stats'/(name+'.py')).is_file():
             raise RuntimeError('Python module missing: '+name)
@@ -180,6 +188,8 @@ def main():
         'installed_package': INSTALLED_PACKAGE,
         'appearance_config': CONFIG_FILENAME, 'appearance_config_sha256': digest(config_path),
         'languages_resource': 'res/grz_session_stats/languages.json', 'languages_resource_sha256': digest(languages_path),
+        'map_names_resource': 'res/grz_session_stats/map_names.json',
+        'map_names_resource_sha256': digest(ROOT/'data/map_names.json'),
         'config_directory': 'mods/configs',
         'expected': json.loads((ROOT/'data'/'wn8-source.json').read_text()),
         'live_client_tested': False,
@@ -196,7 +206,9 @@ def main():
         put(z, 'SHA256SUMS.txt', inner_checksums)
         for directory in ['src','ui','tools','tests','data','resources','third_party','preview','docs']:
             for path in sorted((ROOT/directory).rglob('*')):
-                if not path.is_file() or '__pycache__' in path.parts or path.suffix in ('.pyc','.pyo','.wotmod','.png') or path.name.endswith('-report.json') or 'node_modules' in path.parts:
+                if (not path.is_file() or '__pycache__' in path.parts or 'node_modules' in path.parts
+                        or path.suffix in ('.pyc', '.pyo', '.wotmod') or path.name.endswith('-report.json')
+                        or (path.suffix == '.png' and (path.parent != ROOT/'ui' or path.name not in required))):
                     continue
                 content = path.read_bytes()
                 if path == ROOT/'src'/'grz_session_stats'/'__init__.py':

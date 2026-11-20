@@ -1,0 +1,652 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository": "https://github.com/unicum-gg/wot.src",
+    "commit": "7c135eea16a3c9f8be2097cb1a408de4ee9d6f94",
+    "client": "2.4.1.5514",
+    "catalogs": {
+      "en": {
+        "path": "text/lc_messages/en/arenas.po",
+        "sha256": "db0d7f4f60052397f68dfcf6447e59ecbeb07cd8c2c2103ffa1273b7b81278f4"
+      },
+      "pl": {
+        "path": "text/lc_messages/pl/arenas.po",
+        "sha256": "89f5ee9e22f76f73e0d9adde0d9f1b7077046567d10c665f0587e7d1d3510e33"
+      },
+      "ru": {
+        "path": "text/lc_messages/ru/arenas.po",
+        "sha256": "c6b572a03e52149a1dc9c0bef8412aee087d550d7625a8640feb057c066c745c"
+      },
+      "fr": {
+        "path": "text/lc_messages/fr/arenas.po",
+        "sha256": "de081862607c626f6c163129d1fa07fcf875236399dbf8a514e890b57c372198"
+      },
+      "de": {
+        "path": "text/lc_messages/de/arenas.po",
+        "sha256": "360c486470b3f7636c3e62e02e70dcf78d384c0662787d2f883387bcddb69b11"
+      },
+      "es": {
+        "path": "text/lc_messages/es/arenas.po",
+        "sha256": "c60afc78610322a8fc429421c2616eb683a04254031cdda23d6b6bc44412034c"
+      },
+      "uk": {
+        "path": "text/lc_messages/uk/arenas.po",
+        "sha256": "f86bf00841f11286745b0610c72557c775424d200db988264f25fe84eb8d432f"
+      }
+    }
+  },
+  "maps": {
+    "01_karelia": {
+      "en": "Karelia",
+      "pl": "Karelia",
+      "ru": "Карелия",
+      "fr": "Carélie",
+      "de": "Karelien",
+      "es": "Karelia",
+      "uk": "Карелія"
+    },
+    "02_malinovka": {
+      "en": "Malinovka",
+      "pl": "Malinowka",
+      "ru": "Малиновка",
+      "fr": "Malinovka",
+      "de": "Malinowka",
+      "es": "Malinovka",
+      "uk": "Малинівка"
+    },
+    "03_campania_big": {
+      "en": "Province",
+      "pl": "Prowincja",
+      "ru": "Провинция",
+      "fr": "Province",
+      "de": "Provinz",
+      "es": "Provincia",
+      "uk": "Провінція"
+    },
+    "04_himmelsdorf": {
+      "en": "Himmelsdorf",
+      "pl": "Himmelsdorf",
+      "ru": "Химмельсдорф",
+      "fr": "Himmelsdorf",
+      "de": "Himmelsdorf",
+      "es": "Himmelsdorf",
+      "uk": "Хіммельсдорф"
+    },
+    "05_prohorovka": {
+      "en": "Prokhorovka",
+      "pl": "Prochorowka",
+      "ru": "Прохоровка",
+      "fr": "Prokhorovka",
+      "de": "Prokhorowka",
+      "es": "Prokhorovka",
+      "uk": "Прохорівка"
+    },
+    "06_ensk": {
+      "en": "Ensk",
+      "pl": "Ensk",
+      "ru": "Энск",
+      "fr": "Ensk",
+      "de": "Ensk",
+      "es": "Ensk",
+      "uk": "Енськ"
+    },
+    "06_ensk_big": {
+      "en": "Ensk Region",
+      "pl": "Region Enska",
+      "ru": "Энский регион",
+      "fr": "Région d'Ensk",
+      "de": "Region Ensk",
+      "es": "Región Ensk",
+      "uk": "Регіон Енськ"
+    },
+    "07_lakeville": {
+      "en": "Lakeville",
+      "pl": "Lakeville",
+      "ru": "Ласвилль",
+      "fr": "Lakeville",
+      "de": "Lakeville",
+      "es": "Lakeville",
+      "uk": "Ласвілль"
+    },
+    "08_ruinberg": {
+      "en": "Ruinberg",
+      "pl": "Ruinberg",
+      "ru": "Руинберг",
+      "fr": "Ruinberg",
+      "de": "Ruinberg",
+      "es": "Ruinberg",
+      "uk": "Руїнберґ"
+    },
+    "08_ruinberg_sm24": {
+      "en": "Lauerberg",
+      "pl": "Lauerberg",
+      "ru": "Лауэрберг",
+      "fr": "Lauerberg",
+      "de": "Lauerberg",
+      "es": "Lauerberg",
+      "uk": "Лауерберг"
+    },
+    "101_dday": {
+      "en": "Overlord",
+      "pl": "Overlord",
+      "ru": "Оверлорд",
+      "fr": "Overlord",
+      "de": "Overlord",
+      "es": "Overlord",
+      "uk": "Оверлорд"
+    },
+    "101_dday_sm24": {
+      "en": "Omaha Beach",
+      "pl": "Plaża Omaha",
+      "ru": "Пляж «Омаха»",
+      "fr": "Omaha Beach",
+      "de": "Omaha Beach",
+      "es": "Playa de Omaha",
+      "uk": "Пляж «Омаха»"
+    },
+    "105_germany": {
+      "en": "Berlin",
+      "pl": "Berlin",
+      "ru": "Берлин",
+      "fr": "Berlin",
+      "de": "Berlin",
+      "es": "Berlín",
+      "uk": "Берлін"
+    },
+    "105_germany_sm24": {
+      "en": "Fallenstadt",
+      "pl": "Fallenstadt",
+      "ru": "Фолленштадт",
+      "fr": "Fallenstadt",
+      "de": "Fallenstadt",
+      "es": "Fallenstadt",
+      "uk": "Фалленштат"
+    },
+    "108_normandy_nom": {
+      "en": "Oder",
+      "pl": "Odra",
+      "ru": "Одер",
+      "fr": "Oder",
+      "de": "Oder",
+      "es": "Óder",
+      "uk": "Одер"
+    },
+    "10_hills": {
+      "en": "Mines",
+      "pl": "Kopalnie",
+      "ru": "Рудники",
+      "fr": "Mines",
+      "de": "Minen",
+      "es": "Minas",
+      "uk": "Копальні"
+    },
+    "112_eiffel_tower_ctf": {
+      "en": "Paris",
+      "pl": "Paryż",
+      "ru": "Париж",
+      "fr": "Paris",
+      "de": "Paris",
+      "es": "París",
+      "uk": "Париж"
+    },
+    "114_czech": {
+      "en": "Pilsen",
+      "pl": "Pilzno",
+      "ru": "Промзона",
+      "fr": "Pilsen",
+      "de": "Pilsen",
+      "es": "Pilsen",
+      "uk": "Промзона"
+    },
+    "115_sweden": {
+      "en": "Glacier",
+      "pl": "Lodowiec",
+      "ru": "Штиль",
+      "fr": "Glacier",
+      "de": "Gletscher",
+      "es": "Glaciar",
+      "uk": "Штиль"
+    },
+    "115_sweden_comp7_nb": {
+      "en": "Glacier: Night",
+      "pl": "Lodowiec: Noc",
+      "ru": "Штиль (ночь)",
+      "fr": "Glacier : Nuit",
+      "de": "Gletscher: Nacht",
+      "es": "Glaciar: Noche",
+      "uk": "Штиль (ніч)"
+    },
+    "11_murovanka": {
+      "en": "Murovanka",
+      "pl": "Murowanka",
+      "ru": "Мурованка",
+      "fr": "Murovanka",
+      "de": "Murowanka",
+      "es": "Murovanka",
+      "uk": "Мурованка"
+    },
+    "120_graf_zeppelin": {
+      "en": "Nordskar",
+      "pl": "Nordskar",
+      "ru": "Нордскар",
+      "fr": "Nordskar",
+      "de": "Nordskar",
+      "es": "Nordskar",
+      "uk": "Нордскар"
+    },
+    "120_graf_zeppelin_scc": {
+      "en": "Nordskar",
+      "pl": "Nordskar",
+      "ru": "Нордскар",
+      "fr": "Nordskar",
+      "de": "Nordskar",
+      "es": "Nordskar",
+      "uk": "Нордскар"
+    },
+    "121_lost_paradise_v": {
+      "en": "Oyster Bay",
+      "pl": "Zatoka małży",
+      "ru": "Устричный залив",
+      "fr": "Baie aux Huîtres",
+      "de": "Austernbucht",
+      "es": "Bahía de las ostras",
+      "uk": "Устрична затока"
+    },
+    "127_japort": {
+      "en": "Safe Haven",
+      "pl": "Bezpieczna przystań",
+      "ru": "Старая гавань",
+      "fr": "Refuge",
+      "de": "Sicherer Hafen",
+      "es": "Refugio seguro",
+      "uk": "Стара гавань"
+    },
+    "128_last_frontier_v": {
+      "en": "Outpost",
+      "pl": "Posterunek",
+      "ru": "Застава",
+      "fr": "Avant-poste",
+      "de": "Außenposten",
+      "es": "Puesto avanzado",
+      "uk": "Застава"
+    },
+    "128_last_frontier_v_comp7_nb": {
+      "en": "Outpost: Night",
+      "pl": "Posterunek: Noc",
+      "ru": "Застава (ночь)",
+      "fr": "Avant-poste : Nuit",
+      "de": "Außenposten: Nacht",
+      "es": "Puesto avanzado: Noche",
+      "uk": "Застава (ніч)"
+    },
+    "13_erlenberg": {
+      "en": "Erlenberg",
+      "pl": "Erlenberg",
+      "ru": "Эрленберг",
+      "fr": "Erlenberg",
+      "de": "Erlenberg",
+      "es": "Erlenberg",
+      "uk": "Ерленберґ"
+    },
+    "140_fall_tanks": {
+      "en": "Old School",
+      "pl": "Stara szkoła",
+      "ru": "Старая школа",
+      "fr": "Vieille école",
+      "de": "Alter Stil",
+      "es": "Vieja escuela",
+      "uk": "Стара школа"
+    },
+    "141_dash_to_go": {
+      "en": "New School",
+      "pl": "Nowa szkoła",
+      "ru": "Новое поколение",
+      "fr": "Nouvelle école",
+      "de": "Neuer Stil",
+      "es": "Nueva escuela",
+      "uk": "Нова школа"
+    },
+    "142_road_to_dash": {
+      "en": "Brawl School",
+      "pl": "Szkoła walki",
+      "ru": "Потасовка",
+      "fr": "École de lutte",
+      "de": "Nahkampfstil",
+      "es": "Escuela de luchadores",
+      "uk": "Бойова школа"
+    },
+    "14_siegfried_line": {
+      "en": "Siegfried Line",
+      "pl": "Linia Zygfryda",
+      "ru": "Линия Зигфрида",
+      "fr": "Ligne Siegfried",
+      "de": "Siegfriedlinie",
+      "es": "Línea Sigfrido",
+      "uk": "Лінія Зигфріда"
+    },
+    "14_siegfried_line_nom": {
+      "en": "Westwall",
+      "pl": "Wał Zachodni",
+      "ru": "Западный вал",
+      "fr": "Westfall",
+      "de": "Westwall",
+      "es": "Muro del Oeste",
+      "uk": "Західний вал"
+    },
+    "14_siegfried_line_wt": {
+      "en": "Siegfried Line",
+      "pl": "Linia Zygfryda",
+      "ru": "Линия Зигфрида",
+      "fr": "Ligne Siegfried",
+      "de": "Siegfriedlinie",
+      "es": "Línea Sigfrido",
+      "uk": "Лінія Зигфріда"
+    },
+    "17_munchen": {
+      "en": "Widepark",
+      "pl": "Przedmieście",
+      "ru": "Уайдпарк",
+      "fr": "Grand Parc",
+      "de": "Weitpark",
+      "es": "Parque Ancho",
+      "uk": "Вайдпарк"
+    },
+    "18_cliff": {
+      "en": "Cliff",
+      "pl": "Urwisko",
+      "ru": "Утёс",
+      "fr": "Falaise",
+      "de": "Klippe",
+      "es": "Acantilado",
+      "uk": "Круча"
+    },
+    "19_monastery": {
+      "en": "Abbey",
+      "pl": "Klasztor",
+      "ru": "Монастырь",
+      "fr": "Abbaye",
+      "de": "Kloster",
+      "es": "Abadía",
+      "uk": "Монастир"
+    },
+    "208_bf_epic_normandy": {
+      "en": "Normandie",
+      "pl": "Normandia",
+      "ru": "Нормандия",
+      "fr": "Normandie",
+      "de": "Normandie",
+      "es": "Normandie",
+      "uk": "Нормандія"
+    },
+    "209_wg_epic_suburbia": {
+      "en": "Kraftwerk",
+      "pl": "Kraftwerk",
+      "ru": "Крафтверк",
+      "fr": "Kraftwerk",
+      "de": "Kraftwerk",
+      "es": "Kraftwerk",
+      "uk": "Крафтверк"
+    },
+    "210_bf_epic_desert": {
+      "en": "Fata Morgana",
+      "pl": "Fatamorgana",
+      "ru": "Фата-моргана",
+      "fr": "Fata Morgana",
+      "de": "Fata Morgana",
+      "es": "Fata Morgana",
+      "uk": "Фата-моргана"
+    },
+    "212_epic_random_valley": {
+      "en": "Nebelburg",
+      "pl": "Nebelburg",
+      "ru": "Небельбург",
+      "fr": "Nebelburg",
+      "de": "Nebelburg",
+      "es": "Nebelburg",
+      "uk": "Нібельбурґ"
+    },
+    "212_epic_random_valley_sm25": {
+      "en": "Nebelburg",
+      "pl": "Nebelburg",
+      "ru": "Небельбург",
+      "fr": "Nebelburg",
+      "de": "Nebelburg",
+      "es": "Nebelburg",
+      "uk": "Нібельбурґ"
+    },
+    "217_er_alaska": {
+      "en": "Klondike",
+      "pl": "Klondike",
+      "ru": "Клондайк",
+      "fr": "Klondike",
+      "de": "Klondike",
+      "es": "Klondike",
+      "uk": "Клондайк"
+    },
+    "23_westfeld": {
+      "en": "Westfield",
+      "pl": "Westfield",
+      "ru": "Вестфилд",
+      "fr": "Westfield",
+      "de": "Westfield",
+      "es": "Campo del Oeste",
+      "uk": "Вестфілд"
+    },
+    "250_br_battle_city2-1": {
+      "en": "Dreamland",
+      "pl": "Strefa 404",
+      "ru": "Зона 404",
+      "fr": "Zone 404",
+      "de": "Zone 404",
+      "es": "Área 404",
+      "uk": "Зона 404"
+    },
+    "251_br_battle_city3": {
+      "en": "Arzagir 4.04",
+      "pl": "Arzagir 4.04",
+      "ru": "Арзагир 4.04",
+      "fr": "Arzagir 4.04",
+      "de": "Arzagir 4.04",
+      "es": "Arzagir 4.04",
+      "uk": "Арзагир 4.04"
+    },
+    "252_br_battle_city4": {
+      "en": "Firnulfir",
+      "pl": "Firnulfir",
+      "ru": "Фирнульфир",
+      "fr": "Firnulfir",
+      "de": "Firnulfir",
+      "es": "Firnulfir",
+      "uk": "Фірнульфір"
+    },
+    "28_desert": {
+      "en": "Sand River",
+      "pl": "Piaszczysta rzeka",
+      "ru": "Песчаная река",
+      "fr": "Rivière de sable",
+      "de": "Wadi",
+      "es": "Río de Arena",
+      "uk": "Піщана ріка"
+    },
+    "28_desert_comp7_nb": {
+      "en": "Sand River: Night",
+      "pl": "Piaszczysta rzeka: Noc",
+      "ru": "Песчаная река (ночь)",
+      "fr": "Rivière de sable : Nuit",
+      "de": "Wadi: Nacht",
+      "es": "Río de Arena: Noche",
+      "uk": "Піщана ріка (ніч)"
+    },
+    "29_el_hallouf": {
+      "en": "El Halluf",
+      "pl": "El Halluf",
+      "ru": "Эль-Халлуф",
+      "fr": "El Halluf",
+      "de": "El Halluf",
+      "es": "El Halluf",
+      "uk": "Ель-Халлуф"
+    },
+    "31_airfield": {
+      "en": "Airfield",
+      "pl": "Lotnisko",
+      "ru": "Аэродром",
+      "fr": "Aérodrome",
+      "de": "Flugplatz",
+      "es": "Aeródromo",
+      "uk": "Летовище"
+    },
+    "33_fjord": {
+      "en": "Fjords",
+      "pl": "Fiordy",
+      "ru": "Фьорды",
+      "fr": "Fjords",
+      "de": "Fjorde",
+      "es": "Fiordos",
+      "uk": "Фіорди"
+    },
+    "34_redshire": {
+      "en": "Redshire",
+      "pl": "Redshire",
+      "ru": "Редшир",
+      "fr": "Redshire",
+      "de": "Redshire",
+      "es": "Comarca Roja",
+      "uk": "Редшир"
+    },
+    "34_redshire_wt": {
+      "en": "Redshire",
+      "pl": "Redshire",
+      "ru": "Редшир",
+      "fr": "Redshire",
+      "de": "Redshire",
+      "es": "Comarca Roja",
+      "uk": "Редшир"
+    },
+    "35_steppes": {
+      "en": "Steppes",
+      "pl": "Step",
+      "ru": "Степи",
+      "fr": "Steppes",
+      "de": "Steppen",
+      "es": "Estepas",
+      "uk": "Степи"
+    },
+    "35_steppes_comp7_nb": {
+      "en": "Steppes: Night",
+      "pl": "Step: Noc",
+      "ru": "Степи (ночь)",
+      "fr": "Steppes : Nuit",
+      "de": "Steppen: Nacht",
+      "es": "Estepas: Noche",
+      "uk": "Степи (ніч)"
+    },
+    "35_steppes_wt": {
+      "en": "Steppes",
+      "pl": "Step",
+      "ru": "Степи",
+      "fr": "Steppes",
+      "de": "Steppen",
+      "es": "Estepas",
+      "uk": "Степи"
+    },
+    "36_fishing_bay": {
+      "en": "Fisherman's Bay",
+      "pl": "Zatoka rybacka",
+      "ru": "Рыбацкая бухта",
+      "fr": "Baie du pêcheur",
+      "de": "Fischerbucht",
+      "es": "Bahía del Pescador",
+      "uk": "Рибальська бухта"
+    },
+    "37_caucasus": {
+      "en": "Mountain Pass",
+      "pl": "Przełęcz",
+      "ru": "Перевал",
+      "fr": "Col de montagne",
+      "de": "Bergpass",
+      "es": "Paso Montañoso",
+      "uk": "Перевал"
+    },
+    "38_mannerheim_line": {
+      "en": "Mannerheim Line",
+      "pl": "Linia Mannerheima",
+      "ru": "Линия Маннергейма",
+      "fr": "Ligne Mannerheim",
+      "de": "Mannerheim-Linie",
+      "es": "Línea Mannerheim",
+      "uk": "Лінія Маннергейма"
+    },
+    "44_north_america": {
+      "en": "Live Oaks",
+      "pl": "Dębina",
+      "ru": "Лайв Окс",
+      "fr": "Live Oaks",
+      "de": "Live Oaks",
+      "es": "Live Oaks",
+      "uk": "Лайв Окс"
+    },
+    "45_north_america": {
+      "en": "Highway",
+      "pl": "Autostrada",
+      "ru": "Хайвей",
+      "fr": "Autoroute",
+      "de": "Highway",
+      "es": "Autovía",
+      "uk": "Хайвей"
+    },
+    "47_canada_a": {
+      "en": "Serene Coast",
+      "pl": "Cichy Brzeg",
+      "ru": "Тихий берег",
+      "fr": "Plage sereine",
+      "de": "Küste",
+      "es": "Costa Serena",
+      "uk": "Тихий берег"
+    },
+    "59_asia_great_wall": {
+      "en": "Empire's Border",
+      "pl": "Granica imperium",
+      "ru": "Граница империи",
+      "fr": "Frontière de l'Empire",
+      "de": "Chinesische Mauer",
+      "es": "Frontera del Imperio",
+      "uk": "Кордон імперії"
+    },
+    "60_asia_miao": {
+      "en": "Pearl River",
+      "pl": "Rzeka Perłowa",
+      "ru": "Жемчужная река",
+      "fr": "Rivière de perles",
+      "de": "Perlenfluss",
+      "es": "Río de perlas",
+      "uk": "Перлинна річка"
+    },
+    "63_tundra": {
+      "en": "Tundra",
+      "pl": "Tundra",
+      "ru": "Тундра",
+      "fr": "Toundra",
+      "de": "Tundra",
+      "es": "Tundra",
+      "uk": "Тундра"
+    },
+    "95_lost_city_ctf": {
+      "en": "Ghost Town",
+      "pl": "Miasto duchów",
+      "ru": "Затерянный город",
+      "fr": "Ville fantôme",
+      "de": "Geisterstadt",
+      "es": "Ciudad Fantasma",
+      "uk": "Загублене місто"
+    },
+    "99_poland": {
+      "en": "Studzianki",
+      "pl": "Studzianki",
+      "ru": "Студзянки",
+      "fr": "Studzianki",
+      "de": "Studzianki",
+      "es": "Studzianki",
+      "uk": "Студзянки"
+    }
+  }
+}

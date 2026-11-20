@@ -113,7 +113,20 @@ def _credit_income(data, warnings):
     return credits - sum(deductions)
 
 
-def normalize_currencies(data, warnings=None):
+def _bond_income(vehicle, avatar):
+    vehicle_total = _number(vehicle.get('crystal'))
+    if vehicle_total is None:
+        vehicle_total = _sum_known([_number(vehicle.get('originalCrystal')), _number(vehicle.get('eventCrystal'))])
+    if vehicle_total is None:
+        return None
+    # The account and vehicle records are distinct. An event amount in an
+    # entry is a component of that entry's total, not a second payment.
+    account_total = _number(avatar.get('crystal'))
+    account_events = _number(avatar.get('eventCrystal'))
+    return vehicle_total + (account_total or account_events or 0)
+
+
+def normalize_currencies(data, warnings=None, avatar=None):
     warnings = warnings if warnings is not None else []
     repair = _number(data.get('autoRepairCost'))
     ammo = _tuple_cost(data, 'autoLoadCost', 0)
@@ -134,10 +147,16 @@ def normalize_currencies(data, warnings=None):
         'credits': _money(_credit_income(data, warnings), credit_costs,
                           {'repair': repair, 'ammo': ammo,
                            'consumables': consumables, 'directives': directives}),
-        # crystal includes mission bonds. originalCrystal alone does not.
-        'bonds': _money(_number(data.get('crystal')), bond_costs),
+        'bonds': _money(_bond_income(data, avatar or {}), bond_costs),
         'gold': _money(_number(data.get('gold')), gold_costs),
     }
+    # Like originalXP, originalCredits is the server's pre-bonus earning.
+    # It is not the native account panel's replayed "without premium" subtotal.
+    # Both net metrics deduct the same settled repair/ammunition/equipment costs.
+    base_income = _number(data.get('originalCredits'), nonnegative=False)
+    result['credits']['income_base'] = base_income
+    result['credits']['net_base'] = (base_income - credit_costs
+                                     if base_income is not None and credit_costs is not None else None)
     if _number(data.get('piggyBank')):
         warnings.append(message('normalize.reserve'))
     if any(value['net'] is None for value in result.values()):
@@ -172,7 +191,7 @@ def arena_start(arena_id):
 
 
 def normalize_result(results, context=None, random_bonus_type=1,
-                     vehicle_resolver=None, map_resolver=None):
+                     vehicle_resolver=None, map_resolver=None, mission_resolver=None):
     """Return a normalized random-battle record, or None if it is not ours.
 
     context may contain account_dbid, started_at, vehicle_id and map metadata
@@ -213,7 +232,7 @@ def normalize_result(results, context=None, random_bonus_type=1,
                     continue
                 candidate_context = dict(context, vehicle_id=compact, _candidate=True)
                 candidate = normalize_result(results, candidate_context, random_bonus_type,
-                                             vehicle_resolver, map_resolver)
+                                             vehicle_resolver, map_resolver, mission_resolver)
                 if candidate is not None:
                     candidates.append(candidate)
             if candidates:
@@ -270,10 +289,14 @@ def normalize_result(results, context=None, random_bonus_type=1,
         'xp_base': _number(data.get('originalXP')),
         'xp_received': _number(data.get('xp')),
         'free_xp': _number(data.get('freeXP')),
-        'currencies': normalize_currencies(data, warnings),
+        'currencies': normalize_currencies(data, warnings, avatar),
         'warnings': warnings, 'complete': False, 'reconcile': True,
         'xp_bonus_applied': False,
     }
+    from .battle_details import result_details
+    details = result_details(avatar, data, context.get('active_crucible'), mission_resolver)
+    if details:
+        result['details'] = details
     if context.get('_loading'):
         fields = []
         for field, source in (('vehicle_name', 'name'), ('vehicle_tier', 'tier'), ('vehicle_type', 'type')):

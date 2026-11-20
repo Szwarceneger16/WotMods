@@ -16,8 +16,7 @@ run_phase() {
       python3 mods/sessionstats/tools/make_preview.py
       ;;
     browser)
-      # The full runner includes its own pinned-runtime preparation and smoke.
-      python3 -I scripts/sessionstats/browser_qa.py
+      python3 -I scripts/sessionstats/browser_qa.py --e2e build
       ;;
     build)
       test -n "${PYTHON27:?Set PYTHON27 to CPython 2.7.18}"

@@ -12,7 +12,7 @@ import unittest
 from test_core import Clock, EXPECTED, result
 from grz_session_stats.core import StatsService, aggregate_stats
 from grz_session_stats import loading, storage, intake, runtime
-from test_runtime import FakeAPI, FakeWindow
+from test_runtime import FakeAPI, FakeWindow, wait_for_combat_capture
 from test_normalize import raw_result, START, ARENA_ID
 
 
@@ -107,7 +107,8 @@ class StagedLoadingTests(unittest.TestCase):
         self.assertTrue(service.ready, service.last_error)
         self.assertTrue({'history', 'storage', 'indexes', 'receipts'}.issubset(phases), phases)
         self.assertEqual(service.snapshot()['scopes']['manual']['summary'],
-                         aggregate_stats(list(service._state['battles'].values()), service.expected_table))
+                         aggregate_stats(list(service._state['battles'].values()), service.expected_table,
+                                         include_currency_series=True))
 
     def test_new_results_before_and_during_index_build_are_preserved(self):
         self.seed()
@@ -359,6 +360,7 @@ class StagedRuntimeTests(unittest.TestCase):
         self.mod.start()
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         shutil.rmtree(self.directory)
 
@@ -381,16 +383,24 @@ class StagedRuntimeTests(unittest.TestCase):
 
     def test_battle_pauses_history_work_but_keeps_durable_capture(self):
         service = self.mod.active_service
+        stale_loading = self.api.callbacks[self.mod._load_id][1]
         self.api.battle = True
         self.api.context = {'arena_id': str(ARENA_ID), 'started_at': START, 'vehicle_id': 1, 'map_id': 'map'}
         self.clock.value = START + 10
         self.mod._on_avatar()
-        self.api.fire(self.mod._load_id)
+        stale_loading()
+        self.assertIsNone(self.mod._load_id)
         self.assertEqual(service.loading_phase, 'history')
         self.assertEqual(service._state['battles'], {})
-        self.assertTrue(any(event['kind'] == 'begin' for event in service._intake.events))
+        self.assertFalse(any(event['kind'] == 'begin' for event in service._intake.events))
+        wait_for_combat_capture(self.mod)
+        receipt, = self.mod._combat_intake.pending(self.mod.active_key)
+        self.assertEqual(receipt[1], 'begin')
+        self.assertEqual(receipt[2]['record']['arena_id'], str(ARENA_ID))
         self.api.battle = False
+        self.api.events.onAccountShowGUI()
         self.finish()
+        self.api.fire(self.mod._tick_id)
         self.assertIn(str(ARENA_ID), service._state['battles'])
 
     def test_account_switch_and_old_callback_keep_receipts_with_original_account(self):

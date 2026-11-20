@@ -1,0 +1,8 @@
+{
+  "name": "sessionstats-local-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {"node": ">=22"},
+  "scripts": {"e2e": "node run.cjs"},
+  "devDependencies": {"playwright": "1.62.1", "pngjs": "7.0.0"}
+}

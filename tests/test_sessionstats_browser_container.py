@@ -105,7 +105,7 @@ class BrowserContainerTests(unittest.TestCase):
         self.assertFalse(any(value.startswith(('GITHUB_TOKEN=', 'GH_TOKEN=', 'PYTHONPATH='))
                              for value in environment))
 
-    def invoke(self, *, prepare=False, failure=None):
+    def invoke(self, *, prepare=False, failure=None, **options):
         calls = []
 
         def execute(command, **kwargs):
@@ -122,7 +122,7 @@ class BrowserContainerTests(unittest.TestCase):
                 patch.object(qa, 'python_runtime', return_value=self.runtime), \
                 patch.object(qa.subprocess, 'run', side_effect=execute):
             try:
-                qa.run(prepare=prepare)
+                qa.run(prepare=prepare, **options)
             except Exception as error:
                 return calls, error
         return calls, None
@@ -151,6 +151,50 @@ class BrowserContainerTests(unittest.TestCase):
         calls, error = self.invoke(failure=lambda command: command[:2] == ['docker', 'pull'])
         self.assertIsInstance(error, (subprocess.CalledProcessError, RuntimeError))
         self.assertFalse(any(command[:2] == ['docker', 'run'] for command, _ in calls))
+
+    def test_build_uses_only_the_short_suite_with_no_private_inputs_or_network(self):
+        with patch.dict(qa.os.environ, {'SESSIONSTATS_PYTHON': '/private/python',
+                                        'GRZ_CHROME': '/private/browser'}):
+            calls, error = self.invoke(e2e='build')
+        self.assertIsNone(error)
+        commands = [command for command, _ in calls if command[:2] == ['docker', 'run']]
+        self.assertEqual(len(commands), 3)
+        self.assertNotIn('--network', commands[0])  # The exact npm dependency is installed first.
+        command = commands[-1]
+        self.assertEqual(command[command.index('--network') + 1], 'none')
+        self.assertIn('GITHUB_ACTIONS=true', command)
+        self.assertNotIn('--profile', command)
+        self.assertNotIn('--game-client', command)
+        self.assertNotIn('/private/', ' '.join(command))
+        self.assertEqual(command[command.index('--suite') + 1], 'build')
+        self.assertEqual(command[command.index('--capture') + 1], 'failures')
+        self.assertNotIn(qa.test_script(), command)
+
+    def test_requested_matrix_runs_produce_mergeable_report_parts(self):
+        for profile, suite, shard, capture in (
+                ('smoke', 'build', None, 'all'),
+                ('full', 'full', '2/16', 'final'),
+                ('exhaustive', 'full', '37/64', 'final')):
+            with self.subTest(profile=profile):
+                report = self.workspace / 'report'
+                with patch.object(qa, 'ROOT', self.workspace):
+                    calls, error = self.invoke(e2e=profile, report_dir=report, shard=shard)
+                self.assertIsNone(error)
+                command = next(command for command, _ in calls if '--suite' in command)
+                self.assertEqual(command[command.index('--suite') + 1], suite)
+                self.assertEqual(command[command.index('--capture') + 1], capture)
+                self.assertEqual(command[command.index('--shard') + 1], shard or '1/1')
+                self.assertEqual(Path(command[command.index('--out') + 1]), report.resolve())
+                self.assertEqual('--all-ranges' in command, profile == 'exhaustive')
+                self.assertEqual('--image-format' in command, profile != 'smoke')
+                if profile != 'smoke':
+                    self.assertEqual(command[command.index('--jpeg-quality') + 1], '48')
+
+    def test_ci_report_cannot_target_a_private_path_outside_the_workspace(self):
+        with patch.object(qa, 'ROOT', self.workspace):
+            calls, error = self.invoke(e2e='full', report_dir=self.directory / 'private')
+        self.assertIsInstance(error, RuntimeError)
+        self.assertEqual(calls, [])
 
     def test_every_container_is_removed_by_its_owned_name_even_after_timeout(self):
         calls, error = self.invoke(failure=lambda command:

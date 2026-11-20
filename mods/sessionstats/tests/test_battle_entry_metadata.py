@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 import copy
 import json
+import os
+import threading
 import unittest
 
 import test_runtime as fixtures
@@ -111,6 +113,7 @@ class DurableEntryMetadataTests(unittest.TestCase):
     tearDown = fixtures.RuntimeTests.__dict__['tearDown']
     no_footer = fixtures.RuntimeTests.__dict__['no_footer']
     begin = fixtures.RuntimeTests.__dict__['begin']
+    garage = fixtures.RuntimeTests.__dict__['garage']
 
     def enter_with_metadata(self):
         self.begin()
@@ -120,13 +123,19 @@ class DurableEntryMetadataTests(unittest.TestCase):
     def test_entry_is_on_disk_before_exit_and_recognizable_after_restart(self):
         self.enter_with_metadata()
         service = self.mod.active_service
-        persisted = service.store.load()['battles'][ARENA_ID]
+        fixtures.wait_for_combat_capture(self.mod)
+        self.assertNotIn(ARENA_ID, service.store.load()['battles'])
+        captures = self.mod._combat_intake.pending(self.mod.active_key, limit=2)
+        self.assertEqual([kind for unused, kind, capture in captures], ['begin', 'begin'])
+        persisted = captures[-1][2]['record']
         for key, value in METADATA.items():
             self.assertEqual(persisted[key], value)
         self.assertEqual(persisted['started_at'], START)
-        self.assertFalse(persisted['_result_seen'])
+        self.assertNotIn('_result_seen', persisted)
         self.mod.stop()
         self.clock.value += 86400
+        self.api.battle = False
+        self.mod.start()
         restored = StatsService(self.directory, 'EU:7', 'new-client', fixtures.EXPECTED, now=self.clock)
         scope = restored.snapshot()['scopes']['manual']
         row = scope['battles'][0]
@@ -147,12 +156,15 @@ class DurableEntryMetadataTests(unittest.TestCase):
         self.api.events.onAvatarReady()
         enriched = copy.deepcopy(service._state)
         for unused in range(3):
-            self.clock.value += 5
+            self.clock.value += 15
             self.api.events.onAvatarReady()
         self.assertEqual(service._state, enriched)
         self.api.context.update(dict((key, None) for key in METADATA))
         self.api.events.onAvatarReady()
         self.assertEqual(service._state, enriched)
+        fixtures.wait_for_combat_capture(self.mod)
+        self.assertEqual(len(self.mod._combat_intake.pending(self.mod.active_key, limit=10)), 2)
+        self.garage()
         self.assertEqual(service.result_context(ARENA_ID)['map_name'], METADATA['map_name'])
 
     def test_context_allowlist_does_not_persist_roster_tokens_or_player_names(self):
@@ -161,13 +173,18 @@ class DurableEntryMetadataTests(unittest.TestCase):
                                  'vehicles': {'roster': 'PRIVATE_ROSTER_SENTINEL'},
                                  'token': 'PRIVATE_TOKEN_SENTINEL', 'account_dbid': 999999997})
         self.api.events.onAvatarReady()
-        serialized = json.dumps(self.mod.active_service.store.load())
+        fixtures.wait_for_combat_capture(self.mod)
+        receipts = self.mod._combat_intake.pending(self.mod.active_key, limit=10)
+        self.assertTrue(receipts)
+        self.garage()
+        serialized = json.dumps([receipts, self.mod.active_service.store.load()])
         for private in ('PRIVATE_PLAYER_SENTINEL', 'PRIVATE_ROSTER_SENTINEL',
                         'PRIVATE_TOKEN_SENTINEL', '999999997'):
             self.assertNotIn(private, serialized)
 
     def test_late_result_without_metadata_helpers_preserves_entry_labels(self):
         self.enter_with_metadata()
+        fixtures.wait_for_combat_capture(self.mod)
         self.mod.stop()
         self.clock.value += 86400
         self.api.battle = False
@@ -184,12 +201,66 @@ class DurableEntryMetadataTests(unittest.TestCase):
 
     def test_reentering_after_result_keeps_confirmed_stats_and_membership(self):
         self.enter_with_metadata()
+        self.garage()
         self.api.events.onBattleResultsReceived(True, raw_result())
         service = self.mod.active_service
         before = copy.deepcopy(service._state['battles'][ARENA_ID])
+        self.api.battle = True
         self.api.context.update(dict((key, None) for key in METADATA))
         self.api.events.onAvatarReady()
+        self.garage()
         self.assertEqual(service._state['battles'][ARENA_ID], before)
+
+    def test_previous_result_is_written_off_thread_and_replayed_after_restart(self):
+        self.mod.stop()
+
+        def restart():
+            self.mod = runtime.Runtime(deferred_loading=False, api=self.api, data_dir=self.directory,
+                                       expected_table=fixtures.EXPECTED, now=self.clock,
+                                       window=self.window, footer_installer=self.no_footer,
+                                       installation_dir=self.directory)
+            self.mod.start()
+
+        restart()
+        self.enter_with_metadata()
+        self.garage()
+        self.begin(str(int(ARENA_ID) + 150))
+        fixtures.wait_for_combat_capture(self.mod)
+        service = self.mod.active_service
+        installation = self.mod._instance_session
+        sequences = (service.store.sequence, installation.service.store.sequence)
+        original_fsync = os.fsync
+        fsync_threads = []
+
+        def identify_write(descriptor):
+            fsync_threads.append(threading.current_thread().ident)
+            return original_fsync(descriptor)
+
+        os.fsync = identify_write
+        try:
+            raw = raw_result()
+            raw['foreign_player'] = 'PRIVATE_PLAYER_SENTINEL'
+            self.api.events.onBattleResultsReceived(True, raw)
+            fixtures.wait_for_combat_capture(self.mod)
+        finally:
+            os.fsync = original_fsync
+        self.assertTrue(fsync_threads)
+        self.assertNotIn(threading.current_thread().ident, fsync_threads)
+        self.assertEqual((service.store.sequence, installation.service.store.sequence), sequences)
+        self.assertFalse(service._state['battles'][ARENA_ID]['_result_seen'])
+        captures = self.mod._combat_intake.pending(self.mod.active_key, limit=2)
+        self.assertEqual([kind for unused, kind, capture in captures], ['begin', 'result'])
+        self.assertEqual(captures[-1][2]['record']['arena_id'], ARENA_ID)
+        self.assertNotIn('PRIVATE_PLAYER_SENTINEL', json.dumps(captures))
+
+        self.mod.stop()
+        self.api.battle = False
+        restart()
+        service = self.mod.active_service
+        self.assertTrue(service._state['battles'][ARENA_ID]['_result_seen'])
+        self.assertEqual(service.snapshot()['scopes']['manual']['summary']['battles'], 1)
+        self.assertEqual(self.mod._instance_session.snapshot()[0]['summary']['battles'], 1)
+        self.assertEqual(self.mod._combat_intake.pending(self.mod.active_key), [])
 
 
 if __name__ == '__main__':

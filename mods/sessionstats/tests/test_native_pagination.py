@@ -14,7 +14,7 @@ from grz_session_stats.runtime import Runtime
 from grz_session_stats.sessions import InstallationSession
 
 
-class NativePaginationTests(unittest.TestCase):
+class NativePaginationFixture(object):
     inject_module = fixtures.NativeBindingTests.__dict__['inject_module']
 
     def setUp(self):
@@ -50,6 +50,8 @@ class NativePaginationTests(unittest.TestCase):
         command.update(updates)
         return command
 
+
+class NativePaginationTests(NativePaginationFixture, unittest.TestCase):
     def test_each_scope_and_group_publishes_next_and_previous_page(self):
         for scope in ('launch', 'manual', 'instance'):
             for group in ('battles', 'vehicles', 'maps'):

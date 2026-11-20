@@ -1,14 +1,18 @@
 # Account and installation sessions
 
-The two default tabs are isolated by account and region. Switching A → B → A
-restores A's own manual period. Resetting B never changes A. Nicknames are
-not used as storage keys.
+The two default tabs are isolated by account and region. The active login
+selects the corresponding local battle history and saved time points.
 
-| Scope | Accounts | Reset | After restarting the game |
+| Scope | Accounts | Default period | After restarting the game |
 | --- | --- | --- | --- |
-| Since launch | Current account | New game process | Empty |
-| Since reset | Current account | Its own manual reset | Preserved |
-| Installation, optional tab | Accounts observed in this installation | Its own manual reset | Preserved |
+| Since launch | Current account | Current game process | Empty |
+| Timeline | Current account | Beginning of history through now | History and time points preserved |
+| Installation, optional tab | Accounts observed in this installation | Since its most recent reset | Preserved |
+
+The title bar saves a point at the current time. Earlier account reset
+boundaries also appear in the selectors. The range includes battles started
+at the lower boundary and excludes those started at the upper boundary. A
+late result appears in the period when its battle started.
 
 To display the installation tab, add this section to the existing JSON beside
 the mod. The previous `instance_tab` option name is retained for compatibility;
@@ -43,9 +47,9 @@ one global shared history. Account collection remains available independently.
 
 Each account/battle pair has a stable hashed key. WN8, averages, coverage and
 groups are computed from the shared ledger's individual normalized records.
-The installation reset never resets an account; account resets never reset the
-installation. Confirmation closes on account changes and stale commands are
-rejected. The footer spinner still follows the active account only.
+Installation reset affects the installation period. Confirmation closes on
+account changes and stale commands are rejected. The footer spinner follows
+the active account.
 
 Beginnings are saved before results. A result delivered after a restart fills
 its existing shared record exactly once and retains its original reset epoch.
