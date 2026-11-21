@@ -3,6 +3,7 @@ const assert=require('assert');
 const fs=require('fs');
 const path=require('path');
 const {spawn}=require('child_process');
+const {performance}=require('node:perf_hooks');
 
 function assertManifest(files){
   assert(Array.isArray(files)&&files.length>0,'A feature manifest must be nonempty');
@@ -11,9 +12,10 @@ function assertManifest(files){
   assert(new Set(files).size===files.length,'A feature manifest must not contain duplicates');
 }
 
-function partitionFeatures(files,hints={}){
+function partitionFeatures(files,hints={},workerCount=2){
   assertManifest(files);
-  const buckets=Array.from({length:Math.min(2,files.length)},()=>({weight:0,items:[]}));
+  assert(workerCount===2||workerCount===3,'Feature worker count must be 2 or 3');
+  const buckets=Array.from({length:Math.min(workerCount,files.length)},()=>({weight:0,items:[]}));
   const weighted=files.map((file,index)=>{
     const weight=hints[file]===undefined?1:hints[file];
     assert(Number.isFinite(weight)&&weight>0,'Scheduling hints must be finite and positive');
@@ -50,19 +52,28 @@ function validateReport(expected,report,exitCode,signal){
   return report;
 }
 
-async function runFeaturePool(files,{script,reportDirectory,hints={}}){
-  const assignments=partitionFeatures(files,hints);
+async function runFeaturePool(files,{script,reportDirectory,hints={},workerCount,phase}){
+  const assignments=partitionFeatures(files,hints,workerCount);
   const directory=fs.mkdtempSync(path.join(reportDirectory,'feature-batch-'));
   const results=await Promise.allSettled(assignments.map((expected,index)=>new Promise((resolve,reject)=>{
     const reportPath=path.join(directory,'worker-'+index+'.json');
+    const started=performance.now();
     const child=spawn(process.execPath,[script,'--feature-worker',reportPath,JSON.stringify(expected)],
       {stdio:['ignore','inherit','inherit'],env:process.env});
     child.once('error',reject);
     child.once('close',(exitCode,signal)=>{
+      let passed=false;
       try{
         const report=JSON.parse(fs.readFileSync(reportPath,'utf8'));
         resolve(validateReport(expected,report,exitCode,signal));
+        passed=true;
       }catch(error){reject(new Error('Feature worker '+index+': '+error.message));}
+      finally{
+        if(phase)console.log('UI worker profile: '+JSON.stringify({
+          phase,worker:index+1,workers:assignments.length,passed,
+          duration_ms:Math.round(performance.now()-started),suites:expected
+        }));
+      }
     });
   })));
   const failures=results.filter(result=>result.status==='rejected');
