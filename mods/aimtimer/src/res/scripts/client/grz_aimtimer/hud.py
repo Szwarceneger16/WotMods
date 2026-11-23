@@ -215,6 +215,35 @@ class Overlay(object):
         """Detached visible geometry for the runtime's polled drag gesture."""
         return dict(self._placement) if self._placement is not None else None
 
+    def has_readout(self):
+        return self._placement is not None and 'main' in self._visible
+
+    def reposition(self, aim, mode):
+        """Apply a pixel anchor from the stock reticle event without a new reading."""
+        placement = self._placement
+        if (placement is None or self.controls or self._signature is None or
+                placement['mode'] != mode or placement['anchor'] == aim or
+                not all(finite(value) and abs(value) <= 65536 for value in aim)):
+            return False
+        x_min, y_min, x_max, y_max = placement['bounds']
+        scale = placement['scale']
+        x = max(x_min, min(x_max, aim[0] + self._position_value[0] * scale))
+        y = max(y_min, min(y_max, aim[1] + self._position_value[1] * scale))
+        viewport = placement['viewport']
+        try:
+            if 'back' in self._visible:
+                self._assign('back', 'position', clip_position(x, y, viewport, 0.12))
+            self._assign('main', 'position', clip_position(x, y, viewport, 0.08))
+            self._assign('main_shadow', 'position', clip_position(x + 1, y + 1, viewport, 0.09))
+        except Exception:
+            self.hide()
+            return False
+        placement['anchor'] = aim
+        placement['center'] = (x, y)
+        placement['offset'] = ((x - aim[0]) / scale, (y - aim[1]) / scale)
+        self._signature = self._signature[:1] + (aim,) + self._signature[2:]
+        return True
+
     def _place(self, name, x, y, width, height, viewport, colour, depth):
         self._assign(name, 'position', clip_position(x, y, viewport, depth))
         self._assign(name, 'size', (float(width), float(height)))
