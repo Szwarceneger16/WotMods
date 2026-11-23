@@ -14,7 +14,9 @@ To configure it, open **Aim time** in the garage footer. In battle hold Ctrl and
 
 The ZIP includes the same OpenWG Gameface package used by compatible WotMods for the garage button. GRZ AimTimer works without the other reticle mod. When both are present, the position editor shows the other readout at its saved position and highlights overlap between active readouts. Moving one readout saves its own position.
 
-Settings and limited diagnostics are stored locally under `%APPDATA%/GRZ_AimTimer` when available. The mod has no network telemetry and does not change aiming or gun controls. The preview was checked with WoT EU 2.4.1.1. Retargeting an installer for a new game directory does not guarantee runtime compatibility.
+AimTimer pauses measurement while the battle HUD is hidden or the player no longer controls a live vehicle. The readout follows the client's crosshair position events between measurements.
+
+Settings and a short support log are stored locally under `%APPDATA%/GRZ_AimTimer` when available. The release package has no detailed battle tracing or network telemetry and does not change aiming or gun controls. The preview was checked with WoT EU 2.4.1.1. Retargeting an installer for a new game directory does not guarantee runtime compatibility.
 
 ## Build
 
