@@ -330,6 +330,7 @@ class SettingsWindow(object):
         self._preview_zoom_step = 1
         self._preview_focus = DEFAULT_FOCUS
         self._preview_focus_demo = False
+        self._preview_hide_stock_distance = None
         self._preview_status = 'unavailable'
         self._preview_reason = None
         self._preview_decoration_diagnostic = None
@@ -447,9 +448,10 @@ class SettingsWindow(object):
         return resolve_scene(mode, scene_id, zoom_step)
 
     def _queue_editor(self, active, mode=None, variant=None, scene_id=None, zoom_step=None,
-                      focus=None, focus_changed=False, request_id=None):
+                      focus=None, focus_changed=False, request_id=None, hide_stock_distance=None):
         """Resize only after the owned native input dispatcher has returned."""
-        if type(active) is not bool or not self.is_open():
+        if (type(active) is not bool or not self.is_open() or
+                (hide_stock_distance is not None and type(hide_stock_distance) is not bool)):
             return False
         mode = self._preview_mode if mode is None else mode
         variant = self._preview_variant if variant is None else variant
@@ -470,7 +472,8 @@ class SettingsWindow(object):
                     self.is_open()):
                 if not self.set_editor(active, mode, variant,
                                        scene['scene_id'] if scene else None,
-                                       scene['step'] if scene else None, focus, focus_changed, request_id):
+                                       scene['step'] if scene else None, focus, focus_changed, request_id,
+                                       hide_stock_distance=hide_stock_distance):
                     self._editor_target = self._editor_active
                     self._record_editor_request(request_id, False)
                     self.update(self._state)
@@ -575,7 +578,8 @@ class SettingsWindow(object):
             self._diagnose('editor-request', dict(fields))
         if action == 'editor':
             queued = self._queue_editor(getter('active'), mode, variant, scene_id, zoom_step,
-                                        focus, request_id=request_id)
+                                        focus, request_id=request_id,
+                                        hide_stock_distance=getter('hide_stock_distance'))
         else:
             queued = self._queue_preview(mode, variant, scene_id, zoom_step,
                                          focus, getter('focus_changed') is True, request_id)
@@ -634,9 +638,11 @@ class SettingsWindow(object):
         if not self._editor_active or not self.is_open():
             return
         viewport = self._viewport()
-        distance_config = json.loads(self._state).get('config') or {}
-        hide_stock_distance = (isinstance(distance_config, dict) and distance_config.get('enabled') is True and
-                               distance_config.get('hide_stock_rangefinder') is True)
+        hide_stock_distance = self._preview_hide_stock_distance
+        if hide_stock_distance is None:
+            distance_config = json.loads(self._state).get('config') or {}
+            hide_stock_distance = (isinstance(distance_config, dict) and distance_config.get('enabled') is True and
+                                   distance_config.get('hide_stock_rangefinder') is True)
         signature = (self._preview_mode, self._preview_variant,
                      self._preview_scene_id, self._preview_zoom_step, self._preview_focus,
                      viewport['width'], viewport['height'], viewport['scale'], hide_stock_distance)
@@ -713,7 +719,7 @@ class SettingsWindow(object):
             self._warn()
 
     def set_editor(self, active, mode=None, variant=None, scene_id=None, zoom_step=None,
-                   focus=None, focus_changed=False, request_id=None):
+                   focus=None, focus_changed=False, request_id=None, hide_stock_distance=None):
         """Acknowledge fullscreen preview; the document resizes its own view."""
         if type(active) is not bool or not self.is_open():
             return False
@@ -730,6 +736,8 @@ class SettingsWindow(object):
         self._editor_active = self._editor_target = active
         self._record_editor_request(request_id, True)
         if active:
+            if not was_active or hide_stock_distance is not None:
+                self._preview_hide_stock_distance = hide_stock_distance
             if (mode, variant) != (self._preview_mode, self._preview_variant):
                 self._preview_status = 'loading'
                 self._preview_reason = None
@@ -741,6 +749,7 @@ class SettingsWindow(object):
                 self._diagnose('editor-open', self._active_diagnostic_fields())
             self._refresh_preview(focus_changed is True)
         else:
+            self._preview_hide_stock_distance = None
             self._diagnose_close(request_id, was_active)
             self._close_preview()
         self._reported_size = self._reported_viewport = None
@@ -1062,6 +1071,7 @@ class SettingsWindow(object):
             self._preview_mode, self._preview_variant = 'arcade', 'standard'
             self._preview_scene_id, self._preview_zoom_step = 'arcade', 1
             self._preview_focus = DEFAULT_FOCUS
+            self._preview_hide_stock_distance = None
 
             def dispatch(arg):
                 if generation == self._generation and self.is_open():

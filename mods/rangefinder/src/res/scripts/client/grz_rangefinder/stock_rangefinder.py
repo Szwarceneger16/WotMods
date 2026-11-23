@@ -1,74 +1,207 @@
 # -*- coding: ascii -*-
-"""Temporarily hide the live Scaleform CrosshairBase distance subclips."""
+"""Keep the stock numeric cache while suppressing its live HUD text."""
 from __future__ import absolute_import
+
+_SET_DISTANCE = 'as_setDistanceS'
+_INHERITED = object()
 
 
 def _stock_crosshair(app):
+    if app is None:
+        return None
     from frameworks.wulf import WindowLayer
     from gui.Scaleform.daapi.view.battle.shared.crosshair.container import CrosshairPanelContainer
 
-    battle_view = app.containerManager.getContainer(WindowLayer.VIEW).getView()
-    for component in battle_view._external:
-        if isinstance(component, CrosshairPanelContainer) and component._isDAAPIInited():
-            return component
+    view = app.containerManager.getContainer(WindowLayer.VIEW).getView()
+    panel = getattr(view, 'crosshair', None)
+    if isinstance(panel, CrosshairPanelContainer) and panel._isDAAPIInited():
+        return panel
     return None
 
 
-def _fields(owner):
-    root = owner.flashObject
-    count = int(root.numChildren)
-    if not 0 < count <= 64:
-        return ()
-    fields = []
-    # Stock initCrosshairs attaches the native mode views directly under this
-    # panel. Distance updates use the distance clip's timeline, not its
-    # DisplayObject visibility, in all supported camera modes.
-    for index in range(count):
-        try:
-            field = root.getChildAt(index).distance
-            if field is not None and field.visible in (False, True):
-                fields.append(field)
-        except (AttributeError, TypeError, RuntimeError):
-            continue
-    return fields
+def _panel_signal():
+    from PlayerEvents import g_playerEvents
+    return g_playerEvents.crosshairPanelInitialized
+
+
+def _view_proxy():
+    import BigWorld
+    player = BigWorld.player()
+    provider = getattr(player, 'guiSessionProvider', None)
+    return getattr(getattr(provider, 'shared', None), 'crosshair', None)
+
+
+def _distance_label(distance):
+    from gui.Scaleform.locale.INGAME_GUI import INGAME_GUI
+    from helpers import i18n
+    return i18n.makeString(INGAME_GUI.DISTANCE_METERS, meters=distance)
 
 
 class StockRangefinder(object):
     def __init__(self):
+        self.status = 'inactive'
+        self._app_getter = None
+        self._on_status_changed = None
+        self._requested = False
+        self._panel_signal = None
+        self._proxy = None
+        self._view_signals = []
         self._owner = None
-        self._changed = []
+        self._hook = None
+        self._prior = _INHERITED
+
+    def start(self, app_getter, on_status_changed=None):
+        """Set up the callbacks. Watch the game only while suppression is requested."""
+        self._app_getter = app_getter
+        self._on_status_changed = on_status_changed
+
+    def _set_status(self, status):
+        if status == self.status:
+            return
+        self.status = status
+        if self._on_status_changed is not None:
+            try:
+                self._on_status_changed()
+            except Exception:
+                pass
 
     def suppress(self, app):
-        if app is None:
-            self.restore()
-            return False
+        self._requested = True
+        self._watch()
+        return self._refresh(app, clear=False)
+
+    def artillery_distance(self):
+        """Read the client's displayed meters when the marker is transiently absent."""
+        if self._app_getter is None:
+            return None
+        try:
+            from gui.battle_control.battle_constants import CROSSHAIR_VIEW_ID
+            owner = self._owner
+            if owner is None or not owner._isDAAPIInited():
+                owner = _stock_crosshair(self._app_getter())
+            if owner is not None and owner.getViewID() == CROSSHAIR_VIEW_ID.STRATEGIC:
+                distance = owner.getDistance()
+                if type(distance) is int and distance > 0:
+                    return distance
+        except Exception:
+            pass
+        return None
+
+    def _watch(self):
+        try:
+            if self._panel_signal is None:
+                signal = _panel_signal()
+                signal += self._on_panel
+                self._panel_signal = signal
+            proxy = _view_proxy()
+        except Exception:
+            return
+        if proxy is self._proxy:
+            return
+        self._unwatch_view()
+        self._proxy = proxy
+        for name in ('onCrosshairViewChanged', 'onStrategicCameraChanged'):
+            signal = getattr(proxy, name, None)
+            if signal is not None:
+                try:
+                    signal += self._on_view
+                    self._view_signals.append(signal)
+                except Exception:
+                    pass
+
+    def _unwatch_view(self):
+        for signal in self._view_signals:
+            try:
+                signal -= self._on_view
+            except Exception:
+                pass
+        self._view_signals = []
+        self._proxy = None
+
+    def _on_panel(self, *unused):
+        if self._requested:
+            # Rebind after the replacement panel's plugins subscribed, so the
+            # view-change clear runs after the stock view received its cache.
+            self._unwatch_view()
+            self._watch()
+            self._on_view()
+
+    def _on_view(self, *unused):
+        if self._requested and self._app_getter is not None:
+            try:
+                app = self._app_getter()
+            except Exception:
+                app = None
+            self._refresh(app, clear=True)
+
+    def _refresh(self, app, clear):
         try:
             owner = _stock_crosshair(app)
-            if owner is not None and owner is self._owner:
-                return True
-            self.restore()
             if owner is None:
+                self._unbind()
+                self._set_status('panel_not_ready')
                 return False
-            fields = _fields(owner)
-            if not fields:
+            if owner is not self._owner:
+                self._unbind()
+                self._bind(owner)
+                clear = True
+            elif vars(owner).get(_SET_DISTANCE, _INHERITED) is not self._hook:
+                self._unbind()
+                self._set_status('binding_conflict')
                 return False
-            for field in fields:
-                if field.visible:
-                    self._changed.append(field)
-                    field.visible = False
-            self._owner = owner
+            if clear:
+                owner.as_clearDistanceS(True)
+            self._set_status('hidden')
             return True
         except Exception:
-            self.restore()
+            self._unbind()
+            self._set_status('binding_failed')
+            return False
+
+    def _bind(self, owner):
+        previous = owner.as_setDistanceS
+        prior = vars(owner).get(_SET_DISTANCE, _INHERITED)
+
+        # Stock setDistance still updates the distance field used by getDistance.
+        # Keep only the presentation call on this one panel from reaching Flash.
+        def hide(*args, **kwargs):
+            if self._hook is not hide:
+                return previous(*args, **kwargs)
+            return None
+
+        setattr(owner, _SET_DISTANCE, hide)
+        self._owner, self._hook, self._prior = owner, hide, prior
+
+    def _unbind(self):
+        owner, hook, prior = self._owner, self._hook, self._prior
+        self._owner, self._hook, self._prior = None, None, _INHERITED
+        if owner is None:
+            return True
+        try:
+            # A later instance patch may have wrapped ours. Leave that patch in
+            # place. The inactive wrapper now delegates to its original call.
+            if vars(owner).get(_SET_DISTANCE, _INHERITED) is hook:
+                if prior is _INHERITED:
+                    delattr(owner, _SET_DISTANCE)
+                else:
+                    setattr(owner, _SET_DISTANCE, prior)
+            if owner._isDAAPIInited():
+                distance = owner.getDistance()
+                if distance > 0:
+                    owner.as_setDistanceS(_distance_label(distance))
+            return True
+        except Exception:
             return False
 
     def restore(self):
-        changed, self._changed = self._changed, []
-        self._owner = None
-        for field in changed:
+        if not self._requested:
+            return
+        self._requested = False
+        signal, self._panel_signal = self._panel_signal, None
+        if signal is not None:
             try:
-                if field.visible in (False, 0):
-                    field.visible = True
+                signal -= self._on_panel
             except Exception:
-                # Disposed Flash values cannot change the replacement panel.
                 pass
+        self._unwatch_view()
+        self._set_status('inactive' if self._unbind() else 'restore_failed')

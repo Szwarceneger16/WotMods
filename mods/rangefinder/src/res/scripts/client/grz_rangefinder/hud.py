@@ -215,6 +215,35 @@ class Overlay(object):
         """Detached visible geometry for the runtime's polled drag gesture."""
         return dict(self._placement) if self._placement is not None else None
 
+    def has_readout(self):
+        return self._placement is not None and 'main' in self._visible
+
+    def reposition(self, aim, mode):
+        """Apply a pixel anchor from the stock reticle event without a new reading."""
+        placement = self._placement
+        if (placement is None or self.controls or self._signature is None or
+                placement['mode'] != mode or placement['anchor'] == aim or
+                not all(finite(value) and abs(value) <= 65536 for value in aim)):
+            return False
+        x_min, y_min, x_max, y_max = placement['bounds']
+        scale = placement['scale']
+        x = max(x_min, min(x_max, aim[0] + self._position_value[0] * scale))
+        y = max(y_min, min(y_max, aim[1] + self._position_value[1] * scale))
+        viewport = placement['viewport']
+        try:
+            if 'back' in self._visible:
+                self._assign('back', 'position', clip_position(x, y, viewport, 0.12))
+            self._assign('main', 'position', clip_position(x, y, viewport, 0.08))
+            self._assign('main_shadow', 'position', clip_position(x + 1, y + 1, viewport, 0.09))
+        except Exception:
+            self.hide()
+            return False
+        placement['anchor'] = aim
+        placement['center'] = (x, y)
+        placement['offset'] = ((x - aim[0]) / scale, (y - aim[1]) / scale)
+        self._signature = self._signature[:1] + (aim,) + self._signature[2:]
+        return True
+
     def _place(self, name, x, y, width, height, viewport, colour, depth):
         self._assign(name, 'position', clip_position(x, y, viewport, depth))
         self._assign(name, 'size', (float(width), float(height)))
@@ -320,7 +349,7 @@ class Overlay(object):
         return self._reading_value
 
     def update(self, sample, config, language, visible, settings_open=False,
-               controls_visible=False):
+               controls_visible=False, reading_visible=True):
         if self.closed or self.failed:
             return
         context = sample.get('context')
@@ -376,7 +405,7 @@ class Overlay(object):
                 mode = 'unknown'
             position = self._position(config, mode)
             reading = None
-            if config['enabled']:
+            if config['enabled'] and reading_visible:
                 reading = self._reading(sample, config, language)
             signature = (tuple(viewport), tuple(aim), mode, scale, position,
                          config['enabled'], config['hud_font_px'],
@@ -401,7 +430,7 @@ class Overlay(object):
                     aim[0] + position[0] * position_scale))
             y = max(edge + 4, min(height - edge - 4,
                     aim[1] + position[1] * position_scale))
-            if config['enabled']:
+            if reading is not None:
                 colour = tuple(reading['colour'][:3]) + (255,)
                 opacity = int(math.floor(config['hud_background_opacity'] * 100 + .5))
                 if opacity > 0:
@@ -413,7 +442,7 @@ class Overlay(object):
                                 (255, 255, 255, 255), 0.12)
                 self._text('main', reading['text'], x, y,
                            config['hud_font_px'] * scale, viewport, colour)
-            if config['enabled']:
+            if reading is not None:
                 self._placement = {
                     'mode': mode, 'viewport': tuple(viewport),
                     'scale': position_scale, 'center': (x, y),
@@ -432,10 +461,11 @@ class Overlay(object):
             mx = x - panel_width / 2.0 - 16 * scale
             gx, px = x + panel_width / 2.0 + 16 * scale, x + panel_width / 2.0 + 44 * scale
             gs = ps = 24 * scale
-            if config['enabled']:
+            if reading is not None:
                 self._place('move', mx, y, gs, gs, viewport,
                             (255, 255, 255, 255), 0.07)
                 self.controls['move'] = (mx, y, gs, gs)
+            if config['enabled']:
                 self._place('gear', gx, y, gs, gs, viewport,
                             (255, 255, 255, 255), 0.07)
                 self.controls['settings'] = (gx, y, gs, gs)
