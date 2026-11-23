@@ -7,7 +7,7 @@ import logging
 import os
 import time
 
-from . import VERSION, preview_catalog
+from . import VERSION, battle_activity, preview_catalog
 from .core import SettingsStore, validate_config, with_mode_position
 from .hud import ClickTracker, Overlay, finite
 from .preview_catalog import translations
@@ -20,8 +20,9 @@ except NameError:
 
 TICK_SECONDS = 0.10
 INTERACTION_SECONDS = 0.05
-DISABLED_IDLE_SECONDS = 0.10
+DISABLED_IDLE_SECONDS = 0.25
 MEASUREMENT_SECONDS = 0.10
+POSITION_SECONDS = 0.033
 SETTINGS_PUBLISH_SECONDS = 0.50
 MAX_COMMAND_CHARS = 4096
 PROBE_DIAGNOSTICS = frozenset((
@@ -50,6 +51,8 @@ class Diagnostics(object):
         self.logger.propagate = False
         self.handler = None
         self.counts = {}
+        self.in_battle = False
+        self.queued = []
         try:
             if not os.path.isdir(directory):
                 os.makedirs(directory)
@@ -68,12 +71,27 @@ class Diagnostics(object):
         count = self.counts.get(code, 0)
         self.counts[code] = count + 1
         if count < 4:
-            try:
-                self.logger.info('v%s %s', VERSION, code)
-            except Exception:
-                pass
+            if self.in_battle:
+                if len(self.queued) < 64:
+                    self.queued.append(code)
+            else:
+                self._write(code)
+
+    def _write(self, code):
+        try:
+            self.logger.info('v%s %s', VERSION, code)
+        except Exception:
+            pass
+
+    def set_battle(self, active):
+        self.in_battle = active
+        if not active and self.queued:
+            queued, self.queued = self.queued, []
+            for code in queued:
+                self._write(code)
 
     def close(self):
+        self.set_battle(False)
         if self.handler is not None:
             self.logger.removeHandler(self.handler)
             try:
@@ -99,12 +117,22 @@ class Runtime(object):
         self.hotkey_unbound = hotkey_unbound or self._native_hotkey_unbound
         self.overlay = Overlay(gui, world, resource_exists, self.log, clock=self.clock)
         self._stock_rangefinder = StockRangefinder()
+        self._stock_requested = False
+        self._stock_syncing = False
+        self._stock_rangefinder.start(self._application, self._stock_status_changed)
         self.window = None
         self.footer = None
         self.running = False
         self.generation = 0
         self.context_epoch = 0
         self.callback = None
+        self._timer_token = 0
+        self._wake_queued = False
+        self._rebind_requested = False
+        self._position_callback = None
+        self._position_tracking = False
+        self._pending_position = None
+        self.battle_events = []
         self.pending = []
         self.events = []
         self.panel = None
@@ -324,7 +352,12 @@ class Runtime(object):
             self._error = ''
             self.log('settings_saved')
             if not (self.store.data['enabled'] and self.store.data['hide_stock_rangefinder']):
-                self._stock_rangefinder.restore()
+                self._sync_stock(False)
+                if self._sample.get('mode') in ('strategic', 'arty'):
+                    self.overlay.hide()
+                    self._position_tracking = False
+            if self._arena is not None:
+                self._battle_wakeup()
             if not was_enabled or not self.store.data['enabled']:
                 self._sample_time = None
                 self._sample_measured = False
@@ -419,7 +452,9 @@ class Runtime(object):
             self.log('settings_window_unavailable')
             self._error = translations.message('window_unavailable', self.language())
         else:
-            self._stock_rangefinder.restore()
+            self._cancel_position()
+            self.overlay.hide()
+            self._sync_stock(False)
             self.log('settings_window_opened')
         self._clicks.reset()
 
@@ -593,8 +628,9 @@ class Runtime(object):
             self.log('input_poll_failed')
 
     def _context_changed(self):
+        self._cancel_position()
         self._cancel_drag()
-        self._stock_rangefinder.restore()
+        self._sync_stock(False)
         self.context_epoch += 1
         self._clicks.reset()
         self._hotkey_down = None
@@ -606,43 +642,139 @@ class Runtime(object):
         self._sample_measured = False
         self._defer(self._close_window)
 
-    def _update_stock_rangefinder(self, enabled, visible):
-        app = None
-        if (enabled and visible and self.store.data['hide_stock_rangefinder'] and
-                self._sample.get('context') == 'battle' and self._sample.get('battle_eligible') and
-                self.overlay.placement() is not None):
-            app = self._application()
-        self._stock_rangefinder.suppress(app)
+    def _sync_stock(self, requested):
+        if requested == self._stock_requested:
+            return
+        self._stock_requested = requested
+        if requested:
+            self._stock_syncing = True
+            try:
+                self._stock_rangefinder.suppress(self._application())
+            finally:
+                self._stock_syncing = False
+        else:
+            self._stock_rangefinder.restore()
 
-    def _tick(self, generation):
-        if not self.running or generation != self.generation:
+    def _stock_status_changed(self):
+        if self._stock_requested and not self._stock_syncing:
+            self._battle_wakeup()
+
+    def _measurement_interval(self):
+        if self._sample.get('mode') in ('strategic', 'arty'):
+            return MEASUREMENT_SECONDS
+        value = self._sample.get('distance_m')
+        threshold = self.store.data['threshold_m']
+        if value is None or abs(value - threshold) <= max(10.0, 0.04 * threshold):
+            return MEASUREMENT_SECONDS
+        return 0.20
+
+    def _battle_wakeup(self, *unused):
+        if not self.running or self._arena is None:
+            return
+        self._sample_time = None
+        self._sample_measured = False
+        self._position_tracking = False
+        self._pending_position = None
+        if self._wake_queued:
+            return
+        self._wake_queued = True
+        callback, self.callback = self.callback, None
+        if callback is not None:
+            try:
+                self.world.cancelCallback(callback)
+            except Exception:
+                # The replaced timer's token prevents a stray callback.
+                pass
+        self._schedule(0.0)
+
+    def _ready_wakeup(self, *unused):
+        self._rebind_requested = True
+        self._battle_wakeup()
+
+    def _vehicle_destroyed(self, vehicle_id=None, *unused):
+        if vehicle_id is not None and vehicle_id == getattr(self._avatar, 'playerVehicleID', None):
+            self._battle_wakeup()
+
+    def _own_vehicle_visibility_changed(self, vehicle=None, *unused):
+        if vehicle is not None and getattr(vehicle, 'id', None) == getattr(self._avatar, 'playerVehicleID', None):
+            self._battle_wakeup()
+
+    def _position_changed(self, x, y):
+        if not self._position_tracking:
+            return
+        self._pending_position = (x, y)
+        if self._position_callback is not None:
+            return
+        generation = self.generation
+        scheduled = [None]
+
+        def apply():
+            if self._position_callback != scheduled[0]:
+                return
+            self._position_callback = None
+            position, self._pending_position = self._pending_position, None
+            if not (self.running and generation == self.generation and self._position_tracking and
+                    position is not None):
+                return
+            mode = self._sample.get('mode')
+            if self.overlay.reposition(position, mode):
+                self._sample['aim_position'] = position
+
+        try:
+            scheduled[0] = self._position_callback = self.world.callback(POSITION_SECONDS, apply)
+        except Exception:
+            self._pending_position = None
+
+    def _cancel_position(self):
+        self._position_tracking = False
+        self._pending_position = None
+        callback, self._position_callback = self._position_callback, None
+        if callback is not None:
+            try:
+                self.world.cancelCallback(callback)
+            except Exception:
+                pass
+
+    def _tick(self, generation, token=None):
+        if (not self.running or generation != self.generation or
+                (token is not None and token != self._timer_token)):
             return
         self.callback = None
+        self._wake_queued = False
         ctrl = False
         try:
             player = self.world.player()
             arena = getattr(player, 'arena', None)
             if player is not self._avatar or arena is not self._arena:
-                self._avatar = player
-                self._arena = arena
+                self._avatar, self._arena = player, arena
+                set_battle = getattr(self.log, 'set_battle', None)
+                if arena is not None and set_battle is not None:
+                    set_battle(True)
+                self._rebind_requested = True
                 self._context_changed()
+                if arena is None and self._last_context == 'battle':
+                    self._last_context = 'unavailable'
+            if self._rebind_requested:
+                self._rebind_requested = False
+                battle_activity.bind(self)
             now = self.clock()
             enabled = bool(self.store.data['enabled'])
             ctrl = self._ctrl_held()
             settings_open = self._window_open()
-            ui_requested = enabled or ctrl or settings_open
-            # An owned form or hidden battle HUD needs neither a ray cast nor
-            # an aiming-state read. Visibility includes the modal/app gate.
+            awake = self._sample.get('reason') != 'own_vehicle_not_alive' or self._sample_time is None
+            ui_requested = (enabled and awake) or ctrl or settings_open
             visible = bool(ui_requested and not settings_open and self._hud_visible())
-            measure = enabled and visible and self._sample.get('context') == 'battle'
+            measure = enabled and visible and arena is not None
             context_changed = False
+            interval = self._measurement_interval()
+            if not (measure or ctrl):
+                interval = DISABLED_IDLE_SECONDS
             sample_due = (self._sample_time is None or
-                          (ui_requested and (self._idle_suspended or
-                           now < self._sample_time or
-                           now + 1e-6 >= self._sample_time + MEASUREMENT_SECONDS)))
-            # Resume with a fresh value immediately after a hidden interval.
+                          ((arena is not None or ctrl or self._last_context == 'unavailable') and
+                           (now < self._sample_time or now + 1e-6 >= self._sample_time + interval)))
             if sample_due or (measure and not self._sample_measured):
-                self._sample = self.probe.poll(measure=measure)
+                self._sample = self.probe.poll(
+                    measure=measure, artillery_measure=self.store.data['hide_stock_rangefinder'])
                 self._sample_time = now
                 self._sample_measured = bool(measure)
                 context = self._sample.get('context', 'unavailable')
@@ -653,38 +785,56 @@ class Runtime(object):
                     self._sample_measured = bool(measure)
                     context_changed = True
                     visible = bool(ui_requested and not settings_open and self._hud_visible())
+                    if context == 'garage' and arena is None:
+                        set_battle = getattr(self.log, 'set_battle', None)
+                        if set_battle is not None:
+                            set_battle(False)
                     self.log('context_' + context if context in ('battle', 'garage') else 'context_unavailable')
                 reason = self._sample.get('reason', '')
                 if reason in PROBE_DIAGNOSTICS:
                     self.log(reason)
             cursor, active = None, False
-            if ui_requested:
-                # Query cursor/focus only for the Ctrl interaction path, and
-                # reuse that snapshot for both control visibility and clicks.
-                if ctrl:
-                    cursor = self.gui.mcursor()
-                    active = self._interaction_allowed(cursor=cursor, ctrl=ctrl,
-                                                       visible=visible)
-                controls_visible = self._sample.get('context') == 'battle' and active
-                self.overlay.update(self._sample, self._display_config(), self.language(), visible,
-                                    settings_open, controls_visible=controls_visible)
+            if ctrl and visible:
+                cursor = self.gui.mcursor()
+                active = self._interaction_allowed(cursor=cursor, ctrl=ctrl, visible=visible)
+            mode = self._sample.get('mode')
+            eligible = visible and self._sample.get('context') == 'battle' and self._sample.get('battle_eligible')
+            arty = mode in ('strategic', 'arty')
+            distance_available = self._sample.get('available') is True
+            replace_reading = self.store.data['hide_stock_rangefinder']
+            self._sync_stock(bool(eligible and enabled and replace_reading and
+                                  distance_available and not self.overlay.failed))
+            stock_hidden = self._stock_rangefinder.status == 'hidden'
+            show_reading = ((stock_hidden and distance_available) if replace_reading
+                            else not arty)
+            if eligible and (active or (enabled and show_reading)):
+                self.overlay.update(self._sample, self._display_config(), self.language(), True,
+                                    settings_open, controls_visible=active, reading_visible=show_reading)
                 self._idle_suspended = False
             elif not self._idle_suspended:
-                self.overlay.suspend()
+                # Hide on transient loss of visibility without dropping warmed
+                # font and texture resources during a camera/modal transition.
+                if enabled:
+                    self.overlay.hide()
+                else:
+                    self.overlay.suspend()
                 self._idle_suspended = True
-            self._update_stock_rangefinder(enabled, visible)
-            if context_changed and self.footer is not None:
-                self._publish()
-            elif (settings_open and (self._settings_publish_at is None or
-                    now < self._settings_publish_at or
-                    now + 1e-6 >= self._settings_publish_at + SETTINGS_PUBLISH_SECONDS)):
+            self._position_tracking = bool(eligible and enabled and show_reading and not ctrl and
+                                           self.overlay.has_readout())
+            if stock_hidden and not self.overlay.has_readout():
+                self._sync_stock(False)
+            if ((context_changed and self.footer is not None) or
+                    (settings_open and (self._settings_publish_at is None or
+                     now < self._settings_publish_at or
+                     now + 1e-6 >= self._settings_publish_at + SETTINGS_PUBLISH_SECONDS))):
                 self._publish()
             self._poll_input(ctrl=ctrl, cursor=cursor, active=active)
             self._error_streak = 0
         except Exception:
             self._error_streak += 1
-            self._stock_rangefinder.restore()
+            self._sync_stock(False)
             self.overlay.hide()
+            self._position_tracking = False
             self._sample_time = None
             self._sample_measured = False
             self._clicks.reset()
@@ -692,20 +842,22 @@ class Runtime(object):
             self.log('runtime_tick_failed')
         if self.running and generation == self.generation:
             delay = (1.0 if self._error_streak else
-                     DISABLED_IDLE_SECONDS if self._idle_suspended else
-                     INTERACTION_SECONDS if ctrl or self._drag is not None else TICK_SECONDS)
+                     INTERACTION_SECONDS if ctrl or self._drag is not None else
+                     DISABLED_IDLE_SECONDS if self._idle_suspended else TICK_SECONDS)
             self._schedule(delay)
 
     def _schedule(self, delay):
         if not self.running or self.callback is not None:
             return
         generation = self.generation
+        self._timer_token += 1
+        token = self._timer_token
         try:
-            self.callback = self.world.callback(delay, lambda: self._tick(generation))
+            self.callback = self.world.callback(delay, lambda: self._tick(generation, token))
         except Exception:
             self.log('runtime_scheduler_failed')
             self._cancel_drag()
-            self._stock_rangefinder.restore()
+            self._sync_stock(False)
             self.running = False
             self.overlay.hide()
 
@@ -717,6 +869,8 @@ class Runtime(object):
                 return
             self.panel = getattr(event, 'componentPy', None)
             self._context_changed()
+            battle_activity.bind(self)
+            self._battle_wakeup()
         except Exception:
             self.log('panel_registration_failed')
 
@@ -775,8 +929,10 @@ class Runtime(object):
         self._schedule(0.5)
 
     def stop(self):
+        self._cancel_position()
+        battle_activity.unbind(self)
         self._cancel_drag()
-        self._stock_rangefinder.restore()
+        self._sync_stock(False)
         self.running = False
         self.generation += 1
         self.context_epoch += 1

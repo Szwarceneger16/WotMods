@@ -1,9 +1,10 @@
 # -*- coding: ascii -*-
 """Read-only client adapter for the private rangefinder.
 
-The ray finds a real scene intersection; it never uses the client's synthetic
-shoot-in-sky endpoint. Distances originate at the own vehicle reference point.
-Only plain HUD data leaves this adapter. No entity or world position is cached.
+Artillery uses the client's cached gun marker and its distance convention.
+Other cameras measure the first scene intersection along the view ray.
+Distances originate at the own vehicle reference point. Only plain HUD data
+leaves this adapter. No entity or world position is cached.
 """
 from __future__ import absolute_import
 
@@ -17,6 +18,7 @@ except NameError:
     _TEXT_TYPES = (str, bytes)
 
 _NUMBER_TYPES = _INTEGER_TYPES + (float,)
+ARTILLERY_MODES = ('strategic', 'arty')
 SUPPORTED_MODES = ('arcade', 'sniper', 'strategic', 'arty', 'dualgun', 'twinGun')
 _OTHER_MODES = ('postmortem', 'debug', 'video', 'mapcase', 'arcadeMapcase',
                 'epicMapcase', 'respawn', 'deathfreecam', 'killcam',
@@ -113,6 +115,7 @@ class ClientProbe(object):
     measurement is disabled, no intersection exists, or a read fails.
     ``measure=False`` is the UI-wake path: it does not resolve scene bindings,
     get an origin, construct a ray, collide, inspect targets or compute range.
+    ``artillery_measure=False`` leaves both artillery modes to the client HUD.
     """
 
     def __init__(self, bigworld=None, gui=None, ray_getter=None, collide=None,
@@ -121,6 +124,8 @@ class ClientProbe(object):
         self._gui = gui
         self._ray_getter = ray_getter
         self._collide = collide
+        self._prefer_native = collide is None
+        self._native_collide = None
         self._vector_factory = vector_factory
         self._interface_scale_getter = interface_scale_getter or self._interface_scale
         self._last_interface_scale = 1.0
@@ -161,14 +166,20 @@ class ClientProbe(object):
         if self._ray_getter is None:
             cameras = _load_module('AvatarInputHandler.cameras')
             self._ray_getter = getattr(cameras, 'getWorldRayAndPoint', None)
-        if self._collide is None:
+        if self._prefer_native and self._native_collide is None:
+            native = getattr(self._bigworld, 'wg_collideDynamicStatic', None)
+            if callable(native) and callable(getattr(self._bigworld, 'entity', None)):
+                self._native_collide = native
+            else:
+                self._prefer_native = False
+        if self._native_collide is None and self._collide is None:
             projectile = _load_module('ProjectileMover')
             self._collide = getattr(projectile, 'collideDynamicAndStatic', None)
         if self._vector_factory is None:
             math_module = _load_module('Math')
             self._vector_factory = getattr(math_module, 'Vector3', None)
-        return all(callable(item) for item in
-                   (self._ray_getter, self._collide, self._vector_factory))
+        return all(callable(item) for item in (self._ray_getter,
+                   self._native_collide or self._collide, self._vector_factory))
 
     @staticmethod
     def _is_account(player):
@@ -215,7 +226,143 @@ class ClientProbe(object):
         except Exception:
             pass
 
-    def poll(self, measure=True):
+    def _stock_marker_distance(self, player, result):
+        try:
+            # Same cached inputs and integer meter convention as
+            # AimDistancePlugin's getDistanceToGunMarker call. During
+            # transitions the marker can be absent. Avoid the stock helper's
+            # warning path in that case and leave the distance unavailable.
+            origin = _coords(player.getOwnVehiclePosition())
+            marker_info = player.gunRotator.markerInfo
+            marker = _coords(marker_info[0])
+            initial = (marker == (0.0, 0.0, 0.0) and len(marker_info) >= 3 and
+                       _coords(marker_info[1]) == (0.0, 1.0, 0.0) and marker_info[2] == 1.0)
+            distance = None if initial else _distance(origin, marker)
+            if distance is not None and distance >= 1.0:
+                return int(distance), 'surface'
+        except (AttributeError, IndexError, KeyError, TypeError):
+            pass
+        result['reason'] = 'stock_marker_unavailable'
+        return None
+
+    def _disable_native_collision(self):
+        # Use the stock compatibility adapter from the next sample onward.
+        # Falling back within this sample would issue a second scene query.
+        self._native_collide = None
+        self._prefer_native = False
+
+    def _distance_from_hit(self, result, hit, direct, start, direction, origin, own_id):
+        if hit is None:
+            result['reason'] = 'no_intersection'
+            return None
+        if direct:
+            is_vehicle = _flag(hit[1]) if type(hit) in (tuple, list) and len(hit) >= 2 else None
+            if is_vehicle is None or (is_vehicle and len(hit) < 3):
+                self._disable_native_collision()
+                result['reason'] = 'collision_data_unavailable'
+                return None
+            target = None
+            if is_vehicle:
+                target_id = _entity_id(hit[2])
+                if target_id is None:
+                    self._disable_native_collision()
+                    result['reason'] = 'collision_data_unavailable'
+                    return None
+                target = self._bigworld.entity(target_id)
+        else:
+            if type(hit) not in (tuple, list) or len(hit) != 2:
+                result['reason'] = 'intersection_unavailable'
+                return None
+            collision_data = hit[1]
+            is_vehicle = False if collision_data is None else _flag(collision_data.isVehicle())
+            if is_vehicle is None:
+                result['reason'] = 'collision_data_unavailable'
+                return None
+            target = collision_data.entity if is_vehicle else None
+        hit_position = _coords(hit[0])
+        if hit_position is None:
+            result['reason'] = 'intersection_unavailable'
+            return None
+        delta = tuple(hit_position[i] - start[i] for i in range(3))
+        along = sum(delta[i] * direction[i] for i in range(3))
+        perpendicular = _distance(delta, tuple(along * item for item in direction))
+        tolerance = max(0.05, abs(along) * 1e-5)
+        if (along < -tolerance or along > MAX_RAY_DISTANCE + tolerance or
+                perpendicular is None or perpendicular > tolerance):
+            result['reason'] = 'intersection_outside_ray'
+            return None
+        kind = 'surface'
+        measure_position = hit_position
+        if is_vehicle:
+            target_id = _entity_id(getattr(target, 'id', None))
+            if target_id is None or (direct and target_id != hit[2]):
+                result['reason'] = 'target_unavailable'
+                return None
+            if target_id == own_id:
+                result['reason'] = 'own_vehicle_intersection'
+                return None
+            if self._visual_state(target) != 'visible':
+                result['reason'] = 'target_visibility_unavailable'
+                return None
+            alive = _flag(target.isAlive())
+            if alive is None:
+                result['reason'] = 'target_state_unavailable'
+                return None
+            if alive:
+                measure_position = _coords(target.position)
+                if measure_position is None:
+                    result['reason'] = 'target_position_unavailable'
+                    return None
+                kind = 'vehicle'
+        distance = _distance(origin, measure_position)
+        if distance is None:
+            result['reason'] = 'distance_unavailable'
+            return None
+        return distance, kind
+
+    def _ray_distance(self, player, result, own_id):
+        if result['aim_offset'] is None:
+            result['reason'] = 'aim_unavailable'
+            return None
+        if not self._measurement_bindings():
+            result['reason'] = 'measurement_api_unavailable'
+            return None
+        origin = _coords(player.getOwnVehiclePosition())
+        if origin is None:
+            result['reason'] = 'origin_unavailable'
+            return None
+        ray_value, start_value = self._ray_getter(*result['aim_offset'])
+        ray, start = _coords(ray_value), _coords(start_value)
+        if ray is None or start is None:
+            result['reason'] = 'ray_unavailable'
+            return None
+        ray_length = _distance(ray, (0.0, 0.0, 0.0))
+        if ray_length is None or ray_length <= 1e-12:
+            result['reason'] = 'ray_unavailable'
+            return None
+        direction = tuple(item / ray_length for item in ray)
+        end = tuple(start[i] + direction[i] * MAX_RAY_DISTANCE for i in range(3))
+        start_vector, end_vector = self._vector_factory(*start), self._vector_factory(*end)
+        direct = self._native_collide is not None
+        space_id = getattr(player, 'spaceID', None) if direct else None
+        if direct and (type(space_id) not in _INTEGER_TYPES or space_id < 0):
+            result['reason'] = 'measurement_api_unavailable'
+            return None
+        try:
+            if direct:
+                # Match the stock ProjectileMover flags and excluded own ID.
+                # The native result supplies the hit point, vehicle flag and
+                # optional entity ID. Armor/material fields are irrelevant.
+                hit = self._native_collide(space_id, start_vector, end_vector, 128, own_id, -1, 0)
+            else:
+                hit = self._collide(start_vector, end_vector, (own_id,), 128)
+        except TypeError:
+            if direct:
+                self._disable_native_collision()
+            raise
+        return self._distance_from_hit(result, hit, direct, start, direction, origin, own_id)
+
+    def poll(self, measure=True, artillery_measure=True):
         result = self._base()
         self._common(result)
         try:
@@ -240,7 +387,8 @@ class ClientProbe(object):
             handler = player.inputHandler
             result['mode'] = _mode(handler.ctrlModeName)
             crosshair = player.guiSessionProvider.shared.crosshair
-            self._ui_context(crosshair, result, need_ray=measure)
+            self._ui_context(crosshair, result,
+                             need_ray=measure and result['mode'] not in ARTILLERY_MODES)
         except Exception:
             result['reason'] = 'controllers_unavailable'
             return result
@@ -273,82 +421,14 @@ class ClientProbe(object):
         if not measure:
             result['reason'] = 'measurement_disabled'
             return result
-        if result['aim_offset'] is None:
-            result['reason'] = 'aim_unavailable'
-            return result
-        if not self._measurement_bindings():
-            result['reason'] = 'measurement_api_unavailable'
+        if result['mode'] in ARTILLERY_MODES and not artillery_measure:
+            result['reason'] = 'artillery_native_display'
             return result
         try:
-            own_position = _coords(player.getOwnVehiclePosition())
-            if own_position is None:
-                result['reason'] = 'origin_unavailable'
-                return result
-            ray_value, start_value = self._ray_getter(*result['aim_offset'])
-            ray, start = _coords(ray_value), _coords(start_value)
-            if ray is None or start is None:
-                result['reason'] = 'ray_unavailable'
-                return result
-            ray_length = _distance(ray, (0.0, 0.0, 0.0))
-            if ray_length is None or ray_length <= 1e-12:
-                result['reason'] = 'ray_unavailable'
-                return result
-            direction = tuple(item / ray_length for item in ray)
-            end = tuple(start[i] + direction[i] * MAX_RAY_DISTANCE
-                        for i in range(3))
-            hit = self._collide(self._vector_factory(*start),
-                                self._vector_factory(*end), (own_id,), 128)
-            if hit is None:
-                result['reason'] = 'no_intersection'
-                return result
-            if type(hit) not in (tuple, list) or len(hit) != 2:
-                result['reason'] = 'intersection_unavailable'
-                return result
-            hit_position = _coords(hit[0])
-            if hit_position is None:
-                result['reason'] = 'intersection_unavailable'
-                return result
-            delta = tuple(hit_position[i] - start[i] for i in range(3))
-            along = sum(delta[i] * direction[i] for i in range(3))
-            perpendicular = _distance(delta, tuple(along * item for item in direction))
-            tolerance = max(0.05, abs(along) * 1e-5)
-            if (along < -tolerance or along > MAX_RAY_DISTANCE + tolerance or
-                    perpendicular is None or perpendicular > tolerance):
-                result['reason'] = 'intersection_outside_ray'
-                return result
-            kind = 'surface'
-            measure_position = hit_position
-            collision_data = hit[1]
-            if collision_data is not None:
-                is_vehicle = _flag(collision_data.isVehicle())
-                if is_vehicle is None:
-                    result['reason'] = 'collision_data_unavailable'
-                    return result
-                if is_vehicle:
-                    target = collision_data.entity
-                    target_id = _entity_id(getattr(target, 'id', None))
-                    if target is None or target_id is None:
-                        result['reason'] = 'target_unavailable'
-                        return result
-                    if target_id == own_id:
-                        result['reason'] = 'own_vehicle_intersection'
-                        return result
-                    if self._visual_state(target) != 'visible':
-                        result['reason'] = 'target_visibility_unavailable'
-                        return result
-                    alive = _flag(target.isAlive())
-                    if alive is None:
-                        result['reason'] = 'target_state_unavailable'
-                        return result
-                    if alive:
-                        measure_position = _coords(target.position)
-                        if measure_position is None:
-                            result['reason'] = 'target_position_unavailable'
-                            return result
-                        kind = 'vehicle'
-            distance = _distance(own_position, measure_position)
-            if distance is None:
-                result['reason'] = 'distance_unavailable'
+            reading = (self._stock_marker_distance(player, result)
+                       if result['mode'] in ARTILLERY_MODES else
+                       self._ray_distance(player, result, own_id))
+            if reading is None:
                 return result
             # An arena/player switch during a native read must not display old
             # geometry. The timer's broader generation guard belongs to runtime.
@@ -360,7 +440,7 @@ class ClientProbe(object):
                 result['battle_eligible'] = False
                 result['reason'] = 'context_changed'
                 return result
-            result.update(available=True, reason='ok', distance_m=distance, kind=kind)
+            result.update(available=True, reason='ok', distance_m=reading[0], kind=reading[1])
             return result
         except Exception:
             result['reason'] = 'measurement_failed'
