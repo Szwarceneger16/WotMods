@@ -172,6 +172,11 @@ export async function run(mod) {
             h.click('hide-stock-rangefinder');
             assert.equal(checkbox.getAttribute('aria-checked'),'true');
             assert.equal(h.getState().config.hide_stock_rangefinder,undefined);
+            h.api.openEditor('arty');
+            const opening = h.commands.findLast(command => command.action === 'editor' && command.active);
+            assert.equal(opening.hide_stock_distance,true);
+            h.api.closeEditor(false);
+            assert.equal(h.getState().config.hide_stock_rangefinder,undefined);
             h.api.openEditor('sniper');
             h.click('editor-save');
             const saved = JSON.parse(h.commands.findLast(command => command.action === 'apply').settings);

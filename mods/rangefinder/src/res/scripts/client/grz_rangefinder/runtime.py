@@ -22,6 +22,8 @@ TICK_SECONDS = 0.10
 INTERACTION_SECONDS = 0.05
 DISABLED_IDLE_SECONDS = 0.25
 MEASUREMENT_SECONDS = 0.10
+STOCK_RETRY_DELAYS = (0.15, 0.35, 0.75)
+STOCK_RETRYABLE = ('panel_not_ready', 'binding_failed')
 POSITION_SECONDS = 0.033
 SETTINGS_PUBLISH_SECONDS = 0.50
 MAX_COMMAND_CHARS = 4096
@@ -119,6 +121,8 @@ class Runtime(object):
         self._stock_rangefinder = StockRangefinder()
         self._stock_requested = False
         self._stock_syncing = False
+        self._stock_retry_at = None
+        self._stock_retry_index = 0
         self._stock_rangefinder.start(self._application, self._stock_status_changed)
         self.window = None
         self.footer = None
@@ -644,7 +648,9 @@ class Runtime(object):
 
     def _sync_stock(self, requested):
         if requested == self._stock_requested:
-            return
+            if (not requested or self._stock_rangefinder.status not in STOCK_RETRYABLE or
+                    self._stock_retry_at is None or self.clock() < self._stock_retry_at):
+                return
         self._stock_requested = requested
         if requested:
             self._stock_syncing = True
@@ -652,7 +658,16 @@ class Runtime(object):
                 self._stock_rangefinder.suppress(self._application())
             finally:
                 self._stock_syncing = False
+            # One view can be populated after our first lookup. Use the
+            # existing runtime tick for a few retries, then rely on view events.
+            index = self._stock_retry_index
+            if self._stock_rangefinder.status in STOCK_RETRYABLE and index < len(STOCK_RETRY_DELAYS):
+                self._stock_retry_at = self.clock() + STOCK_RETRY_DELAYS[index]
+                self._stock_retry_index += 1
+            else:
+                self._stock_retry_at = None
         else:
+            self._stock_retry_at, self._stock_retry_index = None, 0
             self._stock_rangefinder.restore()
 
     def _stock_status_changed(self):
@@ -773,8 +788,16 @@ class Runtime(object):
                           ((arena is not None or ctrl or self._last_context == 'unavailable') and
                            (now < self._sample_time or now + 1e-6 >= self._sample_time + interval)))
             if sample_due or (measure and not self._sample_measured):
+                replace_reading = self.store.data['hide_stock_rangefinder']
                 self._sample = self.probe.poll(
-                    measure=measure, artillery_measure=self.store.data['hide_stock_rangefinder'])
+                    measure=measure, artillery_measure=replace_reading)
+                if (measure and replace_reading and self._sample.get('battle_eligible') and
+                        self._sample.get('mode') in ('strategic', 'arty') and
+                        self._sample.get('reason') == 'stock_marker_unavailable'):
+                    distance = self._stock_rangefinder.artillery_distance()
+                    if distance is not None:
+                        self._sample.update(available=True, distance_m=distance,
+                                            kind='surface', reason='ok')
                 self._sample_time = now
                 self._sample_measured = bool(measure)
                 context = self._sample.get('context', 'unavailable')

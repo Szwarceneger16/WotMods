@@ -70,6 +70,23 @@ class StockRangefinder(object):
         self._watch()
         return self._refresh(app, clear=False)
 
+    def artillery_distance(self):
+        """Read the client's displayed meters when the marker is transiently absent."""
+        if self._app_getter is None:
+            return None
+        try:
+            from gui.battle_control.battle_constants import CROSSHAIR_VIEW_ID
+            owner = self._owner
+            if owner is None or not owner._isDAAPIInited():
+                owner = _stock_crosshair(self._app_getter())
+            if owner is not None and owner.getViewID() == CROSSHAIR_VIEW_ID.STRATEGIC:
+                distance = owner.getDistance()
+                if type(distance) is int and distance > 0:
+                    return distance
+        except Exception:
+            pass
+        return None
+
     def _watch(self):
         try:
             if self._panel_signal is None:

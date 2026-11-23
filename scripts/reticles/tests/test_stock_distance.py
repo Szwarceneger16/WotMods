@@ -1,13 +1,15 @@
 # -*- coding: ascii -*-
 from __future__ import absolute_import
 
+import sys
+import types
 import unittest
 
 from test_native_scene import MODULES, Value
 
 HAS_RANGEFINDER = any(native.__package__ == 'grz_rangefinder' for _, native, _ in MODULES)
 if HAS_RANGEFINDER:
-    from grz_rangefinder import stock_rangefinder
+    from grz_rangefinder import runtime, stock_rangefinder
 
 
 class Event(object):
@@ -87,6 +89,70 @@ class StockDistanceTest(unittest.TestCase):
         panel.setDistance(370)
         self.assertEqual(('show', '370 m'), panel.calls[-1])
         self.assertEqual(['hidden', 'inactive'], self.states)
+
+    def test_late_panel_retries_are_bounded_and_resume_after_a_new_request(self):
+        runner = runtime.Runtime.__new__(runtime.Runtime)
+        runner._stock_rangefinder = self.visibility
+        runner._stock_requested = runner._stock_syncing = False
+        runner._stock_retry_at, runner._stock_retry_index = None, 0
+        runner._application = lambda: self.app
+        now = [0.0]
+        runner.clock = lambda: now[0]
+        attempts = []
+        suppress = self.visibility.suppress
+
+        def attempt(app):
+            attempts.append(now[0])
+            return suppress(app)
+
+        self.visibility.suppress = attempt
+        for tick in range(30):
+            now[0] = tick / 10.0
+            runner._sync_stock(True)
+        self.assertEqual(1 + len(runtime.STOCK_RETRY_DELAYS), len(attempts))
+        self.assertEqual('panel_not_ready', self.visibility.status)
+
+        runner._sync_stock(False)
+        runner._sync_stock(True)
+        panel = self.app.panel = Panel(610)
+        now[0] += .10
+        runner._sync_stock(True)
+        self.assertEqual([], panel.calls)
+        now[0] += .20
+        runner._sync_stock(True)
+        self.assertEqual('hidden', self.visibility.status)
+        self.assertEqual([('clear', True)], panel.calls)
+        now[0] += 2
+        runner._sync_stock(True)
+        self.assertEqual(3 + len(runtime.STOCK_RETRY_DELAYS), len(attempts))
+        runner._sync_stock(False)
+        self.assertEqual(('show', '610 m'), panel.calls[-1])
+
+    def test_cached_distance_accepts_only_a_current_artillery_value(self):
+        for parent in ('gui', 'gui.battle_control'):
+            if parent not in sys.modules:
+                package = types.ModuleType(parent)
+                package.__path__ = []
+                sys.modules[parent] = package
+                self.addCleanup(sys.modules.pop, parent, None)
+        name = 'gui.battle_control.battle_constants'
+        previous = sys.modules.get(name)
+        if previous is None:
+            self.addCleanup(sys.modules.pop, name, None)
+        else:
+            self.addCleanup(sys.modules.__setitem__, name, previous)
+        constants = types.ModuleType(name)
+        constants.CROSSHAIR_VIEW_ID = Value()
+        constants.CROSSHAIR_VIEW_ID.STRATEGIC = 3
+        sys.modules[name] = constants
+        panel = self.app.panel = Panel(615)
+        panel.getViewID = lambda: 1
+        self.assertIsNone(self.visibility.artillery_distance())
+        panel.getViewID = lambda: 3
+        self.assertEqual(615, self.visibility.artillery_distance())
+        panel.distance = 0
+        self.assertIsNone(self.visibility.artillery_distance())
+        self.assertEqual([], panel.calls)
 
     def test_binds_on_native_initialization_and_reapplies_on_both_camera_events(self):
         self.assertFalse(self.visibility.suppress(None))

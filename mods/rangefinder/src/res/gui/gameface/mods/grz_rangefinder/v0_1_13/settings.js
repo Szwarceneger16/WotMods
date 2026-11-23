@@ -3,6 +3,7 @@
     'use strict';
     if (window.GRZRangefinderSettings) { return; }
     var root = document.getElementById('rf-settings'), state = {}, dirty = false, pending = null;
+    var replaceStockDistance = false;
     var previewListKey = '', lastPreviewWheel = null, previewScrollbarDrag = null;
     var previewFilters = {}, filterOptions = ['mechanics','vehicles'];
     var sceneId = null, zoomStep = 0, sceneSteps = {}, sceneChoices = {}, sceneImages = {}, sceneGeneration = 0;
@@ -78,7 +79,7 @@
     }
     function readDraft() {
         var opacity = number(nodes.opacity.value, 0, 100, false);
-        return normalize({schema_version:5,enabled:nodes.enabled.checked,hide_stock_rangefinder:nodes['hide-stock-rangefinder'].checked,
+        return normalize({schema_version:5,enabled:nodes.enabled.checked,hide_stock_rangefinder:replaceStockDistance,
             preview_variant_arcade:positions.arcade.variant,preview_variant_sniper:positions.sniper.variant,preview_variant_arty:positions.arty.variant,threshold_m:nodes.threshold.value,comparison:nodes.comparison.value,
             hud_offset_arcade_x:positions.arcade.x,hud_offset_sniper_x:positions.sniper.x,hud_offset_arty_x:positions.arty.x,
             hud_offset_arcade_y:positions.arcade.y,hud_offset_sniper_y:positions.sniper.y,hud_offset_arty_y:positions.arty.y,
@@ -86,7 +87,7 @@
     }
     function fill(config) {
         nodes.enabled.checked = config.enabled;
-        nodes['hide-stock-rangefinder'].checked = config.hide_stock_rangefinder;
+        replaceStockDistance = config.hide_stock_rangefinder;
         nodes.threshold.value = String(config.threshold_m); nodes.comparison.value = config.comparison;
         positions = copyPositions(config);
         nodes.font.value = String(config.hud_font_px);
@@ -126,7 +127,7 @@
         nodes.enabled.setAttribute('aria-pressed', nodes.enabled.checked ? 'true' : 'false');
         nodes.enabled.setAttribute('aria-label',text('enabled'));
         document.getElementById('rf-enabled-caption').textContent = text(nodes.enabled.checked ? 'enabled-on' : 'enabled-off');
-        nodes['hide-stock-rangefinder'].setAttribute('aria-checked',nodes['hide-stock-rangefinder'].checked ? 'true' : 'false');
+        nodes['hide-stock-rangefinder'].setAttribute('aria-checked',replaceStockDistance ? 'true' : 'false');
         nodes['hide-stock-rangefinder'].setAttribute('title',text('hide-stock-rangefinder-help'));
         nodes.x.setAttribute('aria-label',text('close')); nodes.x.setAttribute('title',text('close'));
         document.documentElement.setAttribute('lang', language());
@@ -162,7 +163,7 @@
     nodes.enabled.onclick = function(event) { stop(event,true); nodes.enabled.checked = !nodes.enabled.checked; edited(); };
     nodes['hide-stock-rangefinder'].onclick = function(event) {
         stop(event,true);
-        nodes['hide-stock-rangefinder'].checked = !nodes['hide-stock-rangefinder'].checked;
+        replaceStockDistance = !replaceStockDistance;
         edited();
     };
     function choice(prefix, values, field) {
@@ -433,6 +434,7 @@
         var args = {action:'editor',active:active};
         if (active && editorMode && editorDraft) {
             args = previewArgs('editor'); args.active = true;
+            args.hide_stock_distance = nodes.enabled.checked === true && replaceStockDistance;
         }
         return sendEditorRequest(args);
     }
