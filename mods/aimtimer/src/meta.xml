@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <id>com.grz.aimtimer</id>
+  <version>0.1.7</version>
+  <name>GRZ AimTimer</name>
+  <description>Standalone client aiming countdown with garage/battle settings. No aim changes or network requests.</description>
+</root>

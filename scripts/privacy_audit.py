@@ -59,7 +59,9 @@ def scan_root():
 
 def scan_dist():
     problems = []
-    for archive_path in (ROOT / 'dist').glob('*.wotmod'):
+    archives = [*(ROOT / 'mods/staysharp/dist').glob('*.wotmod'),
+                *(ROOT / 'dist').glob('*.wotmod')]
+    for archive_path in archives:
         with ZipFile(archive_path) as archive:
             if archive.testzip() is not None:
                 problems.append((archive_path.name, ['corrupt_archive']))

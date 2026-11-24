@@ -175,7 +175,7 @@ class HangarInstallerTests(unittest.TestCase):
         configured = json.loads((r.ROOT / 'scripts/release_modules.json').read_text())
         self.assertEqual(r.registered_kinds(), {item['id'] for item in configured['modules']})
         registry = self.root / 'registry.json'
-        current = [item for item in configured['modules'] if item['id'] != 'hangarsync']
+        current = [item for item in configured['modules'] if item['id'] in {'staysharp', 'sessionstats'}]
         registry.write_text(json.dumps({'schema_version': 1, 'modules': current}))
         self.assertEqual(r.registered_kinds(registry), {'staysharp', 'sessionstats'})
         with self.assertRaises(ValueError):
@@ -197,7 +197,7 @@ class HangarInstallerTests(unittest.TestCase):
 
     def test_three_formats_coexist_and_unchanged_zips_are_carried_byte_for_byte(self):
         self.three()
-        reports = r.verify_directory(self.output, expected_kinds=set(r.KINDS))
+        reports = r.verify_directory(self.output, expected_kinds={'staysharp', 'sessionstats', 'hangarsync'})
         self.assertEqual(len(reports), 3)
         original = {path.name: path.read_bytes() for path in self.output.iterdir()}
         r.normalize(self.output)
@@ -206,7 +206,10 @@ class HangarInstallerTests(unittest.TestCase):
 
     def test_default_verification_requires_exact_current_registered_set(self):
         self.three()
-        configured = r.registered_kinds()
+        configured = r.registered_kinds() & {'staysharp', 'sessionstats', 'hangarsync'}
+        registry = patch.object(r, 'registered_kinds', return_value=configured)
+        registry.start()
+        self.addCleanup(registry.stop)
         for path in list(self.output.iterdir()):
             if r.identity(path.name)[0] not in configured:
                 path.unlink()
@@ -220,7 +223,7 @@ class HangarInstallerTests(unittest.TestCase):
         original = r.verify(native)
         r.normalize(self.output, '2.5.0.0')
         (self.output / 'SHA256SUMS.txt').unlink()
-        reports = r.verify_directory(self.output, expected_kinds=set(r.KINDS))
+        reports = r.verify_directory(self.output, expected_kinds={'staysharp', 'sessionstats', 'hangarsync'})
         self.assertEqual({report[2] for report in reports}, {'2.5.0.0'})
         current = next(report for report in reports if report[0] == 'hangarsync')
         self.assertEqual(original[3][original[4]], current[3][current[4]])
@@ -231,7 +234,7 @@ class HangarInstallerTests(unittest.TestCase):
         native = self.three()
         with patch.object(r, 'registered_kinds', return_value={'staysharp', 'sessionstats'}), self.assertRaises(ValueError):
             r.verify_directory(self.output)
-        reports = r.verify_directory(self.output, expected_kinds=set(r.KINDS))
+        reports = r.verify_directory(self.output, expected_kinds={'staysharp', 'sessionstats', 'hangarsync'})
         stats = next(report for report in reports if report[0] == 'sessionstats')
         files = dict(stats[3])
         package = r.read_zip(io.BytesIO(files[stats[4]]))
@@ -240,10 +243,10 @@ class HangarInstallerTests(unittest.TestCase):
         del files['docs/sessionstats/SHA256SUMS.txt']
         r.write_installer(self.output, 'sessionstats', stats[1], stats[2], files)
         with self.assertRaisesRegex(ValueError, 'Conflicting'):
-            r.verify_directory(self.output, expected_kinds=set(r.KINDS))
+            r.verify_directory(self.output, expected_kinds={'staysharp', 'sessionstats', 'hangarsync'})
         native.unlink()
         with self.assertRaises(ValueError):
-            r.verify_directory(self.output, expected_kinds=set(r.KINDS))
+            r.verify_directory(self.output, expected_kinds={'staysharp', 'sessionstats', 'hangarsync'})
 
 
 if __name__ == '__main__':

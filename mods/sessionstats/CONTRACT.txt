@@ -1,4 +1,4 @@
-GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.27 (persistent data schema unchanged)
+GRZ SESSION STATS — IMPLEMENTATION CONTRACT v0.9.38 (history schema unchanged)
 Release date: 2026-11-17.
 
 Target: World of Tanks PC Wargaming EU 2.4.1.1, Python 2.7 runtime.
@@ -82,7 +82,7 @@ to current launch just because received now. Use returned battle start time in a
 
 SNAPSHOT -> Window ViewModel string property `payload`
 {
- version: '0.9.27', account_key: string, generated_at: unix seconds,
+ version: '0.9.38', account_key: string, generated_at: unix seconds,
  expected: {version: string, ...}, warnings: [string],
  appearance: {panel_css:string, footer_css:string, scroll_speed:number},
  recovery: {pending:int, in_flight:int, states:{status_label:int}},
@@ -97,6 +97,15 @@ An ordinary window preference save publishes `window_settings_update` with the
 account key, canonical window settings and request result. The view applies the
 matching acknowledgement in place. Other configuration changes discovered on
 disk go through the full snapshot path.
+A sort command supplies a request ID. The applied order echoes the ID as
+`order_request_id` in the corresponding scope's pagination entry, independently
+of the current page request. The optional `order_epoch` on sort, page, map
+history, vehicle history and battle selection must match the current scope. Its
+service identifier and increasing counter distinguish an earlier visit to the
+same timeline range from the current projection. A return to the source may
+include `anchor_id` to locate the parent card and `history_anchor_id` to locate
+the battle inside its expanded map or vehicle history. The same page response
+then includes the current nested page when the battle is still present.
 STATS = {
  battles:int, observed_battles:int, missing_results:int, partial_results:int,
  wins:int, losses:int, draws:int, win_rate:number or null,
@@ -123,7 +132,8 @@ missing values are excluded and pending battles do not contribute a sample.
 The incremental and projected summaries expose the same selected-period distributions.
 The summary finance heading selects sum (All), min, avg or max and updates figure
 nodes in place. Credit income/net Base values remain unavailable in every mode
-unless that field covers all observed battles. Costs stay a shared actual expense.
+unless that field covers all received results and has at least one known value.
+Pending battles remain visible in recorded coverage. Costs stay a shared actual expense.
 Existing source actions keep their original metric/statistic and availability;
 changing the summary display mode does not retarget them to a different sample.
 MONEY = {income:number or null, costs:number or null, net:number or null,
@@ -143,8 +153,9 @@ separate base/received expense records in the supported client contract.
 Partial sums are sums of confirmed known values. Metric-specific availability
 remains in ARIA; info icons use at most three short localized sentences.
 Base-credit Min/Max source actions require the corresponding displayed currency
-field to cover every observed battle and have a finite total. Otherwise show
-disabled, inert placeholders; a complete selected range enables valid sources.
+field to cover every received report and have a finite total. Pending reports
+affect the overall battle count. Missing base fields in received reports show
+disabled, inert placeholders.
 Visible received/recorded coverage appears only
 in the global result headline and one generic badge beside a partial aggregate
 name; tables, metric labels, totals and the footer never repeat it. The single
@@ -496,6 +507,8 @@ value instead of repeating it below the name. Active WN8 ordering replaces the
 large headline with its selected Min/Average/Max; finance tables continue to show
 totals. Credit All selects the existing income/net total; per-battle Min/Avg/Max
 credit values and XP All retain an explicit caption when no matching table cell exists.
+The active sort value uses a cool inset accent. Credit Min/Max buttons keep their
+ordinary paint while sorting. Returning from a battle marks the exact source in amber.
 Win-rate ordering is aggregate-only and matches known-outcome percentages; unknown
 results remain last in either direction. Default group headlines identify Combined
 WN8, recalculated from summed actual/expected values, separately from battle averages.

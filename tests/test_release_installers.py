@@ -138,7 +138,7 @@ class InstallerTests(unittest.TestCase):
         vendor='mods/'+client+'/net.openwg/'+r.OPENWG_PACKAGE
         self.assertEqual(r.digest(files[vendor]),r.OPENWG_SHA256)
         self.assertEqual(files[vendor],r.medkit_gameface_dependency())
-        self.assertEqual(files['docs/staysharp/OPENWG_LICENSE'],(ROOT/'assets/OPENWG_LICENSE').read_bytes())
+        self.assertEqual(files['docs/staysharp/OPENWG_LICENSE'],(ROOT/'mods/staysharp/assets/OPENWG_LICENSE').read_bytes())
         self.assertIn(r.MEDKIT_GARAGE_RESOURCE,r.read_zip(io.BytesIO(files[primary])))
         self.assertIn(b'garage settings button',files['docs/staysharp/INSTALL.txt'])
         before=target.read_bytes()
@@ -179,8 +179,8 @@ class InstallerTests(unittest.TestCase):
 
     def test_vendor_asset_is_verified_without_executing_it(self):
         asset_root=self.root/'asset-root'
-        (asset_root/'assets').mkdir(parents=True)
-        asset=(asset_root/'assets/openwg_gameface_1.2.2.wotmod.b85')
+        asset=(asset_root/'mods/staysharp/assets/openwg_gameface_1.2.2.wotmod.b85')
+        asset.parent.mkdir(parents=True)
         asset.write_text('00000')
         with patch.object(r,'ROOT',asset_root),self.assertRaisesRegex(ValueError,'checksum'):
             r.medkit_gameface_dependency()

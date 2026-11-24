@@ -235,6 +235,22 @@ class HistoryNavigationTests(unittest.TestCase):
         self.assertTrue(self.service.set_order('manual', 'battles', DEFAULT_ORDER, period))
         self.assertNotIn('battle_focus', self.service.snapshot()['scopes']['manual'])
 
+    def test_selection_survives_late_source_page_and_tracks_new_result_at_page_boundary(self):
+        scope = self.service.snapshot()['scopes']['manual']
+        period = scope['period_id']
+        target = scope['battles'][-1]['id']
+        self.assertTrue(self.service.select_battle('manual', target, period, 'selected'))
+        self.assertTrue(self.service.set_page('manual', 'vehicles', 0, period, 'old-source-page'))
+        selected = self.service.snapshot()['scopes']['manual']
+        self.assertEqual(selected['pagination']['battles']['page'], 0)
+        self.assertEqual(selected['battle_focus'], {'id': target, 'request_id': 'selected'})
+
+        self.service.record_result(result('newer-result', 1000))
+        updated = self.service.snapshot()['scopes']['manual']
+        self.assertEqual(updated['pagination']['battles']['page'], 1)
+        self.assertIn(target, [row['id'] for row in updated['battles']])
+        self.assertEqual(updated['battle_focus'], selected['battle_focus'])
+
     def test_pending_timeline_cannot_open_maps_or_select_battles_and_reset_retires_pages(self):
         self.assertTrue(self.service.set_timeline_range('__custom__', '__custom__', 120, 130))
         period = self.service.timeline_snapshot()['period_id']

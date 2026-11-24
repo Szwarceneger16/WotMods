@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 import unittest
 
 import test_runtime_health as fixtures
-from test_runtime import FakeAPI, Obj
+from test_runtime import FakeAPI, Obj, wait_for_combat_capture
 from test_normalize import raw_result, ARENA_ID, START
 from grz_session_stats import runtime
 from grz_session_stats.cache_observer import CacheObserver, OWN_CALLBACK, _function
@@ -362,8 +362,17 @@ class RecoveryRuntimeTests(unittest.TestCase):
         self.api.cache.get(int(ARENA_ID), None)
         self.api.result_cache = lambda: None
         self.api.battle = True
-        self.mod._ensure_service()
+        self.api.events.onAvatarBecomePlayer()
+        self.mod._ensure_cache_observer()
+        before = self.mod.active_service.store.sequence
         self.receive(1, raw_result())
+        self.assertEqual(self.summary()['battles'], 0)
+        self.assertEqual(self.mod.active_service.store.sequence, before)
+        wait_for_combat_capture(self.mod)
+        receipts = self.mod._combat_intake.pending(
+            self.mod.active_key, accept=lambda receipt, kind, capture: kind == 'result')
+        self.assertEqual([kind for unused, kind, capture in receipts], ['result'])
+        self.garage()
         self.assertEqual(self.summary()['battles'], 1)
 
     def test_stopped_observer_never_saves_old_lifecycle_but_preserves_consumer(self):
@@ -404,6 +413,34 @@ class RecoveryRuntimeTests(unittest.TestCase):
         original(1, raw_result())
         self.assertEqual(self.mod.active_service._state['battles'][ARENA_ID]['damage'], 2400)
         self.assertIs(self.mod.inflight[(self.mod.active_key, ARENA_ID)], current)
+
+    def _assert_cache_reply_fills_missing_fields_without_revising_known_result(self):
+        newer = raw_result()
+        newer['personal'][1]['damageDealt'] = 2777
+        del newer['personal'][1]['kills']
+        self.api.events.onBattleResultsReceived(True, newer)
+        battle = self.mod.active_service._state['battles'][ARENA_ID]
+        self.assertEqual(battle['damage'], 2777)
+        self.assertIsNone(battle['frags'])
+        self.receive(1, raw_result())
+        battle = self.mod.active_service._state['battles'][ARENA_ID]
+        self.assertEqual(battle['damage'], 2777)
+        self.assertEqual(battle['frags'], 2)
+
+    def test_current_mod_cache_reply_preserves_newer_authoritative_result(self):
+        self.enter_battle()
+        self.garage()
+        self.tick()
+        self._assert_cache_reply_fills_missing_fields_without_revising_known_result()
+        self.assertEqual(self.mod.inflight, {})
+
+    def test_current_native_cache_reply_preserves_newer_authoritative_result(self):
+        self.enter_battle()
+        self.garage()
+        calls = []
+        self.api.cache.get(int(ARENA_ID), lambda *args: calls.append(args))
+        self._assert_cache_reply_fills_missing_fields_without_revising_known_result()
+        self.assertEqual(len(calls), 1)
 
     def test_late_stream_cannot_mark_an_unapplied_xp_value_as_bonus_applied(self):
         self.enter_battle()

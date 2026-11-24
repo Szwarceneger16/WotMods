@@ -2,18 +2,32 @@
   "schema_version": 1,
   "modules": [
     {
+      "id": "aimtimer",
+      "display_name": "GRZ AimTimer",
+      "base_version_file": "mods/aimtimer/VERSION",
+      "installer_prefix": "GRZ_AimTimer-v",
+      "source_paths": [
+        "mods/aimtimer/**",
+        "scripts/reticles/**",
+        "scripts/sessionstats/python27.sh",
+        "mods/staysharp/assets/openwg_gameface_1.2.2.wotmod.b85",
+        "mods/staysharp/assets/OPENWG_LICENSE"
+      ]
+    },
+    {
       "id": "staysharp",
       "display_name": "Stay Sharp Medkit",
-      "base_version_file": "VERSION",
+      "base_version_file": "mods/staysharp/VERSION",
       "installer_prefix": "StaySharp-Medkit-v",
       "source_paths": [
-        "source/**",
-        "assets/**",
-        "VERSION",
-        "staysharp.medkit.example.json",
-        "CHANGELOG.md",
-        "docs/AUDIO.md",
-        "docs/INSTALACJA.md"
+        "mods/staysharp/src/**",
+        "mods/staysharp/tools/**",
+        "mods/staysharp/assets/**",
+        "mods/staysharp/VERSION",
+        "mods/staysharp/staysharp.medkit.example.json",
+        "mods/staysharp/CHANGELOG.md",
+        "mods/staysharp/docs/AUDIO.md",
+        "mods/staysharp/docs/INSTALACJA.md"
       ]
     },
     {
@@ -24,6 +38,19 @@
       "source_paths": [
         "mods/sessionstats/**",
         "scripts/sessionstats/**"
+      ]
+    },
+    {
+      "id": "rangefinder",
+      "display_name": "GRZ Rangefinder",
+      "base_version_file": "mods/rangefinder/VERSION",
+      "installer_prefix": "GRZ_Rangefinder-v",
+      "source_paths": [
+        "mods/rangefinder/**",
+        "scripts/reticles/**",
+        "scripts/sessionstats/python27.sh",
+        "mods/staysharp/assets/openwg_gameface_1.2.2.wotmod.b85",
+        "mods/staysharp/assets/OPENWG_LICENSE"
       ]
     }
   ],

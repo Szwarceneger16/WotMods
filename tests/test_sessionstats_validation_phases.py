@@ -158,7 +158,7 @@ class ValidationPhaseTests(unittest.TestCase):
         commands = {entry['stage']: entry['arguments'] for entry in entries}
         self.assertEqual(commands['python3'], ['-m', 'unittest', 'discover', '-s', 'mods/sessionstats/tests', '-v'])
         self.assertEqual(commands['python27'], ['-B', '-m', 'unittest', 'discover', '-s', 'mods/sessionstats/tests', '-v'])
-        self.assertEqual(commands['browser'], ['-I', 'scripts/sessionstats/browser_qa.py'])
+        self.assertEqual(commands['browser'], ['-I', 'scripts/sessionstats/browser_qa.py', '--e2e', 'build'])
         self.assertEqual(commands['privacy'], ['scripts/sessionstats/privacy.py', '--python27',
                                               self.environment['PYTHON27'], '--scan-dist'])
         self.assertEqual(commands['integration'], ['scripts/sessionstats/integration.py'])

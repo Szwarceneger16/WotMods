@@ -22,7 +22,7 @@ class SortingTests(NativePaginationFixture, unittest.TestCase):
         for i in range(45):
             row = result(str(i), started_at=110+i, xp_base=45-i, xp_received=i*2,
                          damage=(i+1)*1000, vehicle_id=1, ended_at=190, reconcile=True)
-            row['currencies']['credits']['net'] = i-20
+            row['currencies']['credits']['income'] = i
             self.assertTrue(service.record_result(row))
         for metric, expected_low, expected_high in [('xp_base','44','0'), ('xp_received','0','44'),
                                                   ('credits_net','0','44'), ('battle_wn8','0','44')]:

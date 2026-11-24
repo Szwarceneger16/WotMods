@@ -94,11 +94,11 @@ module.exports=async({browser,nativeHost,check})=>{
         item.type=kind;item.vehicle_meta={class:kind,tier:10,elite:false,
           class_icon:{kind:'vehicle_class',src:'img://gui/maps/icons/vehicleTypes/24x24_metal/'+(kind==='AT_SPG'?'AT-SPG':kind)+'.png'},
           role:{key,name:'Niepoprawny język klienta',group_name:'Polska grupa klienta',description:'Polski opis z pamięci klienta.',
-            icon:key==='role_SPG'?{}:{kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/24x24/'+key+'.png'}}};
+            icon:{kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/'+(key==='role_SPG'?'22x22/':'24x24/')+key+'.png'}}};
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },{language,messages,key});await frames();
       const expected=messages['vehicle.role.'+key+'.name']+'\n'+messages['vehicle.role.'+key+'.description'];
-      const target=page.locator(key==='role_SPG'?'.ss-group .ss-vehicle-class-icon':'.ss-group .ss-vehicle-role-icon');
+      const target=page.locator('.ss-group .ss-vehicle-role-icon');
       check('Verified role '+key+' uses its '+language+' catalog tooltip and ignores cached native paragraphs',
         typeof messages['vehicle.role.'+key+'.name']==='string'&&typeof messages['vehicle.role.'+key+'.description']==='string'&&
         await target.getAttribute('data-ss-help').then(text=>text.endsWith(expected)&&!text.includes('klienta'))&&
@@ -108,7 +108,19 @@ module.exports=async({browser,nativeHost,check})=>{
             !!node.getAttribute('aria-label')&&node.getAttribute('aria-expanded')==='false'&&
             node.getAttribute('title')===null&&owner&&owner.id==='ss-help-tooltip'&&owner.getAttribute('role')==='tooltip';
         }));
-      if(key==='role_SPG')check('SPG role text does not invent a role icon in '+language,await page.locator('.ss-group .ss-vehicle-role-icon').count()===0);
+      if(key==='role_SPG')check('SPG uses its verified 22px role artwork in '+language,await target.evaluate(node=>
+        node.getAttribute('data-vehicle-role')==='role_SPG'&&node.style.backgroundImage.includes('/22x22/role_SPG.png')));
+    }
+    for(const [file,present] of [['22x22/role_SPG.png',true],['24x24/role_SPG.png',false],['22x22/role_ATSPG_sniper.png',false],[null,false]]){
+      await page.evaluate(file=>{
+        const payload=JSON.parse(model.payload),meta=payload.scopes.launch.vehicles[0].vehicle_meta;
+        meta.role.icon=file?{kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/'+file}:null;
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },file);await frames();
+      const classIcon=page.locator('.ss-group .ss-vehicle-class-icon'),roleIcon=page.locator('.ss-group .ss-vehicle-role-icon');
+      check('Missing or mismatched artillery artwork preserves the localized role on the class tooltip: '+file,
+        await roleIcon.count()===(present?1:0)&&(present||
+          (await classIcon.getAttribute('data-ss-help')).includes(languages.uk['vehicle.role.role_SPG.description'])));
     }
     for(const language of ['pl','en','de','en']){
       await page.evaluate(({language,messages})=>{

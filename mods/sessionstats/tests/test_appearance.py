@@ -96,16 +96,25 @@ class AppearanceTests(unittest.TestCase):
         self.assertIn('background:#123456;', normal)
         self.assertIn('background:#abcdef;', active)
 
-    def test_sort_highlight_has_an_independent_neutral_fill(self):
+    def test_sort_highlight_keeps_its_fill_and_shares_the_neutral_card_border(self):
         config = style.default_config()
         self.assertEqual(config['colors']['sort_active_background'], '#252a23')
+        self.assertEqual(config['colors']['group_card_shadow'], '#303722')
         config['colors']['sort_active_background'] = '#123456'
-        config['colors']['button_confirm_background_end'] = '#abcdef'
-        css = style.build_presentation(config)['panel_css']
+        config['colors']['group_card_shadow'] = '#abcdef'
+        config['colors']['sort_active_border'] = '#80b7cf'
+        config['colors']['session_tab_marker_background'] = '#ff0000'
+        validated = self.write(config)
+        self.assertNotIn('sort_active_border', validated['colors'])
+        self.assertEqual(self.output.getvalue(), '')
+        css = style.build_presentation(validated)['panel_css']
         highlight = re.search(r'\.ss-group \.ss-sort-active-value \{([^}]+)\}', css).group(1)
+        card = re.search(r'\.ss-group \{([^}]+)\}', css).group(1)
         self.assertIn('background:#123456;', highlight)
-        self.assertNotIn('#abcdef', highlight)
-        self.assertIn('1rem ' + config['colors']['session_tab_marker_background'], highlight)
+        self.assertIn('1rem #abcdef', highlight)
+        self.assertIn('border:1rem solid #abcdef', card)
+        self.assertNotIn('#ff0000', highlight)
+        self.assertIn('outline:2rem solid #ff0000;', css)
 
     def test_defaults_and_results_do_not_share_mutable_state(self):
         a = style.default_config()

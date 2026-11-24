@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <id>com.grz.rangefinder</id>
+  <version>0.1.13</version>
+  <name>GRZ Rangefinder</name>
+  <description>Standalone reticle rangefinder with configurable distance conditions and garage/battle settings. No aim changes or network requests.</description>
+</root>

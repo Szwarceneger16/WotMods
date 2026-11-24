@@ -225,7 +225,7 @@ python3 scripts/privacy_audit.py
 bash -n scripts/build_release_module.sh
 ```
 
-Confirm PR path filtering with `tests/test_pr_ci_scoping.py`, race and assembly
+Confirm PR path filtering with `tests/ci/test_pr_ci_scoping.py`, race and assembly
 behavior with `tests/test_release_coordinator.py`, and security of the global
 workflow with `tests/test_unified_release_workflow.py`. Check the complete diff,
 not only test names. No scripted review can replace the game's own runtime QA.

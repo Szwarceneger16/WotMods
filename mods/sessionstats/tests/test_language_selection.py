@@ -24,13 +24,16 @@ class LanguageFileTests(unittest.TestCase):
         with io.open(self.path,'wb') as handle: handle.write(raw)
     def read(self):
         with io.open(self.path,'rb') as handle: return handle.read()
+    def assert_only_config_and_lock(self):
+        expected = ['settings.json'] if os.name == 'nt' else ['.settings.json.lock', 'settings.json']
+        self.assertEqual(sorted(os.listdir(self.directory)), expected)
     def test_only_language_changes_and_unicode_and_unknown_fields_survive(self):
         original={'language':'en','colors':{'window_border':'#123456'},'custom':'Zażółć','scroll':{'speed_multiplier':2}}
         self.write(json.dumps(original,ensure_ascii=False).encode('utf-8'))
         self.assertTrue(config_files.save_language(self.path,'pl'))
         original['language']='pl'
         self.assertEqual(json.loads(self.read().decode('utf-8')),original)
-        self.assertEqual(os.listdir(self.directory),['settings.json'])
+        self.assert_only_config_and_lock()
     def test_missing_config_is_created_with_only_a_supported_choice(self):
         self.assertTrue(config_files.save_language(self.path,'auto'))
         self.assertEqual(json.loads(self.read().decode()),{'language':'auto'})
@@ -52,19 +55,26 @@ class LanguageFileTests(unittest.TestCase):
             self.assertFalse(config_files.save_language(self.path,code))
         self.assertEqual(json.loads(self.read().decode('utf-8'))['language'],'pl')
 
-    def test_embedded_windows_without_ctypes_saves_and_cleans_backup(self):
+    def test_embedded_windows_without_ctypes_or_msvcrt_saves_and_cleans_backup(self):
         import sys
         import types
         previous_module=sys.modules.get('ctypes');previous_name=config_files.os.name
+        had_msvcrt = 'msvcrt' in sys.modules
+        previous_msvcrt = sys.modules.get('msvcrt')
         sys.modules['ctypes']=types.ModuleType(str('ctypes'));config_files.os.name='nt'
+        sys.modules['msvcrt'] = None
         self.write(b'{"language":"en","custom":7}')
         try: self.assertTrue(config_files.save_language(self.path,b'fr'))
         finally:
             config_files.os.name=previous_name
             if previous_module is None: del sys.modules['ctypes']
             else: sys.modules['ctypes']=previous_module
+            if had_msvcrt:
+                sys.modules['msvcrt'] = previous_msvcrt
+            else:
+                del sys.modules['msvcrt']
         self.assertEqual(json.loads(self.read().decode('utf-8')),{'language':'fr','custom':7})
-        self.assertEqual(os.listdir(self.directory),['settings.json'])
+        self.assert_only_config_and_lock()
 
     def test_embedded_windows_failed_publication_restores_previous_config(self):
         self.write(b'{"language":"en"}')
@@ -86,7 +96,7 @@ class LanguageFileTests(unittest.TestCase):
         os.rename(self.path,self.path+'.language-backup')
         config_files.prepare_config(self.path,os.path.join(self.directory,'missing.json'))
         self.assertEqual(self.read(),b'{"language":"uk","custom":7}')
-        self.assertEqual(os.listdir(self.directory),['settings.json'])
+        self.assert_only_config_and_lock()
     def test_windows_atomic_replacement_uses_unicode_and_replace_existing_flags(self):
         import sys
         import types
@@ -125,7 +135,7 @@ class LanguageFileTests(unittest.TestCase):
         try: self.assertFalse(config_files.save_language(self.path,'fr'))
         finally: config_files._replace_file=original
         self.assertEqual(self.read(),b'{"language":"en"}')
-        self.assertEqual(os.listdir(self.directory),['settings.json'])
+        self.assert_only_config_and_lock()
 
 
 class NativeLanguageTests(paging.NativePaginationFixture, unittest.TestCase):

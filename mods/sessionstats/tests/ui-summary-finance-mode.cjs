@@ -24,7 +24,7 @@ module.exports=async({browser,nativeHost,check})=>{
           payload.appearance={window_settings:{maximized:false,background_transparency:0,restored_width:width,restored_height:1100}};
           scope.period_id=period;scope.data_revision=period+'-'+(options.factor||1);delete scope.battle_focus;
           function prepare(stats,owner){
-            Object.assign(stats,{battles:total,observed_battles:total,wn8:2100,wn8_count:total,win_rate:50});
+            Object.assign(stats,{battles:total,observed_battles:total+(options.pending||0),wn8:2100,wn8_count:total,win_rate:50});
             const currencies={},distributions={},references={},factor=options.factor||1;
             for(const [currency,fields]of Object.entries(samples)){
               currencies[currency]={};distributions[currency]={};
@@ -44,7 +44,7 @@ module.exports=async({browser,nativeHost,check})=>{
                 }
               }
             }
-            if(options.partialBase){currencies.credits.income_base=null;currencies.credits.net_base=null;}
+            if(options.partialBase||options.pending){currencies.credits.income_base=null;currencies.credits.net_base=null;}
             stats.currencies=currencies;
             if(options.legacySeries)delete stats.currency_series;else stats.currency_series=distributions;
             for(const [metric,values]of Object.entries({xp_base:[154,558,1403],xp_received:[266,3111,13415],battle_wn8:[78,2016,8834]})){
@@ -128,14 +128,15 @@ module.exports=async({browser,nativeHost,check})=>{
             field==='net'||field==='net_base'?(value>0?'+':value<0?'-':'')+digits:String(Math.round(value));
           expected.push({currency,field,count,text,value});
         }
-        const reason=(count)=>String(messages['finance.statistic_help']).replace('{0}',caption).replace('{1}',String(count)).replace('{2}',String(total));
+        const observed=total+(options.pending||0),
+          reason=(count)=>String(messages['finance.statistic_help']).replace('{0}',caption).replace('{1}',String(count)).replace('{2}',String(observed));
         return result.mode===mode&&result.sameNodes&&result.sourceCount===16&&result.noNewRow&&result.closed&&result.role==='combobox'&&result.menuRole==='listbox'&&
           result.infoCount===1&&result.infoLabel===messages['help.info']+': '+messages['finance.period']&&
           result.aria===messages['finance.period']+': '+messages['finance.statistic']&&result.menuAria===result.aria&&result.controlLabel===caption&&result.valueText===caption&&
           result.options.map(option=>option.value).join('|')==='sum|min|avg|max'&&result.options.every(option=>option.text===messages['finance.statistic_'+(option.value==='sum'?'all':option.value)]&&option.selected===String(option.value===mode))&&
           result.cells.length===expected.length&&expected.every(wanted=>{
             const cell=result.cells.find(cell=>cell.currency===wanted.currency&&cell.field===wanted.field);
-            return cell&&cell.mode===mode&&cell.count===wanted.count&&cell.total===total&&cell.text===wanted.text&&cell.unknown===(wanted.value===null)&&cell.contained&&
+            return cell&&cell.mode===mode&&cell.count===wanted.count&&cell.total===observed&&cell.text===wanted.text&&cell.unknown===(wanted.value===null)&&cell.contained&&
               (wanted.field!=='net'&&wanted.field!=='net_base'||cell.negative===(wanted.value!==null&&wanted.value<0)&&cell.positive===(wanted.value!==null&&wanted.value>0))&&
               (mode==='sum'?!cell.hovered&&cell.help===null&&cell.tabindex===null:cell.hovered&&cell.help===reason(wanted.count)&&cell.label===cell.raw+': '+cell.help&&cell.controls==='ss-help-tooltip'&&cell.tabindex==='0');
           });
@@ -150,11 +151,11 @@ module.exports=async({browser,nativeHost,check})=>{
           check('Summary '+mode+' uses each credit, Bonds and Gold sample/count without replacing source controls or cards '+language+'/'+scale+'x: '+JSON.stringify(result),valid(result,language,mode));
         }
       }
-      for(const options of [{partialBase:true},{legacySeries:true}]){
+      for(const options of [{partialBase:true},{legacySeries:true},{pending:3},{pending:3,partialBase:true}]){
         await publish('en',options);await capture();
         for(const mode of ['min','avg','max','sum']){
           await choose(mode);const result=await inspect('en',mode,options);
-          check('Summary modes preserve incomplete base values and never invent legacy extrema at '+scale+'x/'+mode+'/'+JSON.stringify(options)+': '+JSON.stringify(result),valid(result,'en',mode,options));
+          check('Summary modes preserve received base totals while handling missing fields and older payloads at '+scale+'x/'+mode+'/'+JSON.stringify(options)+': '+JSON.stringify(result),valid(result,'en',mode,options));
         }
       }
       await publish('en',{cancellation:true});await capture();const cancellationAll=await inspect('en','sum');

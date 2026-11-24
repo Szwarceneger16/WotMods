@@ -1,0 +1,8 @@
+[
+  {
+    "type": "Layout",
+    "id": "R.mods.grz.rangefinder.v0_1_13.views.Settings",
+    "path": "coui://gui/gameface/mods/grz_rangefinder/v0_1_13/settings.html",
+    "parameters": {"entrance": "Settings", "impl": "gameface"}
+  }
+]

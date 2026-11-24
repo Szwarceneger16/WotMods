@@ -1,7 +1,7 @@
 /* WN8 keeps its palette; black figures get a readable backing inside the cell. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
 const root=path.resolve(__dirname,'..');
-const read=name=>fs.readFileSync(path.join(root,'ui',name),'utf8');
+const read=name=>fs.readFileSync(path.join(root,'ui',name),'utf8').replace(/\r\n/g,'\n');
 const bands=[[0,'#000000'],[300,'#cd3333'],[600,'#d77900'],[900,'#d7b600'],[1250,'#6d9521'],
   [1600,'#4c762e'],[1900,'#4a92b7'],[2350,'#83579d'],[2900,'#5a3175']];
 function isUnoutlinedBlackInk(shadow){return String(shadow)==='none';}
@@ -75,12 +75,14 @@ function assertWN8Source(){
   assert.deepStrictEqual(row.children.slice(1).map(node=>node.style.color),['#000000','#4c762e','#5a3175'],'Min/Avg/Max retain their individual rating colors');
   panel.battleMeasure(parent,'WN8',2380,true);assert(parent.children[2].children.every(node=>node.style.color==='#83579d'));
   panel.battleMeasure(parent,'Base XP',2380,false);assert(parent.children[3].children.every(node=>node.style.color===undefined),'Other statistics retain their configured text colors');
-  const card=new Node('div','ss-group');panel.paintWN8Card(card,1600);
-  assert.strictEqual(card.children.length,1);assert.strictEqual(card.children[0].style.borderColor,'rgba(76,118,46,0.62)');
+  const card=new Node('div','ss-group'),frame=panel.paintWN8Card(card,1600);
+  assert.strictEqual(card.children.length,1);assert.strictEqual(frame,'rgba(76,118,46,0.62)');
+  assert.strictEqual(card.children[0].style.borderColor,frame);
   assert.strictEqual(card.children[0].attributes['aria-hidden'],'true');assert.deepStrictEqual(card.style,{},'Rating border cannot mutate card dimensions or padding');
   panel.paintWN8Card(card,0);assert.strictEqual(card.children.length,1,'Rating corrections reuse one owned border');
   assert.strictEqual(card.children[0].style.borderColor,'rgba(0,0,0,0.62)','Zero retains its own rating tint');
-  panel.paintWN8Card(card,null);assert.strictEqual(card.children.length,0);assert.strictEqual(card.attributes['data-wn8-border-value'],undefined,'Unknown ratings retire a stale card border');
+  assert.strictEqual(panel.paintWN8Card(card,null),null);
+  assert.strictEqual(card.children.length,0);assert.strictEqual(card.attributes['data-wn8-border-value'],undefined,'Unknown ratings retire a stale card border');
 }
 async function sourceArrowAppearance(page){
   return page.locator('#ss-groups [data-ss-metric="battle_wn8"] .ss-extreme-cell').evaluateAll(cells=>cells.length>0&&cells.every(cell=>{
@@ -193,10 +195,10 @@ module.exports=async({browser,nativeHost,check})=>{
       }
       if(group==='vehicles'||group==='maps')check('Every nested history rating retains its own palette in '+group,
         await page.locator('.ss-map-battles').first().locator('.ss-map-battle-wn8-value[data-wn8-value]').count()===bands.length);
-      if(group!=='battles')check('Purple WN8 stays on a neutral olive sorting fill with its orange edge in '+group,
+      if(group!=='battles')check('Purple WN8 keeps the olive sorting fill and uses the card border color in '+group,
         await page.locator('.ss-group-wn8-kpi.ss-sort-active-value').first().evaluate(node=>{
           const css=getComputedStyle(node),figure=node.querySelector('.ss-kpi-value');
-          return css.backgroundColor==='rgb(37, 42, 35)'&&css.boxShadow.includes('rgb(231, 162, 59)')&&
+          return css.backgroundColor==='rgb(37, 42, 35)'&&css.boxShadow.includes('rgba(131, 87, 157, 0.62)')&&
             getComputedStyle(figure).color==='rgb(131, 87, 157)';
         }));
       if(group!=='battles'){
@@ -204,7 +206,7 @@ module.exports=async({browser,nativeHost,check})=>{
         check('The selected WN8 average retains its neutral sorting fill without becoming a source action in '+group,
           await page.locator('#ss-groups [data-ss-metric="battle_wn8"] > .ss-sort-active-value').first().evaluate(cell=>{
             const style=getComputedStyle(cell);return !cell.querySelector('.ss-metric-battle-link')&&
-              style.color==='rgb(131, 87, 157)'&&style.backgroundColor==='rgb(37, 42, 35)'&&style.boxShadow.includes('rgb(231, 162, 59)');
+              style.color==='rgb(131, 87, 157)'&&style.backgroundColor==='rgb(37, 42, 35)'&&style.boxShadow.includes('rgba(131, 87, 157, 0.62)');
           }));
         if(group==='vehicles'){
           const obsolete=await page.addStyleTag({content:'.ss-extreme-cell { outline:1px solid #e7a23b !important; }'});
@@ -251,6 +253,35 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Black WN8 captions honor the interface label color in '+group,
         await page.locator('.ss-kpi-label[data-wn8-caption-value="0"],.ss-battle-label[data-wn8-caption-value="0"],.ss-map-battle-wn8-label[data-wn8-caption-value="0"]').evaluateAll(nodes=>
           nodes.length>0&&nodes.every(node=>getComputedStyle(node).color==='rgb(170, 187, 204)')));
+    }
+    const ratings=[1229,1507,null,0];
+    const expected=['rgba(215, 182, 0, 0.62)','rgba(109, 149, 33, 0.62)',
+      'rgb(48, 55, 34)','rgba(0, 0, 0, 0.62)'];
+    for(const width of [625,1350]){
+      await page.evaluate(({width,ratings})=>{
+        const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+        const source=scope.vehicles[0];
+        payload.account_key='synthetic-sort-border-'+width;
+        payload.window_size=[width,900];
+        scope.vehicles=ratings.map((rating,index)=>{
+          const vehicle=JSON.parse(JSON.stringify(source));
+          vehicle.id='sort-border-'+index;
+          vehicle.stats.wn8=rating;
+          vehicle.stats.wn8_count=rating===null?0:1;
+          return vehicle;
+        });
+        scope.ordering.vehicles={metric:'win_rate',statistic:'avg',direction:'desc',chronology:'newest'};
+        model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+      },{width,ratings});
+      await page.locator('#ss-group-vehicles').click();await frames(page);
+      const framesMatch=await page.locator('#ss-groups .ss-group-rate.ss-sort-active-value').evaluateAll((nodes,expected)=>
+        nodes.length===expected.length&&nodes.every(node=>{
+          const card=node.closest('.ss-group'),border=card.querySelector('.ss-wn8-card-border')||card;
+          const index=Number(card.getAttribute('data-group-id').split('-').pop());
+          const color=getComputedStyle(border).borderTopColor;
+          return color===expected[index]&&getComputedStyle(node).boxShadow.includes(color);
+        }),expected);
+      check('Each win rate highlight follows its own card border at '+width+' px, including missing and low WN8',framesMatch);
     }
   }finally{await page.close();}
 };

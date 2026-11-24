@@ -2,14 +2,17 @@
 """Create optional configuration without overwriting existing user files."""
 from __future__ import absolute_import, unicode_literals
 
+from contextlib import contextmanager
 import errno
 import io
 import json
 import logging
 import os
+import sys
 import tempfile
 
 from .appearance import MAX_CONFIG_BYTES, default_config
+from .storage import _PROCESS_LOCK, _WriteLock, _ensure_directory, native_data_path
 
 LOG = logging.getLogger('grz.sessionstats')
 
@@ -49,7 +52,7 @@ def _prepare_file(path, legacy, limit, defaults=None):
     if os.path.lexists(path):
         return
     try:
-        with io.open(legacy, 'rb') as handle:
+        with io.open(native_data_path(legacy), 'rb') as handle:
             raw = handle.read(limit + 1)
     except (IOError, OSError) as error:
         if error.errno != errno.ENOENT:
@@ -71,11 +74,36 @@ def _prepare_file(path, legacy, limit, defaults=None):
 def prepare_config(path, legacy):
     """Best-effort migration/defaults; old files and existing targets stay intact."""
     try:
-        _recover_language_backup(path)
-        _prepare_file(path, legacy, MAX_CONFIG_BYTES, default_config)
+        path = native_data_path(os.path.abspath(path))
+        if os.path.lexists(path) and not os.path.lexists(path + '.language-backup'):
+            return
+        with _settings_lock(path):
+            _recover_language_backup(path)
+            _prepare_file(path, legacy, MAX_CONFIG_BYTES, default_config)
     except Exception as error:
         LOG.warning('CONFIG_SETUP file=%s failed (%s); existing files are unchanged.',
                     os.path.basename(path), type(error).__name__)
+
+
+@contextmanager
+def _settings_lock(path):
+    directory = os.path.dirname(path)
+    _ensure_directory(directory)
+    name = '.' + os.path.basename(path) + '.lock'
+    if sys.platform == 'win32':
+        # The embedded client can omit msvcrt. All Windows writers acquire the
+        # same create-only lock and the OS drops it even if a writer crashes.
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_TEMPORARY | os.O_NOINHERIT
+        with _PROCESS_LOCK:
+            descriptor = os.open(os.path.join(directory, name), flags, 0o600)
+            try:
+                yield
+            finally:
+                os.close(descriptor)
+    else:
+        # Keep the POSIX lock file in place so all processes lock the same inode.
+        with _WriteLock(directory, name):
+            yield
 
 
 def _recover_language_backup(path):
@@ -139,7 +167,8 @@ def _save_config(path, update, label):
         return False
     temporary = None
     try:
-        _recover_language_backup(path)
+        path = native_data_path(os.path.abspath(path))
+
         def current():
             try:
                 with io.open(path, 'rb') as handle:
@@ -148,32 +177,35 @@ def _save_config(path, update, label):
                 if error.errno == errno.ENOENT:
                     return None
                 raise
-        original = current()
-        if original is not None and len(original) > MAX_CONFIG_BYTES:
-            raise ValueError('config_size_limit')
-        document = {} if original is None else json.loads(
-            original.decode('utf-8-sig'), object_pairs_hook=_object_pairs, parse_constant=_reject_constant)
-        if not isinstance(document, dict):
-            raise ValueError('config_object_required')
-        version = document.get('schema_version', SCHEMA_VERSION)
-        if isinstance(version, bool) or not isinstance(version, integer_types) or version != SCHEMA_VERSION:
-            raise ValueError('unsupported_schema')
-        check_json_depth(document)
-        update(document)
-        raw = (json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
-        if len(raw) > MAX_CONFIG_BYTES:
-            raise ValueError('config_size_limit')
-        if original is None:
-            return _publish_new(path, raw)
-        descriptor, temporary = tempfile.mkstemp(prefix='.grz-settings-', suffix='.tmp', dir=os.path.dirname(path))
-        with os.fdopen(descriptor, 'wb') as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fsync(handle.fileno())
-        if current() != original:
-            raise ValueError('config_changed')
-        _replace_file(temporary, path)
-        return True
+
+        with _settings_lock(path):
+            _recover_language_backup(path)
+            original = current()
+            if original is not None and len(original) > MAX_CONFIG_BYTES:
+                raise ValueError('config_size_limit')
+            document = {} if original is None else json.loads(
+                original.decode('utf-8-sig'), object_pairs_hook=_object_pairs, parse_constant=_reject_constant)
+            if not isinstance(document, dict):
+                raise ValueError('config_object_required')
+            version = document.get('schema_version', SCHEMA_VERSION)
+            if isinstance(version, bool) or not isinstance(version, integer_types) or version != SCHEMA_VERSION:
+                raise ValueError('unsupported_schema')
+            check_json_depth(document)
+            update(document)
+            raw = (json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
+            if len(raw) > MAX_CONFIG_BYTES:
+                raise ValueError('config_size_limit')
+            if original is None:
+                return _publish_new(path, raw)
+            descriptor, temporary = tempfile.mkstemp(prefix='.grz-settings-', suffix='.tmp', dir=os.path.dirname(path))
+            with os.fdopen(descriptor, 'wb') as handle:
+                handle.write(raw)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if current() != original:
+                raise ValueError('config_changed')
+            _replace_file(temporary, path)
+            return True
     except Exception as error:
         LOG.warning('CONFIG %s save failed (%s); previous configuration preserved.', label, type(error).__name__)
         return False

@@ -1,0 +1,231 @@
+[
+  {
+    "id": "xi_bz_79",
+    "label": "BZ-79",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik odnawialnych dopalaczy jest w osobnym panelu bitwy.",
+    "detail_en": "The rechargeable rocket booster indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_ptz_78",
+    "label": "PTZ-78",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik wielostopniowych dopalaczy jest w osobnym panelu bitwy.",
+    "detail_en": "The staged jet booster indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_wz_219",
+    "label": "WZ-219",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik dalmierza wykrywającego cele jest w osobnym panelu bitwy.",
+    "detail_en": "The target-detecting rangefinder indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_vz_63p",
+    "label": "Vz. 63P",
+    "profile": "shell_calibration",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje kalibrację pocisku i magazynek na dwa pociski. Osobny wskaźnik mechanizmu jest w panelu bitwy.",
+    "detail_en": "The reticle shows shell calibration and the two-round magazine. The separate mechanic indicator belongs to the battle panel.",
+    "capacity": 2
+  },
+  {
+    "id": "xi_as_xx_40_t",
+    "label": "AS-XX 40 t",
+    "profile": "stationary_reload",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje magazynek i przeładowanie na postoju. Osobny wskaźnik warunków i czasu jest w panelu bitwy.",
+    "detail_en": "The reticle shows the magazine and stationary reload. The separate condition and timer indicator belongs to the battle panel.",
+    "capacity": 5
+  },
+  {
+    "id": "xi_amx_67_imbattable",
+    "label": "AMX 67 Imbattable",
+    "profile": "extra_shot",
+    "coverage": "native",
+    "detail_pl": "Magazynek na cztery pociski z możliwością doładowania zapasowego pocisku.",
+    "detail_en": "Four-round magazine with a reserve shell reload.",
+    "capacity": 4
+  },
+  {
+    "id": "xi_fauteur",
+    "label": "Fauteur",
+    "profile": "propellant_gun",
+    "coverage": "partial",
+    "detail_pl": "W trybie snajperskim podgląd zmienia pozycję wskaźnika zoomu. Skala ładunku jest w osobnym panelu bitwy.",
+    "detail_en": "The sniper preview shows the alternate zoom label position. The propellant charge gauge belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_leopard_120_verbessert",
+    "label": "Leopard 120 Verbessert",
+    "profile": "accuracy_stacks",
+    "coverage": "native",
+    "detail_pl": "Cztery poziomy celności i pełny pasek postępu.",
+    "detail_en": "Four accuracy stacks and a full progress indicator."
+  },
+  {
+    "id": "xi_taschenratte",
+    "label": "Taschenratte",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik działa pomocniczego jest w osobnym panelu bitwy.",
+    "detail_en": "The support gun indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_hirschkafer",
+    "label": "Hirschkäfer",
+    "profile": "overheat_stacks",
+    "coverage": "native",
+    "detail_pl": "Poziomy przegrzania i wskaźnik przy celowniku.",
+    "detail_en": "Overheat stacks and their indicator around the reticle."
+  },
+  {
+    "id": "xi_lekpz_borkenkafer",
+    "label": "leKpz Borkenkäfer",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik oznaczania celów jest w osobnym panelu bitwy.",
+    "detail_en": "The target designation indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_pz_kpfw_neu",
+    "label": "Pz.Kpfw. Neu",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik trybu zmieniającego parametry pocisków jest w osobnym panelu bitwy.",
+    "detail_en": "The shell parameter mode indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_cav_mod_71",
+    "label": "CAV mod. 71",
+    "profile": "autoreloader_surge",
+    "coverage": "native",
+    "detail_pl": "Czteropociskowy magazynek i trzy gotowe ładunki wymuszonego doładowania.",
+    "detail_en": "Four-round magazine and three available Forced Loading Mechanism charges.",
+    "capacity": 4
+  },
+  {
+    "id": "xi_ho_ri_shugo",
+    "label": "Ho-Ri Shugo",
+    "profile": "auxiliary_rocket_launcher",
+    "coverage": "partial",
+    "detail_pl": "Podgląd pokazuje celownik wyrzutni rakiet. Osobny wskaźnik jej stanu jest w panelu bitwy.",
+    "detail_en": "The preview shows the rocket launcher reticle. Its separate state indicator belongs to the battle panel."
+  },
+  {
+    "id": "xi_stk_2",
+    "label": "STK-2",
+    "profile": "heating_zones_gun",
+    "coverage": "partial",
+    "detail_pl": "Podgląd pokazuje stan okręgu rozrzutu. Skala stref nagrzania jest w osobnym panelu bitwy.",
+    "detail_en": "The preview shows the dispersion circle state. The heat zone gauge belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_cs_67_szakal",
+    "label": "CS-67 Szakal",
+    "profile": "stance_dance",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje premię do przeładowania. Wskaźniki trybu bojowego i turbo są w panelu bitwy.",
+    "detail_en": "The reticle shows the reload boost. The combat and turbo mode indicators belong to the battle panel."
+  },
+  {
+    "id": "xi_strv_107_12",
+    "label": "Strv 107-12",
+    "profile": "pillbox_siege",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje tryb oblężniczy. Osobny wskaźnik stanu i urządzeń jest w panelu bitwy.",
+    "detail_en": "The reticle shows pillbox siege mode. The separate state and devices indicator belongs to the battle panel."
+  },
+  {
+    "id": "xi_bv_111",
+    "label": "BV-111",
+    "profile": "bustle_feed",
+    "coverage": "partial",
+    "detail_pl": "Celownik odlicza dłuższe przeładowanie w trybie zewnętrznego podajnika. Jego osobny wskaźnik jest w panelu bitwy.",
+    "detail_en": "The native reload display shows the slower external-feed reload. The dedicated feed indicator belongs to the battle panel."
+  },
+  {
+    "id": "xi_at_fv230_breaker",
+    "label": "AT-FV230 Breaker",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik trybu mocy silnika jest w osobnym panelu bitwy.",
+    "detail_en": "The engine power mode indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_fv4025_contriver",
+    "label": "FV4025 Contriver",
+    "profile": "twingun",
+    "coverage": "native",
+    "detail_pl": "Celownik dwulufowego działa w trybie salwy.",
+    "detail_en": "Twin-gun reticle in salvo mode."
+  },
+  {
+    "id": "xi_executor",
+    "label": "Executor",
+    "profile": "standard",
+    "coverage": "separate",
+    "detail_pl": "Wskaźnik przyspieszenia pojazdu kołowego jest w osobnym panelu bitwy.",
+    "detail_en": "The wheeled dash indicator belongs to a separate battle panel."
+  },
+  {
+    "id": "xi_xm69_hacker",
+    "label": "XM69 Hacker",
+    "profile": "concentration",
+    "coverage": "partial",
+    "detail_pl": "Podgląd pokazuje dekorację koncentracji przy celowniku. Osobny wskaźnik postępu jest w panelu bitwy.",
+    "detail_en": "The preview shows the concentration decoration at the reticle. The separate progress indicator belongs to the battle panel."
+  },
+  {
+    "id": "xi_black_rock",
+    "label": "Black Rock",
+    "profile": "chargeable_burst",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje tryb ładowanej serii. Wskaźniki trafień i dostępnych serii są w osobnym panelu bitwy.",
+    "detail_en": "The reticle shows chargeable burst mode. The penetration and available burst indicators belong to a separate battle panel."
+  },
+  {
+    "id": "xi_ares_90_c",
+    "label": "Ares 90 C",
+    "profile": "temperature_autocannon",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje magazynek działka automatycznego i dekorację przegrzania. Pełna skala temperatury jest w panelu bitwy.",
+    "detail_en": "The reticle shows the autocannon magazine and overheat decoration. The full temperature gauge belongs to the battle panel.",
+    "capacity": 250
+  },
+  {
+    "id": "xi_t803",
+    "label": "T803",
+    "profile": "battle_fury",
+    "coverage": "native",
+    "detail_pl": "Celownik pokazuje mechanizm bojowej furii i premię do przeładowania.",
+    "detail_en": "The reticle shows battle fury and its reload boost."
+  },
+  {
+    "id": "xi_gorilla",
+    "label": "Gorilla",
+    "profile": "low_charge_shot",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje strzał przy częściowym przeładowaniu. Osobny wskaźnik obu faz jest w panelu bitwy.",
+    "detail_en": "The reticle shows the partial-reload shot. The separate two-phase indicator belongs to the battle panel."
+  },
+  {
+    "id": "xi_kr_1",
+    "label": "KR-1",
+    "profile": "standard",
+    "coverage": "standard",
+    "detail_pl": "Ulepszone taranowanie nie zmienia celownika.",
+    "detail_en": "Improved ramming does not change the reticle."
+  },
+  {
+    "id": "xi_object_432u",
+    "label": "Object 432U",
+    "profile": "charge_shot",
+    "coverage": "partial",
+    "detail_pl": "Celownik pokazuje ładowanie strzału. Osobny wskaźnik obrażeń jest w panelu bitwy.",
+    "detail_en": "The reticle shows shot charging. The separate damage indicator belongs to the battle panel."
+  }
+]

@@ -17,9 +17,10 @@ module.exports=async({page,scale,check})=>{
       const action=button&&button.getBoundingClientRect(),arrow=cue&&cue.getBoundingClientRect(),
         figureBox=figure.getBoundingClientRect(),rowBox=row.getBoundingClientRect(),line=parseFloat(style.lineHeight);
       const contained=rect=>rect.left>=box.left-scale&&rect.right<=box.right+scale&&rect.top>=box.top-scale&&rect.bottom<=box.bottom+scale;
+      const border=getComputedStyle(card.querySelector('.ss-wn8-card-border')||card).borderTopColor;
       return {value:figure.textContent.replace(/\s/g,''),selected:marks.length===1&&marks[0]===cell&&cell.getAttribute('data-ss-sort-active')===metric,
         headerNeutral:card.querySelectorAll('.ss-metric-head [data-ss-sort-active]').length===0,
-        paint:style.boxShadow.includes('inset')&&style.boxShadow.includes('rgb(231, 162, 59)')&&style.backgroundColor==='rgb(37, 42, 35)',
+        paint:style.boxShadow.includes('inset')&&style.boxShadow.includes(border)&&style.backgroundColor==='rgb(37, 42, 35)',
         otherCellsNeutral:others.every(node=>getComputedStyle(node).boxShadow==='none'),
         geometry:Math.abs(box.width-baseline[0])<=scale&&Math.abs(box.height-baseline[1])<=scale&&
           ink.left>=box.left-scale&&ink.right<=box.right+scale&&ink.top>=box.top-scale&&ink.bottom<=box.bottom+scale,
@@ -73,7 +74,7 @@ module.exports=async({page,scale,check})=>{
         }
       }
       await page.locator('#ss-groups .ss-metric-row[data-ss-metric="battle_wn8"] .ss-sort-active-value .ss-metric-battle-link').first().evaluate(node=>node.classList.add('ss-source-returned'));
-      check('The selected cell frame and returned-source arrow frame coexist at '+width+'/'+scale+'x',passes(await audit('battle_wn8','max')));
+      check('The cool sort frame and amber returned-source arrow are distinct at '+width+'/'+scale+'x',passes(await audit('battle_wn8','max')));
     }
     const obsolete=await page.addStyleTag({content:'.ss-group .ss-extreme-cell.ss-sort-active-value { box-shadow:none !important; background:none !important; }'});
     check('The selected-cell guard rejects the obsolete suppression of the actual result frame at '+scale+'x',!passes(await audit('battle_wn8','max')));

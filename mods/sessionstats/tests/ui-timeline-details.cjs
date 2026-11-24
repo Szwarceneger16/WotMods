@@ -198,14 +198,35 @@ module.exports = async function ({browser, nativeHost, check}) {
   const name = page.locator('#ss-time-point-name');
   check('The time-point name starts with the current date and time',
     /^\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}$/.test(await name.inputValue()));
+  async function deliverTimePoint(point, saved) {
+    await page.evaluate(({point,saved})=>{
+      const payload=JSON.parse(model.payload),timeline=payload.scopes.timeline;
+      if(point) timeline.time_points.push([point,1700200000]);
+      if(saved!==undefined) {
+        const command=__grzCommands.filter(x=>x.action==='time_point').at(-1);
+        timeline.time_point_result={request_id:command.request_id,saved};
+      }
+      model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
+    },{point,saved});
+  }
   await name.fill('Before Frontline <test>');
-  await page.evaluate(() => __grzEvents['viewEnv.onDataChanged']());
-  check('Refreshing battle data preserves an edited time-point name',
+  await deliverTimePoint('peer-point');
+  check('An added time point from another client preserves the edited name',
     await name.inputValue() === 'Before Frontline <test>');
   await name.press('Enter');
   check('Enter saves the exact custom time-point name', await page.evaluate(() =>
     __grzCommands.some(x => x.action === 'time_point' && x.name === 'Before Frontline <test>' &&
-      x.account_key === 'fixture-account')));
+      x.account_key === 'fixture-account' && !!x.request_id)));
+  await deliverTimePoint(null,false);
+  check('A rejected save preserves the name for a retry',await name.inputValue()==='Before Frontline <test>');
+  await name.press('Enter');
+  await name.fill('New draft');
+  await deliverTimePoint('first-local',true);
+  check('An acknowledgement for a previous edit preserves the newer draft',await name.inputValue()==='New draft');
+  await name.press('Enter');
+  await deliverTimePoint('second-local',true);
+  check('Acknowledging the submitted draft restores the default name',
+    /^\d{2}\.\d{2}\.\d{4}, \d{2}:\d{2}$/.test(await name.inputValue()));
   const timePoint = page.locator('#ss-time-point');
   const buttonShadow = await timePoint.evaluate(button => getComputedStyle(button).boxShadow);
   await timePoint.hover();
@@ -698,8 +719,7 @@ module.exports = async function ({browser, nativeHost, check}) {
     await captured.evaluate(() => __nativeSize[0] === 1400 && !__grzCommands.some(command => command.action === 'resize_end')));
   await captured.evaluate(() => {
     delete document.getElementById('grz-session-stats').getBoundingClientRect;
-    document.dispatchEvent(new PointerEvent('pointercancel',{pointerId:91,bubbles:true}));
-    window.dispatchEvent(new Event('blur'));
+    document.dispatchEvent(new PointerEvent('pointerout',{pointerId:91,buttons:1,bubbles:true}));
     GRZSessionStats.update({resize_gesture:{token:__gestureToken,width:940,height:890,active:true}});
   });
   await captured.waitForFunction(() => __nativeSize[0] === 940 && __nativeSize[1] === 890);

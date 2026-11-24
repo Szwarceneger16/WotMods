@@ -6,6 +6,7 @@ import copy
 import unittest
 
 import test_runtime_health as fixtures
+from test_runtime import wait_for_combat_capture
 from test_normalize import raw_result, ARENA_ID, START
 from grz_session_stats import runtime
 
@@ -146,10 +147,11 @@ class BacklogActivityTests(unittest.TestCase):
 
     def test_reconnect_into_running_battle_is_observed_in_new_runtime(self):
         self.enter_battle()
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         self.footer = fixtures.ActivityFooter()
         self.mod = self.new_runtime()
-        self.assertEqual(self.footer.states[-1], (0, False))
+        self.assertEqual(self.footer.states, [])
         self.garage()
         self.assertEqual(self.footer.states[-1], (1, False))
 

@@ -2,14 +2,22 @@
 const fs=require('fs'),path=require('path'),assert=require('assert'),vm=require('vm');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 function actualAvailability(){
-  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8'),start=source.indexOf('    function hasBaseCredits('),end=source.indexOf('\n    }\n',start)+7;
-  assert(start>=0&&end>start);const context={hasNumber:value=>typeof value==='number'&&Number.isFinite(value)};
-  vm.createContext(context);vm.runInContext(source.slice(start,end),context);
-  assert(context.hasBaseCredits({income_base:0,income_base_count:1}),'A recorded zero is available');
-  assert(context.hasBaseCredits({net_base:0,net_base_count:1}),'A recorded zero net is available');
-  assert(!context.hasBaseCredits({income_base:0,income_base_count:0,net_base:0,net_base_count:0}),'An empty zero sum is not an amount');
-  assert(!context.hasBaseCredits({income_base:500,net_base:200}),'Amounts without availability do not invent a base comparison');
-  assert(context.hasBaseCredits({income_base:null,income_base_count:1,net_base:null,net_base_count:1}),'Known partial samples report availability even when whole-period totals are unavailable');
+  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
+  const context={hasNumber:value=>typeof value==='number'&&Number.isFinite(value)};
+  vm.createContext(context);
+  for (const name of ['observedTotal','canonicalMetric','metricSeries','baseCreditAvailability']) {
+    const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start)+7;
+    assert(start>=0&&end>start);vm.runInContext(source.slice(start,end),context);
+  }
+  function availability(credits,field,battles=1) {
+    return context.baseCreditAvailability({battles,currencies:{credits}},'credits_'+field+'_base');
+  }
+  assert.strictEqual(availability({income_base:0,income_base_count:1},'income').value,0,'A recorded zero is available');
+  assert.strictEqual(availability({net_base:0,net_base_count:1},'net').value,0,'A recorded zero net is available');
+  assert.strictEqual(availability({income_base:0,income_base_count:0},'income',0).value,null,'An empty zero sum is not an amount');
+  assert.strictEqual(availability({income_base:500},'income').value,null,'Amounts without availability do not invent a base comparison');
+  const partial=availability({net_base:null,net_base_count:1},'net',2);
+  assert(partial.count===1&&partial.value===null,'Known partial samples keep their count even when the total is unavailable');
 }
 module.exports=async({browser,nativeHost,check})=>{
   actualAvailability();check('Actual source distinguishes recorded base zero from absent or unavailable base amounts',true);
@@ -66,8 +74,8 @@ module.exports=async({browser,nativeHost,check})=>{
         },{messages,available:scenario.available});
         check('Both credit rows remain visible while received profits/currencies survive '+language+'/'+scenario.name+'/'+group,
           [result.summary,result.card].every(x=>x.base&&x.received.join('|')==='78935|-41385|+37550'&&x.bonds.join('|')==='14|-6|+8'&&x.gold.join('|')==='501|0|+501'&&x.costOwners===1&&x.help&&x.availability));
-        if(!scenario.complete)check('Missing or partial base samples never pretend to be complete period totals '+language+'/'+scenario.name+'/'+group,
-          [result.summary,result.card].every(x=>x.baseValues.join('|')==='—|-41385|—'));
+        if(!scenario.complete)check('Each base field reports its received total only when reports cover it '+language+'/'+scenario.name+'/'+group,
+          [result.summary,result.card].every(x=>x.baseValues.join('|')===(scenario.name==='income-only'?'42000|-41385|—':'—|-41385|—')));
         if(scenario.name==='complete-zero')check('A complete known-zero base result stays visible '+language+'/'+group,
           [result.summary,result.card].every(x=>x.baseValues.join('|')==='0|-41385|-41385'));
       }

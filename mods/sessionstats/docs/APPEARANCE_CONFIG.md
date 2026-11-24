@@ -1,4 +1,4 @@
-# Appearance and scrolling configuration — 0.9.26
+# Appearance and scrolling configuration — 0.9.38
 
 ## File placement and applying changes
 
@@ -70,7 +70,8 @@ scopes remain independent. [Persistence and identity rules](ACCOUNT_SESSIONS.md)
 | `colors.extreme_link_hover_background` | `"#50583b"` | Source-arrow cue on hover, focus or active sorting |
 | `colors.extreme_link_text` | `"#c4c7ac"` | Source-arrow strokes |
 | `radii.extreme_link` | `4` | Source-arrow cue corner radius |
-| `colors.sort_active_background` | `"#252a23"` | Neutral fill behind the active sorting value; the orange outline remains separate |
+| `colors.sort_active_background` | `"#252a23"` | Neutral fill behind the active sorting value |
+| `colors.group_card_shadow` | `"#303722"` | Base card border and active sort outline when WN8 is unavailable |
 | `colors.sort_warning_text` | `"#ee7000"` | Native orange text and frame of the incomplete-data warning |
 | `colors.sort_warning_inner_shadow` | `"#000"` | Warning frame's native inner shadow |
 | `colors.sort_warning_glow` | `"#8d0d03"` | Warning frame's native dark-red glow |

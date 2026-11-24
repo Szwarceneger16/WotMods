@@ -1,0 +1,8 @@
+[
+  {
+    "type": "Layout",
+    "id": "R.mods.grz.aimtimer.v0_1_7.views.Settings",
+    "path": "coui://gui/gameface/mods/grz_aimtimer/v0_1_7/settings.html",
+    "parameters": {"entrance": "Settings", "impl": "gameface"}
+  }
+]

@@ -1,12 +1,12 @@
 /* Actual shipped date parsing/masking/range guards, independent of Chromium. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm'),child=require('child_process');
-const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 const catalogs=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
 function actual(name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0 && end>start,'Missing shipped function '+name);return source.slice(start,end+7);
 }
-const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','timelineDateBound','customDateBounds','boundedDateTime','applyTimelineRange'];
+const names=['dateLocale','customDatePlaceholder','customDateSeparator','customDateValue','customDateParts','datePad','customDateText','customDateMask','dateCaret','maskDateInput','deleteDateSeparator','timelineDateBound','customDateBounds','updateTimelinePointChoices','boundedDateTime','applyTimelineRange'];
 const code=names.map(actual).join('\n');
 function host(messages) {
   const timeline={from_point:'',to_point:'',from_date:null,to_date:null,time_points:[]},sent=[],errors=[];
@@ -14,7 +14,7 @@ function host(messages) {
   class FixtureDate extends Date {}
   FixtureDate.now=()=>new Date(2030,0,1,12,0).getTime();
   const context={state,Date:FixtureDate,Math,Intl:undefined,hasNumber:value=>typeof value==='number' && isFinite(value),t:key=>messages[key]||key,
-    timelineError:(field,message)=>errors.push({field,message}),cancelBattleNavigation:()=>{},retireFeed:()=>{},invoke:(action,args)=>{sent.push({action,args});return true;}};
+    timelineError:(field,message)=>errors.push({field,message}),cancelBattleNavigation:()=>{},retireFeed:()=>{},clearOrderIntent:()=>{},invoke:(action,args)=>{sent.push({action,args});return true;}};
   vm.createContext(context);vm.runInContext(code,context);return {context,state,timeline,sent,errors};
 }
 function clientDateFixtures() {
@@ -26,6 +26,17 @@ function clientDateFixtures() {
     env:{...process.env,PYTHONPATH:path.resolve(__dirname,'../src')},encoding:'utf8'}));
 }
 module.exports=async({check})=>{
+  {
+    const {context:c,state,timeline}=host(catalogs.en);
+    timeline.time_points=[['yesterday',new Date(2029,11,31,12,0).getTime()/1000]];
+    const options=[{style:{}},{style:{}},{style:{}}],point=options[1];
+    state.customDates.from={value:'01.01.2030 12:00'};
+    c.updateTimelinePointChoices(timeline,false,timeline.time_points,options);
+    check('The To list initially hides a time point before the current From draft',point.style.display==='none');
+    state.customDates.from.value='30.12.2029 12:00';
+    c.updateTimelinePointChoices(timeline,false,timeline.time_points,options);
+    check('The same To option becomes available when the unsubmitted From draft moves earlier',options[1]===point&&point.style.display==='');
+  }
   {
     const fixtures=clientDateFixtures(),epoch=new Date(2028,10,11,13,10).getTime()/1000;
     for(const [index,expected] of ['11.11.2028 13:10','11/11/2028 01:10 PM','2028-11-11 13:10'].entries()) {

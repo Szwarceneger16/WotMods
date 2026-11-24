@@ -10,6 +10,7 @@ module.exports=async({browser,nativeHost,check})=>{
     const command=await page.evaluate(()=>{
       const command=__grzCommands.filter(c=>c.action==='sort').pop(),payload=JSON.parse(model.payload);
       payload.scopes[command.scope].ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
+      payload.scopes[command.scope].pagination[command.group].order_request_id=command.request_id;
       model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);return command;
     });await frames(page);return command;
   }

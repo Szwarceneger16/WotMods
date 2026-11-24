@@ -60,7 +60,7 @@ class PlanTests(SourceVersionFixture):
                                      SHA, 312, client, previous_client)
 
     def test_mod_specific_changes_build_only_the_selected_mod(self):
-        medkit = self.make(['source/mod_staysharp_medkit.py'])
+        medkit = self.make(['mods/staysharp/src/mod_staysharp_medkit.py'])
         self.assertEqual(medkit['changed'], ['staysharp'])
         self.assertEqual(medkit['versions'], {'staysharp': '1.8.23',
                                               'sessionstats': '0.3.15'})
@@ -70,7 +70,7 @@ class PlanTests(SourceVersionFixture):
                                               'sessionstats': '0.3.16'})
 
     def test_both_mods_changed_get_one_global_release_tag(self):
-        result = self.make(['source/mod_staysharp_medkit.py',
+        result = self.make(['mods/staysharp/src/mod_staysharp_medkit.py',
                             'mods/sessionstats/src/main.py'])
         self.assertEqual(result['changed'], ['staysharp', 'sessionstats'])
         self.assertEqual(result['release_tag'], 'wotmods-v1.0.312')
@@ -83,7 +83,14 @@ class PlanTests(SourceVersionFixture):
                          ['staysharp', 'sessionstats'])
 
     def test_medkit_installer_docs_change_only_medkit(self):
-        self.assertEqual(self.make(['docs/INSTALACJA.md'])['changed'], ['staysharp'])
+        self.assertEqual(self.make(['mods/staysharp/docs/INSTALACJA.md'])['changed'], ['staysharp'])
+
+    def test_medkit_repository_docs_and_tests_do_not_trigger_a_release(self):
+        changes = ['mods/staysharp/README.md', 'mods/staysharp/tests/test_packaging.py']
+        result = self.make(changes, tag='wotmods-v1.0.300')
+        self.assertFalse(result['publish'])
+        result = self.make(changes + ['mods/sessionstats/src/main.py'], tag='wotmods-v1.0.300')
+        self.assertEqual(result['changed'], ['sessionstats'])
 
     def test_unchanged_state_does_not_create_a_new_release(self):
         result = self.make([], tag='wotmods-v1.0.300')
@@ -112,7 +119,7 @@ class PlanTests(SourceVersionFixture):
         self.assertEqual(first['changed'], second['changed'])
 
     def test_global_release_number_is_independent_of_commit_count(self):
-        result = coordinator.make_plan(self.registry, ['source/mod_staysharp_medkit.py'],
+        result = coordinator.make_plan(self.registry, ['mods/staysharp/src/mod_staysharp_medkit.py'],
                                        PREVIOUS, 'wotmods-v1.0.300', SHA, 900,
                                        installers.CLIENT, installers.CLIENT)
         self.assertEqual(result['release_tag'], 'wotmods-v1.0.301')
@@ -131,41 +138,42 @@ class PlanTests(SourceVersionFixture):
             git('init', '-q')
             git('config', 'user.name', 'Synthetic fixture')
             git('config', 'user.email', 'fixture.invalid')
-            original = root / 'assets/VOICE_NOTICE.txt'
-            original.parent.mkdir()
+            original = root / 'mods/staysharp/assets/VOICE_NOTICE.txt'
+            original.parent.mkdir(parents=True)
             original.write_text('A packaged Medkit asset\n')
             git('add', '.')
             git('commit', '-qm', 'Base')
             moved = root / 'mods/sessionstats/docs/VOICE_NOTICE.txt'
             moved.parent.mkdir(parents=True)
-            git('mv', 'assets/VOICE_NOTICE.txt', 'mods/sessionstats/docs/VOICE_NOTICE.txt')
+            git('mv', 'mods/staysharp/assets/VOICE_NOTICE.txt', 'mods/sessionstats/docs/VOICE_NOTICE.txt')
             git('commit', '-qm', 'Cross-module rename')
             changes = git('diff', '--no-renames', '--name-only', 'HEAD~1', 'HEAD').splitlines()
-            self.assertEqual(set(changes), {'assets/VOICE_NOTICE.txt',
+            self.assertEqual(set(changes), {'mods/staysharp/assets/VOICE_NOTICE.txt',
                                             'mods/sessionstats/docs/VOICE_NOTICE.txt'})
             self.assertEqual(coordinator.selected_modules(changes, self.registry),
                              ['staysharp', 'sessionstats'])
 
     def test_rapid_merges_preserve_both_updates_in_either_order(self):
-        first = self.make(['source/mod_staysharp_medkit.py'])
+        first = self.make(['mods/staysharp/src/mod_staysharp_medkit.py'])
         second = self.make(['mods/sessionstats/src/main.py'], previous=first['versions'],
                            tag=first['release_tag'])
         self.assertEqual(second['versions'], {'staysharp': '1.8.23',
                                                'sessionstats': '0.3.16'})
         first = self.make(['mods/sessionstats/src/main.py'])
-        second = self.make(['source/mod_staysharp_medkit.py'], previous=first['versions'],
+        second = self.make(['mods/staysharp/src/mod_staysharp_medkit.py'], previous=first['versions'],
                            tag=first['release_tag'])
         self.assertEqual(second['versions'], {'staysharp': '1.8.23',
                                                'sessionstats': '0.3.16'})
 
     def test_coalesced_merges_build_both_before_publication(self):
-        result = self.make(['source/voice.py', 'mods/sessionstats/ui/panel.js'])
+        result = self.make(['mods/staysharp/src/voice.py', 'mods/sessionstats/ui/panel.js'])
         self.assertEqual({m['mod'] for m in result['matrix']},
                          {'staysharp', 'sessionstats'})
 
     def test_unregistered_module_changes_fail_closed(self):
-        with self.assertRaisesRegex(ValueError, 'Unregistered mod'):
-            self.make(['mods/thirdmod/source.py'])
+        for path in ('mods/thirdmod/source.py', 'mods/thirdmod/tests/test_runtime.py'):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'Unregistered mod'):
+                self.make([path])
 
     def test_version_rollback_is_blocked_and_explicit_version_jump_allowed(self):
         self.assertEqual(coordinator.next_version('1.8.12', '1.8.22'), '1.8.23')
@@ -184,7 +192,7 @@ class PlanTests(SourceVersionFixture):
     def test_new_module_requires_registered_safe_verifier(self):
         rogue = json.loads(json.dumps(self.registry))
         rogue['modules'].append({'id': 'thirdmod', 'display_name': 'Third',
-                                'base_version_file': 'VERSION',
+                                'base_version_file': 'mods/thirdmod/VERSION',
                                 'installer_prefix': 'Third-v',
                                 'source_paths': ['mods/thirdmod/**']})
         with tempfile.TemporaryDirectory() as directory:
@@ -205,8 +213,11 @@ class PlanTests(SourceVersionFixture):
 
     def test_new_third_module_is_built_while_two_prior_zips_are_carried(self):
         extended = json.loads(json.dumps(self.registry))
+        version_file = self.source / 'mods/thirdmod/VERSION'
+        version_file.parent.mkdir(parents=True)
+        version_file.write_text('0.1.0\n', encoding='ascii')
         extended['modules'].append({'id': 'thirdmod', 'display_name': 'Third',
-                                    'base_version_file': 'VERSION',
+                                    'base_version_file': 'mods/thirdmod/VERSION',
                                     'installer_prefix': 'Third-v',
                                     'source_paths': ['mods/thirdmod/**']})
         result = coordinator.make_plan(extended, ['mods/thirdmod/src/main.py'],
@@ -214,7 +225,7 @@ class PlanTests(SourceVersionFixture):
                                        installers.CLIENT, installers.CLIENT)
         self.assertEqual(result['previous_modules'], ['sessionstats', 'staysharp'])
         self.assertEqual(result['changed'], ['thirdmod'])
-        self.assertEqual([entry['mod'] for entry in result['matrix']], ['thirdmod'])
+        self.assertEqual(result['matrix'], [{'mod': 'thirdmod', 'version': '0.1.0'}])
         self.assertEqual(result['versions']['staysharp'], PREVIOUS['staysharp'])
         self.assertEqual(result['versions']['sessionstats'], PREVIOUS['sessionstats'])
 
@@ -340,7 +351,7 @@ class AssemblyTests(SourceVersionFixture):
     def test_corrupt_or_extra_artifacts_fail_closed(self):
         (self.built / 'unexpected.zip').write_bytes(b'bad')
         with self.assertRaisesRegex(ValueError, 'mismatch'):
-            self.assemble(['source/mod_staysharp_medkit.py'])
+            self.assemble(['mods/staysharp/src/mod_staysharp_medkit.py'])
 
     def test_modified_previous_zip_is_never_carried_without_verification(self):
         (self.previous / 'Session-Stats-v0.3.15.zip').write_bytes(b'corrupted')

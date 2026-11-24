@@ -169,7 +169,8 @@ class HistoryPerformanceTests(HistoryPerformanceFixture, unittest.TestCase):
             self.service.record_result(result(str(index)))
         journal = self.service.store._writer_path
         with open(journal, 'r+b') as handle:
-            handle.readline()
+            # A buffered Windows CRT stream needs an explicit read-to-write seek.
+            handle.seek(len(handle.readline()))
             handle.write(b'BROKEN')
         restored = self.reopen()
         self.assertEqual(restored._state, self.service._state)

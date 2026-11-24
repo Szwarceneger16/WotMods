@@ -1,6 +1,6 @@
 /* Exercise the shipped clock geometry and selection without a browser. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actual(name) {
   const start=source.indexOf('        function '+name+'('),end=source.indexOf('\n        }\n',start);
   assert(start>=0&&end>start,'Missing shipped clock function '+name);return source.slice(start,end+11);

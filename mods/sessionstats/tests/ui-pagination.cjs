@@ -22,14 +22,16 @@ function assertPageBoundarySource(source=fs.readFileSync(path.join(__dirname,'..
 }
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let left=10;function next(){if(--left)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
 const requests=page=>page.evaluate(()=>__grzCommands.filter(item=>item.action==='page'));
-async function emit(page,index,request,reverse=false){
-  await page.evaluate(({index,request,reverse})=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
+async function emit(page,index,request,reverse=false,orderRequest){
+  await page.evaluate(({index,request,reverse,orderRequest})=>{const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
     scope.battles=Array.from({length:index===2?5:40},(_,offset)=>{const number=reverse?84-index*40-offset:index*40+offset,item=JSON.parse(JSON.stringify(__feedSample));
       item.id='synthetic-feed-'+number;item.name='Synthetic battle '+number;item.started_at=1900000000-number;return item;});
     if(reverse)scope.ordering.battles.chronology='oldest';
+    const orderId=orderRequest===undefined ? scope.pagination.battles.order_request_id : orderRequest;
     scope.pagination.battles={page:index,pages:3,page_size:40,total:85};if(request)scope.pagination.battles.request_id=request.request_id;
+    if(orderId)scope.pagination.battles.order_request_id=orderId;
     model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
-  },{index,request,reverse});await frames(page);
+  },{index,request,reverse,orderRequest});await frames(page);
 }
 async function navigationComponent({browser,nativeHost,check}){
   require('./ui-page-jump.cjs').assertPageJumpSource();check('Actual-source page navigation waits for stable native geometry and yields to newer intent',true);
@@ -115,21 +117,36 @@ async function paginationComponent({browser,nativeHost,check}){
         return {top:box.top,bottom:box.bottom,viewportTop:viewport.top,viewportBottom:viewport.bottom};});
       check('The complete filter panel stays visible above the appended feed: '+label+': '+JSON.stringify(pin),pin.top>=pin.viewportTop-1 && pin.bottom<=pin.viewportBottom+1);
       if(language==='en' && scale===1){
-        const retained=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
+        const beforeSort=(await requests(page)).length;
         await page.locator('#ss-sort-chronology .ss-select-trigger').click();
-        await page.locator('#ss-sort-chronology [data-value="oldest"]').click();await emit(page,0,null,true);
-        check('Sorting a loaded feed retains all old rows while its replacement prefix is incomplete',
-          await page.locator('#ss-groups .ss-group').count()===85 && await page.locator('#ss-groups .ss-group').first().getAttribute('data-group-id')==='synthetic-feed-0');
-        sent=await requests(page);request=sent[sent.length-1];
-        check('A sorted replacement fetches the next page of the previously loaded window',request.page==='1');
-        await emit(page,1,request,true);sent=await requests(page);request=sent[sent.length-1];
-        check('A partially rebuilt sorted prefix keeps the complete old feed visible',
-          request.page==='2' && await page.locator('#ss-groups .ss-group').count()===85 && await page.locator('#ss-groups .ss-group').first().getAttribute('data-group-id')==='synthetic-feed-0');
-        await emit(page,2,request,true);
+        await page.locator('#ss-sort-chronology [data-value="oldest"]').click();
+        const sort=await page.evaluate(()=>__grzCommands.filter(item=>item.action==='sort').at(-1));
+        await emit(page,0,null,true,'unrelated-sort');
+        check('Sorting keeps the mounted page window until its own acknowledgement arrives',
+          (await requests(page)).length===beforeSort && await page.locator('#ss-groups .ss-group').count()===85 &&
+          await page.locator('#ss-groups .ss-group').first().getAttribute('data-group-id')==='synthetic-feed-0');
+        await emit(page,0,null,true,sort.request_id);
+        check('An owned sort replaces old result cards with the first new-order page',
+          await page.locator('#ss-groups .ss-group').count()===40 &&
+          await page.locator('#ss-groups .ss-group').first().getAttribute('data-group-id')==='synthetic-feed-84' &&
+          await page.locator('#ss-page-label').textContent()===pageLabel(1));
+        for(let index=1;index<=2;index++){
+          const ownRequests=async()=>(await requests(page)).slice(beforeSort).filter(command=>command.page===String(index));
+          if(!(await ownRequests()).length){
+            await page.locator('#ss-scroll').evaluate(node=>{
+              node.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+              node.scrollTop=node.scrollHeight;
+              node.dispatchEvent(new Event('scroll'));
+            });
+            await frames(page);
+          }
+          const nextOrderPage=await ownRequests();
+          check('The new order can load its next page '+(index+1),nextOrderPage.length===1);
+          await emit(page,index,nextOrderPage[0],true);
+        }
         const sorted=await page.locator('#ss-groups .ss-group').evaluateAll(cards=>cards.map(card=>card.dataset.groupId));
-        const after=await page.locator('#ss-scroll').evaluate(node=>node.scrollTop);
-        check('The complete sorted window swaps atomically at the same pixel offset: '+JSON.stringify({retained,after,first:sorted[0],last:sorted[84]}),
-          sorted.length===85 && sorted[0]==='synthetic-feed-84' && sorted[84]==='synthetic-feed-0' && Math.abs(after-retained)<=1);
+        check('Paginating the acknowledged order shows every reversed result exactly once',
+          sorted.length===85 && new Set(sorted).size===85 && sorted[0]==='synthetic-feed-84' && sorted[84]==='synthetic-feed-0');
       }
       const count=(await requests(page)).length;await page.locator('#ss-scroll-top').click();await frames(page);
       check('Top restores the complete summary while retaining cached pages: '+label,

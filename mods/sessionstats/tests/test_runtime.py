@@ -3,23 +3,45 @@ from __future__ import unicode_literals
 
 import collections
 import copy
+import errno
 import json
 import logging
 import os
 import shutil
 import sys
 import tempfile
+import threading
+import time
 import types
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src'))
-from grz_session_stats import VERSION, runtime, views, footer
+from grz_session_stats import VERSION, combat_intake, runtime, views, footer
 from grz_session_stats.core import StatsService
+from grz_session_stats.normalize import normalize_result
 from test_normalize import raw_result, ARENA_ID, START
 
 
 EXPECTED = {'header': {'version': 'fixture'}, 'data': [
     {'IDNum': 1, 'expDamage': 1000, 'expFrag': 1, 'expSpot': 1, 'expDef': 1, 'expWinRate': 50}]}
+
+
+def wait_for_combat_capture(mod, account_key=None):
+    intake = mod._combat_intake
+    if intake is None:
+        return
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if account_key is not None:
+            if not intake.waiting(account_key):
+                return
+            time.sleep(0.005)
+            continue
+        with intake._condition:
+            if not intake._queue:
+                return
+        time.sleep(0.005)
+    raise AssertionError('The combat intake worker did not settle')
 
 
 class Obj(object):
@@ -184,6 +206,7 @@ class RuntimeTests(unittest.TestCase):
         return None
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         logging.disable(self.log_level)
         shutil.rmtree(self.directory)
@@ -207,6 +230,39 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(details['active_crucible'], stage)
         self.assertEqual(details['missions'][stage]['status'], 'failed')
 
+    def test_crucible_stage_survives_avatar_notification_before_arena_context(self):
+        stage = 'challenge:8:2'
+        self.api.active_crucible = lambda: {
+            'active_crucible': stage, 'missions': {stage: {'kind': 'crucible', 'stage': 2}}}
+        self.api.events.onArenaCreated()
+        self.api.active_crucible = lambda: {}
+        self.api.battle = True
+        self.api.context = None
+        self.api.events.onAvatarBecomePlayer()
+        self.begin()
+        self.garage()
+        record = self.mod.active_service._state['battles'][ARENA_ID]
+        self.assertEqual(record['details']['active_crucible'], stage)
+        self.assertEqual(record['details']['missions'][stage]['stage'], 2)
+        self.assertIsNone(self.mod._queued_crucible)
+
+    def test_repeat_avatar_notification_does_not_consume_the_next_crucible_stage(self):
+        self.begin()
+        self.garage()
+        stage = 'challenge:8:3'
+        self.api.active_crucible = lambda: {
+            'active_crucible': stage, 'missions': {stage: {'kind': 'crucible', 'stage': 3}}}
+        self.api.events.onArenaCreated()
+        self.api.active_crucible = lambda: {}
+        self.api.battle = True
+        self.api.events.onAvatarBecomePlayer()
+        next_arena = str(int(ARENA_ID) + 1)
+        self.begin(next_arena)
+        self.garage()
+        record = self.mod.active_service._state['battles'][next_arena]
+        self.assertEqual(record['details']['active_crucible'], stage)
+        self.assertIsNone(self.mod._queued_crucible)
+
     def test_missing_account_snapshot_uses_current_package_version(self):
         self.mod.active_service = None
         snapshot = self.mod.snapshot()
@@ -223,12 +279,44 @@ class RuntimeTests(unittest.TestCase):
         self.api.events.onAvatarReady()
 
     def garage(self):
+        wait_for_combat_capture(self.mod)
         self.api.battle = False
         self.api.events.onAccountShowGUI()
 
     def tick(self, seconds=5):
         self.clock.value += seconds
         self.api.fire(self.mod._tick_id)
+
+    def test_combat_bonus_reader_failure_buffers_log_until_garage(self):
+        self.begin()
+        wait_for_combat_capture(self.mod)
+        handler = self.mod._log_handle._handler
+        original = handler._write_pending
+        writes = []
+
+        def tracked_write():
+            writes.append(self.api.in_battle())
+            return original()
+
+        def unavailable_bonus(arena_id):
+            raise RuntimeError('Synthetic bonus reader failure')
+
+        handler._write_pending = tracked_write
+        self.api.posted_bundle = unavailable_bonus
+        logging.disable(logging.NOTSET)
+        try:
+            self.api.events.onBattleResultsReceived(True, raw_result())
+            self.assertEqual(writes, [])
+            self.garage()
+            self.assertTrue(writes)
+            self.assertFalse(any(writes))
+            with open(self.mod.log_path, 'rb') as handle:
+                log = handle.read()
+            self.assertIn(b'code=bonus_reader', log)
+            self.assertIn(b'Compatibility [results:bonus]', log)
+        finally:
+            handler._write_pending = original
+            logging.disable(logging.CRITICAL)
 
     def test_initialization_is_account_scoped_and_footer_failure_is_optional(self):
         self.assertTrue(self.mod.running)
@@ -277,8 +365,9 @@ class RuntimeTests(unittest.TestCase):
 
     def test_begin_is_saved_and_late_result_keeps_pre_reset_membership(self):
         self.begin()
-        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
         self.garage()
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
         self.clock.value += 200
         self.mod.on_action({'action': 'reset'})
         self.api.events.onBattleResultsReceived(True, raw_result())
@@ -303,6 +392,24 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.summary()['currencies']['bonds']['net'], 28)
         self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
 
+    def test_inflight_cache_result_is_captured_during_the_next_battle(self):
+        self.begin()
+        self.garage()
+        self.tick()
+        unused_arena, receive = self.api.pending_callbacks.pop()
+        service = self.mod.active_service
+        sequence = service.store.sequence
+        second = str((12346 << 32) | (START + 20))
+        self.begin(second)
+        receive(1, raw_result())
+        wait_for_combat_capture(self.mod)
+        self.assertEqual(service.store.sequence, sequence)
+        self.assertEqual(self.summary()['battles'], 0)
+        self.assertFalse(self.mod.inflight)
+        self.garage()
+        self.assertEqual(self.summary()['battles'], 1)
+        self.assertEqual(service.pending_arena_ids(), [second])
+
     def test_two_out_of_order_results_keep_independent_identifiers(self):
         second = str((12346 << 32) | (START + 20))
         self.begin()
@@ -313,6 +420,86 @@ class RuntimeTests(unittest.TestCase):
         self.api.events.onBattleResultsReceived(True, raw_result(second))
         self.assertEqual(self.summary()['battles'], 2)
         self.assertEqual(self.summary()['currencies']['credits']['net'], 64000)
+
+    def test_locked_older_capture_cannot_undo_a_newer_result_from_another_writer(self):
+        self.mod._installation_dir = self.directory
+        self.mod._on_account()
+        self.begin()
+        self.garage()
+        reader = self.mod._combat_intake
+        writer = combat_intake.CombatIntake(self.directory)
+        receipt_clock = combat_intake.time
+        try:
+            self.mod._combat_intake = writer
+            combat_intake.time = Obj(time=lambda: receipt_clock.time() + 60)
+            self.api.battle = True
+            self.api.events.onBattleResultsReceived(True, raw_result())
+        finally:
+            writer.close(wait=True)
+            combat_intake.time = receipt_clock
+            self.mod._combat_intake = reader
+        account = self.mod.active_key
+        older, = reader.pending(account)
+
+        def temporarily_locked(path, *args, **kwargs):
+            if os.path.basename(path) == older[0].filename:
+                raise IOError(errno.EACCES, 'Synthetic temporary file lock')
+            return open(path, *args, **kwargs)
+
+        combat_intake.open = temporarily_locked
+        try:
+            self.garage()
+            newer = raw_result()
+            newer['personal'][1]['credits'] = 90000
+            self.api.events.onBattleResultsReceived(True, newer)
+            wait_for_combat_capture(self.mod)
+            self.tick()
+            self.assertEqual(self.summary()['battles'], 0)
+            self.assertEqual(self.mod._instance_session.snapshot()[0]['summary']['battles'], 0)
+        finally:
+            del combat_intake.open
+
+        first, second = reader.pending(account, limit=2)
+        self.assertEqual(first, older)
+        self.assertNotEqual(reader.identity(first[0])[0], reader.identity(second[0])[0])
+        self.tick()
+        self.assertEqual(reader.pending(account), [])
+        session = self.mod._instance_session
+        account_record = self.mod.active_service._state['battles'][ARENA_ID]
+        installation_record = session.service._state['battles'][session.battle_key(account, ARENA_ID)]
+        for record in (account_record, installation_record):
+            self.assertEqual(record['currencies']['credits']['income'], 90000)
+
+    def test_stop_during_combat_waits_for_the_accepted_begin_and_result(self):
+        intake = self.mod._combat_intake
+        original_write = intake._write
+        entered, resume = threading.Event(), threading.Event()
+
+        def delayed_write(*args):
+            entered.set()
+            if not resume.wait(5):
+                raise IOError(errno.EIO, 'Synthetic write did not resume')
+            original_write(*args)
+
+        intake._write = delayed_write
+        timer = threading.Timer(0.6, resume.set)
+        try:
+            self.begin()
+            self.assertTrue(entered.wait(5))
+            self.api.events.onBattleResultsReceived(True, raw_result())
+            self.assertEqual(intake.waiting('EU:7'), 2)
+            timer.start()
+            self.mod.stop()
+            reopened = combat_intake.CombatIntake(self.directory)
+            captures = reopened.pending('EU:7', limit=2)
+            self.assertEqual([kind for receipt, kind, capture in captures], ['begin', 'result'])
+            self.assertEqual([capture['record']['arena_id'] for receipt, kind, capture in captures],
+                             [ARENA_ID, ARENA_ID])
+        finally:
+            resume.set()
+            intake.close(wait=True)
+            if timer.ident is not None:
+                timer.join()
 
     def test_expired_request_callback_cannot_consume_a_newer_retry(self):
         self.begin()
@@ -445,6 +632,47 @@ class RuntimeTests(unittest.TestCase):
         self.mod.on_action({'action': '__import__'})
         self.assertEqual(self.summary()['battles'], 0)
 
+    def test_refresh_loads_peer_history_and_schedules_the_current_timeline(self):
+        self.garage()
+        service = self.mod.active_service
+        self.clock.value = START + 10
+        self.assertTrue(service.set_timeline_range('__custom__', '', START - 5))
+        while service.timeline_loading:
+            service.advance_timeline()
+        period = service.timeline_snapshot()['period_id']
+        peer = StatsService(self.directory, self.mod.active_key, 'peer-launch', EXPECTED, self.clock,
+                            timeline_enabled=True)
+        self.assertTrue(peer.record_result(normalize_result(raw_result())))
+        self.assertEqual(self.summary('manual')['battles'], 0)
+
+        self.mod.on_action({'action': 'refresh'})
+        self.assertTrue(service.history_reloading)
+        self.assertTrue(service.snapshot()['scopes']['manual']['loading'])
+        service.advance_history_reload(max_steps=1)
+        self.assertEqual(self.summary('manual')['battles'], 0)
+        self.assertTrue(peer.create_time_point('During refresh'))
+        self.assertIsNotNone(self.mod._load_id)
+        while self.mod._load_id is not None:
+            self.api.fire(self.mod._load_id)
+        self.assertEqual(self.summary('manual')['battles'], 1)
+        timeline = self.mod.snapshot()['scopes']['timeline']
+        self.assertEqual((timeline['period_id'], timeline['summary']['battles']), (period, 1))
+        self.assertIn('During refresh', timeline['time_point_names'].values())
+        self.assertFalse(self.api.pending_callbacks)
+
+        self.assertNotIn('time_point_result', timeline)
+        command = {'action': 'time_point', 'account_key': self.mod.active_key,
+                   'name': 'After refresh', 'request_id': 'point-local'}
+        self.mod.on_action(command)
+        self.assertIsNone(service.last_error)
+        timeline = self.mod.snapshot()['scopes']['timeline']
+        self.assertIn('After refresh', timeline['time_point_names'].values())
+        self.assertEqual(timeline['time_point_result'], {'request_id': 'point-local', 'saved': True})
+        self.mod.on_action(dict(command, name='x' * 81, request_id='point-rejected'))
+        failed = self.mod.snapshot()['scopes']['timeline']
+        self.assertEqual(failed['time_point_result'], {'request_id': 'point-rejected', 'saved': False})
+        self.assertEqual(failed['time_points'], timeline['time_points'])
+
     def test_stop_removes_every_subscription_callback_and_footer_handle(self):
         removed = []
         self.mod.footer_handle = Obj(uninstall=lambda: removed.append(True))
@@ -462,18 +690,30 @@ class RuntimeTests(unittest.TestCase):
 
 class AdapterUtilityTests(unittest.TestCase):
     def test_data_directory_is_outside_versioned_mods_and_never_opens_preferences(self):
-        result = runtime.resolve_data_dir(environ={'APPDATA': '/user/roaming'})
-        self.assertEqual(result, '/user/roaming/grz_wot_session_stats')
-        bw = Obj(wg_getPreferencesFilePath=lambda: '/user/wargaming/preferences.xml')
-        self.assertEqual(runtime.resolve_data_dir(bw, {}), '/user/wargaming/grz_session_stats')
+        user = os.path.join(os.path.abspath(os.sep), 'user')
+        roaming = os.path.join(user, 'roaming')
+        result = runtime.resolve_data_dir(environ={'APPDATA': roaming})
+        self.assertEqual(result, os.path.join(roaming, 'grz_wot_session_stats'))
+        game = os.path.join(user, 'wargaming')
+        bw = Obj(wg_getPreferencesFilePath=lambda: os.path.join(game, 'preferences.xml'))
+        self.assertEqual(runtime.resolve_data_dir(bw, {}), os.path.join(game, 'grz_session_stats'))
         with self.assertRaises(RuntimeError):
             runtime.resolve_data_dir(environ={})
 
     def test_non_ascii_profile_bytes_are_decoded_before_unicode_path_join(self):
-        profile = '/user/Łukasz/roaming'
-        encoded = profile.encode(sys.getfilesystemencoding() or 'utf-8')
+        encoding = sys.getfilesystemencoding() or 'utf-8'
+        for name in ('Łukasz', 'René', 'Жан', '中文', 'あお', 'سارة'):
+            try:
+                if name.encode(encoding).decode(encoding) == name:
+                    break
+            except UnicodeError:
+                continue
+        else:
+            self.skipTest('No fixture name round-trips through this filesystem encoding')
+        profile = os.path.join(os.path.abspath(os.sep), 'user', name, 'roaming')
+        encoded = profile.encode(encoding)
         self.assertEqual(runtime.resolve_data_dir(environ={'APPDATA': encoded}),
-                         profile + '/grz_wot_session_stats')
+                         os.path.join(profile, 'grz_wot_session_stats'))
 
     def test_expected_table_validation_rejects_nonfinite_and_missing_coefficients(self):
         self.assertTrue(runtime._looks_like_expected(EXPECTED))

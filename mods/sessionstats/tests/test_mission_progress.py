@@ -20,6 +20,17 @@ from grz_session_stats.normalize import normalize_result
 class MissionProgressTests(unittest.TestCase):
     inject_module = runtime_fixtures.NativeBindingTests.__dict__['inject_module']
 
+    def test_reread_without_mission_catalog_preserves_verified_unchanged_progress(self):
+        key = 'daily:fixture'
+        before = {'missions': {key: {'progress_state': 'unchanged', 'objectives': [
+            {'key': 'battlesCount', 'unit': 'battles', 'before': 1, 'after': 1, 'delta': 0, 'target': 3}]}}}
+        cached = {'missions': {key: {'progress_state': 'unavailable', 'objectives': [
+            {'key': 'battlesCount', 'unit': 'battles', 'before': 1, 'after': 1, 'delta': 0}]}}}
+        for authoritative in (False, True):
+            self.assertEqual(merge_details(before, cached, authoritative), before)
+        cached['missions'][key]['objectives'][0].update(after=2, delta=1)
+        self.assertEqual(merge_details(before, cached, True)['missions'][key]['progress_state'], 'changed')
+
     def test_legacy_crucible_display_repairs_only_the_unconfirmed_next_stage(self):
         actual, phantom = 'challenge:8:1', 'challenge:8:2'
         original = {'active_crucible': phantom, 'missions': {

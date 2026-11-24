@@ -24,14 +24,19 @@ module.exports=async({browser,nativeHost,check})=>{
       snapshot.localization={language,messages};
       Object.assign(sample.stats,{battles:1,observed_battles:1,wn8:389,wn8_count:1,
         xp_base:{count:1,min:205,avg:205,max:205,sum:205},xp_received:{count:1,min:508,avg:508,max:508,sum:508},
+        free_xp:{count:1,min:1252,avg:1252,max:1252,sum:1252},
         currencies:{credits:{income_base:123456,income_base_count:1,income:987654,income_count:1,costs:765432,costs_count:1,
           net_base:-641976,net_base_count:1,net:222222,net_count:1},bonds:{income:0,costs:0,net:0}}});
-      snapshot.scopes.launch.battles=['win','loss','draw','unknown'].map((outcome,index)=>({
-        ...sample,id:'aligned-'+outcome,outcome,map:names[index],name:'Bat.-Châtillon 25 t',
-        visual:{kind:'vehicle',src:'img://gui/maps/icons/vehicle/synthetic.png',alt:'Synthetic vehicle'},
-        outcome_visual:index<3?{kind:'outcome',src:'img://gui/maps/icons/library/BgBattleResultIcon'+['Victory','Defeat','Draw'][index]+'-1.png'}:null,
-        map_visual:{kind:'map',src:'img://gui/maps/icons/map/small/synthetic-'+index+'.png',preview_src:'img://gui/maps/icons/map/screen/synthetic-'+index+'.dds',alt:names[index]}
-      }));
+      snapshot.scopes.launch.battles=['win','loss','draw','unknown'].map((outcome,index)=>{
+        const [name,kind,key]=[['IS-4','heavyTank','role_HT_break'],['Conqueror GC','SPG','role_SPG'],
+          ['CAV 71','heavyTank','role_HT_support'],['Bat.-Châtillon 25 t édition spéciale','mediumTank','role_MT_universal']][index];
+        return {...sample,id:'aligned-'+outcome,outcome,map:names[index],name,
+          vehicle_meta:{class:kind,elite:true,class_icon:{kind:'vehicle_class',src:'img://gui/maps/icons/vehicleTypes/24x24_metal/'+kind+'_elite.png'},
+            role:{key,icon:{kind:'vehicle_role',src:'img://gui/maps/icons/roleExp/roles/'+(kind==='SPG'?'22x22/':'24x24/')+key+'.png'}}},
+          visual:{kind:'vehicle',src:'img://gui/maps/icons/vehicle/synthetic.png',alt:'Synthetic vehicle'},
+          outcome_visual:index<3?{kind:'outcome',src:'img://gui/maps/icons/library/BgBattleResultIcon'+['Victory','Defeat','Draw'][index]+'-1.png'}:null,
+          map_visual:{kind:'map',src:'img://gui/maps/icons/map/small/synthetic-'+index+'.png',preview_src:'img://gui/maps/icons/map/screen/synthetic-'+index+'.dds',alt:names[index]}};
+      });
       model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);document.getElementById('ss-group-battles').click();
     },{scale,language,messages,width,names:names[language]});
     await frames(page);
@@ -58,9 +63,25 @@ module.exports=async({browser,nativeHost,check})=>{
         for(let i=0;i<children.length;i++)for(let j=i+1;j<children.length;j++){
           const a=children[i],b=children[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)failures.push('overlap');
         }
-        for(const node of card.querySelectorAll('.ss-group-title,.ss-group-subtitle,.ss-free-xp,.ss-outcome-label,.ss-battle-map-label,.ss-more-button .ss-control-label')){
+        const identity=card.querySelector('.ss-group-name'),title=identity.querySelector('.ss-group-title'),info=identity.querySelector('.ss-info-button'),
+          date=identity.querySelector('.ss-group-meta > .ss-group-subtitle:first-child'),metadata=identity.querySelector('.ss-vehicle-meta'),
+          role=metadata?.querySelector('.ss-vehicle-role-icon'),xp=identity.querySelector('.ss-free-xp > strong');
+        const sameLine=(a,b)=>{
+          if(!a||!b)return false;
+          const range=a.getBoundingClientRect(),other=b.getBoundingClientRect();
+          return Math.min(range.bottom,other.bottom)-Math.max(range.top,other.top)>scale;
+        };
+        if(!sameLine(title,info)||!sameLine(date,metadata)||!sameLine(date,xp)||xp.textContent.replace(/\s/g,'')!=='1252')failures.push('two-identity-rows:'+title.textContent);
+        if(!role||(title.textContent==='Conqueror GC'&&(role.dataset.vehicleRole!=='role_SPG'||!role.style.backgroundImage.includes('/22x22/role_SPG.png'))))failures.push('vehicle-role:'+title.textContent);
+        for(const node of card.querySelectorAll('.ss-group-title,.ss-group-subtitle,.ss-free-xp > span,.ss-free-xp > strong,.ss-outcome-label,.ss-battle-map-label,.ss-more-button .ss-control-label')){
           const bounds=node.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(node);
-          if(Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale)))failures.push('clipped:'+node.textContent);
+          const clipped=Array.from(range.getClientRects()).some(text=>text.width>0&&(text.left<bounds.left-scale||text.right>bounds.right+scale||text.top<bounds.top-scale||text.bottom>bounds.bottom+scale));
+          if(!clipped)continue;
+          const xpCaption=node.matches('.ss-free-xp > span'),owner=xpCaption?node.parentElement:node,
+            full=xpCaption?node.textContent+' '+xp.textContent:node.textContent,style=getComputedStyle(node);
+          if(!(xpCaption||node.classList.contains('ss-caption-ellipsis'))||node.clientWidth<=0||node.scrollWidth<=node.clientWidth||
+            style.whiteSpace!=='nowrap'||style.textOverflow!=='ellipsis'||style.overflowX!=='hidden'||
+            owner.getAttribute('data-ss-help')?.split('\n')[0]!==full||owner.getAttribute('tabindex')!=='0')failures.push('clipped:'+node.textContent);
         }
         const received=card.querySelector('.ss-battle-measure[data-ss-metric="xp_received"]');
         const addedMetricHeight=received?(received.getBoundingClientRect().height+parseFloat(getComputedStyle(received).marginTop))/scale:0;
@@ -116,8 +137,9 @@ module.exports=async({browser,nativeHost,check})=>{
       await card.locator('.ss-more-button').click();
     }
   }
-  // Narrow finance tables keep the same three numeric columns across header,
-  // credit pairs and bonds, including a live return to the ordinary card.
+  // Stacking can free enough space for a caption column at 400px. At 320px
+  // captions move above the values. The numeric columns stay aligned in both
+  // modes and after the tables return to side by side at 550px.
   for(const scale of [1,2]){
     await page.evaluate(({scale,messages})=>{
       const payload=JSON.parse(JSON.stringify(__headerAlignmentFixture)),scope=payload.scopes.launch,item=scope.battles[0];
@@ -150,12 +172,15 @@ module.exports=async({browser,nativeHost,check})=>{
           const minimum=value.classList.contains('ss-battle-value')?18:13;
           if(ink.left<box.left-scale||ink.right>box.right+scale||ink.top<box.top-scale||ink.bottom>box.bottom+scale||parseFloat(getComputedStyle(value).fontSize)/scale<minimum)failures.push('complete-readable-number:'+value.textContent);
         }
-        if(economy.classList.contains('ss-credit-compact')!==(width<550))failures.push('compact-mode');
+        const compact=economy.classList.contains('ss-credit-compact');
+        const stacked=card.querySelector('.ss-battle-details').classList.contains('ss-battle-tables-stacked');
+        if(stacked!==(width<550))failures.push('table-layout');
+        if(compact!==(width===320))failures.push('compact-mode');
         const label=pair.querySelector('.ss-credit-label-column'),inline=pair.querySelector('.ss-credit-inline-label');
-        if((label.getBoundingClientRect().width>0)!==(width===550)||(inline.getBoundingClientRect().width>0)!==(width<550))failures.push('caption-mode');
+        if((label.getBoundingClientRect().width>0)===compact||(inline.getBoundingClientRect().width>0)!==compact)failures.push('caption-mode');
         if(width!==320&&window.__narrowBattleCard!==card)failures.push('lost-card-identity');
         window.__narrowBattleCard=card;
-        return {failures,compact:economy.classList.contains('ss-credit-compact'),cardWidth:card.getBoundingClientRect().width/scale};
+        return {failures,compact,stacked,financeWidth:economy.getBoundingClientRect().width/scale,cardWidth:card.getBoundingClientRect().width/scale};
       },{width,scale});
       check('Narrow battle tables retain full numbers and matching columns through '+width+'px at '+scale+'x: '+JSON.stringify(result),result.failures.length===0);
     }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aim timer settings</title><link rel="stylesheet" href="settings.css"></head>
+<body><section id="at-settings" class="at-window" role="dialog" aria-labelledby="at-title">
+<header class="at-window-header"><span class="at-window-badge" aria-hidden="true"></span><h1 id="at-title">Aim timer</h1><span id="at-version" class="at-window-version">v0.1.7</span><button id="at-x" class="at-window-close" type="button" aria-label="Close"><span class="at-window-close-icon" aria-hidden="true"></span></button></header>
+<div class="at-window-body">
+<div class="at-window-row at-inline"><span id="at-enabled-label" class="at-window-label">Show aim time</span><button id="at-enabled" class="at-window-clear" type="button" aria-pressed="true"><span id="at-enabled-caption" class="at-window-button-label">ON</span></button></div>
+<div class="at-window-row at-position-controls"><span id="at-position-label" class="at-window-label">Position preview</span><div class="at-button-group"><button id="at-position-arcade" class="at-window-clear" type="button">Third person</button><button id="at-position-sniper" class="at-window-clear" type="button">Sniper</button><button id="at-position-arty" class="at-window-clear" type="button">Artillery</button></div></div>
+<div class="at-window-row at-display"><label><span id="at-font-label" class="at-window-label">Text size (px)</span><input id="at-font" type="text" inputmode="numeric" maxlength="2" value="16"></label><label><span id="at-opacity-label" class="at-window-label">Frame opacity (%)</span><input id="at-opacity" type="text" inputmode="decimal" maxlength="6" value="50"></label><label><span id="at-frame-label" class="at-window-label">Frame size (%)</span><input id="at-frame" type="text" inputmode="numeric" maxlength="3" value="110"></label></div>
+<div id="at-feedback" role="status" aria-live="polite"></div>
+<footer class="at-actions"><button id="at-reset" class="at-window-clear" type="button">Defaults</button><div class="at-footer-actions"><button id="at-close" class="at-window-clear" type="button">Close</button><button id="at-apply" class="at-window-clear at-primary" type="button">Apply</button></div></footer>
+</div></section>
+<section id="at-editor" class="at-placement-editor" role="dialog" aria-labelledby="at-editor-title" style="display:none">
+<div id="at-editor-stage" class="at-editor-stage">
+<span id="at-editor-center" class="at-editor-center" aria-hidden="true"></span>
+<span id="at-editor-reference" class="at-editor-reference" aria-hidden="true">~15.55 s</span>
+<span id="at-editor-peer-reference" class="at-editor-reference" aria-hidden="true"></span>
+<div id="at-editor-peer-sample" class="at-editor-sample at-editor-peer-sample"><span id="at-editor-peer-reading"></span><small id="at-editor-peer-state" class="at-editor-peer-state"></small></div>
+<div id="at-editor-sample" class="at-editor-sample"><span id="at-editor-reading">~1.85 s</span><button id="at-editor-handle" class="at-editor-handle" type="button" aria-label="Move reading"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l-5 6h3v6H8v-3l-6 5 6 5v-3h6v6h-3l5 6 5-6h-3v-6h6v3l6-5-6-5v3h-6V8h3z"/></svg></button></div>
+</div>
+<aside id="at-editor-view-controls" class="at-editor-view-controls" aria-label="Preview view">
+<div id="at-editor-arty-cameras" class="at-editor-arty-cameras" style="display:none"><button id="at-editor-arty-top" class="at-window-clear" type="button">Top view</button><button id="at-editor-arty-trajectory" class="at-window-clear" type="button">Trajectory</button></div>
+<div class="at-editor-zoom"><button id="at-editor-zoom-out" class="at-window-clear" type="button" aria-label="Zoom out">-</button><span id="at-editor-zoom-level" role="status" aria-live="polite"></span><button id="at-editor-zoom-in" class="at-window-clear" type="button" aria-label="Zoom in">+</button></div>
+<button id="at-editor-view-reset" class="at-window-clear" type="button">Reset view</button>
+<div id="at-editor-focus" class="at-editor-focus" role="group" aria-labelledby="at-editor-focus-label" style="display:none">
+<span id="at-editor-focus-label">Dispersion</span>
+<div class="at-editor-focus-choices">
+<button id="at-editor-focus-wide" class="at-window-clear" type="button" aria-pressed="false">Wide</button>
+<button id="at-editor-focus-medium" class="at-window-clear" type="button" aria-pressed="true">Medium</button>
+<button id="at-editor-focus-tight" class="at-window-clear" type="button" aria-pressed="false">Tight</button>
+</div>
+<button id="at-editor-focus-demo" class="at-window-clear" type="button">Animate aiming</button>
+</div>
+</aside>
+<p id="at-editor-scene-status" class="at-editor-scene-status" role="status" aria-live="polite"></p>
+<header class="at-editor-header"><h2 id="at-editor-title">Placement preview</h2><p id="at-editor-help">Drag the handle, then save the position.</p><p id="at-editor-preview-status" class="at-editor-preview-status" role="status" aria-live="polite"></p><div class="at-editor-profiles" role="group" aria-labelledby="at-editor-profile-label"><span id="at-editor-profile-label">Original reticle</span>
+<div id="at-preview-filters" class="at-preview-filters" style="display:none">
+<button id="at-preview-mechanics" class="at-window-clear" type="button" aria-pressed="true" aria-controls="at-editor-choices">Mechanics</button>
+<button id="at-preview-vehicles" class="at-window-clear" type="button" aria-pressed="false" aria-controls="at-editor-choices">Tier XI vehicles</button>
+</div>
+<div id="at-editor-list-wrap" class="at-editor-list-wrap"><div id="at-editor-choices" class="at-editor-choices"></div><div id="at-editor-scrollbar" class="at-editor-scrollbar" role="scrollbar" tabindex="0" aria-orientation="vertical" aria-controls="at-editor-choices" style="display:none"><span id="at-editor-scrollbar-thumb"></span></div></div>
+<p id="at-preview-note" class="at-preview-note" aria-live="polite" style="display:none"></p>
+</div></header>
+<footer class="at-editor-actions"><button id="at-editor-reset" class="at-window-clear" type="button">Default position</button><div><button id="at-editor-cancel" class="at-window-clear" type="button">Cancel</button><button id="at-editor-save" class="at-window-clear at-primary" type="button">Save position</button></div></footer>
+</section>
+<script src="preview_scenes.js"></script><script src="settings.js"></script></body></html>

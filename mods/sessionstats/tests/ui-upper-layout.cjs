@@ -23,6 +23,7 @@ module.exports=async function ({browser,nativeHost,check}) {
   await boundedPageCases(cases,async testCase=>{
     const {width,scale,gameWidth,mode}=testCase;
     const gameHeight=scale===2 ? 2160 : 1300;
+    const expectedWidth=Math.max(625,width);
     const page=await nativeHost(browser,{
       initialViewport:{width:gameWidth,height:gameHeight},
       viewport:{width:gameWidth,height:gameHeight,scale},
@@ -56,6 +57,13 @@ module.exports=async function ({browser,nativeHost,check}) {
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },testCase);
       await page.locator('#ss-scope-manual').click();
+      // The fixture replaces the native window size. Wide filters are
+      // promoted after resize settles, which can take more than two frames.
+      await page.waitForFunction(({filterWidth,filterLayout})=>{
+        const controls=document.getElementById('ss-list-controls');
+        return controls.getAttribute('data-filter-width')===String(filterWidth) &&
+          controls.getAttribute('data-filter-layout')===filterLayout;
+      },{filterWidth:expectedWidth-38,filterLayout:mode==='wide'?'wide':'wrapped'},{timeout:3000});
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const audit=await page.evaluate(scale=>{
         const bounds=node=>{
@@ -107,7 +115,6 @@ module.exports=async function ({browser,nativeHost,check}) {
           wn8:document.querySelector('#ss-summary .ss-kpi-value.ss-wn8').textContent,
         };
       },scale);
-      const expectedWidth=Math.max(625,width);
       const caption=expectedWidth+' logical pixels at '+(scale*100)+'% in a '+gameWidth+'px game';
       check('Upper controls and summary stay within the floating window: '+caption,
         Math.abs(audit.root.width-expectedWidth)<=1 && audit.overflow.length===0);
@@ -133,7 +140,8 @@ module.exports=async function ({browser,nativeHost,check}) {
           audit.xpPickerCount===0 && audit.scopes.width<=261 && audit.scopes.right<=audit.filters[0].left &&
           Math.abs(audit.scopes.top-audit.filters[0].top)<=3 &&
           Math.abs(audit.filters[0].top-audit.filters[1].top)<=2);
-        check('Wide result count, pagination and sorting share a bounded row: '+caption,
+        check('Wide result count, pagination and sorting share a bounded row: '+caption+' '+
+          JSON.stringify({sections:audit.lower,triggers:audit.lowerTriggers}),
           audit.lower[1].width<=341 && audit.lower[2].width<=425 &&
           audit.lower[0].right<=audit.lower[1].left+1 && audit.lower[1].right<=audit.lower[2].left+1 &&
           Math.min(...audit.lower.map(box=>box.bottom))-Math.max(...audit.lower.map(box=>box.top))>5 &&

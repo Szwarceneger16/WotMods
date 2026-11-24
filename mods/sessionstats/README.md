@@ -1,10 +1,13 @@
 # Session Stats for World of Tanks
 
-Version 0.9.27 source: independent sessions, WN8, XP, finances including bonds,
+Version 0.9.38 source: independent sessions, WN8, XP, finances including bonds,
 vehicle/map/battle grouping, result health checks, local logging and configurable
-appearance. Full guide: [README_PL.txt](README_PL.txt); history: [ZMIANY.txt](ZMIANY.txt).
-These legacy filenames are retained for existing package and documentation links;
-their contents are English.
+appearance. See the [user guide](USER_GUIDE.txt) and [changelog](CHANGELOG.md).
+
+In battle, a background writer immediately saves the captured battle start
+and incoming results. The regular history, indexes, and garage views catch up
+when the player returns to the garage. On restart, the mod replays records
+whose background write finished before the process stopped.
 The account tabs are **Since launch** and **Timeline**. Timeline opens on the full
 history. Use **Create time point** in the title bar, then pick **From** and **To**
 to filter by battle start time. Either selector also accepts **Custom date**:
@@ -71,14 +74,14 @@ mean of individual-battle WN8 in the table. The card information button explains
 this distinction in a short group-information tooltip. **All** sorts aggregate XP, received credit income or credit costs by the sum of
 known values. Credit income and net sorting separately offer Base (before bonuses)
 and Received (settled income). Base totals and Base **All** sorting stay unavailable
-until every recorded battle in the group has the corresponding Base value;
-historical missing Base values remain unknown. Base Min/Average/Max still use the
+until every received report in the group has the corresponding Base value.
+Historical missing Base values remain unknown. Base Min/Average/Max still use the
 known sample, marked with the native alert triangle when the received reports
 themselves lack the selected field. Base-credit Min/Max source actions stay
 disabled while their Base coverage is incomplete for the selected period and
-group. Selecting a fully covered period enables those actions. Pending reports alone use the existing
-received/recorded counters. Range and card warnings use the same rule; coverage
-help remains available for pending-only samples. One known
+group. Selecting a fully covered period enables those actions. Pending reports use the existing
+received/recorded counters and leave the received Base totals and actions available.
+Range and card warnings use the same received coverage rule. One known
 battle therefore has equal Min/Average/Max. Both net variants subtract actual
 battle costs. All is not offered for
 WN8, win rate or individual battles. Credit sums mark the existing finance total;
@@ -362,6 +365,8 @@ map cards. The selected battle keeps a visible orange frame across snapshot
 refreshes in the same period. Active net-credit sorting displays the exact
 per-battle Min/Average/Max value beside the vehicle metadata; the finance table
 still reports period totals.
+The active sort value has a blue outline. When you return from a battle, the
+action that opened it receives an amber outline.
 
 ### Continuous result pages
 
@@ -373,9 +378,13 @@ loading boundary; failed requests offer Retry. Previous/Next scroll to an alread
 loaded page or fetch the adjacent page. The native double-chevron button returns
 to the full summary and page one of the selected result order, fetching it when
 navigation initially opened a later page.
-The grouping and sorting bar pins inside the scroll viewport. Filter changes
-retain the current pixel offset, rebuilding the loaded window atomically for
-a new ordering or index revision. New account histories start at the top.
+The grouping and sorting bar pins inside the scroll viewport. Changing the
+sort returns to page one. Refreshing the current order preserves the visible
+position where possible. The panel keeps up to three neighboring result pages
+in the layout and can fetch earlier pages again when needed. New account
+histories start at the top.
+The sort controls use a shorter strip when the selected metric has no
+statistic choice. Overall row placement follows the available panel width.
 
 Map and vehicle history pagers update up to ten rows in place, including cards
 on an earlier loaded global page. The main scroll area shows all rows on the

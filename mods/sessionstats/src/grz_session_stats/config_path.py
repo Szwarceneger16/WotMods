@@ -15,6 +15,7 @@ import re
 import sys
 
 from . import VERSION
+from .storage import logical_data_path, native_data_path
 
 LOG = logging.getLogger('grz.sessionstats')
 CONFIG_FILENAME = 'grz.sessionstats.json'
@@ -60,8 +61,8 @@ def _physical_xml(value):
     found = {}
     for path in _path_variants(value):
         if (os.path.isabs(path) and os.path.basename(path).lower() == 'paths.xml'
-                and os.path.isfile(path)):
-            path = os.path.abspath(path)
+                and os.path.isfile(native_data_path(path))):
+            path = logical_data_path(os.path.abspath(path))
             # Distinct XML locations can resolve the same relative root
             # differently, even when the XML files themselves are links.
             found[os.path.normcase(path)] = path
@@ -72,7 +73,7 @@ def _physical_xml(value):
 
 def _package_roots(xml_path):
     try:
-        with io.open(xml_path, 'rb') as handle:
+        with io.open(native_data_path(xml_path), 'rb') as handle:
             raw = handle.read(MAX_XML_BYTES + 1)
     except (IOError, OSError):
         raise _LocationError('xml_read_failed')
@@ -118,7 +119,7 @@ def _package_roots(xml_path):
         if len(section) or not value or len(value) > MAX_PATH_CHARS or '\x00' in value:
             raise _LocationError('invalid_package_root')
         # XML paths are relative to the XML's directory, not Python's cwd.
-        directory = os.path.abspath(os.path.join(base, value))
+        directory = logical_data_path(os.path.abspath(os.path.join(base, value)))
         key = os.path.normcase(directory)
         previous = roots.get(key)
         roots[key] = (directory, mode == 'recursive' or bool(previous and previous[1]))
@@ -131,15 +132,16 @@ def _find_package(xml_path, package_names, budget):
     packages = {}
     wanted = set(os.path.normcase(name) for name in package_names)
     for root, recursive in _package_roots(xml_path):
-        if os.path.islink(root):
+        native_root = native_data_path(root)
+        if os.path.islink(native_root):
             continue
-        if not os.path.isdir(root):
+        if not os.path.isdir(native_root):
             continue
         stack = [(root, 0)]
         while stack:
             directory, depth = stack.pop()
             try:
-                names = os.listdir(directory)
+                names = os.listdir(native_data_path(directory))
             except (IOError, OSError):
                 raise _LocationError('package_directory_unreadable')
             budget[0] += len(names)
@@ -147,15 +149,16 @@ def _find_package(xml_path, package_names, budget):
                 raise _LocationError('package_scan_limit')
             for name in names:
                 path = os.path.join(directory, name)
+                native_path = native_data_path(path)
                 # Neither a directory link nor a package link establishes a
                 # unique neighbouring config, so do not follow either one.
-                if os.path.islink(path):
+                if os.path.islink(native_path):
                     continue
-                if os.path.normcase(name) in wanted and os.path.isfile(path):
+                if os.path.normcase(name) in wanted and os.path.isfile(native_path):
                     packages[os.path.normcase(os.path.abspath(path))] = path
                     if len(packages) > 1:
                         raise _LocationError('multiple_active_packages')
-                if recursive and os.path.isdir(path):
+                if recursive and os.path.isdir(native_path):
                     if depth >= MAX_SCAN_DEPTH:
                         raise _LocationError('package_depth_limit')
                     stack.append((path, depth + 1))
@@ -180,7 +183,7 @@ def _fallback_files(resmgr, cwd):
     directories.extend(_path_variants(cwd))
     files = {}
     for directory in directories:
-        directory = os.path.abspath(directory)
+        directory = logical_data_path(os.path.abspath(directory))
         for base in (directory, os.path.dirname(directory)):
             candidate = _physical_xml(os.path.join(base, 'paths.xml'))
             if candidate:
@@ -269,7 +272,7 @@ def prepare_config_path(package_name=None, resmgr=None, cwd=None):
 
 
 def find_installation_root(resmgr=None, cwd=None):
-    """Identify the physical game root, independently of mod/client versions."""
+    """Identify the game root, retaining its observed Windows spelling."""
     try:
         if resmgr is None:
             try:
@@ -287,12 +290,21 @@ def find_installation_root(resmgr=None, cwd=None):
             path = _physical_xml(resolved)
             if path is not None:
                 _package_roots(path)
-                return os.path.realpath(os.path.dirname(path))
+                return _real_installation_root(path)
         candidates = _fallback_files(resmgr, cwd)
         if len(candidates) == 1:
             _package_roots(candidates[0])
-            return os.path.realpath(os.path.dirname(candidates[0]))
+            return _real_installation_root(candidates[0])
     except Exception:
         pass
     # Never use one global fallback that could merge distinct installations.
     return None
+
+
+def _real_installation_root(xml_path):
+    directory = os.path.dirname(xml_path)
+    if sys.platform == 'win32':
+        # InstallationSession resolves the physical directory and checks this
+        # spelling for history created before junctions were resolved.
+        return logical_data_path(os.path.abspath(directory))
+    return os.path.realpath(directory)

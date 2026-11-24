@@ -313,8 +313,14 @@ def inspect_result(results, context=None, random_bonus_type=1):
                   'one personal vehicle or an unambiguous captured descriptor', 'missing or ambiguous vehicle mapping')
     else:
         for name in ('damageDealt', 'kills', 'spotted', 'droppedCapturePoints',
-                     'originalXP', 'xp', 'freeXP', 'crystal', 'gold', 'autoRepairCost'):
+                     'originalXP', 'xp', 'freeXP', 'gold', 'autoRepairCost'):
             check.number(vehicle, name, 'personal.vehicle', integer=True)
+        # The result can supply the vehicle's total or the base and event amounts.
+        if _number(vehicle.get('crystal')) is None and 'originalCrystal' in vehicle and 'eventCrystal' in vehicle:
+            check.number(vehicle, 'originalCrystal', 'personal.vehicle', integer=True)
+            check.number(vehicle, 'eventCrystal', 'personal.vehicle', integer=True)
+        else:
+            check.number(vehicle, 'crystal', 'personal.vehicle', integer=True)
         check.number(vehicle, 'credits', 'personal.vehicle', signed=True, integer=True)
         for name, factor in (('originalCreditsToDraw', 'appliedPremiumCreditsFactor100'),
                              ('originalCreditsToDrawSquad', 'premSquadCreditsFactor100')):

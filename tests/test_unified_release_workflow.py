@@ -14,6 +14,17 @@ STATS_CI = (ROOT / '.github/workflows/sessionstats-ci.yml').read_text()
 RULESET = (ROOT / 'scripts/release_ruleset.py').read_text()
 
 
+def starts_release_on_push(path):
+    scope = WORKFLOW.split('  push:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
+    triggers = re.findall(r"(?m)^      - '([^']+)'$", scope)
+    included = False
+    for trigger in triggers:
+        excluded = trigger.startswith('!')
+        if fnmatch.fnmatchcase(path, trigger[1:] if excluded else trigger):
+            included = not excluded
+    return included
+
+
 def job(name):
     match = re.search(r'(?ms)^  ' + re.escape(name) +
                       r':\n(.*?)(?=^  [a-z0-9_-]+:\n|\Z)', WORKFLOW)
@@ -138,17 +149,13 @@ class SinglePublisherTests(unittest.TestCase):
 
     def test_main_push_filter_covers_each_registered_build_input(self):
         definition = json.loads((ROOT / 'scripts/release_modules.json').read_text())
-        scope = WORKFLOW.split('  push:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
-        triggers = re.findall(r"(?m)^      - '([^']+)'$", scope)
         patterns = definition['shared_build_paths'] + [
             pattern for module in definition['modules'] for pattern in module['source_paths']]
         for pattern in patterns:
             with self.subTest(pattern=pattern):
-                self.assertTrue(any(fnmatch.fnmatchcase(pattern, trigger) for trigger in triggers))
+                self.assertTrue(starts_release_on_push(pattern))
 
     def test_non_build_maintenance_does_not_start_release_runners(self):
-        scope = WORKFLOW.split('  push:\n', 1)[1].split('  workflow_dispatch:', 1)[0]
-        triggers = re.findall(r"(?m)^      - '([^']+)'$", scope)
         for path in ('.github/workflows/wotmods-release.yml',
                      '.github/workflows/release.yml',
                      '.github/workflows/sessionstats-release.yml',
@@ -157,11 +164,12 @@ class SinglePublisherTests(unittest.TestCase):
                      'scripts/release_coordinator.py',
                      'scripts/release_ruleset.py',
                      'scripts/wot_dispatch.py',
+                     'mods/staysharp/tests/test_packaging.py',
+                     'mods/staysharp/README.md',
                      'docs/BUILD_RELEASE.md',
                      'docs/RELEASE_AGENT_GUIDE.md'):
             with self.subTest(path=path):
-                self.assertFalse(any(fnmatch.fnmatchcase(path, trigger)
-                                     for trigger in triggers))
+                self.assertFalse(starts_release_on_push(path))
 
     def test_legacy_publishers_mutex_shared_across_entire_transaction(self):
         before_jobs = WORKFLOW.split('\njobs:', 1)[0]
@@ -194,12 +202,13 @@ class SinglePublisherTests(unittest.TestCase):
 
     def test_module_builder_does_not_cross_build_other_module(self):
         medkit, stats = BUILDER.split('  sessionstats)', 1)
-        self.assertIn('source/build_wotmod.py', medkit)
+        self.assertIn('mods/staysharp/tools/build_wotmod.py', medkit)
+        self.assertIn('discover -s mods/staysharp/tests', medkit)
         self.assertNotIn('scripts/sessionstats/validate.sh', medkit)
         self.assertIn('scripts/sessionstats/validate.sh', stats)
         self.assertIn('export PYTHON27=', stats)
         self.assertLess(stats.index('export PYTHON27='), stats.index('bash scripts/sessionstats/validate.sh'))
-        self.assertNotIn('source/build_wotmod.py', stats)
+        self.assertNotIn('mods/staysharp/tools/build_wotmod.py', stats)
         self.assertIn('scripts/privacy_audit.py --scan-dist', medkit)
         self.assertIn('scripts/sessionstats/release.py --verify-directory', stats)
 

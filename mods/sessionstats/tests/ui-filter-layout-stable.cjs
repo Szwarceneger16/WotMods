@@ -67,14 +67,14 @@ module.exports=async({browser,nativeHost,check})=>{
       let geometry=await settled(page,'wide');
       check('A comfortably fitting filter row reaches one coherent wide layout'+label,
         geometry.wide&&!geometry.wrapped&&geometry.toggle&&geometry.width>900);
-      await resize(page,920);geometry=await settled(page,'wrapped');
+      await resize(page,912);geometry=await settled(page,'wrapped');
       check('A smaller panel falls back promptly without retaining the toggle'+label,
         geometry.wrapped&&!geometry.wide&&!geometry.toggle);
 
       // A fixed near-boundary width must not change mode when Statistic hides,
       // groups change, or repeated resize events cause another layout pass.
-      for(const width of [920,960]){
-        await resize(page,width);const expected=width===920?'wrapped':'wide';await settled(page,expected);
+      for(const width of [912,914]){
+        await resize(page,width);const expected=width===912?'wrapped':'wide';await settled(page,expected);
         await page.evaluate(()=>{__filterStableTrace.classes=[];__filterStableTrace.modes=[];});
         for(const group of ['vehicles','maps','tiers','battles'])for(const metric of group==='battles'?['off','xp_received']:['off','xp_received','win_rate']){
           await page.evaluate(({group,metric})=>{
@@ -92,13 +92,13 @@ module.exports=async({browser,nativeHost,check})=>{
           trace.classes.length===0&&trace.modes.length===0);
       }
 
-      await page.locator('#ss-group-vehicles').click();await resize(page,920);await settled(page,'wrapped');
+      await page.locator('#ss-group-vehicles').click();await resize(page,912);await settled(page,'wrapped');
       await page.evaluate(()=>{
         const scroll=document.getElementById('ss-scroll');scroll.scrollTop=300;
         window.__filterStableCards=Array.from(document.querySelectorAll('#ss-groups .ss-group'));
         __filterStableTrace.classes=[];__filterStableTrace.modes=[];
       });await frames(page);
-      await page.evaluate(()=>__filterStableResize([960,920,960,920,960,920]));await settled(page,'wrapped');
+      await page.evaluate(()=>__filterStableResize([914,912,914,912,914,912]));await settled(page,'wrapped');
       const retained=await page.evaluate(()=>({
         sameCards:__filterStableCards.length===document.querySelectorAll('#ss-groups .ss-group').length&&
           __filterStableCards.every(node=>node.isConnected&&document.getElementById(node.id)===node),
@@ -137,7 +137,7 @@ module.exports=async({browser,nativeHost,check})=>{
       const promoted=await deferred.evaluate(()=>__deferredFilterModes);
       check('An ordinary upward resize settles once without seconds of retrying'+label+': '+JSON.stringify(promoted),
         geometry.wide&&promoted.length===1&&promoted[0].before==='wrapped'&&promoted[0].after==='wide');
-      await deferred.evaluate(()=>__externalFilterWidth(920));await settled(deferred,'wrapped');
+      await deferred.evaluate(()=>__externalFilterWidth(912));await settled(deferred,'wrapped');
       const pending=await deferred.evaluate(async scale=>{
         __externalFilterWidth(1100);
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

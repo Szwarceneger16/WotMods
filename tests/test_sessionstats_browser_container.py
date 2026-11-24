@@ -1,6 +1,7 @@
 """Exercise the isolated browser bootstrap without Docker or network access."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -105,7 +106,7 @@ class BrowserContainerTests(unittest.TestCase):
         self.assertFalse(any(value.startswith(('GITHUB_TOKEN=', 'GH_TOKEN=', 'PYTHONPATH='))
                              for value in environment))
 
-    def invoke(self, *, prepare=False, failure=None):
+    def invoke(self, *, prepare=False, failure=None, **options):
         calls = []
 
         def execute(command, **kwargs):
@@ -122,7 +123,7 @@ class BrowserContainerTests(unittest.TestCase):
                 patch.object(qa, 'python_runtime', return_value=self.runtime), \
                 patch.object(qa.subprocess, 'run', side_effect=execute):
             try:
-                qa.run(prepare=prepare)
+                qa.run(prepare=prepare, **options)
             except Exception as error:
                 return calls, error
         return calls, None
@@ -151,6 +152,133 @@ class BrowserContainerTests(unittest.TestCase):
         calls, error = self.invoke(failure=lambda command: command[:2] == ['docker', 'pull'])
         self.assertIsInstance(error, (subprocess.CalledProcessError, RuntimeError))
         self.assertFalse(any(command[:2] == ['docker', 'run'] for command, _ in calls))
+
+    def test_build_uses_only_the_short_suite_with_no_private_inputs_or_network(self):
+        with patch.dict(qa.os.environ, {'SESSIONSTATS_PYTHON': '/private/python',
+                                        'GRZ_CHROME': '/private/browser'}):
+            calls, error = self.invoke(e2e='build')
+        self.assertIsNone(error)
+        commands = [command for command, _ in calls if command[:2] == ['docker', 'run']]
+        self.assertEqual(len(commands), 3)
+        self.assertNotIn('--network', commands[0])  # The exact npm dependency is installed first.
+        command = commands[-1]
+        self.assertEqual(command[command.index('--network') + 1], 'none')
+        self.assertIn('GITHUB_ACTIONS=true', command)
+        self.assertNotIn('--profile', command)
+        self.assertNotIn('--game-client', command)
+        self.assertNotIn('/private/', ' '.join(command))
+        self.assertEqual(command[command.index('--suite') + 1], 'build')
+        self.assertEqual(command[command.index('--capture') + 1], 'failures')
+        self.assertNotIn(qa.test_script(), command)
+
+    def test_requested_matrix_runs_produce_mergeable_report_parts(self):
+        for profile, suite, shard, capture in (
+                ('smoke', 'build', None, 'all'),
+                ('full', 'full', '2/16', 'final'),
+                ('exhaustive', 'full', '37/64', 'final')):
+            with self.subTest(profile=profile):
+                report = self.workspace / 'report'
+                with patch.object(qa, 'ROOT', self.workspace):
+                    calls, error = self.invoke(e2e=profile, report_dir=report, shard=shard)
+                self.assertIsNone(error)
+                command = next(command for command, _ in calls if '--suite' in command)
+                self.assertEqual(command[command.index('--suite') + 1], suite)
+                self.assertEqual(command[command.index('--capture') + 1], capture)
+                self.assertEqual(command[command.index('--shard') + 1], shard or '1/1')
+                self.assertEqual(Path(command[command.index('--out') + 1]), report.resolve())
+                self.assertEqual('--all-ranges' in command, profile == 'exhaustive')
+                self.assertEqual('--image-format' in command, profile != 'smoke')
+                if profile != 'smoke':
+                    self.assertEqual(command[command.index('--jpeg-quality') + 1], '48')
+
+    def test_merge_uses_checked_out_version_and_same_render_policy_as_the_plan(self):
+        version = self.workspace/'mods/sessionstats/VERSION'
+        version.parent.mkdir(parents=True)
+        version.write_text('9.8.7\n', encoding='ascii')
+        for profile, count in (('smoke', 1), ('full', 16), ('exhaustive', 64)):
+            with self.subTest(profile=profile), patch.object(qa, 'ROOT', self.workspace):
+                report = self.workspace/'report'
+                parts = [str(self.workspace/'artifact with spaces')]
+                sha = 'a' * 40
+                render = qa.e2e_command(profile, report, None, target_sha=sha)
+                merge = qa.merge_report_command(profile, report, count, parts, target_sha=sha)
+                self.assertEqual(merge[merge.index('--expected-version') + 1], '9.8.7')
+                self.assertEqual(merge[merge.index('--expected-shards') + 1], str(count))
+                self.assertEqual(merge[merge.index('--coverage') + 1], profile)
+                self.assertEqual(render[render.index('--commit') + 1], sha)
+                self.assertEqual(merge[merge.index('--expected-commit') + 1], sha)
+                for key in ('suite', 'capture'):
+                    self.assertEqual(merge[merge.index('--expected-' + key) + 1],
+                                     render[render.index('--' + key) + 1])
+                self.assertEqual(merge[-2:], ['--', *parts])
+
+    def test_matrix_rejects_a_checkout_that_differs_from_the_planned_commit(self):
+        sha = 'a' * 40
+        with patch.object(qa.subprocess, 'check_output', return_value=sha + '\n'):
+            qa.verify_target_checkout(sha)
+            with self.assertRaisesRegex(RuntimeError, 'does not match the planned matrix commit'):
+                qa.verify_target_checkout('b' * 40)
+
+    def test_only_legacy_comment_runs_pick_up_the_checked_out_commit_implicitly(self):
+        sha = 'a' * 40
+        unrelated = 'b' * 40
+        with patch.dict(qa.os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'issue_comment',
+                                       'GITHUB_SHA': unrelated}):
+            with patch.object(qa.subprocess, 'check_output', return_value=sha + '\n') as git:
+                self.assertIsNone(qa.target_commit(None, render_matrix=False))
+                git.assert_not_called()
+                self.assertEqual(qa.target_commit(None, render_matrix=True), sha)
+                self.assertEqual(git.call_args.args[0], ['git', 'rev-parse', '--verify', 'HEAD'])
+        with patch.dict(qa.os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_EVENT_NAME': 'pull_request'}):
+            with patch.object(qa.subprocess, 'check_output') as git:
+                self.assertIsNone(qa.target_commit(None, render_matrix=True))
+                git.assert_not_called()
+
+    def test_merge_command_preserves_trusted_outcomes_separately_from_artifact_inputs(self):
+        upstream = {'render': 'success', 'contracts': 'failure', 'download': 'success'}
+        command = qa.merge_report_command('full', 'html', 2, ['--arbitrary-directory'], upstream=upstream)
+        for name, result in upstream.items():
+            self.assertEqual(command[command.index('--' + name + '-result') + 1], result)
+        self.assertEqual(command[-2:], ['--', '--arbitrary-directory'])
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is required for the real merge CLI')
+    def test_comment_smoke_wrapper_accepts_its_planned_skip_but_propagates_a_real_failure(self):
+        shard = self.directory / 'shard'
+        key = '625x730/en/history/vehicles/xp_received-sum-desc-newest'
+        case = shard / key
+        case.mkdir(parents=True)
+        fixture = ROOT / 'scripts/sessionstats/local-e2e/fixtures/viewport-645x750.jpg'
+        shots = []
+        for position in range(4):
+            filename = '{}.jpg'.format(position)
+            shutil.copyfile(fixture, case / filename)
+            shots.append({'image': key + '/' + filename})
+        (shard / 'run.json').write_text(json.dumps({
+            'engine': 'chromium', 'fixture': 'synthetic', 'assets': 'test-art',
+            'version': (ROOT / 'mods/sessionstats/VERSION').read_text().strip(),
+            'suite': 'build', 'capture': 'all', 'shard': '1/1', 'finished': True,
+            'planned': 1, 'completed': 1, 'failed': 0, 'interactions': 0,
+            'interactionErrors': 0, 'visualFailures': 0, 'missingBaselines': 0,
+        }), encoding='utf-8')
+        (shard / 'results.ndjson').write_text(
+            json.dumps({'key': key, 'shots': shots}) + '\n', encoding='utf-8')
+        for result, expected, verdict in (('skipped', 0, 'Run passed'), ('failure', 1, 'Run failed')):
+            with self.subTest(result=result):
+                output = self.directory / ('report-' + result)
+                command = [sys.executable, '-I', str(ROOT / 'scripts/sessionstats/browser_qa.py'),
+                           '--merge-report', 'smoke', '--expected-shards', '1',
+                           '--report-dir', str(output), '--render-result', 'success',
+                           '--contracts-result', result, '--download-result', 'success', '--', str(shard)]
+                completed = subprocess.run(command, capture_output=True, text=True, timeout=30, cwd=ROOT)
+                self.assertEqual(completed.returncode, expected, completed.stderr)
+                self.assertIn(verdict, (output / 'index.html').read_text(encoding='utf-8'))
+                self.assertTrue((output / key / '3.jpg').is_file())
+
+    def test_ci_report_cannot_target_a_private_path_outside_the_workspace(self):
+        with patch.object(qa, 'ROOT', self.workspace):
+            calls, error = self.invoke(e2e='full', report_dir=self.directory / 'private')
+        self.assertIsInstance(error, RuntimeError)
+        self.assertEqual(calls, [])
 
     def test_every_container_is_removed_by_its_owned_name_even_after_timeout(self):
         calls, error = self.invoke(failure=lambda command:
@@ -224,6 +352,54 @@ class BrowserContainerTests(unittest.TestCase):
                 patch.object(qa.subprocess, 'run', return_value=answer):
             with self.assertRaises(RuntimeError):
                 qa.python_runtime()
+
+
+class WindowsBrowserSmokeTests(unittest.TestCase):
+    def test_native_windows_build_uses_pinned_tools_and_synthetic_cases(self):
+        with tempfile.TemporaryDirectory() as runner_temp:
+            report = ROOT / 'sessionstats-browser-report'
+            sha = 'a' * 40
+            environment = {'RUNNER_TEMP': runner_temp, 'SystemRoot': 'example-windows-root',
+                           'GITHUB_TOKEN': 'synthetic-sensitive', 'GITHUB_ENV': 'synthetic-workflow-command',
+                           'NODE_PATH': 'synthetic-user-module', 'PYTHONPATH': 'synthetic-user-module'}
+            commands = []
+
+            def execute(command, timeout, **options):
+                commands.append((command, timeout, options))
+
+            paths = {'npm.cmd': 'example-npm.cmd', 'node.exe': 'example-node.exe'}
+            with patch.dict(os.environ, environment, clear=True), patch.object(qa.sys, 'platform', 'win32'), \
+                    patch.object(qa.shutil, 'which', side_effect=paths.get), patch.object(qa, 'execute', execute):
+                qa.run(e2e='build', report_dir=report, target_sha=sha)
+
+            self.assertEqual(len(commands), 4)
+            self.assertEqual(commands[0][0][:6], [sys.executable, '-I', '-m', 'pip', '--isolated', 'install'])
+            self.assertEqual(commands[0][0][-2:], ['-r', str(ROOT/'scripts/sessionstats/local-e2e/requirements.txt')])
+            self.assertEqual(commands[1][0][0], paths['npm.cmd'])
+            self.assertIn('--ignore-scripts', commands[1][0])
+            self.assertEqual(commands[1][0][-2:], ['--save-exact', 'playwright@' + qa.PLAYWRIGHT_VERSION])
+            self.assertEqual(commands[2][0][-3:], ['install', '--only-shell', 'chromium'])
+            self.assertEqual(commands[3][0], qa.e2e_command('build', report.resolve(), None, sha, python=sys.executable))
+            self.assertNotIn('--profile', commands[3][0])
+            self.assertNotIn('--game-client', commands[3][0])
+            for command, _, options in commands:
+                self.assertNotEqual(command[0], 'docker')
+                self.assertEqual(options['cwd'], ROOT)
+                child_env = options['env']
+                self.assertEqual(child_env['GITHUB_ACTIONS'], 'true')
+                self.assertEqual(next(value for key, value in child_env.items() if key.lower() == 'systemroot'),
+                                 environment['SystemRoot'])
+                self.assertNotIn('GITHUB_TOKEN', child_env)
+                self.assertNotIn('GITHUB_ENV', child_env)
+                for key in ('NODE_PATH', 'PYTHONPATH', 'PLAYWRIGHT_BROWSERS_PATH'):
+                    self.assertIn(Path(runner_temp).resolve(), Path(child_env[key]).parents)
+            self.assertEqual(list(Path(runner_temp).iterdir()), [])
+
+    def test_native_windows_reports_missing_node_or_npm(self):
+        with patch.object(qa.shutil, 'which', return_value=None), patch.object(qa, 'execute') as execute:
+            with self.assertRaisesRegex(RuntimeError, 'requires Node.js 22 or later with npm'):
+                qa.windows_smoke(None, None)
+            execute.assert_not_called()
 
 
 @unittest.skipUnless(shutil.which('node'), 'Node is required for the synthetic suite-runner probe')

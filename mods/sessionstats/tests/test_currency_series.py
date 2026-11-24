@@ -39,7 +39,13 @@ class CurrencySeriesTests(unittest.TestCase):
         self.assertEqual(series['gold']['costs'],
                          {'min': 0, 'avg': 1.0, 'max': 2, 'sum': 2, 'count': 2})
         self.assertEqual(series['credits']['income_base']['sum'], 320)
-        self.assertIsNone(summary['currencies']['credits']['income_base'])
+        credits = summary['currencies']['credits']
+        self.assertEqual(summary['observed_battles'], 3)
+        self.assertEqual(summary['battles'], 2)
+        self.assertEqual(credits['income_base'], 320)
+        self.assertEqual(credits['net_base'], 240)
+        self.assertTrue(credits['income_base_complete'])
+        self.assertTrue(credits['net_base_complete'])
         series['credits']['income']['count'] = -1
         self.assertEqual(summary['credits_income_received']['count'], 2)
 

@@ -65,8 +65,10 @@ function inspectNativeCredits({scale,legacy=false}){
         credits=input&&input.stats.currencies.credits,total=input&&input.stats.observed_battles;
       if(!credits)failures.push('missing-credit-input-owner');
       for(const action of pair.querySelectorAll('.ss-metric-battle-link')){
-        const cell=action.closest('.ss-money-value');
-        if(!visible(action)||!inside(rect(action),rect(cell))||!inside(rect(action),table))failures.push('credit-source-outside');
+        const cell=action.closest('.ss-money-value'),button=rect(action),row=rect(action.parentElement);
+        if(!visible(action)||!inside(button,rect(cell))||!inside(button,table))failures.push('credit-source-outside');
+        if(Math.min(button.top-row.top,row.bottom-button.bottom,button.left-row.left,row.right-button.right)<1.5)
+          failures.push('credit-action-divider-spacing');
         const metric=action.getAttribute('data-ss-source-metric'),field=metric==='credits_income_base'?'income_base':metric==='credits_net_base'?'net_base':null,
           incompleteBase=credits&&field&&(!(credits[field+'_count']>0)||credits[field+'_count']!==total||!Number.isFinite(credits[field])),
           id=action.getAttribute('data-battle-id');
@@ -190,6 +192,11 @@ module.exports=async({browser,nativeHost,check})=>{
       check('The native guard reproduces and rejects the old stale-width credit overflow '+scale+'x: '+JSON.stringify(obsolete),obsolete.cards[0].failures.some(value=>value.includes('outside')||value.includes('text:')));
       await publish('pl','vehicles','combined');
       check('Rebuilding with the assigned native finance budget restores all columns '+scale+'x',intact(await page.evaluate(inspectNativeCredits,{scale})));
+      const flushActions=await page.addStyleTag({content:'.ss-credit-extreme-actions { padding:0 !important; min-height:18rem !important; }'});
+      const flush=await page.evaluate(inspectNativeCredits,{scale});
+      check('The credit geometry guard rejects Min/Max buttons pasted against divider space '+scale+'x',
+        flush.cards.some(card=>card.failures.includes('credit-action-divider-spacing')));
+      await flushActions.evaluate(node=>node.remove());
     }finally{await page.close();}
   }
 };

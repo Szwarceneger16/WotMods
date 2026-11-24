@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "scenes": {
+    "arty_trajectory": {
+      "frames": [
+        {"step": 2, "src": "scenes/arty_trajectory_2.png", "frame_size": [1920, 1080], "calibrated": false,
+         "vehicle": {"name": "ST-II", "anchor": [849, 413]}}
+      ]
+    }
+  }
+}

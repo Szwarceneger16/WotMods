@@ -9,10 +9,11 @@ import shutil
 import tempfile
 import unittest
 
+from test_config_path import changed
 from test_core import Clock, EXPECTED, result
 from grz_session_stats.core import StatsService, aggregate_stats
 from grz_session_stats import loading, storage, intake, runtime
-from test_runtime import FakeAPI, FakeWindow
+from test_runtime import FakeAPI, FakeWindow, wait_for_combat_capture
 from test_normalize import raw_result, START, ARENA_ID
 
 
@@ -195,14 +196,70 @@ class StagedLoadingTests(unittest.TestCase):
         while service.loading_phase != 'storage' and service.loading:
             service.advance_loading(max_steps=1)
         self.assertTrue(seeded.record_result(result('other-writer', started_at=110)))
-        while service.loading:
-            service.advance_loading()
-        self.assertFalse(service.ready)
-        self.assertTrue(service._intake.events)
-        restored = self.service('restart')
-        self.finish(restored)
-        self.assertIn('other-writer', restored._state['battles'])
-        self.assertIn('queued', restored._state['battles'])
+        self.finish(service)
+        self.assertIn('other-writer', service._state['battles'])
+        self.assertIn('queued', service._state['battles'])
+        self.assertFalse(service._intake.events)
+
+    def test_same_account_loaders_rebase_startup_appends_and_cleanup(self):
+        first = self.service('first')
+        self.clock.value = 120
+        second = self.service('second')
+        self.assertTrue(first.begin_battle('first-battle', started_at=110, mode='random'))
+        self.assertTrue(first.record_result(result('first-battle', started_at=110, xp_received=4321)))
+        self.assertTrue(second.begin_battle('second-battle', started_at=120, mode='random'))
+        self.assertTrue(second.record_result(result('second-battle', started_at=120, xp_received=7654)))
+        self.finish(first)
+        self.finish(second)
+        for service in (first, second):
+            self.assertFalse(service._intake.events)
+            self.assertEqual(service.snapshot()['scopes']['manual']['summary']['battles'], 2)
+            self.assertEqual(service.snapshot()['scopes']['launch']['summary']['battles'], 1)
+            rows = service._state['battles']
+            self.assertEqual((rows['first-battle']['_launch_id'], rows['first-battle']['xp_received']),
+                             ('first', 4321))
+            self.assertEqual((rows['second-battle']['_launch_id'], rows['second-battle']['xp_received']),
+                             ('second', 7654))
+
+    def test_deferred_startup_can_retry_an_intake_and_history_write_lock(self):
+        save = storage.GenerationStore.save
+        calls = []
+        locked = [True, True]
+
+        def save_with_peer(store, transaction):
+            receipt_store = store.directory.endswith('startup-intake')
+            index = 0 if receipt_store else 1
+            calls.append(index)
+            if locked[index]:
+                raise storage.StorageBusyError('injected peer write lock')
+            return save(store, transaction)
+
+        with changed(storage.GenerationStore, 'save', save_with_peer):
+            service = self.service()
+            clock = Clock(0)
+            service._loading_clock = clock
+            self.assertTrue(service.loading)
+            self.assertTrue(service.advance_loading(budget=1))
+            self.assertFalse(service.store.read_only)
+            self.assertTrue(service._intake_open_pending)
+            self.assertEqual(calls, [0, 0])
+            self.assertTrue(service.advance_loading(budget=1))
+            self.assertEqual(calls, [0, 0])  # No retries in a busy frame.
+
+            locked[0] = False
+            clock.value = 1
+            self.assertTrue(service.record_result(result('1', started_at=100)))
+            self.assertFalse(service._intake_open_pending)
+            self.assertEqual([event['kind'] for event in service._intake.events], ['open', 'result'])
+            self.assertTrue(service.advance_loading(budget=1))
+            self.assertEqual(calls[-1], 1)
+            self.assertFalse(service.store.read_only)
+
+            locked[1] = False
+            clock.value = 2
+            self.finish(service)
+        self.assertEqual(service.snapshot()['scopes']['manual']['summary']['battles'], 1)
+        self.assertFalse(service._intake.events)
 
     def test_cancelled_service_rejects_late_writes_and_restart_replays(self):
         self.seed()
@@ -360,6 +417,7 @@ class StagedRuntimeTests(unittest.TestCase):
         self.mod.start()
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         shutil.rmtree(self.directory)
 
@@ -382,16 +440,24 @@ class StagedRuntimeTests(unittest.TestCase):
 
     def test_battle_pauses_history_work_but_keeps_durable_capture(self):
         service = self.mod.active_service
+        stale_loading = self.api.callbacks[self.mod._load_id][1]
         self.api.battle = True
         self.api.context = {'arena_id': str(ARENA_ID), 'started_at': START, 'vehicle_id': 1, 'map_id': 'map'}
         self.clock.value = START + 10
         self.mod._on_avatar()
-        self.api.fire(self.mod._load_id)
+        stale_loading()
+        self.assertIsNone(self.mod._load_id)
         self.assertEqual(service.loading_phase, 'history')
         self.assertEqual(service._state['battles'], {})
-        self.assertTrue(any(event['kind'] == 'begin' for event in service._intake.events))
+        self.assertFalse(any(event['kind'] == 'begin' for event in service._intake.events))
+        wait_for_combat_capture(self.mod)
+        receipt, = self.mod._combat_intake.pending(self.mod.active_key)
+        self.assertEqual(receipt[1], 'begin')
+        self.assertEqual(receipt[2]['record']['arena_id'], str(ARENA_ID))
         self.api.battle = False
+        self.api.events.onAccountShowGUI()
         self.finish()
+        self.api.fire(self.mod._tick_id)
         self.assertIn(str(ARENA_ID), service._state['battles'])
 
     def test_account_switch_and_old_callback_keep_receipts_with_original_account(self):

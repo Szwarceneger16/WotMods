@@ -1,7 +1,10 @@
 """Release numbering and conservative privacy-audit regression tests."""
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,6 +42,16 @@ class ReleaseAndPrivacyTests(unittest.TestCase):
 
     def test_audit_own_source_does_not_trip_on_regex_definitions(self):
         self.assertEqual(audit.scan_root(), [])
+
+    def test_audit_checks_archives_in_staysharp_dist(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(audit, 'ROOT', Path(directory)):
+            dist = Path(directory) / 'mods/staysharp/dist'
+            dist.mkdir(parents=True)
+            with ZipFile(dist / 'test.wotmod', 'w') as archive:
+                archive.writestr('debug.log', 'test fixture')
+            self.assertEqual(audit.scan_dist(), [
+                ('test.wotmod:debug.log', ['forbidden_release_resource']),
+            ])
 
 
 if __name__ == '__main__':

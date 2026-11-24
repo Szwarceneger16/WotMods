@@ -104,6 +104,34 @@ class ConfigPathTests(unittest.TestCase):
         self.game(entries=[('./mods/2.5.0.0', 'recursive')])
         self.assertEqual(cp.find_installation_root(resources), os.path.realpath(base))
 
+    @unittest.skipUnless(os.name == 'nt', 'Requires Windows long-path filesystem operations')
+    def test_long_installation_resolves_packages_and_prepares_one_configuration(self):
+        from grz_session_stats.appearance import load_config
+        from grz_session_stats.sessions import installation_key
+
+        base = os.path.join(self.root, 'Ż' + 'x' * max(1, 245 - len(self.root) - 2), 'fixture-' + 'y' * 32)
+        native_base = cp.native_data_path(base)
+        xml = os.path.join(base, 'paths.xml')
+        expected = self.expected(base)
+        self.assertGreater(len(xml), 260)
+        try:
+            self.write(cp.native_data_path(xml),
+                       b'<root><Paths><Path mask="*.wotmod" mode="recursive">./mods/2.4.1.0</Path></Paths></root>')
+            self.write(cp.native_data_path(os.path.join(base, 'mods', '2.4.1.0', 'nested', self.package)),
+                       b'package fixture')
+            first_root = cp.find_installation_root(Resources(xml=xml), cwd=self.root)
+            self.assertEqual(first_root, cp.logical_data_path(os.path.realpath(native_base)))
+            alias = Resources(xml=os.path.join(native_base, 'paths.xml'))
+            self.assertEqual(cp.find_installation_root(alias, cwd=self.root), first_root)
+            self.assertEqual(installation_key(first_root), installation_key(native_base))
+            self.assertEqual(cp.find_config_path(resmgr=Resources(app=native_base), cwd=base), expected)
+            self.assertEqual(cp.prepare_config_path(resmgr=alias, cwd=self.root), expected)
+            self.assertTrue(os.path.isfile(cp.native_data_path(expected)))
+            self.assertEqual(load_config(expected)['language'], 'auto')
+        finally:
+            if os.path.isdir(native_base):
+                shutil.rmtree(native_base)
+
     def test_installation_root_does_not_merge_ambiguous_fallback_locations(self):
         first = self.game('game-a')
         second = self.game('game-b')
@@ -423,7 +451,7 @@ class ConfigPathTests(unittest.TestCase):
         original = os.listdir
 
         def denied(path):
-            if path == os.path.join(base, 'mods/2.4.1.0'):
+            if path == cp.native_data_path(os.path.join(base, 'mods', '2.4.1.0')):
                 raise OSError('private directory detail')
             return original(path)
 

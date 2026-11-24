@@ -50,6 +50,10 @@ module.exports=async({browser,nativeHost,check})=>{
         // A legacy selected reference must never create a second header action.
         item.sort_battle={...item.extrema_battles.xp_base.max,id:'obsolete-selected-winner'};
         item.battle_list={page:0,pages:3,total:30,page_size:10,items:[{id:'different-visible-history',name:'Other tank',map:'Other map',outcome:'win'}]};
+        if(options.twoVehicles&&grouping==='vehicles'){
+          const other=JSON.parse(JSON.stringify(item));other.id=String(item.id)+'-second';
+          scope.vehicles.push(other);scope.pagination.vehicles.total=2;
+        }
       }
       if(options.invalid){
         const item=scope[group][0];
@@ -113,14 +117,27 @@ module.exports=async({browser,nativeHost,check})=>{
     }
     for(const metric of financial)for(const statistic of ['min','avg','max','sum']){
       await publish('maps',metric,statistic);
-      const active=page.locator('#ss-groups .ss-credit-extreme-actions .ss-sort-active-value');
-      check('Financial '+metric+'/'+statistic+' highlights its action or All quantity without changing permanent links',
-        await active.count()===(statistic==='min'||statistic==='max'?1:0)&&
-        (statistic!=='min'&&statistic!=='max'||await active.getAttribute('data-ss-extreme')===statistic)&&
-        (statistic!=='min'&&statistic!=='max'||await active.getAttribute('data-ss-help').then(text=>
-          text.includes('Synthetic off-page map')&&text.includes('2026')))&&
+      const active=statistic==='sum'?page.locator('#ss-groups .ss-money-value[data-ss-metric="'+metric+'"] .ss-cell-value.ss-sort-active-value'):
+        page.locator('#ss-groups .ss-group-sort-host .ss-group-sort-value.ss-sort-active-value');
+      check('Financial '+metric+'/'+statistic+' paints just the sort result and retains its permanent links',
+        await active.count()===1&&await active.evaluate(node=>{
+          const card=node.closest('.ss-group'), border=card.querySelector('.ss-wn8-card-border')||card;
+          return getComputedStyle(node).boxShadow.includes(getComputedStyle(border).borderTopColor);
+        })&&
+        await page.locator('#ss-groups .ss-credit-extreme-actions .ss-sort-active-value').count()===0&&
         await page.locator('#ss-groups .ss-credit-extreme-actions .ss-metric-battle-link').count()===10);
     }
+    await publish('vehicles','credits_net_received','max',{twoVehicles:true});
+    const repeated=link('groups','credits_net_received','max');
+    check('Max credit sorting paints one comparator per vehicle even when actions share the same battle',
+      await page.locator('#ss-groups .ss-group-sort-host .ss-sort-active-value').count()===2&&
+      await repeated.count()===2&&await repeated.evaluateAll(nodes=>nodes[0].getAttribute('data-battle-id')===nodes[1].getAttribute('data-battle-id')&&
+        nodes.every(node=>!node.classList.contains('ss-sort-active-value')&&!node.classList.contains('ss-source-returned'))));
+    await repeated.first().focus();
+    check('Focus on a permanent Max action has its own neutral cue',await repeated.first().evaluate(node=>{
+      const style=getComputedStyle(node);
+      return style.outlineColor==='rgb(196, 199, 172)'&&style.outlineWidth==='1px';
+    }));
     await publish('maps');
     for(const metric of financial)for(const statistic of ['min','max']){
       await link('summary',metric,statistic).click();

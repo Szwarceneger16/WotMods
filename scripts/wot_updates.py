@@ -16,8 +16,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-RSS = 'https://worldoftanks.eu/pl/rss/news/updates/'
-RSS_SOURCES = (RSS, 'https://worldoftanks.eu/en/rss/news/updates/', 'https://worldoftanks.eu/pl/rss/news/')
+RSS = 'https://worldoftanks.eu/en/rss/news/updates/'
+RSS_SOURCES = (RSS, 'https://worldoftanks.eu/en/rss/news/')
 HOST = 'https://wgus-woteu.wargaming.net'
 GUID = 'WOT.EU.PRODUCTION'
 TTL = 24 * 60 * 60
@@ -70,13 +70,13 @@ def rss_items(data):
         u = urllib.parse.urlsplit(link)
         if u.scheme != 'https' or u.netloc != 'worldoftanks.eu':
             raise ValueError('Unexpected RSS article URL')
-        if not re.match(r'^/(?:pl|en)/news/updates/', u.path):
+        if not u.path.startswith('/en/news/updates/'):
             continue  # The official general-news RSS fallback also contains other categories.
         published = email.utils.parsedate_to_datetime(item.findtext('pubDate', '')).timestamp()
         items.append({'title': item.findtext('title', '').strip(), 'url': link,
                       'published_at': published, 'description': item.findtext('description', '')})
     if not items:
-        raise ValueError('Empty update feed')
+        raise ValueError('No English update articles in the RSS feed')
     return items
 
 
@@ -265,16 +265,21 @@ def main():
                'Fresh Game Center evidence: ' + str(fresh), 'Live mods directory: ' + (version or 'unavailable'),
                'Last successful fetch (UTC epoch): ' + str(state.get('fetched_at', 'never')),
                'Cache refreshed: ' + str(refreshed)]
-    if data.get('rss_url'):
-        summary.append('Patch-note RSS: ' + data['rss_url'])
+    rss_url = data.get('rss_url')
+    if rss_url in RSS_SOURCES:
+        summary.append('Patch-note RSS: ' + rss_url)
+        article_prefix = 'https://worldoftanks.eu/en/news/updates/'
+        english_items = [item for item in data.get('items', []) if item['url'].startswith(article_prefix)]
+        for item in english_items[:5]:
+            summary.append('- ' + item['title'].replace('\n', ' ') + ': ' + item['url'])
+            if item.get('article_error'):
+                summary.append('  Patch-note text unavailable: ' + item['article_error'].replace('\n', ' '))
+    elif rss_url:
+        summary.append('English patch notes are unavailable in the cached update evidence.')
     elif data.get('rss_error'):
         summary += ['', 'Patch-note RSS unavailable: ' + data['rss_error'].replace('\n', ' ')]
     if state.get('error'):
         summary += ['', 'Refresh error (last-good data retained): ' + state['error']]
-    for item in data.get('items', [])[:5]:
-        summary.append('- ' + item['title'].replace('\n', ' ') + ': ' + item['url'])
-        if item.get('article_error'):
-            summary.append('  Patch-note text unavailable: ' + item['article_error'].replace('\n', ' '))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('\n'.join(summary) + '\n')

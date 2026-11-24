@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "baseline": {"client": "2.4.1.1", "build": "993"},
+  "format": {"abc": [16, 46]},
+  "bases": {
+    "net.wg.gui.battle.components::BattleUIComponent": "flash.display::MovieClip",
+    "net.wg.infrastructure.base.meta.impl::BaseBattleDAAPIComponentMeta": "net.wg.gui.battle.components::BattleUIComponent",
+    "net.wg.infrastructure.base::BaseBattleDAAPIComponent": "net.wg.infrastructure.base.meta.impl::BaseBattleDAAPIComponentMeta",
+    "net.wg.gui.battle.components::BattleDisplayable": "net.wg.infrastructure.base::BaseBattleDAAPIComponent",
+
+    "net.wg.infrastructure.base.meta.impl::DecorativeCrosshairPanelMeta": "net.wg.gui.battle.components::BattleDisplayable",
+    "net.wg.gui.battle.views.decorativeCrosshair::DecorativeCrosshairPanel": "net.wg.infrastructure.base.meta.impl::DecorativeCrosshairPanelMeta",
+    "net.wg.infrastructure.base.meta.impl::BaseDecorativeCrosshairMeta": "net.wg.gui.battle.components::BattleDisplayable",
+    "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::BaseDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::AccuracyStackDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::AccuracyStackDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::AccuracyStackDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::ConcentrationDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::ConcentrationDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::ConcentrationDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::FuryDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::FuryDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::FuryDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::OverheatDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::OverheatDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::OverheatDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::PillboxSiegeDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::PillboxSiegeDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::PillboxSiegeDecorativeCrosshairMeta",
+    "net.wg.infrastructure.base.meta.impl::TemperatureGunOverheatDecorativeCrosshairMeta": "net.wg.gui.battle.views.decorativeCrosshair::BaseDecorativeCrosshair",
+    "net.wg.gui.battle.views.decorativeCrosshair::TemperatureGunOverheatDecorativeCrosshair": "net.wg.infrastructure.base.meta.impl::TemperatureGunOverheatDecorativeCrosshairMeta",
+
+    "net.wg.infrastructure.base.meta.impl::BaseVehicleMechanicsWidgetMeta": "net.wg.gui.battle.components::BattleDisplayable",
+    "net.wg.gui.battle.views.widgetsPanel::BaseVehicleMechanicsWidget": "net.wg.infrastructure.base.meta.impl::BaseVehicleMechanicsWidgetMeta",
+    "net.wg.infrastructure.base.meta.impl::AutoreloaderSurgeWidgetMeta": "net.wg.gui.battle.views.widgetsPanel::BaseVehicleMechanicsWidget",
+    "net.wg.gui.battle.views.widgetsPanel::AutoreloaderSurgeWidget": "net.wg.infrastructure.base.meta.impl::AutoreloaderSurgeWidgetMeta",
+
+    "net.wg.gui.battle.views.decorativeCrosshair.accuracy::AccuracyProgressbar": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.accuracy::SpeedLimitMark": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatCounter": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatDecoration": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatIcon": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatProgress": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatSpeedLimitIcon": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatStatus": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.decorativeCrosshair.shared::TextWrapper": "flash.display::Sprite",
+    "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeActionLine": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeSector": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeSectors": "flash.display::MovieClip",
+    "net.wg.gui.battle.views.widgetsPanel.common::Timer": "flash.display::MovieClip"
+  },
+  "assets": {
+    "battleCrosshairsApp.swf": {"movie_roots": ["net.wg.app.impl.BattleCrosshairsApp"]},
+    "gfxfontlib.swf": {},
+    "autoreloaderSurge.swf": {
+      "imports": ["gfxfontlib.swf"],
+      "symbols": {
+        "AutoreloaderSurgeWidgetUI": {
+          "base": "net.wg.gui.battle.views.widgetsPanel::AutoreloaderSurgeWidget",
+          "timeline": {
+            "": {"labels": ["ready_instantly"]},
+            "sectors": {},
+            "actionLine": {"min_frames": 34},
+            "actionLine/pointer": {},
+            "timer": {},
+            "buttonGlow": {},
+            "timerBlink": {"frames": 20, "labels": ["show", "hide"]},
+            "timerGlow": {"min_frames": 15},
+            "reduceLine": {"labels": ["idle"]}
+          }
+        },
+        "AutoreloaderSurgeSector3UI": {
+          "base": "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeSector",
+          "timeline": {
+            "": {"labels": ["idle"]},
+            "progress": {
+              "frames": 150,
+              "last_frame_child": {"index": 3, "symbol": "autoreloaderSurge_fla.Filed3UI_13", "frames": 20}
+            },
+            "reload": {},
+            "activation": {}
+          }
+        },
+        "ActionLineUI": {"base": "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeActionLine"},
+        "SectorsUI": {"base": "net.wg.gui.battle.views.widgetsPanel.autoreloaderSurge::AutoreloaderSurgeSectors"},
+        "StagedJetBoostersWidgetTimerUI": {"base": "net.wg.gui.battle.views.widgetsPanel.common::Timer"}
+      }
+    },
+    "decorativeCrosshairPanel.swf": {
+      "imports": ["gfxfontlib.swf"],
+      "symbols": {
+        "DecorativeCrosshairPanelUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair::DecorativeCrosshairPanel"},
+        "AccuracyCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::AccuracyStackDecorativeCrosshair",
+          "timeline": {
+            "leftProgres": {"min_frames": 600},
+            "leftProgres/full": {"min_frames": 24, "labels": ["show"]},
+            "leftProgres/mark": {"labels": ["cycle"]},
+            "rightProgres": {"min_frames": 600},
+            "rightProgres/full": {"min_frames": 24, "labels": ["show"]},
+            "rightProgres/mark": {"labels": ["cycle"]},
+            "markLeft": {"min_frames": 32},
+            "markLeft/textWrapper/textField": {}
+          }
+        },
+        "ConcentrationCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::ConcentrationDecorativeCrosshair",
+          "timeline": {"": {"labels": ["show_instantly"]}}
+        },
+        "FuryCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::FuryDecorativeCrosshair",
+          "timeline": {
+            "": {"min_frames": 500},
+            "stack1": {"labels": ["shown"]},
+            "stack2": {"labels": ["shown"]},
+            "stack3": {"labels": ["shown"]},
+            "stack4": {"labels": ["shown"]},
+            "stack5": {"labels": ["shown"]}
+          }
+        },
+        "OverheatCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::OverheatDecorativeCrosshair",
+          "timeline": {
+            "mainProgress": {"min_frames": 400},
+            "mainProgress/empty": {"min_frames": 100},
+            "mainProgress/pointer": {"min_frames": 100},
+            "mainProgress/pointerGlow": {"min_frames": 50},
+            "heatProgress": {"min_frames": 100},
+            "heatIcon": {"min_frames": 30},
+            "overheatDecoration": {"min_frames": 34},
+            "overheatDecoration/asset": {"min_frames": 2},
+            "counter": {"min_frames": 40},
+            "counter/text": {},
+            "counter/activeText/textField": {},
+            "status/icon": {},
+            "decorationSmall": {}
+          }
+        },
+        "PillboxSiegeDecorativeCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::PillboxSiegeDecorativeCrosshair",
+          "timeline": {"": {"labels": ["show_instantly"]}}
+        },
+        "TemperatureGunOverheatDecorativeCrosshairUI": {
+          "base": "net.wg.gui.battle.views.decorativeCrosshair::TemperatureGunOverheatDecorativeCrosshair",
+          "timeline": {"": {"min_frames": 2}, "heatProgress": {"labels": ["overheat_instantly"]}}
+        },
+        "ProgressUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.accuracy::AccuracyProgressbar"},
+        "SpeedLimitMarkUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.accuracy::SpeedLimitMark"},
+        "ActiveStatusTextUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.shared::TextWrapper"},
+        "ActiveTextUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.shared::TextWrapper"},
+        "TextWrapperUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.shared::TextWrapper"},
+        "CounterOverheatUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatCounter"},
+        "HeatIconUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatIcon"},
+        "HeatProgressUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatProgress"},
+        "OverheatDecorationUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatDecoration"},
+        "OverHeatStatusUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatStatus"},
+        "OverheatIconUI": {"base": "net.wg.gui.battle.views.decorativeCrosshair.overheat::OverheatSpeedLimitIcon"}
+      }
+    }
+  }
+}

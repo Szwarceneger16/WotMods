@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Builder contracts; Python 2.7 runs only the game-runtime tests."""
 from __future__ import unicode_literals
+import hashlib
 import os
 import re
 import shutil
@@ -24,6 +25,25 @@ class BuildContracts(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(str(self.directory))
 
+    def test_generated_preview_is_reproducible_and_uses_requested_version(self):
+        import importlib.util
+        import json
+
+        spec = importlib.util.spec_from_file_location('sessionstats_preview', self.build.ROOT/'tools/make_preview.py')
+        preview = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(preview)
+        files, summary = preview.preview_files('9.8.7')
+        self.assertEqual(files, preview.preview_files('9.8.7')[0])
+        self.assertIn('"version":"9.8.7"', files['PREVIEW.html'])
+        fixtures = json.loads(files['demo_snapshot.json'])
+        self.assertEqual([fixtures[name]['version'] for name in ('normal', 'reset')], ['9.8.7', '9.8.7'])
+        normal, reset = (fixtures[name]['scopes'] for name in ('normal', 'reset'))
+        self.assertEqual(normal['launch']['period_id'], reset['launch']['period_id'])
+        self.assertNotEqual(normal['manual']['period_id'], reset['manual']['period_id'])
+        self.assertEqual(summary['manual_battles'], normal['manual']['summary']['battles'])
+        self.assertNotEqual(summary['manual_battles'], reset['manual']['summary']['battles'])
+        self.assertTrue(all(row['vehicle_id'] for row in normal['launch']['battles']))
+
     def test_active_guides_use_requested_package_and_client_versions(self):
         major, minor, patch = map(int, self.build.VERSION.split('.'))
         version = '%d.%d.%d' % (major, minor, patch + 1)
@@ -36,8 +56,8 @@ class BuildContracts(unittest.TestCase):
             if target_package in original:
                 self.assertIn(target_package, rendered)
             self.assertNotIn(b'mods/2.4.1.0/', rendered)
-        readme = self.build.render_guide('README_PL.txt', (self.build.ROOT/'README_PL.txt').read_bytes(), version, '2.5.0.0')
-        self.assertIn(('Version ' + version).encode('ascii'), readme)
+        guide = self.build.render_guide('USER_GUIDE.txt', (self.build.ROOT/'USER_GUIDE.txt').read_bytes(), version, '2.5.0.0')
+        self.assertIn(('Version ' + version).encode('ascii'), guide)
 
     def test_native_package_requires_its_offline_map_catalog_and_loader(self):
         import json
@@ -71,12 +91,12 @@ class BuildContracts(unittest.TestCase):
         self.assertRaises(AssertionError, self.build.check_package, package)
 
     def test_historical_changelog_is_not_rewritten(self):
-        content = (self.build.ROOT/'ZMIANY.txt').read_bytes()
-        self.assertEqual(self.build.render_guide('ZMIANY.txt', content, '0.2.8', '2.5.0.0'), content)
+        content = (self.build.ROOT/'CHANGELOG.md').read_bytes()
+        self.assertEqual(self.build.render_guide('CHANGELOG.md', content, '0.2.8', '2.5.0.0'), content)
 
     def test_every_release_field_advances_again_from_a_stamped_source_bundle(self):
         fields = {
-            'README_PL.txt': ('Version {version} ',),
+            'USER_GUIDE.txt': ('Version {version} ',),
             'README.md': ('Version {version} source:',),
             'CONTRACT.txt': ('IMPLEMENTATION CONTRACT v{version} ', " version: '{version}',"),
             'docs/APPEARANCE_CONFIG.md': ('# Appearance and scrolling configuration — {version}\n',),
@@ -101,7 +121,7 @@ class BuildContracts(unittest.TestCase):
     def test_active_guides_keep_explicit_historical_version_evidence(self):
         historical = {
             'README.md': b'The user tested 0.2.4',
-            'README_PL.txt': b'Since 0.2.7,',
+            'USER_GUIDE.txt': b'Since 0.2.7,',
             'CONTRACT.txt': b'Historical compatibility: upgrading from 0.2.6 to 0.2.7',
         }
         for name, marker in historical.items():
@@ -123,7 +143,7 @@ class BuildContracts(unittest.TestCase):
                 content = self.build.render_guide(name, content, self.build.VERSION, client)
                 for other in {'2.4.1.0', '2.5.0.0', '2.6.0.0'} - {client}:
                     self.assertNotIn(other.encode('ascii'), content, name)
-                if name == 'README_PL.txt':
+                if name == 'USER_GUIDE.txt':
                     for marker in ('target: Wargaming EU ', 'For client ',
                                    'active mods directory is not ', '--client-version ', 'mods/'):
                         self.assertIn((marker+client).encode('ascii'), content)
@@ -135,7 +155,7 @@ class BuildContracts(unittest.TestCase):
     def test_client_restamping_preserves_historical_evidence_and_unrelated_versions(self):
         content = b'Historical WoT 2.4.1 source; Python 2.7.18; OpenWG 1.2.2.\n'
         self.assertEqual(self.build.render_guide('README.md', content, '0.2.8', '2.6.0.0'), content)
-        for name in ('ZMIANY.txt', 'docs/UI_0.2.2_SOURCE_EVIDENCE.md'):
+        for name in ('CHANGELOG.md', 'docs/UI_0.2.2_SOURCE_EVIDENCE.md'):
             content = (self.build.ROOT/name).read_bytes()
             self.assertEqual(self.build.render_guide(name, content, '0.2.8', '2.6.0.0'), content)
 
@@ -159,7 +179,11 @@ class BuildContracts(unittest.TestCase):
         manifest = self.build.installer_checksums(files[0], files[1], config, '2.5.0.0')
         (self.directory/'SHA256SUMS.txt').write_bytes(manifest)
         self.assertEqual(len(manifest.splitlines()),3)
-        subprocess.check_output(['sha256sum','-c','SHA256SUMS.txt'],cwd=str(self.directory))
+        for line in manifest.decode('ascii').splitlines():
+            checksum, relative = line.split('  ', 1)
+            self.assertEqual(hashlib.sha256((self.directory/relative).read_bytes()).hexdigest(), checksum)
+        if shutil.which('sha256sum'):
+            subprocess.check_output(['sha256sum','-c','SHA256SUMS.txt'],cwd=str(self.directory))
 
     def test_versioned_build_artifact_is_checksummed_at_the_stable_install_path(self):
         raw=self.directory/'grz.sessionstats_0.3.3.wotmod'

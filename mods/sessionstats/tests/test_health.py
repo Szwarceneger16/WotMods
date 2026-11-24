@@ -63,6 +63,23 @@ class ResultHealthTests(unittest.TestCase):
         self.assertEqual(self.issues(raw), [])
         self.assertEqual(normalize_result(raw)['currencies']['credits']['net'], 32000)
 
+    def test_valid_bond_components_can_replace_the_vehicle_total(self):
+        raw = raw_result()
+        vehicle = raw['personal'][1]
+        del vehicle['crystal']
+        vehicle['eventCrystal'] = 30
+        raw['personal']['avatar']['eventCrystal'] = 13
+        record = normalize_result(raw)
+        self.assertTrue(record['complete'])
+        self.assertEqual(record['currencies']['bonds'], {'income': 53, 'costs': 12, 'net': 41})
+        self.assertEqual(self.issues(raw), [])
+        vehicle['crystal'] = None
+        self.assertEqual(self.issues(raw), [])
+
+        vehicle['eventCrystal'] = True
+        self.assertIn('personal.vehicle.eventCrystal', self.paths(raw))
+        self.assertIsNone(normalize_result(raw)['currencies']['bonds']['income'])
+
     def test_missing_consumed_fields_are_reported_explicitly(self):
         for name in ('damageDealt', 'kills', 'spotted', 'droppedCapturePoints',
                      'originalXP', 'xp', 'freeXP', 'credits', 'crystal', 'gold',

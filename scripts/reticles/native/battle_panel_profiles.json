@@ -1,0 +1,2013 @@
+{
+  "version": 1,
+  "stock_client": "EU 2.4.1.1 #993",
+  "scope": "Battle widgets outside the core reticle. All paths, symbols and snapshots refer to stock resources. Calls document the native data contract; snapshot steps select original display states in the isolated preview. Layout identifies the original WidgetsPanel group, relative to crosshair; offsets are omitted unless proven. Empty vehicle/profile lists mean no supplementary battle widget for the existing mechanic.",
+  "panels": {
+    "auxiliary_rocket_launcher": {
+      "stock_library": "gui/flash/auxiliaryRocketLauncher.swf",
+      "linkage": "AuxiliaryRocketLauncherWidgetUI",
+      "mechanic_key": "AUXILIARY_ROCKET_LAUNCHER",
+      "stock_alias": "auxiliaryRocketLauncherWidget",
+      "layout": "right",
+      "presenter": "auxiliary_rocket_launcher_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "flash",
+          "labels": [
+            "active_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "flash",
+          "frame": "active_instantly",
+          "phase": 1
+        }
+      ],
+      "notes": "Ho-Ri Shugo rocket installation selected and ready for firing. No discrete shot feedback or artificial target is emitted."
+    },
+    "bustle_feed": {
+      "stock_library": "gui/flash/bustleFeed.swf",
+      "linkage": "BustleFeedWidgetUI",
+      "mechanic_key": "BUSTLE_FEED",
+      "stock_alias": "bustleFeed",
+      "layout": "right",
+      "presenter": "bustle_feed_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setLock",
+          "args": [
+            false
+          ]
+        },
+        {
+          "method": "as_setAvailability",
+          "args": [
+            false
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "BV-111 external feed active, neither switching nor disabled. Stock widget calls progress during switch transitions only; the post-shot reload timer remains in the original crosshair."
+    },
+    "charge_shot": {
+      "stock_library": "gui/flash/chargeShot.swf",
+      "linkage": "ChargeShotWidgetUI",
+      "mechanic_key": "CHARGE_SHOT",
+      "stock_alias": "ChargeShotWidget",
+      "layout": "right",
+      "presenter": "charge_shot_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "preparing",
+            true
+          ]
+        },
+        {
+          "method": "as_setUpdateProgress",
+          "args": [
+            3,
+            0.99
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            0.06
+          ]
+        },
+        {
+          "method": "as_setShootBlock",
+          "args": [
+            false
+          ]
+        },
+        {
+          "method": "as_setDamage",
+          "args": [
+            560
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "preparing_instantly"
+          ]
+        },
+        {
+          "path": "progressMc",
+          "min_frames": 150
+        },
+        {
+          "path": "damageTf/textField"
+        },
+        {
+          "path": "overheatAlert",
+          "labels": [
+            "top"
+          ]
+        },
+        {
+          "path": "timer/label"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "preparing_instantly",
+          "phase": 0
+        },
+        {
+          "path": "progressMc",
+          "frame": 150,
+          "phase": 1
+        },
+        {
+          "path": "damageTf/textField",
+          "text": "560",
+          "phase": 1
+        },
+        {
+          "path": "overheatAlert",
+          "frame": 88,
+          "phase": 1
+        },
+        {
+          "path": "overheatAlert",
+          "visible": true,
+          "phase": 1
+        },
+        {
+          "path": "timer",
+          "visible": true,
+          "phase": 1
+        },
+        {
+          "path": "timer/label",
+          "text": "0.0",
+          "phase": 2
+        }
+      ],
+      "notes": "Object 432U stock AP damage 450 × max level factor 1.244 = rounded 560. At native level 3 and 99% charge, the progress reaches the final authored frame and the 0.06 s timer displays 0.0. The top alert is frozen at the peak of its stock pulse, frame 88."
+    },
+    "chargeable_burst": {
+      "stock_library": "gui/flash/chargeableBurst.swf",
+      "linkage": "ChargeableBurstWidgetUI",
+      "mechanic_key": "CHARGEABLE_BURST",
+      "stock_alias": "chargeableBurstWidget",
+      "layout": "center",
+      "presenter": "chargeable_burst_widget.pyc",
+      "imports": [],
+      "calls": [
+        {
+          "method": "as_setup",
+          "args": [2, 2]
+        },
+        {
+          "method": "as_setShellsQuantityLeft",
+          "args": [2]
+        },
+        {
+          "method": "as_setMode",
+          "args": [
+            true,
+            true
+          ]
+        },
+        {
+          "method": "as_updateBurstReloadingState",
+          "args": [
+            false
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "min_frames": 1
+        },
+        {
+          "path": "penetrations"
+        },
+        {
+          "path": "bullets"
+        },
+        {
+          "path": "decorations",
+          "labels": [
+            "idle",
+            "burstModeReloaded"
+          ]
+        },
+        {
+          "path": "shadows",
+          "labels": [
+            "burstModeShown",
+            "normalShown"
+          ]
+        }
+      ],
+      "snapshot": [
+        {"path": "", "frame": 1, "phase": 0},
+        {"path": "shadows", "frame": "burstModeShown", "phase": 1},
+        {"path": "penetrations", "alpha": 0, "phase": 1},
+        {"path": "decorations", "frame": "idle", "phase": 1},
+        {"path": "bullets", "mount": {"symbol": "ChargeableBurstBulletUI", "name": "grzFirstBullet", "x": 3, "y": 107}, "phase": 1},
+        {"path": "bullets", "mount": {"symbol": "ChargeableBurstBulletUI", "name": "grzSecondBullet", "x": -3, "y": 107}, "phase": 1},
+        {"path": "bullets/grzFirstBullet", "frame": "charged", "phase": 2},
+        {"path": "bullets/grzSecondBullet", "frame": "charged", "phase": 2},
+        {"path": "bullets/grzFirstBullet/bulletImg", "frame": "first", "phase": 2},
+        {"path": "bullets/grzFirstBullet/bulletBg", "frame": "first", "phase": 2},
+        {"path": "bullets/grzSecondBullet/bulletImg", "frame": "other", "phase": 2},
+        {"path": "bullets/grzSecondBullet/bulletBg", "frame": "other", "phase": 2},
+        {"path": "decorations/leftSide", "frame": 5, "phase": 2},
+        {"path": "decorations/rightSide", "frame": 5, "phase": 2},
+        {"path": "decorations/leftSide", "rotation": 5.214533571470638, "phase": 2},
+        {"path": "decorations/rightSide", "rotation": -5.214533571470638, "phase": 2}
+      ],
+      "notes": "Black Rock reaches burst mode after two penetrations. This stock armed mode shows two charged rounds and the authored folded side indicators. Penetration indicators are hidden in this mode, matching the client. Rotations use the stock close angle asin(6 / 107) * 180 / pi + 2, with stock round x offsets +3/-3 and y offset 107.",
+      "snapshot_status": "complete"
+    },
+    "concentration": {
+      "stock_library": "gui/flash/concentration.swf",
+      "linkage": "ConcentrationWidgetUI",
+      "mechanic_key": "CONCENTRATION_MODE",
+      "stock_alias": "concentrationWidget",
+      "layout": "right",
+      "presenter": "concentration_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setActiveProgress",
+          "args": [
+            1
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            10
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {"path": "reverseProgress", "min_frames": 100},
+        {"path": "timer/label"}
+      ],
+      "snapshot": [
+        {"path": "", "frame": "active_instantly", "phase": 0},
+        {"path": "", "blend": "screen", "phase": 0},
+        {"path": "reverseProgress", "frame": 100, "phase": 1},
+        {"path": "timer/label", "text": "10.0", "phase": 1}
+      ],
+      "notes": "Hacker at start of active concentration (10 s). Shows the original screen-blended widget with the common reverse progress and timer authored on its timeline. The separate original reticle decoration is already handled by the reticle preview.",
+      "snapshot_status": "complete"
+    },
+    "heating_zones": {
+      "stock_library": "gui/flash/temperatureGun.swf",
+      "linkage": "TemperatureGunHeatZonesWidgetUI",
+      "mechanic_key": "HEATING_ZONES_GUN",
+      "stock_alias": "temperatureGunHeatZonesWidget",
+      "layout": "center",
+      "presenter": "temp_heating_zones_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setHeatZonesValues",
+          "args": [0.2, 0.8]
+        },
+        {
+          "method": "as_setTemperature",
+          "args": [1]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "lowZoneProgressSector"
+        },
+        {
+          "path": "mediumZoneProgressSector"
+        },
+        {
+          "path": "highZoneProgressSector"
+        },
+        {
+          "path": "mediumZoneHighlightSector",
+          "labels": [
+            "hide",
+            "show"
+          ]
+        },
+        {
+          "path": "highZoneHighlightSector",
+          "labels": [
+            "hide",
+            "show"
+          ]
+        },
+        {
+          "path": "scaleCursor/cursorMC"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "phase": 0,
+          "frame": "active_instantly"
+        },
+        {
+          "path": "",
+          "phase": 0,
+          "blend": "screen"
+        },
+        {
+          "path": "mediumZoneHighlightSector",
+          "phase": 1,
+          "frame": "hide"
+        },
+        {
+          "path": "highZoneHighlightSector",
+          "phase": 1,
+          "frame": "show"
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "phase": 1,
+          "frame": 3
+        },
+        {
+          "path": "lowZonePathSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunZonePathUI",
+            "start": 0,
+            "end": 0.2
+          }
+        },
+        {
+          "path": "lowZoneProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunLowZoneProgress3UI",
+            "start": 0,
+            "end": 0.2
+          }
+        },
+        {
+          "path": "lowZonePathSector/marker",
+          "phase": 2,
+          "rotation": 14.7
+        },
+        {
+          "path": "lowZonePathSector/marker",
+          "phase": 2,
+          "visible": true
+        },
+        {
+          "path": "mediumZonePathSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunZonePathUI",
+            "start": 0.215,
+            "end": 0.8
+          }
+        },
+        {
+          "path": "mediumZoneProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunMediumZoneProgress2UI",
+            "start": 0.215,
+            "end": 0.8
+          }
+        },
+        {
+          "path": "mediumZoneHighlightSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunMediumZoneHighlightUI",
+            "start": 0.215,
+            "end": 0.8
+          }
+        },
+        {
+          "path": "mediumZonePathSector/marker",
+          "phase": 2,
+          "rotation": 58.8
+        },
+        {
+          "path": "mediumZonePathSector/marker",
+          "phase": 2,
+          "visible": true
+        },
+        {
+          "path": "highZonePathSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunZonePathUI",
+            "start": 0.815,
+            "end": 1
+          }
+        },
+        {
+          "path": "highZoneProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunHighZoneProgressUI",
+            "start": 0.815,
+            "end": 1
+          }
+        },
+        {
+          "path": "highZoneHighlightSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunHighZoneHighlightUI",
+            "start": 0.815,
+            "end": 1
+          }
+        },
+        {
+          "path": "highZonePathSector/marker",
+          "phase": 2,
+          "rotation": 73.5
+        },
+        {
+          "path": "highZonePathSector/marker",
+          "phase": 2,
+          "visible": true
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "phase": 2,
+          "rotation": 73.5
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "phase": 2,
+          "visible": true
+        }
+      ],
+      "notes": "STK-2 at 100% and outside its stock comfort zone after two 50-point shots. Uses exact configured thresholds .2/.8 and the native .015 separation, stock high-temperature bitmap variants, high-zone highlight, and cursor and markers at the native angular positions."
+    },
+    "low_charge_shot": {
+      "stock_library": "gui/flash/lowChargeShot.swf",
+      "linkage": "LowChargeShotWidgetUI",
+      "mechanic_key": "LOW_CHARGE_SHOT",
+      "stock_alias": "LowChargeShotWidget",
+      "layout": "center",
+      "presenter": "low_charge_shot_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setInitialTime",
+          "args": [
+            20.5,
+            10.25,
+            2,
+            0.5,
+            0
+          ]
+        },
+        {
+          "method": "as_setTimeLeft",
+          "args": [
+            6,
+            2,
+            true
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "min_frames": 1
+        },
+        {
+          "path": "firstStageTimerTF/textField"
+        },
+        {
+          "path": "secondStageTimerTF/textField"
+        },
+        {
+          "path": "quickReloadingTimerTF/textField"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "phase": 0,
+          "frame": 1
+        },
+        {
+          "path": "firstStageTimerTF",
+          "phase": 1,
+          "visible": true
+        },
+        {
+          "path": "secondStageTimerTF",
+          "phase": 1,
+          "visible": true
+        },
+        {
+          "path": "quickReloadingTimerTF",
+          "phase": 1,
+          "visible": false
+        },
+        {
+          "path": "firstStageTimerTF/textField",
+          "phase": 2,
+          "text": "10.25"
+        },
+        {
+          "path": "secondStageTimerTF/textField",
+          "phase": 2,
+          "text": "6.00"
+        },
+        {
+          "path": "secondStageTimerTF/textField",
+          "phase": 2,
+          "x": 31
+        },
+        {
+          "path": "firstStageTimerTF/textField",
+          "phase": 2,
+          "textColor": 9882665
+        },
+        {
+          "path": "secondStageTimerTF/textField",
+          "phase": 2,
+          "textColor": 15007744
+        }
+      ],
+      "notes": "The stock LOW_CHARGE state shows the completed green first-stage timer at lowChargeTime and the red second-stage timer at timeLeft, with the stock long readout position. The mutually exclusive quick-reload timer is hidden. The sample shows settled native colors after the transition.",
+      "offset_by_mode": {
+        "arcade": [
+          -160,
+          0
+        ],
+        "sniper": [
+          -240,
+          0
+        ]
+      }
+    },
+    "pillbox_siege": {
+      "stock_library": "gui/flash/pillboxSiege.swf",
+      "linkage": "PillboxSiegeWidgetUI",
+      "mechanic_key": "PILLBOX_SIEGE_MODE",
+      "stock_alias": "pillboxSiegeWidget",
+      "layout": "right",
+      "presenter": "pillbox_siege_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "pillbox",
+            true
+          ]
+        },
+        {
+          "method": "as_setCondition",
+          "args": [
+            "normal",
+            true
+          ]
+        },
+        {
+          "method": "as_setDeviceStates",
+          "args": [
+            []
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "min_frames": 1
+        },
+        {
+          "path": "animNormal",
+          "labels": [
+            "pillbox"
+          ]
+        },
+        {
+          "path": "animOrange"
+        },
+        {
+          "path": "animRed"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": 1,
+          "phase": 0
+        },
+        {
+          "path": "animNormal",
+          "frame": "pillbox",
+          "phase": 1
+        },
+        {
+          "path": "animOrange",
+          "visible": false,
+          "phase": 1
+        },
+        {
+          "path": "animRed",
+          "visible": false,
+          "phase": 1
+        }
+      ],
+      "notes": "Strv 107-12 deployed in pillbox mode with intact devices. Native main movie switches among normal, warning and critical clips; only the stock normal state is shown."
+    },
+    "power_mode": {
+      "stock_library": "gui/flash/power.swf",
+      "linkage": "PowerWidgetUI",
+      "mechanic_key": "POWER_MODE",
+      "stock_alias": "powerWidget",
+      "layout": "right",
+      "presenter": "power_mode_widget.pyc",
+      "imports": [],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setProgress",
+          "args": [
+            1
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "progressMC",
+          "min_frames": 108
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "progressMC",
+          "frame": 108,
+          "phase": 1
+        }
+      ],
+      "notes": "Breaker at start of powered 3 s engine mode; speed threshold 7, mode threshold 18, stock max progress."
+    },
+    "propellant_gun": {
+      "stock_library": "gui/flash/propellantGun.swf",
+      "linkage": "PropellantGunWidgetUI",
+      "mechanic_key": "PROPELLANT_GUN",
+      "stock_alias": "propellantGunWidget",
+      "layout": "center",
+      "presenter": "propellant_gun_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setupThreshold",
+          "args": [
+            0.7
+          ]
+        },
+        {
+          "method": "as_setState",
+          "args": [
+            "active_enabled",
+            true
+          ]
+        },
+        {
+          "method": "as_showHotKeys",
+          "args": [
+            false
+          ]
+        },
+        {
+          "method": "as_setChargeValues",
+          "args": [
+            1,
+            630
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_enabled_instantly"
+          ]
+        },
+        {
+          "path": "damageIndicator",
+          "labels": [
+            "overcharge"
+          ]
+        },
+        {
+          "path": "damageIndicator/damageTF"
+        },
+        {
+          "path": "overchargeWarningSector",
+          "labels": [
+            "show"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_enabled_instantly",
+          "phase": 0
+        },
+        {
+          "path": "damageIndicator",
+          "frame": "overcharge",
+          "phase": 1
+        },
+        {
+          "path": "damageIndicator/damageTF",
+          "text": "630",
+          "phase": 2
+        },
+        {
+          "path": "overchargeWarningSector",
+          "frame": "show",
+          "phase": 1
+        },
+        {
+          "path": "chargePathReadySector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunChargePathReadyUI",
+            "start": 0.003921568627450911,
+            "end": 0.7098039215686274,
+            "geometry": "propellant",
+            "align": "toMax"
+          }
+        },
+        {
+          "path": "overchargePathReadySector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunOverchargePathReadyUI",
+            "start": 0.7254901960784313,
+            "end": 1,
+            "geometry": "propellant",
+            "align": "toMax"
+          }
+        },
+        {
+          "path": "chargePathActiveSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunChargePathActiveUI",
+            "start": 0,
+            "end": 0.7058823529411764,
+            "geometry": "propellant",
+            "align": "toMin"
+          }
+        },
+        {
+          "path": "overchargePathActiveSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunOverchargePathActiveUI",
+            "start": 0.7098039215686275,
+            "end": 0.9843137254901961,
+            "geometry": "propellant",
+            "align": "toMin"
+          }
+        },
+        {
+          "path": "chargeProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunChargeProgressUI",
+            "start": 0,
+            "end": 0.7,
+            "geometry": "propellant",
+            "align": "none"
+          }
+        },
+        {
+          "path": "overchargeProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunOverchargeProgressUI",
+            "start": 0.7196078431372549,
+            "end": 1,
+            "geometry": "propellant",
+            "align": "none"
+          }
+        },
+        {
+          "path": "overchargeWarningSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "PropellantGunOverchargeWarningUI",
+            "start": 0.7116078431372549,
+            "end": 1.1,
+            "geometry": "propellant",
+            "align": "none"
+          }
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "frame": "overcharge",
+          "phase": 2
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "rotation": -105.9,
+          "phase": 2
+        }
+      ],
+      "notes": "Fauteur max overcharge 100/100, regular threshold 70/100, max multiplier 1.575 on the 400-damage AP shell. Original seven arc textures are clipped and aligned by the stock PropellantGunScaleSector thresholds. Native overcharge cursor and warning timeline are frozen in the active sample.",
+      "scale_by_mode": {
+        "arcade": 0.86,
+        "sniper": 1
+      }
+    },
+    "rechargeable_nitro": {
+      "stock_library": "gui/flash/rechargeableNitro.swf",
+      "linkage": "RechargeableNitroPanelUI",
+      "mechanic_key": "RECHARGEABLE_NITRO",
+      "stock_alias": "rechargeableNitroPanel",
+      "layout": "right",
+      "presenter": "rechargeable_nitro_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "ready",
+            true
+          ]
+        },
+        {
+          "method": "as_setProgress",
+          "args": [
+            1
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            0
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "ready_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "ready_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "BZ-79 reserve ready. The vehicle descriptor distinguishes active 10 s, recharge 45 s and cooldown 5 s. No inactive timer is needed in this snapshot."
+    },
+    "shell_calibration": {
+      "stock_library": "gui/flash/shellCalibration.swf",
+      "linkage": "ShellCalibrationWidgetUI",
+      "mechanic_key": "SHELL_CALIBRATION",
+      "stock_alias": "shellCalibrationWidget",
+      "layout": "info",
+      "presenter": "shell_calibration_widget.pyc",
+      "imports": [],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "damageBonus",
+            true
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "damageBonus_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "damageBonus_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "Stock presenter maps a penetration-activated bonus to damageBonus and a nonpenetration-activated bonus to penetrationBonus. This uses the former, consistent with the core cassette flag READY|PENETRATION_BONUS."
+    },
+    "shell_params_switcher": {
+      "stock_library": "gui/flash/shellParamsSwitcher.swf",
+      "linkage": "ShellParamsSwitcherWidgetUI",
+      "mechanic_key": "SHELL_PARAMS_SWITCHER",
+      "stock_alias": "shellParamsSwitcherWidget",
+      "layout": "right",
+      "presenter": "shell_params_switcher_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            0
+          ]
+        },
+        {
+          "method": "as_setParamsType",
+          "args": [
+            "angled_armor"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "paramsTypeMC",
+          "labels": [
+            "angled_armor"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "paramsTypeMC",
+          "frame": "angled_armor",
+          "phase": 1
+        }
+      ],
+      "notes": "Pz.Kpfw. Neu uses charged APCR for angled armor. The same vehicle's basic APCR subtype is straight_armor and modified HEAT uses screen. The timer's native export is ShellParamsSwitcherTimerUI."
+    },
+    "sight_pointer": {
+      "stock_library": "gui/flash/sightPointer.swf",
+      "linkage": "SightPointerWidgetUI",
+      "mechanic_key": "SIGHT_POINTER",
+      "stock_alias": "SightPointerWidget",
+      "layout": "right",
+      "presenter": "sight_pointer_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setTankIconState",
+          "args": [
+            "active"
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            1
+          ]
+        },
+        {
+          "method": "as_setProgress",
+          "args": [
+            1,
+            1
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "cone",
+          "labels": [
+            "active"
+          ]
+        },
+        {
+          "path": "indicator",
+          "labels": [
+            "active"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "cone",
+          "frame": "active",
+          "phase": 1
+        },
+        {
+          "path": "indicator",
+          "frame": "active",
+          "phase": 1
+        }
+      ],
+      "notes": "WZ-219 sample of the first active scan stage (1 s) without a detected target. The presenter selects found only when the native scan contains vehicles."
+    },
+    "staged_jet_boosters": {
+      "stock_library": "gui/flash/stagedJetBoosters.swf",
+      "linkage": "StagedJetBoostersWidgetUI",
+      "mechanic_key": "STAGED_JET_BOOSTERS",
+      "stock_alias": "StagedJetBoostersWidget",
+      "layout": "right",
+      "presenter": "staged_jet_boosters_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "ready",
+            true
+          ]
+        },
+        {
+          "method": "as_setCount",
+          "args": [
+            8
+          ]
+        },
+        {
+          "method": "as_setProgress",
+          "args": [
+            1
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            0
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "ready_instantly"
+          ]
+        },
+        {
+          "path": "countTF"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "ready_instantly",
+          "phase": 0
+        },
+        {
+          "path": "countTF",
+          "text": "8",
+          "phase": 1
+        }
+      ],
+      "notes": "PTZ-78 reuseCount=8, deploy=5 s, recharge=15 s, active=10 s. Direction arrows exist in active frames, not in the chosen ready frame."
+    },
+    "stance_dance_fight": {
+      "stock_library": "gui/flash/stanceDance.swf",
+      "linkage": "StanceDanceFightWidgetUI",
+      "mechanic_key": "STANCE_DANCE",
+      "stock_alias": "stanceDanceWidgetFight",
+      "layout": "left",
+      "presenter": "stance_dance_fight_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setProgress",
+          "args": [
+            false,
+            1
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            13
+          ]
+        },
+        {
+          "method": "as_keysVisible",
+          "args": [
+            false
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "widget",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "energyProgress",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "energyProgress/progressActive",
+          "min_frames": 100
+        },
+        {
+          "path": "hotKeysContainer/timer/label"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "widget",
+          "frame": "active_instantly",
+          "phase": 1
+        },
+        {
+          "path": "energyProgress",
+          "frame": "active_instantly",
+          "phase": 1
+        },
+        {
+          "path": "focusLeft",
+          "frame": "active_instantly",
+          "phase": 1
+        },
+        {
+          "path": "focusRight",
+          "frame": "active_instantly",
+          "phase": 1
+        },
+        {
+          "path": "hotKeysContainer",
+          "frame": "active_instantly",
+          "phase": 1
+        },
+        {
+          "path": "energyProgress/progressActive",
+          "frame": 100,
+          "phase": 2
+        },
+        {
+          "path": "hotKeysContainer/timer/label",
+          "text": "13.0",
+          "phase": 2
+        }
+      ],
+      "notes": "CS-67 Szakal at the start of the 13-second stock fight stance, with 100% active duration still remaining. The native focus nodes, full energy bar, and timer are set alongside the idle turbo panel. Key bindings and mode-specific child layout overrides are not applied.",
+      "offset_by_mode": {
+        "arcade": [0, 30],
+        "sniper": [12, 5]
+      },
+      "snapshot_status": "partial"
+    },
+    "stance_dance_turbo": {
+      "stock_library": "gui/flash/stanceDance.swf",
+      "linkage": "StanceDanceTurboWidgetUI",
+      "mechanic_key": "STANCE_DANCE",
+      "stock_alias": "stanceDanceWidgetTurbo",
+      "layout": "right",
+      "presenter": "stance_dance_turbo_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "idle",
+            true
+          ]
+        },
+        {
+          "method": "as_keysVisible",
+          "args": [
+            false
+          ]
+        },
+        {
+          "method": "as_setParams",
+          "args": [
+            55,
+            10,
+            15,
+            40
+          ]
+        },
+        {
+          "method": "as_setSpeed",
+          "args": [
+            24,
+            false
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "idle_instantly"
+          ]
+        },
+        {
+          "path": "widget",
+          "labels": [
+            "idle_instantly"
+          ]
+        },
+        {
+          "path": "energyProgress",
+          "labels": [
+            "idle_instantly"
+          ]
+        },
+        {
+          "path": "widget/text/textField"
+        },
+        {
+          "path": "widget/textActive/textField"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "idle_instantly",
+          "phase": 0
+        },
+        {
+          "path": "widget",
+          "frame": "idle_instantly",
+          "phase": 1
+        },
+        {
+          "path": "energyProgress",
+          "frame": "idle_instantly",
+          "phase": 1
+        },
+        {
+          "path": "hotKeysContainer",
+          "frame": "idle_instantly",
+          "phase": 1
+        },
+        {
+          "path": "widget/pointer",
+          "frame": 30,
+          "phase": 2
+        },
+        {
+          "path": "widget/pointerTurbo",
+          "frame": 30,
+          "phase": 2
+        },
+        {
+          "path": "widget/pointerActive",
+          "frame": 30,
+          "phase": 2
+        },
+        {
+          "path": "widget/chargeZoneActive",
+          "visible": false,
+          "phase": 2
+        },
+        {
+          "path": "widget/text/textField",
+          "text": "24",
+          "phase": 2
+        },
+        {
+          "path": "widget/textActive/textField",
+          "text": "24",
+          "phase": 2
+        },
+        {
+          "path": "widget/baseSpeed",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0,
+            "end": 0.875
+          }
+        },
+        {
+          "path": "widget/baseSpeedActive",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0,
+            "end": 0.875
+          }
+        },
+        {
+          "path": "widget/unavailableSpeed",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0,
+            "end": 0.6875
+          }
+        },
+        {
+          "path": "widget/unavailableTurboSpeed",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0.875,
+            "end": 1
+          }
+        },
+        {
+          "path": "widget/chargeZone",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0.5,
+            "end": 0.875
+          }
+        },
+        {
+          "path": "widget/chargeZoneActive",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0.5,
+            "end": 0.875
+          }
+        },
+        {
+          "path": "widget/passiveActive",
+          "phase": 2,
+          "stock_dial_mask": {
+            "start": 0,
+            "end": 0.875
+          }
+        }
+      ],
+      "notes": "Inactive turbo paired with active fight at 24 km/h. Stock speed parameter limits are 55 base, +10 active, +15 passive and 40 charge start. Original dial masks, speed readouts and pointer timelines are frozen at this sample. Mode-specific child layout overrides are not applied.",
+      "offset_by_mode": {
+        "arcade": [0, 30],
+        "sniper": [0, 0]
+      },
+      "snapshot_status": "partial"
+    },
+    "stationary_reload": {
+      "stock_library": "gui/flash/stationaryReload.swf",
+      "linkage": "StationaryReloadWidgetUI",
+      "mechanic_key": "STATIONARY_RELOAD",
+      "stock_alias": "stationaryReloadWidget",
+      "layout": "info",
+      "presenter": "stationary_reloading_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "active",
+            true
+          ]
+        },
+        {
+          "method": "as_setCondition",
+          "args": [
+            "normal"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "statusIndicator",
+          "labels": [
+            "normal"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "active_instantly",
+          "phase": 0
+        },
+        {
+          "path": "statusIndicator",
+          "frame": "normal",
+          "phase": 1
+        }
+      ],
+      "notes": "AS-XX 40 t stock stationary reload active with intact mechanisms. Its separate timer is only used in the preparation or finishing phase (4.5 s and 3 s), so no timer is set in the active state."
+    },
+    "support_weapon": {
+      "stock_library": "gui/flash/supportWeapon.swf",
+      "linkage": "SupportWeaponWidgetUI",
+      "mechanic_key": "SUPPORT_WEAPON",
+      "stock_alias": "supportWeapon",
+      "layout": "right",
+      "presenter": "support_weapon_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "ready",
+            true
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "ready_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "ready_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "Support gun ready. The stock presenter only updates preparing/active progress when in the corresponding phase. No fictitious fired event or target."
+    },
+    "target_designator": {
+      "stock_library": "gui/flash/targetDesignator.swf",
+      "linkage": "TargetDesignatorWidgetUI",
+      "mechanic_key": "TARGET_DESIGNATOR",
+      "stock_alias": "targetDesignatorWidget",
+      "layout": "right",
+      "presenter": "target_designator_widget.pyc",
+      "imports": [
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "ready",
+            true
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "ready_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "ready_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "Borkenkäfer ready for target designation; no synthetic designation. Stock initial deployment=60 s, cooldown=25 s, marked target duration=10 s spotted or 7 s after losing vision."
+    },
+    "temperature_overheat": {
+      "stock_library": "gui/flash/temperatureGun.swf",
+      "linkage": "TemperatureGunOverheatWidgetUI",
+      "mechanic_key": "OVERHEAT_GUN",
+      "stock_alias": "temperatureGunOverheatWidget",
+      "layout": "center",
+      "presenter": "temp_overheat_gun_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "preparing",
+            true
+          ]
+        },
+        {
+          "method": "as_setupThresholds",
+          "args": [
+            0.89,
+            0
+          ]
+        },
+        {
+          "method": "as_setTemperature",
+          "args": [
+            0.5
+          ]
+        },
+        {
+          "method": "as_setTime",
+          "args": [
+            9.17
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "preparing_instantly",
+            "active_instantly"
+          ]
+        },
+        {
+          "path": "coolProgressSector"
+        },
+        {
+          "path": "heatProgressSector"
+        },
+        {
+          "path": "overheatScale",
+          "labels": [
+            "normal",
+            "colorBlind"
+          ]
+        },
+        {
+          "path": "overheatIcon",
+          "labels": [
+            "normal",
+            "colorBlind"
+          ]
+        },
+        {
+          "path": "timer",
+          "labels": [
+            "normal",
+            "colorBlind"
+          ]
+        },
+        {
+          "path": "timer/label"
+        },
+        {
+          "path": "scaleCursor/cursorMC"
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "phase": 0,
+          "frame": "preparing_instantly"
+        },
+        {
+          "path": "",
+          "phase": 0,
+          "blend": "screen"
+        },
+        {
+          "path": "overheatScale",
+          "phase": 1,
+          "frame": "normal"
+        },
+        {
+          "path": "overheatIcon",
+          "phase": 1,
+          "frame": "normal"
+        },
+        {
+          "path": "timer",
+          "phase": 1,
+          "frame": "normal"
+        },
+        {
+          "path": "timer/label",
+          "phase": 2,
+          "text": "9.1"
+        },
+        {
+          "path": "scaleCursor/cursorMC",
+          "phase": 2,
+          "rotation": 36.75
+        },
+        {
+          "path": "warnHighlightSector",
+          "phase": 1,
+          "frame": "hide"
+        },
+        {
+          "path": "warnPathSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunWarnPathUI",
+            "start": 0.89,
+            "end": 1
+          }
+        },
+        {
+          "path": "warnPathEffectSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunWarnPathUI",
+            "start": 0.89,
+            "end": 1
+          }
+        },
+        {
+          "path": "heatProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunHeatProgressUI",
+            "start": 0,
+            "end": 0.5
+          }
+        },
+        {
+          "path": "overheatPathEffectSector1/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunOverheatProgressUI",
+            "start": 0,
+            "end": 1
+          }
+        },
+        {
+          "path": "overheatPathEffectSector2/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunOverheatProgressUI",
+            "start": 0,
+            "end": 1
+          }
+        },
+        {
+          "path": "overheatProgressSector/content",
+          "phase": 2,
+          "stock_bitmap_arc": {
+            "symbol": "TemperatureGunOverheatProgressUI",
+            "start": 0,
+            "end": 0.5
+          }
+        }
+      ],
+      "notes": "Ares original preparing timeline and cursor at 50% temperature, with the original default color scale bitmaps and native threshold clipping. The _90mm_Ares_2000 gun cools from 50 to 0 at 10.9 x 0.5 temperature units/s when overheated. The native timer clips the final digit of the two-decimal 9.17 s format."
+    },
+    "wheeled_dash": {
+      "stock_library": "gui/flash/wheeledDash.swf",
+      "linkage": "WheeledDashWidgetUI",
+      "mechanic_key": "WHEELED_DASH",
+      "stock_alias": "WheeledDashWidget",
+      "layout": "right",
+      "presenter": "wheeled_dash_widget.pyc",
+      "imports": [
+        "gfxfontlib.swf",
+        "widgetsCommon.swf"
+      ],
+      "calls": [
+        {
+          "method": "as_setState",
+          "args": [
+            "ready",
+            true
+          ]
+        },
+        {
+          "method": "as_isReducedCooldown",
+          "args": [
+            false
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "path": "",
+          "labels": [
+            "ready_instantly"
+          ]
+        }
+      ],
+      "snapshot": [
+        {
+          "path": "",
+          "frame": "ready_instantly",
+          "phase": 0
+        }
+      ],
+      "notes": "Executor dash ready after its 5 s deployment / 20 s recharge; stock active window 4 s. No running timer or vehicle speed is invented."
+    }
+  },
+  "vehicles": {
+    "xi_amx_67_imbattable": [],
+    "xi_ares_90_c": [
+      "temperature_overheat"
+    ],
+    "xi_as_xx_40_t": [
+      "stationary_reload"
+    ],
+    "xi_at_fv230_breaker": [
+      "power_mode"
+    ],
+    "xi_black_rock": [
+      "chargeable_burst"
+    ],
+    "xi_bv_111": [
+      "bustle_feed"
+    ],
+    "xi_bz_79": [
+      "rechargeable_nitro"
+    ],
+    "xi_cav_mod_71": [],
+    "xi_cs_67_szakal": [
+      "stance_dance_fight",
+      "stance_dance_turbo"
+    ],
+    "xi_executor": [
+      "wheeled_dash"
+    ],
+    "xi_fauteur": [
+      "propellant_gun"
+    ],
+    "xi_fv4025_contriver": [],
+    "xi_gorilla": [
+      "low_charge_shot"
+    ],
+    "xi_hirschkafer": [],
+    "xi_ho_ri_shugo": [
+      "auxiliary_rocket_launcher"
+    ],
+    "xi_kr_1": [],
+    "xi_lekpz_borkenkafer": [
+      "target_designator"
+    ],
+    "xi_leopard_120_verbessert": [],
+    "xi_object_432u": [
+      "charge_shot"
+    ],
+    "xi_ptz_78": [
+      "staged_jet_boosters"
+    ],
+    "xi_pz_kpfw_neu": [
+      "shell_params_switcher"
+    ],
+    "xi_stk_2": [
+      "heating_zones"
+    ],
+    "xi_strv_107_12": [
+      "pillbox_siege"
+    ],
+    "xi_t803": [],
+    "xi_taschenratte": [
+      "support_weapon"
+    ],
+    "xi_vz_63p": [
+      "shell_calibration"
+    ],
+    "xi_wz_219": [
+      "sight_pointer"
+    ],
+    "xi_xm69_hacker": [
+      "concentration"
+    ]
+  },
+  "profiles": {
+    "standard": [],
+    "cassette": [],
+    "forced_reload": [],
+    "autoreloader": [],
+    "extra_shot": [],
+    "controllable_reload": [],
+    "unlimited": [],
+    "shell_calibration": [
+      "shell_calibration"
+    ],
+    "dualgun": [],
+    "twingun": [],
+    "dual_accuracy": [],
+    "accuracy_stacks": [],
+    "charge_shot": [
+      "charge_shot"
+    ],
+    "low_charge_shot": [
+      "low_charge_shot"
+    ],
+    "auxiliary_rocket_launcher": [
+      "auxiliary_rocket_launcher"
+    ],
+    "autoreloader_surge": [],
+    "battle_fury": [],
+    "chargeable_burst": [
+      "chargeable_burst"
+    ],
+    "heating_zones_gun": [
+      "heating_zones"
+    ],
+    "overheat_stacks": [],
+    "pillbox_siege": [
+      "pillbox_siege"
+    ],
+    "propellant_gun": [
+      "propellant_gun"
+    ],
+    "stance_dance": [
+      "stance_dance_fight",
+      "stance_dance_turbo"
+    ],
+    "stationary_reload": [
+      "stationary_reload"
+    ],
+    "concentration": [
+      "concentration"
+    ],
+    "overheat": [
+      "temperature_overheat"
+    ],
+    "temperature_autocannon": [
+      "temperature_overheat"
+    ],
+    "bustle_feed": [
+      "bustle_feed"
+    ]
+  },
+  "reticle_owned": {
+    "autoreloader_surge": "Displays the original AutoreloaderSurgeWidgetUI from autoreloaderSurge.swf for both the mechanic and the CAV vehicle.",
+    "accuracy_stacks": "Leopard stock accuracy reticle and AccuracyCrosshairUI already owned by reticle preview. No MechanicWidgetsPanel entry for ACCURACY_STACKS.",
+    "overheat_stacks": "Hirschkafer OverheatCrosshairUI already owned by reticle preview. OVERHEAT_STACKS is not the overheat gun widget key.",
+    "battle_fury": "T803 FuryCrosshairUI and native reload boost already owned by reticle preview. No additional MechanicWidgetsPanel widget.",
+    "extra_shot": "AMX reserve-shell stock state resides in the original cassette.",
+    "twingun": "Contriver's original twin markers are native reticle children.",
+    "kr_1": "Improved ramming does not add a separate gun widget."
+  }
+}

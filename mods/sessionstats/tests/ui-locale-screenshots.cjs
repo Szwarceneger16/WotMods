@@ -28,8 +28,8 @@ async function audit(page,mode,group) {
       const captionEllipsis=(text,owner)=>{
         const parent=text.nodeType===3?text.parentElement:text,
           caption=parent&&parent.closest('.ss-caption-ellipsis');
-        if(!caption||!owner.contains(caption)||!caption.closest('.ss-aggregate')||
-          !caption.closest('.ss-metric-name,.ss-credit-row-label,.ss-credit-inline-label,.ss-money-head > .ss-money-label,.ss-money-row > .ss-money-label,.ss-money-head > .ss-money-value,.ss-metric-head > .ss-metric-number,.ss-group-kpi .ss-kpi-label'))return false;
+        if(!caption||!owner.contains(caption)||!(caption.closest('.ss-aggregate')||caption.matches('.ss-battle-compact-identity .ss-group-title'))||
+          !caption.closest('.ss-metric-name,.ss-credit-row-label,.ss-credit-inline-label,.ss-money-head > .ss-money-label,.ss-money-row > .ss-money-label,.ss-money-head > .ss-money-value,.ss-metric-head > .ss-metric-number,.ss-group-kpi .ss-kpi-label,.ss-group-heading > .ss-group-title'))return false;
         const style=getComputedStyle(caption),box=caption.getBoundingClientRect(),cell=owner.getBoundingClientRect(),full=caption.textContent,
           inset=['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum,key)=>sum+(parseFloat(style[key])||0),0);
         return full.length>0&&caption.classList.contains('ss-hover-help')&&caption.getAttribute('data-ss-help')===full&&
@@ -413,13 +413,24 @@ module.exports=async function ({browser,nativeHost,check}) {
           await frames(page);
           const result=await audit(page,mode,group);
           audits.push({locale:language,group,mode:mode.name,fixture:mode.stress ? 'stress' : 'ordinary',expectedColumns:mode.columns,configuredCardWidth:mode.cardWidth || null,...result});
+          if(language==='en' && mode.name==='stress-wide' && group==='vehicles') {
+            const title=page.locator('.ss-aggregate .ss-group-title').first(),fullHelp=await title.getAttribute('data-ss-help');
+            await title.evaluate(node=>node.setAttribute('data-ss-help',node.textContent.slice(0,5)));
+            try {
+              const incomplete=await audit(page,mode,group);
+              check('The locale audit rejects clipped aggregate titles with incomplete tooltip text',
+                incomplete.issues.some(issue=>issue.kind==='clipped-text' && issue.className.includes('ss-group-title')));
+            } finally {
+              await title.evaluate((node,help)=>node.setAttribute('data-ss-help',help),fullHelp);
+            }
+          }
           if(mode.capture && ['vehicles','battles'].includes(group)) {
             // Show both control bars and the compact summary together with
             // Vehicles or the expanded first battle's details.
             await page.locator('#ss-scroll').evaluate(scroll=>{scroll.scrollTop=0;});
             await frames(page);
             const name='session-stats-'+language+'-'+group+'-'+mode.name+'.jpg';
-            const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:70,animations:'disabled'});
+            const data=await page.locator('#grz-session-stats').screenshot({path:path.join(directory,name),type:'jpeg',quality:64,animations:'disabled'});
             screenshots.push({name,language,group,mode:mode.name,fixture:'ordinary',width:mode.width,scale:mode.scale,mime_type:'image/jpeg',bytes:data.length,sha256:sha(data),data:data.toString('base64')});
           }
         }

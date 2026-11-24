@@ -2,17 +2,20 @@
 
 ## Local Stay Sharp build
 
-- The game entrypoint is `source/mod_staysharp_medkit.py` (CPython 2.7).
+- The game entrypoint is `mods/staysharp/src/mod_staysharp_medkit.py` (CPython 2.7).
 - Python 3 standard-library tools produce the deterministic `.wotmod`.
 - The animation master and seven voice files have pinned checksums; the
-  Wwise v150 bank is assembled from reviewed source assets. See [Audio](AUDIO.md).
+  Wwise v150 bank is assembled from reviewed source assets. [Audio](../mods/staysharp/docs/AUDIO.md).
+
+From the repository root, run the shared and Stay Sharp tests and build the installer.
 
 ```sh
 python3 scripts/privacy_audit.py
 python3 -m unittest discover -s tests -v
-python3 source/build_wotmod.py
-(cd dist && sha256sum -- *.wotmod > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
-python3 scripts/release_installers.py package release-local --source dist --mod staysharp
+python3 -m unittest discover -s mods/staysharp/tests -v
+python3 mods/staysharp/tools/build_wotmod.py
+(cd mods/staysharp/dist && sha256sum -- *.wotmod > SHA256SUMS.txt && sha256sum --check SHA256SUMS.txt)
+python3 scripts/release_installers.py package release-local --source mods/staysharp/dist --mod staysharp
 ```
 
 `StaySharp-Medkit-v<version>.zip` extracts into the folder containing

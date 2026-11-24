@@ -1,6 +1,7 @@
 /* Panel-fit sorting controls and an owned loading indicator retain their geometry. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
 function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8')){
+  source=source.replace(/\r\n/g,'\n');
   const actual=name=>{const start=source.indexOf('    function '+name+'('),line=source.indexOf('\n',start);
     const end=source.slice(start,line).endsWith('}')?line:source.indexOf('\n    }\n',start)+7;
     assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end);};
@@ -19,18 +20,22 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
         const nested=node.querySelector(selector);if(nested)return nested;}return null;}
   }
   const controls={'ss-sort-off':new Node(),'ss-filter-loading':new Node(),'ss-sorting':new Node()},statistic=new Node();
-  const scope={period_id:'synthetic-filter-period',loading:false,load_error:'',pagination:{},ordering:{
+  const scope={period_id:'synthetic-filter-period',order_epoch:'synthetic-order-owner',loading:false,load_error:'',pagination:{},ordering:{
     vehicles:{metric:'xp_received',statistic:'avg',direction:'desc',chronology:'newest'},
     battles:{metric:'off',statistic:'avg',direction:'desc',chronology:'newest'},
     maps:{metric:'off',statistic:'avg',direction:'desc',chronology:'newest'}}};
-  const state={payload:{account_key:'synthetic-filter-account',loading:false,load_error:'',scopes:{launch:scope,instance:scope}},
-    scope:'launch',group:'vehicles',nativeSession:true,orders:{},orderIntent:null,wideFilters:true,feed:null};
-  const commands=[],selects={},context={state,selects,root:new Node(),Object,String,JSON,
+  const state={payload:{account_key:'synthetic-filter-account',loading:false,load_error:'',scopes:{launch:scope,manual:{},instance:scope}},
+    scope:'launch',group:'vehicles',nativeSession:true,orders:{},orderIntent:null,orderSequence:0,wideFilters:true,feed:null};
+  const commands=[],selects={},timers=new Map();let sequence=0;
+  const context={state,selects,root:new Node(),Object,String,JSON,
+    window:{setTimeout(callback,delay){timers.set(++sequence,{callback,delay});return sequence;},clearTimeout:id=>timers.delete(id)},
     document:{createElement:()=>new Node(),getElementById:id=>controls[id]||(controls[id]=new Node()),querySelector:selector=>selector==='.ss-sort-statistic'?statistic:null},
-    t:key=>key,currentScope:()=>scope,scopeName:()=>state.scope,
-    viewContext:()=>({account_key:state.payload.account_key,scope:state.scope,period_id:scope.period_id}),
-    sameContext:owner=>owner.account_key===state.payload.account_key&&owner.scope===state.scope&&owner.period_id===scope.period_id,
-    cancelBattleNavigation(){},retireFeed(){state.feed=null;},render(){},
+    t:key=>key,currentScope:()=>state.payload.scopes[state.scope],scopeName:()=>state.scope,
+    viewContext:()=>({account_key:state.payload.account_key,scope:state.scope,period_id:state.payload.scopes[state.scope].period_id}),
+    sameContext:owner=>owner.account_key===state.payload.account_key&&owner.scope===state.scope&&owner.period_id===state.payload.scopes[state.scope].period_id,
+    cancelBattleNavigation(){},retireFeed(){state.feed=null;},render(){},closeSelect(){},
+    unwrap:value=>value,hasOlderPageReply:()=>false,historyOnlyUpdate:()=>false,applyLanguage(){},applyAppearance(){},consumeBattleReturn(){},
+    setActionError(message){state.actionError=message;context.renderFilterActivity(scope);},
     invoke:(action,args)=>{commands.push({action,...JSON.parse(JSON.stringify(args))});return true;}};
   vm.createContext(context);
   const declarations=source.slice(source.indexOf('    var defaultOrder ='),source.indexOf('    function orderKey('));
@@ -38,7 +43,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   for(const field of ['chronology','statistic','metric','direction']){
     selects[field]={trigger:new Node(),label:new Node(),menu:new Node(),options:context.selectOptions[field].map(()=>new Node())};
   }
-  for(const name of ['element','append','clear','appendClientWarning','missingReceivedField','orderKey','canonicalMetric','creditMetric','metricSeries','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity','renderSortDataWarning'])
+  for(const name of ['element','append','clear','appendClientWarning','missingReceivedField','orderKey','canonicalMetric','creditMetric','metricSeries','observedTotal','baseCreditAvailability','summableMetric','getOrder','groupSortValue','ordered','orderingUnavailable','changeOrder','rememberedMetric','toggleMetricOrder','renderSelects','renderFilterActivity','renderSortDataWarning','clearOrderIntent','orderRequestId','orderReplySequence','hasOlderOrderReply','hasOlderHistoryReply','sameBattleOriginOrder','earlierDataRevision','cancelUITimer','update'])
     vm.runInContext(actual(name),context);
   context.hasNumber=value=>typeof value==='number'&&Number.isFinite(value);
   const warningOwner=new Node(),warningIcon=context.appendClientWarning(warningOwner,'ss-sort-partial-icon');
@@ -46,7 +51,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(warningIcon.className,'ss-warning-icon ss-sort-partial-icon');
   assert.strictEqual(warningIcon.getAttribute('aria-hidden'),'true','The shared icon is decorative beside its localized explanation');
   assert.strictEqual(warningIcon.textContent,'','A native warning image never depends on a Unicode font glyph');
-  const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};state.orderIntent=null;render();};
+  const render=()=>context.renderSelects(scope),ack=()=>{const command=commands[commands.length-1];scope.ordering[state.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};context.clearOrderIntent();render();};
   state.group='tiers';render();
   assert.strictEqual(context.getOrder(scope).chronology,'tier_desc','An unconfigured Tiers tab defaults to highest tier first');
   assert.strictEqual(selects.chronology.label.textContent,'sort.tier_desc');
@@ -74,9 +79,101 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(controls['ss-sort-off'].getAttribute('aria-label'),'sort.label');
   assert.strictEqual(selects.metric.trigger.disabled,true,'Wide Off disables the remembered metric dropdown');
   assert.strictEqual(selects.direction.trigger.disabled,true);
+  assert.strictEqual(statistic.style.display,'','Off still displays the remembered XP statistic');
+  assert.strictEqual(statistic.getAttribute('aria-hidden'),'false');
+  assert.strictEqual(selects.statistic.trigger.disabled,true);
+  assert(!controls['ss-sorting'].classList.contains('ss-sort-without-statistic'));
   assert.strictEqual(selects.chronology.trigger.disabled,false,'Off restores the independent date preference');
   assert(!selects.chronology.trigger.classList.contains('ss-select-disabled'),'Off clears the disabled paint from ordinary ordering');
   controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'xp_received','Metric On restores the last non-Off metric');ack();
+  const confirmedFeed={pending:null};
+  state.feed=confirmedFeed;context.changeOrder('metric','xp_base');
+  const abandoned=timers.get(state.orderIntent.timer);
+  assert.strictEqual(abandoned.delay,10000,'Sort waits for a bounded acknowledgement');
+  assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible');
+  abandoned.callback();
+  assert.strictEqual(state.orderIntent,null);
+  assert.strictEqual(state.feed,confirmedFeed,'An unanswered sort preserves the mounted feed');
+  assert.strictEqual(context.getOrder(scope).metric,'xp_received','The confirmed ordering is restored');
+  assert.strictEqual(controls['ss-filter-loading'].style.visibility,'hidden');
+  assert.strictEqual(state.actionError,'error.action');
+  context.changeOrder('metric','xp_base');
+  const replacement=state.orderIntent;
+  abandoned.callback();assert.strictEqual(state.orderIntent,replacement,'A retired timeout cannot cancel the next sort');
+  const initialPayload=state.payload;
+  const nativeSnapshot=(metric,request)=>({
+    ...initialPayload,scopes:{...initialPayload.scopes,launch:{
+      ...scope,ordering:{...scope.ordering,vehicles:{...scope.ordering.vehicles,metric}},
+      pagination:{vehicles:{page:0,order_request_id:request}}
+    }}
+  });
+  context.changeOrder('metric','xp_received');
+  const newest=state.orderIntent;
+  assert.notStrictEqual(replacement.id,newest.id,'Sort commands have distinct acknowledgement IDs');
+  assert.strictEqual(commands.at(-1).request_id,newest.id);
+  assert(context.update(nativeSnapshot('xp_received','sort-original')));
+  assert(context.update(nativeSnapshot('xp_base',replacement.id)));
+  assert.strictEqual(state.orderIntent,newest,'The original ordering and superseded reply cannot confirm A → B → A');
+  assert.strictEqual(state.payload,initialPayload);
+  assert.strictEqual(state.feed,confirmedFeed);
+  assert(timers.has(newest.timer),'A stale refresh cannot clear the latest timeout');
+  const latestPayload=nativeSnapshot('xp_received',newest.id);
+  assert(context.update(latestPayload));
+  assert.strictEqual(state.orderIntent,null);
+  assert(!timers.has(newest.timer));
+  assert.strictEqual(state.feed,null,'The acknowledged sort refreshes the feed from page one');
+  assert.strictEqual(state.feedForceStart,0);
+  assert(context.update(nativeSnapshot('xp_base',replacement.id)));
+  assert.strictEqual(state.payload,latestPayload,'A superseded reply arriving after confirmation cannot restore its sorting');
+  state.group='maps';
+  assert(context.update(nativeSnapshot('xp_base',replacement.id)));
+  assert(context.update(nativeSnapshot('xp_base',undefined)));
+  assert.strictEqual(state.payload,latestPayload,'An obsolete snapshot cannot override sorting in a hidden tab, even without an echo');
+  const newOwner=nativeSnapshot('off',undefined);
+  newOwner.scopes.launch.order_epoch='next-owner';
+  assert(context.update(newOwner));
+  assert.strictEqual(state.payload,newOwner,'A re-created projection can replace historical request acknowledgements');
+  state.group='vehicles';
+  state.payload=latestPayload;
+  latestPayload.scopes.launch.data_revision='projection:1';
+  context.changeOrder('metric','xp_base');
+  const refreshed=(revision,language,timestamp=revision)=>({...latestPayload,generated_at:timestamp,localization:{language},scopes:{...latestPayload.scopes,
+    launch:{...latestPayload.scopes.launch,data_revision:'projection:'+revision}}});
+  context.update(refreshed(2,'de'));
+  context.changeOrder('metric','credits');
+  const sortTimer=timers.get(state.orderIntent.timer),latestRefresh=refreshed(4,'pl');
+  context.update(latestRefresh);
+  context.update(refreshed(3,'en'));
+  context.update(refreshed(4,'en',3));
+  assert.strictEqual(state.payload,latestPayload,'An unrelated refresh is deferred during the native sorting request');
+  sortTimer.callback();
+  assert.strictEqual(state.payload,latestRefresh,'Sort timeout installs the newest deferred refresh and its language');
+  assert.strictEqual(state.actionError,'error.action');
+  assert.strictEqual(context.getOrder(latestRefresh.scopes.launch).metric,'xp_received','Timeout preserves the confirmed native order');
+
+  const range=(period,count,loading,request)=>({...initialPayload,scopes:{...initialPayload.scopes,timeline:{
+    ...scope,period_id:period,order_epoch:'range-owner:'+count,loading,
+    pagination:{vehicles:{page:0,order_request_id:request}}
+  }}});
+  state.scope='timeline';
+  const originalRange=range('A',1,false),interveningRange=range('B',2,false);
+  const loadingRange=range('A',3,true),returnedRange=range('A',3,false);
+  assert(context.update(originalRange));assert(context.update(interveningRange));assert(context.update(loadingRange));
+  assert(context.update(originalRange));
+  assert.strictEqual(state.payload,loadingRange,'An earlier A cannot remove the loading state from reselected A');
+  assert(context.update(returnedRange));
+  context.changeOrder('metric','xp_received');
+  const newRangeIntent=state.orderIntent;
+  assert.strictEqual(commands.at(-1).order_epoch,'range-owner:3','Sort carries the current Timeline owner');
+  assert(context.update(interveningRange));assert(context.update(originalRange));
+  assert.strictEqual(state.payload,returnedRange,'Returned A ignores delayed snapshots for both retired ranges');
+  assert.strictEqual(state.orderIntent,newRangeIntent,'A delayed previous range cannot cancel a current sort');
+  const acknowledgedRange=range('A',3,false,newRangeIntent.id);
+  assert(context.update(acknowledgedRange));
+  assert.strictEqual(state.payload,acknowledgedRange);
+  assert.strictEqual(state.orderIntent,null);
+  state.scope='launch';
+  state.payload=initialPayload;state.feedForceStart=null;render();
   const before=commands.length;scope.loading=true;render();controls['ss-sort-off'].onclick();context.changeOrder('metric','xp_base');
   assert.strictEqual(commands.length,before,'Busy retained toggle and selector callbacks cannot sort an unavailable projection');
   context.renderFilterActivity(scope);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'visible','A rebuilding projection displays its filter spinner');
@@ -93,22 +190,29 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   state.scope='launch';state.payload.loading=false;state.group='battles';render();
   const battleBefore=commands.length;context.changeOrder('statistic','max');
   assert.strictEqual(commands.length,battleBefore,'Battles rejects stale aggregate-statistic callbacks');
-  assert.strictEqual(statistic.style.visibility,'hidden');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');assert.strictEqual(selects.statistic.trigger.disabled,true);
+  const assertNoStatistic=description=>{
+    assert.strictEqual(statistic.style.display,'none',description);
+    assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');
+    assert.strictEqual(selects.statistic.trigger.disabled,true);
+    assert(controls['ss-sorting'].classList.contains('ss-sort-without-statistic'));
+  };
+  assertNoStatistic('Battles omits the aggregate statistic field');
   context.changeOrder('metric','battles');assert.strictEqual(commands.length,battleBefore,'Battles rejects the aggregate count metric');
   for(const chronology of ['first_desc','last_asc']){context.changeOrder('chronology',chronology);assert.strictEqual(commands.length,battleBefore,'Battles rejects a retained aggregate-date callback');}
   state.group='vehicles';scope.ordering.vehicles.metric='battles';render();
-  assert.strictEqual(statistic.style.visibility,'hidden','Recorded counts keep an inaccessible reserved statistic slot');
-  assert.strictEqual(statistic.style.display,'');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');
+  assertNoStatistic('Recorded counts omit the inapplicable statistic field');
   const countBefore=commands.length;context.changeOrder('statistic','max');assert.strictEqual(commands.length,countBefore);
+  controls['ss-sort-off'].onclick();ack();assertNoStatistic('Off collapses the remembered count toolbar');
+  controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'battles');ack();
   const rateOrders=JSON.parse(JSON.stringify(scope.ordering));
   for(const group of ['vehicles','maps','tiers']){
     state.group=group;scope.ordering[group]={metric:'win_rate',statistic:'max',direction:'desc',chronology:'newest'};render();
-    assert.strictEqual(statistic.style.visibility,'hidden','Win rate keeps its inapplicable statistic out of presentation in '+group);
-    assert.strictEqual(statistic.style.display,'');assert.strictEqual(statistic.getAttribute('aria-hidden'),'true');
-    assert.strictEqual(selects.statistic.trigger.disabled,true);
+    assertNoStatistic('Win rate omits the inapplicable statistic field in '+group);
     const beforeRate=commands.length;context.changeOrder('statistic','min');assert.strictEqual(commands.length,beforeRate,'Retained statistic callbacks cannot alter win-rate sorting');
     const option=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');
     assert(option>=0&&selects.metric.options[option].style.display==='','Win-rate sorting is offered in '+group);
+    controls['ss-sort-off'].onclick();ack();assertNoStatistic('Off collapses the remembered win-rate toolbar in '+group);
+    controls['ss-sort-off'].onclick();assert.strictEqual(commands.at(-1).metric,'win_rate');ack();
   }
   state.group='battles';scope.ordering.battles={metric:'win_rate',statistic:'max',direction:'asc',chronology:'oldest'};render();
   const rateOption=context.selectOptions.metric.findIndex(choice=>choice[0]==='win_rate');
@@ -143,7 +247,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   assert.strictEqual(commands.length,destroyed);assert.strictEqual(controls['ss-filter-loading'].style.visibility,'hidden','Teardown retires callbacks and the activity indicator');
   // A fixed full-row budget must ignore both stale native rectangles and
   // selected metrics. Widening is coalesced; shrinking and cleanup retire it.
-  const bar=controls['ss-list-controls']=new Node();let panelWidth=900,queued=0;
+  const bar=controls['ss-list-controls']=new Node();let panelWidth=874,queued=0;
   const raf=[];context.window={requestAnimationFrame:callback=>raf.push(callback)};
   context.resizePanelDimensions=()=>({width:panelWidth+38});
   context.scrollContentInset=()=>{throw Error('Filter mode must not read a live native gutter');};
@@ -154,7 +258,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
   const flush=()=>{let count=0;while(raf.length){assert(count++<30,'Filter debounce is bounded');raf.shift()();}};
   state.destroyed=false;state.group='vehicles';state.payload.viewport={width:3840,height:2400};
   for(const scale of [1,2]){
-    state.nativeScale=scale;state.wideFilters=undefined;state.filterLayoutWidth=null;panelWidth=900;render();
+    state.nativeScale=scale;state.wideFilters=undefined;state.filterLayoutWidth=null;panelWidth=874;render();
     context.layoutFilterControls();assert.strictEqual(state.wideFilters,false);
     for(const metric of ['off','xp_base','win_rate','battles']){
       scope.ordering.vehicles.metric=metric;render();
@@ -163,7 +267,7 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
       assert.strictEqual(bar.classList.contains('ss-filters-wide'),false);
       assert.strictEqual(controls['ss-sort-off'].style.display,'none');
     }
-    panelWidth=903;context.layoutFilterControls();
+    panelWidth=875;context.layoutFilterControls();
     assert.strictEqual(state.wideFilters,false,'Promotion waits until resizing settles');
     assert.strictEqual(raf.length,1);
     for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
@@ -172,30 +276,30 @@ function assertFilterStateSource(source=fs.readFileSync(path.join(__dirname,'../
     assert.strictEqual(state.wideFilters,false,'Six fast frames do not acknowledge the owned eight-frame promotion');
     assert.strictEqual(bar.getAttribute('data-filter-layout'),'wrapped');
     flush();assert.strictEqual(state.wideFilters,true);assert.strictEqual(bar.getAttribute('data-filter-layout'),'wide');
-    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    panelWidth=800;context.layoutFilterControls();panelWidth=876;context.layoutFilterControls();
     const retained=raf.shift(),scheduler=context.window.requestAnimationFrame;
     context.window.requestAnimationFrame=undefined;retained();
     assert.strictEqual(state.wideFilters,true,'A retained promotion completes through the no-RAF fallback');
     assert.strictEqual(state.filterLayoutQueued,false,'Losing optional RAF releases promotion ownership');
     context.window.requestAnimationFrame=scheduler;
-    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();flush();
+    panelWidth=800;context.layoutFilterControls();panelWidth=876;context.layoutFilterControls();flush();
     assert.strictEqual(state.wideFilters,true,'Restored RAF supports a fresh narrow-to-wide promotion');
-    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    panelWidth=800;context.layoutFilterControls();panelWidth=876;context.layoutFilterControls();
     const shrinking=raf.shift();context.window.requestAnimationFrame=undefined;panelWidth=800;shrinking();
     assert.strictEqual(state.wideFilters,false,'Losing RAF cannot bypass the current narrow-width guard');
     assert.strictEqual(state.filterLayoutQueued,false);context.window.requestAnimationFrame=scheduler;
-    panelWidth=904;context.layoutFilterControls();const resizing=raf.shift();state.resize={};
+    panelWidth=876;context.layoutFilterControls();const resizing=raf.shift();state.resize={};
     context.window.requestAnimationFrame=undefined;resizing();
     assert.strictEqual(state.wideFilters,false,'Losing RAF cannot promote during an active resize');
     assert.strictEqual(state.filterLayoutQueued,false);context.window.requestAnimationFrame=scheduler;state.resize=null;
     context.layoutFilterControls();flush();
     const before=queued;for(let attempt=0;attempt<5;attempt++)context.layoutFilterControls();
     assert.strictEqual(queued,before,'A settled mode cannot recursively schedule layout');
-    panelWidth=902;context.layoutFilterControls();assert.strictEqual(state.wideFilters,false,'Shrinking falls back immediately');
-    panelWidth=904;context.layoutFilterControls();assert.strictEqual(raf.length,1);
+    panelWidth=874;context.layoutFilterControls();assert.strictEqual(state.wideFilters,false,'Shrinking falls back immediately');
+    panelWidth=876;context.layoutFilterControls();assert.strictEqual(raf.length,1);
     panelWidth=800;context.layoutFilterControls();flush();assert.strictEqual(state.wideFilters,false,'Stale promotion cannot undo a newer shrink');
-    panelWidth=904;context.layoutFilterControls(true);assert.strictEqual(state.wideFilters,true,'Gesture release flushes the final mode');
-    panelWidth=800;context.layoutFilterControls();panelWidth=904;context.layoutFilterControls();
+    panelWidth=876;context.layoutFilterControls(true);assert.strictEqual(state.wideFilters,true,'Gesture release flushes the final mode');
+    panelWidth=800;context.layoutFilterControls();panelWidth=876;context.layoutFilterControls();
     state.destroyed=true;context.cancelFilterLayout();flush();assert.strictEqual(state.wideFilters,false,'Destroyed views retire queued layout work');
     state.destroyed=false;
   }
@@ -250,7 +354,10 @@ module.exports=async({browser,nativeHost,check})=>{
     const acknowledge=async()=>{await page.evaluate(()=>{const command=__grzCommands.filter(item=>item.action==='sort').pop();
       const payload=JSON.parse(model.payload),scope=payload.scopes[command.scope];
       scope.ordering=scope.ordering||{};scope.ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
-      if(scope.pagination&&scope.pagination[command.group])scope.pagination[command.group].page=0;
+      const meta=scope.pagination[command.group];
+      meta.page=0;
+      meta.order_request_id=command.request_id;
+      delete meta.request_id;
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);};
     const choose=async(field,value)=>{await page.locator('#ss-sort-'+field+' .ss-select-trigger').click();
       await page.locator('#ss-sort-'+field+' [data-value="'+value+'"]').click();await acknowledge();};
@@ -370,6 +477,32 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.locator('#ss-sort-metric .ss-select-trigger').click();await page.locator('#ss-sort-metric [data-value="credits_net_received"]').click();await frames(page);
       check('An unacknowledged native sort immediately owns the filter spinner'+caption,await page.locator('#ss-filter-loading').isVisible());
       await acknowledge();check('The matching native sort acknowledgement clears its spinner'+caption,!await page.locator('#ss-filter-loading').isVisible());
+      if(scale===1){
+        const confirmation=await page.evaluate(()=>{
+          const payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
+          window.__beforeSortTimeout=payload;
+          const oldTimers=new Set(__grzTimers.keys());
+          document.querySelector('#ss-sort-metric [data-value="xp_base"]').onclick();
+          const deadline=[...__grzTimers.entries()].find(([id,timer])=>!oldTimers.has(id)&&timer.delay===10000);
+          if(!deadline)throw new Error('Expected a bounded native sort timeout');
+          window.__sortTimeout=deadline[1].callback;
+          const refreshed=JSON.parse(JSON.stringify(payload));
+          refreshed.scopes.timeline.summary.battles=765;
+          refreshed.scopes.timeline.data_revision='synthetic-sort-timeout:2';
+          refreshed.localization={language:'de',messages:{'error.action':'Synthetic German sort timeout'}};
+          model.payload=JSON.stringify(refreshed);__grzEvents['viewEnv.onDataChanged']();
+          return {before:scope.summary.battles,visible:document.querySelector('#ss-summary .ss-kpi-value').textContent};
+        });
+        check('A refresh waits while the current order is unconfirmed',confirmation.visible===String(confirmation.before)&&await page.locator('#ss-filter-loading').isVisible());
+        await page.evaluate(()=>__sortTimeout());await frames(page);
+        check('An unacknowledged sort keeps the latest statistics and language and clears only its spinner',
+          await page.locator('#ss-summary .ss-kpi-value').first().textContent()==='765'&&
+          await page.locator('html').getAttribute('lang')==='de'&&
+          await page.locator('#ss-status').textContent()==='Synthetic German sort timeout'&&
+          await page.locator('#ss-sort-metric .ss-select-trigger').textContent()==='Net credits (received)'&&
+          !await page.locator('#ss-filter-loading').isVisible());
+        await page.evaluate(()=>{model.payload=JSON.stringify(__beforeSortTimeout);__grzEvents['viewEnv.onDataChanged']();});await frames(page);
+      }
       await require('./ui-loading-overlay.cjs')({page,check,caption,scale,width,acknowledge,frames});
     }finally{await page.close();}
   }));

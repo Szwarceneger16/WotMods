@@ -1,7 +1,7 @@
 /* Actual preview ordering keeps boundary selection independent of direction. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
 module.exports=function(){
-  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
   function actual(name){const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start)+7;
     assert(start>=0&&end>start,'Exercise shipped '+name);return source.slice(start,end);}
   const context={state:{group:'maps'},hasNumber:value=>typeof value==='number'&&Number.isFinite(value)};

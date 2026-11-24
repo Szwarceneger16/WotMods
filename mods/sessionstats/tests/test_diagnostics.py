@@ -4,11 +4,13 @@ from __future__ import unicode_literals
 
 import errno
 import io
+import linecache
 import logging
 import os
 import shutil
 import sys
 import tempfile
+import threading
 import types
 import unittest
 
@@ -49,8 +51,8 @@ class DiagnosticsTests(unittest.TestCase):
         logging.raiseExceptions = self.old_raise
         shutil.rmtree(self.directory)
 
-    def start(self, directory=None):
-        state = diagnostics.start_logging(directory or self.directory)
+    def start(self, directory=None, defer=None):
+        state = diagnostics.start_logging(directory or self.directory, defer=defer)
         self.states.append(state)
         return state
 
@@ -228,6 +230,115 @@ class DiagnosticsTests(unittest.TestCase):
             self.assertIsNone(capture.records[-1].exc_text)
         finally:
             self.logger.removeHandler(capture)
+
+    def test_deferred_exception_buffers_without_looking_up_source_and_flushes_in_garage(self):
+        battle = [False]
+        state = self.start(defer=lambda: battle[0])
+        battle[0] = True
+        original_getline = linecache.getline
+        original_propagation = self.logger.propagate
+
+        def source_lookup(*args, **kwargs):
+            raise AssertionError('Deferred diagnostics attempted to read source lines')
+
+        linecache.getline = source_lookup
+        self.logger.propagate = False
+        try:
+            try:
+                raise ValueError('synthetic confidential account details')
+            except ValueError:
+                self.logger.exception('Deferred exception in combat')
+        finally:
+            linecache.getline = original_getline
+            self.logger.propagate = original_propagation
+        self.assertTrue(state.ok)
+        self.assertNotIn('Deferred exception in combat', self.read(state))
+        battle[0] = False
+        state.flush()
+        text = self.read(state)
+        self.assertIn('Deferred exception in combat', text)
+        self.assertIn('exception=ValueError frames=test_diagnostics.py:', text)
+        self.assertNotIn('synthetic confidential account details', text)
+
+    def test_close_in_battle_flushes_deferred_records_off_the_client_thread(self):
+        battle = [False]
+        state = self.start(defer=lambda: battle[0])
+        battle[0] = True
+        handler = state._handler
+        original_write = handler._write_pending
+        entered = threading.Event()
+        resume = threading.Event()
+        writer = []
+        client = threading.current_thread()
+
+        def tracked_write():
+            writer.append(threading.current_thread())
+            entered.set()
+            if writer[0] is not client and not resume.wait(5):
+                raise RuntimeError('Deferred test write did not resume')
+            original_write()
+
+        handler._write_pending = tracked_write
+        self.logger.warning('Last diagnostics before shutdown in combat')
+        self.assertEqual(writer, [])
+        try:
+            state.close()
+            self.assertTrue(entered.wait(5))
+            self.assertIsNot(writer[0], client)
+            self.assertFalse(writer[0].daemon)
+            self.assertNotIn(handler, self.logger.handlers)
+        finally:
+            resume.set()
+            if writer and writer[0] is not client:
+                writer[0].join(5)
+        self.assertFalse(writer[0].is_alive())
+        self.assertIsNone(handler.error)
+        self.assertIn('Last diagnostics before shutdown in combat', self.read(state))
+
+    def test_close_retries_a_contended_shared_log_off_the_client_thread(self):
+        battle = [False]
+        state = self.start(defer=lambda: battle[0])
+        handler = state._handler
+        if handler.lock_module is None:
+            self.skipTest('The shared log requires a platform lock')
+        battle[0] = True
+        self.logger.warning('Shared log survives a transient lock on shutdown')
+        attempted, released = threading.Event(), threading.Event()
+        original_lock = diagnostics._Lock
+        workers = []
+
+        class ContendedLock(object):
+            def __init__(self, *args):
+                self.lock = None
+                if released.is_set():
+                    self.lock = original_lock(*args)
+
+            def __enter__(self):
+                if self.lock is not None:
+                    return self.lock.__enter__()
+                self.acquired = False
+                workers.append(threading.current_thread())
+                attempted.set()
+                return self
+
+            def __exit__(self, *args):
+                if self.lock is not None:
+                    return self.lock.__exit__(*args)
+
+        diagnostics._Lock = ContendedLock
+        try:
+            state.close()
+            self.assertTrue(attempted.wait(5))
+            self.assertIsNot(workers[0], threading.current_thread())
+            self.assertNotIn('Shared log survives', self.read(state))
+        finally:
+            released.set()
+            if workers:
+                workers[0].join(5)
+            diagnostics._Lock = original_lock
+        self.assertFalse(workers[0].is_alive())
+        self.assertIsNone(handler.error)
+        self.assertIn('Shared log survives a transient lock on shutdown', self.read(state))
 
     @unittest.skipIf(os.name == 'nt', 'POSIX lock exercised here; Windows contract is separate')
     def test_other_process_lock_buffers_without_waiting_and_flush_reopens_current_log(self):

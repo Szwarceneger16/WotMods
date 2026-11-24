@@ -22,7 +22,7 @@ function run() {
     element: (tag, className, text) => { const node = new Node(); node.className = className || ''; node.textContent=text||'';return node; },
     append(parent, node) { parent.children.push(node); node.parentNode = parent; return node; } };
   vm.createContext(context);
-  const source = fs.readFileSync(path.join(__dirname, '../ui/session_stats.js'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '../ui/session_stats.js'), 'utf8').replace(/\r\n/g, '\n');
   vm.runInContext(['nativeVisualSource', 'appendVisual', 'appendBattleMap', 'hideMapPreview', 'showMapPreview']
     .map(name => sourceFunction(source, name)).join('\n'), context);
   const small = 'img://gui/maps/icons/map/small/synthetic.png';

@@ -1,7 +1,7 @@
 /* Exercise shipped sorting presentation without a browser or private records. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
 function run(){
-  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+  const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
   function actual(name){const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start)+7;
     assert(start>=0&&end>start,'Exercise shipped '+name);return source.slice(start,end);}
   class Node{
@@ -19,7 +19,7 @@ function run(){
     append:(parent,node)=>parent.appendChild(node),element:(tag,cls,text)=>{const node=new Node(text);node.className=cls;return node;},
     number:value=>value===null?'—':String(value),explainCoverage:node=>node,
     signed:value=>value===null?'—':String(value),t:(key,args=[])=>messages[key].replace(/\{(\d+)\}/g,(_,index)=>args[index])};
-  vm.createContext(context);vm.runInContext(['series','coverage','observedTotal','canonicalMetric','creditMetric','netCreditMetric','metricSeries','groupSortValue','cardSortValue','sortMetricLabel','markSortValue','highlightCardSort'].map(actual).join('\n'),context);
+  vm.createContext(context);vm.runInContext(['series','coverage','observedTotal','canonicalMetric','creditMetric','netCreditMetric','metricSeries','baseCreditAvailability','groupSortValue','cardSortValue','sortMetricLabel','markSortValue','highlightCardSort'].map(actual).join('\n'),context);
   function fixture(){
     const card=new Node(),meta=new Node(),kpis=[new Node(),new Node(),new Node()],rows=[new Node(),new Node(),new Node()],head=new Node(),money=new Node();
     for(const row of rows.concat([head,money]))row.children=[new Node(),new Node(),new Node(),new Node()];
@@ -98,6 +98,10 @@ function run(){
   assert.strictEqual(context.groupSortValue({stats:{credits_net:{count:1,sum:50}}},{metric:'credits_net_received',statistic:'sum'}),50,'Old net series remains received');
   assert.strictEqual(context.groupSortValue({stats:{credits_gross:{count:1,sum:500}}},{metric:'credits_income_base',statistic:'sum'}),null,'Old received income cannot invent base earnings');
   assert.strictEqual(context.groupSortValue({stats:{battles:1,credits_income_base:{count:1,sum:0}}},{metric:'credits_income_base',statistic:'sum'}),0,'Known zero base earnings stay available');
+  const priorBase={battles:1,observed_battles:2,credits_income_base:{count:1,sum:0},
+    currencies:{credits:{income_base_count:1,income_base:null}}},baseOrder={metric:'credits_income_base',statistic:'sum'};
+  assert.strictEqual(context.groupSortValue({stats:priorBase},baseOrder),0,'A legacy pending projection still yields its known zero base total');
+  assert.strictEqual(context.groupSortValue({stats:{...priorBase,battles:2}},baseOrder),null,'A missing field in received reports still prevents base All sorting');
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'battle_wn8'},true);
   assert.strictEqual(f.rows[2].getAttribute('data-ss-sort-active'),'battle_wn8');assert.strictEqual(f.meta.children.length,0);
   f=fixture();context.highlightCardSort(f.card,f.meta,item,{metric:'off'},false);

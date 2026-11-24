@@ -1,6 +1,6 @@
 /* Pinning uses normal-flow geometry, independent of native scroll/paint order. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actual(source,name){const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start)+7;
   assert(start>=0&&end>start,'Exercise shipped '+name);return source.slice(start,end);}
 function fixture(source=shipped(),scale=1){

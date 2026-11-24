@@ -10,7 +10,7 @@ module.exports=async({browser,nativeHost,check})=>{
     try{
       await page.evaluate(()=>{
         window.__battleTableFixture=JSON.parse(model.payload);
-        const fault=window.__battleTableFault={rect:Element.prototype.getBoundingClientRect,query:Element.prototype.querySelectorAll,stale:false,audit:false};
+        const fault=window.__battleTableFault={rect:Element.prototype.getBoundingClientRect,query:Element.prototype.querySelectorAll,style:window.getComputedStyle,stale:false,audit:false};
         Element.prototype.getBoundingClientRect=function(){
           const result=fault.rect.call(this);
           if(fault.stale&&!fault.audit&&this.classList.contains('ss-economy')&&this.closest('.ss-battle')){
@@ -23,6 +23,13 @@ module.exports=async({browser,nativeHost,check})=>{
           if(fault.stale&&!fault.audit&&this.classList.contains('ss-economy')&&this.closest('.ss-battle')&&
             selector==='.ss-money-head, .ss-money-row:not(.ss-credit-pair)')return fault.query.call(this,'.ss-money-head');
           return fault.query.call(this,selector);
+        };
+        window.getComputedStyle=function(node){
+          if(fault.stale&&!fault.audit&&node.classList.contains('ss-economy')&&node.closest('.ss-battle')){
+            // Gameface still paints the divider and gutter when computed style omits their dimensions.
+            return {paddingLeft:'0px',paddingRight:'0px',borderLeftWidth:'0px',borderRightWidth:'0px'};
+          }
+          return fault.style.apply(this,arguments);
         };
       });
       // Native flex must not silently shrink an excessive assigned lane.
@@ -69,9 +76,12 @@ module.exports=async({browser,nativeHost,check})=>{
           const cards=[...owner.querySelectorAll('.ss-battle')].map(card=>{
             const bounds=box(card),details=box(card.querySelector('.ss-details')),performance=box(card.querySelector('.ss-battle-performance')),
               economy=card.querySelector('.ss-economy'),finance=box(economy),pair=economy.querySelector('.ss-credit-pair'),failures=[];
-            const heads=[...economy.querySelector('.ss-money-head').children].filter(node=>node.classList.contains('ss-money-value')).map(box),
+            const header=economy.querySelector('.ss-money-head');
+            const heads=[...header.children].filter(node=>node.classList.contains('ss-money-value')).map(box),
               lanes=['.ss-credit-income-column','.ss-credit-shared-cost','.ss-credit-net-column'].map(selector=>box(pair.querySelector(selector)));
             if(heads.length!==3||!heads.every((head,index)=>aligned(head,lanes[index])))failures.push('credit-header-columns');
+            const content=box(header);
+            if(!heads.every(head=>inside(head,content))||Math.abs(heads[2].right-content.right)>0.25)failures.push('finance-content-edge');
             for(const basis of ['base','received']){
               const cells=['credits_income_'+basis,'credits_costs','credits_net_'+basis].map(metric=>pair.querySelector('[data-ss-metric="'+metric+'"]'));
               if(!cells.every((cell,index)=>aligned(box(cell),heads[index])))failures.push('credit-row-columns:'+basis);
@@ -92,7 +102,7 @@ module.exports=async({browser,nativeHost,check})=>{
               metrics=[...card.querySelectorAll('.ss-battle-value')].map(node=>node.textContent.replace(/\s/g,''));
             return {bounds,details,performance,finance,heads,lanes,failures,centered,metricSlots,values,metrics,
               spare:details.width-performance.width-finance.width,
-              slotsShared:metricSlots.length===3&&metricSlots.every(slot=>slot.box.width>=slot.row.width*0.35&&
+              slotsShared:metricSlots.length===3&&metricSlots.every(slot=>
                 Math.abs(slot.box.left-metricSlots[0].box.left)<=0.25&&Math.abs(slot.box.right-metricSlots[0].box.right)<=0.25),
               actions:card.querySelectorAll('.ss-metric-battle-link,.ss-credit-extreme-actions').length,
               contained:inside(performance,bounds)&&inside(finance,bounds)&&performance.right<=finance.left+1};
@@ -100,10 +110,10 @@ module.exports=async({browser,nativeHost,check})=>{
           return {cards,staleWidth,actualWidth:cards[0].finance.width};
         }finally{fault.audit=false;}
       },scale);}
-      const valid=value=>value.cards.length===2&&value.cards.every(card=>!card.failures.length&&card.contained&&card.actions===0&&
+      const valid=value=>value.cards.length===2&&value.cards.every(card=>!card.failures.length&&card.contained&&card.centered.every(Boolean)&&card.slotsShared&&card.actions===0&&
         card.values.join('|')==='123456|1485270|-1417829|-1294373|+67441'&&card.metrics.length===3);
       const wide=value=>valid(value)&&value.cards.every(card=>card.performance.width>=156&&card.performance.width<=200&&
-        card.finance.width<=500&&card.spare>=12&&card.centered.every(Boolean)&&card.slotsShared);
+        card.finance.width<=500&&card.spare>=12&&card.metricSlots.every(slot=>slot.box.width>=slot.row.width*0.35));
       for(const language of Object.keys(languages))for(const width of [500,720]){
         await publish(language,width);const result=await audit();
         check('Battle header, credit and Bonds lanes share exact boundaries with complete source-less figures '+language+'/'+width+'/'+scale+'x: '+JSON.stringify(result),
@@ -112,7 +122,7 @@ module.exports=async({browser,nativeHost,check})=>{
       }
       for(const width of [500,720]){
         await publish('pl',width,{stale:true,large:true});const result=await audit();
-        check('Assigned battle finance lanes ignore a stale native rectangle and compound row selector at '+width+'/'+scale+'x: '+JSON.stringify(result),
+        check('Assigned battle finance lanes stay inside the card with stale rectangles and missing native gutter measurements at '+width+'/'+scale+'x: '+JSON.stringify(result),
           valid(result)&&result.staleWidth>result.actualWidth+100&&result.cards.every(card=>card.metrics.join('|')==='123456|234567|12345')&&
           (width===500||wide(result)));
       }

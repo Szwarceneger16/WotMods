@@ -144,6 +144,7 @@ module.exports=async function ({browser,nativeHost,check}) {
     await publish(()=>{
       const command=__grzCommands.filter(item=>item.action==='sort').pop(),payload=JSON.parse(model.payload),scope=payload.scopes.timeline;
       scope.ordering.battles={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
+      scope.pagination.battles.order_request_id=command.request_id;
       scope.battles.reverse();window.__expansionExpectedIds=scope.battles.map(card=>String(card.id));
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });await settle();await verify('native chronology order changes without losing open IDs');

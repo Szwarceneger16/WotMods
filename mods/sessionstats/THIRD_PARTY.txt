@@ -74,7 +74,7 @@ limits, including cancelable flags: source/docs/WHEEL_0.2.3_SOURCE_EVIDENCE.md.
 4. Game resources and names
 World of Tanks is a Wargaming game. The mod uses fonts supplied by the running
 client. Thumbnails reference vehicle/map resources installed in the client.
-Copied fonts, garage artwork and client files are not bundled. PODGLAD.html
+Copied fonts, garage artwork and client files are not bundled. PREVIEW.html
 examples are synthetic and are not the user's statistics.
 Map-name facts in data/map_names.json are extracted from World of Tanks EU
 client 2.4.1.5514 arena catalogues (Wargaming), mirrored at unicum-gg/wot.src

@@ -1,6 +1,6 @@
 /* Map previews and the sorting switch keep their decoration out of layout. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const source=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const source=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function sourceFunction(text,name){const start=text.indexOf('    function '+name+'('),line=text.indexOf('\n',start);
   const end=text.slice(start,line).endsWith('}')?line:text.indexOf('\n    }\n',start)+7;
   assert(start>=0&&end>start,'Exercise shipped '+name);return text.slice(start,end);}
@@ -126,6 +126,7 @@ module.exports=async({browser,nativeHost,check})=>{
       const start=await toggle.locator('.ss-sort-switch-thumb').boundingBox();await toggle.focus();await toggle.press('Space');
       await page.evaluate(()=>{const command=__grzCommands.filter(item=>item.action==='sort').pop();const payload=JSON.parse(model.payload);
         payload.scopes[command.scope].ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
+        payload.scopes[command.scope].pagination[command.group].order_request_id=command.request_id;
         model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();});await frames(page);await page.waitForTimeout(160);
       const end=await toggle.locator('.ss-sort-switch-thumb').boundingBox();
       check('Space enables metric sorting and moves the switch thumb without resizing the control at'+scale*100+'%',

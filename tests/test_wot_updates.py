@@ -110,11 +110,13 @@ class EvidenceTests(unittest.TestCase):
             w.directory_from_listing('Path = mods/2.4.1.1\nPath = mods/2.5.0.0\n')
 
     def test_rss_validation_and_future_item_retained_as_news_only(self):
-        body = b'<rss><channel><item><title>Common Test 9.9</title><link>https://worldoftanks.eu/pl/news/updates/test/</link><pubDate>Mon, 26 Oct 2099 16:00:00 GMT</pubDate></item></channel></rss>'
+        body = b'<rss><channel><item><title>Common Test 9.9</title><link>https://worldoftanks.eu/en/news/updates/test/</link><pubDate>Mon, 26 Oct 2099 16:00:00 GMT</pubDate></item></channel></rss>'
         item = w.rss_items(body)[0]
         self.assertNotIn('client_version', item)
         with self.assertRaises(ValueError):
             w.rss_items(body.replace(b'worldoftanks.eu', b'example.com'))
+        with self.assertRaisesRegex(ValueError, 'No English update articles'):
+            w.rss_items(body.replace(b'/en/news/', b'/pl/news/'))
         for bad in (b'<html>challenge</html>', b'<rss><channel/></rss>', b'<!DOCTYPE x><rss/>'):
             with self.assertRaises(ValueError):
                 w.rss_items(bad)
@@ -128,8 +130,29 @@ class EvidenceTests(unittest.TestCase):
         url, data, items = w.fetch_feed(get)
         self.assertEqual(url, w.RSS_SOURCES[1])
         self.assertEqual(len(calls), 2)
+        self.assertTrue(all(url.startswith('https://worldoftanks.eu/en/') for url in calls))
         self.assertEqual(items[0]['title'], 'Micropatch')
         with self.assertRaises(ValueError): w.fetch_feed(lambda url: b'<html>challenge</html>')
+
+    def test_summary_uses_english_articles_and_hides_legacy_localized_cache(self):
+        english = {'title': 'New update', 'url': 'https://worldoftanks.eu/en/news/updates/test/'}
+        localized = {'title': 'Localized title', 'url': 'https://worldoftanks.eu/pl/news/updates/test/'}
+        for rss_url, expected in ((w.RSS, english['url']),
+                                  ('https://worldoftanks.eu/pl/rss/news/updates/', 'English patch notes are unavailable')):
+            with self.subTest(rss_url=rss_url), tempfile.TemporaryDirectory() as directory:
+                summary = Path(directory) / 'summary.md'
+                state = {'fetched_at': 1, 'data': {'client_version': '2.4.1.1', 'rss_url': rss_url,
+                                                  'items': [localized, english]}}
+                with patch.dict('os.environ', {'GITHUB_STEP_SUMMARY': str(summary)}, clear=True), \
+                        patch.object(sys, 'argv', ['wot_updates.py']), \
+                        patch.object(w, 'update_cache', return_value=(state, False, True)), \
+                        contextlib.redirect_stdout(io.StringIO()):
+                    w.main()
+                content = summary.read_text()
+                self.assertIn(expected, content)
+                self.assertNotIn('/pl/', content)
+                self.assertNotIn(localized['title'], content)
+                self.assertIn('Live mods directory: 2.4.1.1', content)
 
     def test_html_from_every_rss_does_not_block_verified_live_archive(self):
         calls = []
@@ -196,10 +219,12 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): w.client_chain(meta, chain())
 
     def test_same_directory_and_downgrade_do_not_dispatch(self):
-        self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * 2))
-        self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0'] * 2))
-        with self.assertRaises(ValueError): needs_rebuild('2.4.1.0', ['2.4.1.1'] * 2)
-        with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * 2)
+        from release_installers import registered_kinds
+        count = len(registered_kinds())
+        self.assertFalse(needs_rebuild('2.4.1.1', ['2.4.1.1'] * count))
+        self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0'] * count))
+        with self.assertRaises(ValueError): needs_rebuild('2.4.1.0', ['2.4.1.1'] * count)
+        with self.assertRaises(ValueError): needs_rebuild('2.4.1_3', ['2.4.1.0'] * count)
         self.assertTrue(needs_rebuild('2.4.1.1', ['2.4.1.0']))
 
     def test_newly_registered_mod_requires_a_complete_new_snapshot(self):

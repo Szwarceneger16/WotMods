@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE_VERSION = ROOT / 'VERSION'
+BASE_VERSION = ROOT / 'mods/staysharp/VERSION'
 
 
 def release_version(base, run_number):

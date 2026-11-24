@@ -130,14 +130,14 @@ class WindowCompatibilityTests(unittest.TestCase):
         sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
         clock = [0.0]
         self.window._resize_clock = lambda: clock[0]
-        for corner in ('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'):
+        for sequence, corner in enumerate(('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'), 1):
             cursor.position = (0, 0)
             held[0] = True
             self.window.resize(700, 800)
             native.resize_surface(700, 800)
             native.drag_surface(370, 140)
             self.window._handle_action(self.window._generation,
-                                      {'action': 'resize_begin', 'corner': corner, 'token': '1'})
+                                      {'action': 'resize_begin', 'corner': corner, 'token': str(sequence)})
             self.assertIsNotNone(self.window._resize_gesture)
             # No document mousemove is dispatched, including at release.
             cursor.position = (-0.2 if 'w' in corner else 0.2, 0.1 if 'n' in corner else -0.1)
@@ -168,12 +168,12 @@ class WindowCompatibilityTests(unittest.TestCase):
             self.main.size = (1920 * scale, 1080 * scale)
             self.loader.scale = scale
             self.assertTrue(self.window.open())
-            for corner in ('se', 'nw'):
+            for sequence, corner in enumerate(('se', 'nw'), 1):
                 cursor.position, held[0] = (0, 0), True
                 self.window.resize(700 * scale, 800 * scale)
                 self.window._window.resize_surface(700 * scale, 800 * scale)
                 self.window._window.drag_surface(100 * scale, 100 * scale)
-                self.window._begin_resize(corner, '1')
+                self.window._begin_resize(corner, str(sequence))
                 cursor.position = ((1, -1) if corner == 'nw' else (-1, 1))
                 clock[0] += 0.11
                 held[0] = False
@@ -219,13 +219,13 @@ class WindowCompatibilityTests(unittest.TestCase):
         self.inject_module('GUI', mcursor=lambda: cursor)
         self.inject_module('Keys', KEY_LEFTMOUSE=1)
         sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
-        for corner in ('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'):
+        for sequence, corner in enumerate(('se', 'ne', 'sw', 'nw', 'n', 'e', 's', 'w'), 1):
             cursor.position = (0, 0)
             held[0] = True
             native.resize_surface(1400, 1600)
             self.window.resize(1400, 1600)
             native.drag_surface(1000, 300)
-            self.window._begin_resize(corner, '2')
+            self.window._begin_resize(corner, str(sequence))
             # Jump away from the grip, then release without a document event.
             cursor.position = (-0.2 if 'w' in corner else 0.2, 0.1 if 'n' in corner else -0.1)
             held[0] = False
@@ -292,6 +292,139 @@ class WindowCompatibilityTests(unittest.TestCase):
         before = self.window._window.position
         self.window.resize(600, 500)
         self.assertEqual(self.window._window.position, before)
+
+    def test_renderer_clamped_size_retires_native_anchor_before_later_placement(self):
+        self.main.size = (1800, 1200)
+        self.assertTrue(self.window.open())
+        native = self.window._window
+        native.resize_surface(850, 800)
+        self.window.resize(850, 800)
+        native.drag_surface(0, 200)
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        held = [True]
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._begin_resize('e', '1')
+        cursor.position, held[0] = (2, 0), False
+        self.timer.fire(self.window._resize_callback_id)
+        self.assertEqual(json.loads(self.window._model._payload)['resize_gesture']['width'], 1790)
+        native.resize_surface(1780, 800)
+        self.window.resize(1780, 800)
+        self.assertIsNone(self.window._resize_anchor)
+        self.main.size = (2400, 1200)
+        self.window._on_drag(True)
+        native.drag_surface(350, 240)
+        self.window._on_drag(False)
+        native.resize_surface(1600, 800)
+        self.window.resize(1600, 800)
+        self.assertEqual(native.position, (350, 240))
+
+    def test_final_anchor_uses_current_native_size_before_renderer_reports_it(self):
+        self.main.size = (1800, 1200)
+        self.assertTrue(self.window.open())
+        native = self.window._window
+        native.resize_surface(850, 800)
+        self.window.resize(850, 800)
+        native.drag_surface(940, 200)
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        held = [True]
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._begin_resize('w', '1')
+        cursor.position, held[0] = (0.2, 0), False
+        self.timer.fire(self.window._resize_callback_id)
+        native.resize_surface(670, 800)
+        self.assertEqual(native.position, (1120, 200))
+        self.assertEqual(self.window._reported_size, (850, 800))
+        self.window.resize(670, 800)
+        self.assertEqual(native.position, (1120, 200))
+
+    def test_unconfirmed_native_anchor_cannot_survive_a_new_drag_or_its_deadline(self):
+        self.assertTrue(self.window.open())
+        native = self.window._window
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        held, clock = [True], [1.0]
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._resize_clock = lambda: clock[0]
+        for sequence, retire in enumerate(('new drag', 'deadline', 'viewport'), 1):
+            native.resize_surface(850, 800)
+            self.window.resize(850, 800)
+            native.drag_surface(370, 150)
+            cursor.position, held[0] = (0, 0), True
+            self.window._begin_resize('nw', str(sequence))
+            cursor.position, held[0] = (-0.1, 0.1), False
+            self.timer.fire(self.window._resize_callback_id)
+            target = self.window._resize_anchor['target']
+            native.resize_surface(875, 810)
+            self.assertEqual(native.position, (370, 150))
+            self.assertIsNotNone(self.window._resize_anchor)
+            if retire == 'new drag':
+                self.window._on_drag(True)
+                native.drag_surface(350, 200)
+                self.window._on_drag(False)
+            elif retire == 'deadline':
+                clock[0] += 1.01
+            else:
+                self.main.size = (2000, 1200)
+            before = native.position
+            native.resize_surface(*target)
+            self.assertEqual(native.position, before)
+            self.assertIsNone(self.window._resize_anchor)
+
+    def test_stationary_resize_heartbeat_and_retry_are_owned_by_the_current_token(self):
+        self.assertTrue(self.window.open())
+        native = self.window._window
+        native.resize_surface(850, 800)
+        self.window.resize(850, 800)
+        cursor = runtime_fixtures.Obj(position=(0, 0), inFocus=True)
+        held, clock = [True], [0.0]
+        self.inject_module('GUI', mcursor=lambda: cursor)
+        self.inject_module('Keys', KEY_LEFTMOUSE=1)
+        sys.modules['BigWorld'].isKeyDown = lambda key: held[0]
+        self.window._resize_clock = lambda: clock[0]
+        self.window._begin_resize('se', '1')
+        first = self.window._model._payload
+        clock[0] = 0.4
+        self.timer.fire(self.window._resize_callback_id)
+        self.assertEqual(self.window._model._payload, first)
+        clock[0] = 0.5
+        self.timer.fire(self.window._resize_callback_id)
+        heartbeat = json.loads(self.window._model._payload)['resize_gesture']
+        self.assertTrue(heartbeat['active'])
+        self.assertEqual(heartbeat['sequence'], json.loads(first)['resize_gesture']['sequence'] + 1)
+        model = self.window._model
+        original = model.setPayload
+
+        def reject_final(payload):
+            raise RuntimeError('Native model delivery failed')
+
+        model.setPayload = reject_final
+        held[0] = False
+        self.timer.fire(self.window._resize_callback_id)
+        self.assertIsNone(self.window._resize_gesture)
+        model.setPayload = original
+        self.window._handle_action(self.window._generation, {'action': 'resize_end', 'token': '0'})
+        self.assertEqual(json.loads(model._payload)['resize_gesture'], heartbeat)
+        self.window._handle_action(self.window._generation, {'action': 'resize_end', 'token': '1'})
+        final = json.loads(model._payload)['resize_gesture']
+        self.assertFalse(final['active'])
+        self.assertEqual(final['token'], '1')
+        self.assertGreater(final['sequence'], heartbeat['sequence'])
+        held[0] = True
+        self.window._begin_resize('nw', '1')
+        self.assertIsNone(self.window._resize_gesture)
+        self.window._handle_action(self.window._generation, {'action': 'resize_end', 'token': '2'})
+        self.window._begin_resize('nw', '2')
+        self.assertIsNone(self.window._resize_gesture)
+        self.window._begin_resize('nw', '3')
+        self.assertEqual(self.window._resize_gesture['token'], '3')
+        before = model._payload
+        self.window._handle_action(self.window._generation, {'action': 'resize_end', 'token': '1'})
+        self.assertEqual(model._payload, before)
 
     def test_old_resize_callback_cannot_poll_or_replace_a_new_gesture(self):
         self.assertTrue(self.window.open())

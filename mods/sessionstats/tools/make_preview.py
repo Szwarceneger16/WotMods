@@ -8,6 +8,7 @@ import copy
 from datetime import datetime, timezone
 from html import escape
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -15,13 +16,27 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'src'))
-from grz_session_stats.core import StatsService, aggregate_stats
+from grz_session_stats import VERSION
+from grz_session_stats.core import StatsService
 from grz_session_stats.appearance import CONFIG_FILENAME, load_config, build_presentation
 from grz_session_stats.localization import Localizer
 from grz_session_stats.date_locale import resolve_date_settings
 
 
-def snapshots():
+def preview_snapshot(service, version, manual):
+    snapshot = service.snapshot()
+    snapshot['version'] = version
+    for name, scope in snapshot['scopes'].items():
+        token = manual if name == 'manual' else 'launch'
+        # The fixture state is fixed. Do not publish the temporary ledger's
+        # random manual period and index generation identifiers.
+        scope['period_id'] = scope['data_revision'] = scope['order_epoch'] = 'preview-' + token
+        for battle in scope['battles']:
+            battle['vehicle_id'] = service.result_context(battle['id']).get('vehicle_id')
+    return snapshot
+
+
+def snapshots(version):
     # Deliberately synthetic tank IDs and reference values, never a substitute
     # for the real WG table bundled in data/wn8exp.json.
     expected = {'header': {'version': 'example', 'source': 'synthetic'}, 'data': [
@@ -72,22 +87,20 @@ def snapshots():
             service.begin_battle(record['arena_id'],record['started_at'],record['vehicle_id'],record['map_id'],'random')
             clock[0] += 390
             service.record_result(record)
-        result = service.snapshot()
+        result = preview_snapshot(service, version, 'manual')
         service.reset_manual()
-        reset = service.snapshot()
+        reset = preview_snapshot(service, version, 'reset')
     return result, reset
 
 
-def main():
-    output = ROOT/'preview'
-    output.mkdir(exist_ok=True)
-    normal, reset = snapshots()
+def preview_files(version):
+    normal, reset = snapshots(version)
     config = load_config(str(ROOT/CONFIG_FILENAME))
     presentation = build_presentation(config)
     localizer = Localizer(config['language'])
     localizer.date_settings = resolve_date_settings(localizer.language, overrides=config['date_time'])
     fixtures = {'normal':normal,'reset':reset}
-    (output/'demo_snapshot.json').write_text(json.dumps(fixtures,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
+    files = {'demo_snapshot.json': json.dumps(fixtures, ensure_ascii=False, indent=2, sort_keys=True)+'\n'}
     localized = {}
     for language in ('en', 'pl', 'ru', 'fr', 'de', 'es', 'uk'):
         translator = Localizer(language, date_settings=localizer.date_settings)
@@ -105,8 +118,8 @@ def main():
     html = html.replace('<link rel="stylesheet" href="session_stats.css">', '<style>\n'+css+'\n</style>')
     html = re.sub(r'<script(?: type="module")? src="session_stats.js"></script>',
                   lambda m:'<script>\n'+js+'\n</script>', html)
-    controller = (output/'controller.js').read_text(encoding='utf-8')
-    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';window.GRZ_DEMO_LOCALIZED = '+json.dumps(localized,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+';</script>'
+    controller = (ROOT/'preview/controller.js').read_text(encoding='utf-8')
+    demo = '<script>window.GRZ_DEMO_LANGUAGES = '+(ROOT/'data/languages.json').read_text(encoding='utf-8').replace('</','<\\/')+';window.GRZ_DEMO_FIXTURES = '+json.dumps(fixtures,ensure_ascii=False,separators=(',',':'),sort_keys=True).replace('</','<\\/')+';window.GRZ_DEMO_LOCALIZED = '+json.dumps(localized,ensure_ascii=False,separators=(',',':'),sort_keys=True).replace('</','<\\/')+';</script>'
     html = html.replace('<body>', '<body>\n<div class="demo-toolbar"><span data-i18n="preview.label">Preview · synthetic data</span><button id="demo-reopen" type="button" data-i18n="preview.open">Open panel</button><button id="demo-restart" type="button" data-i18n="preview.restore">Restore example</button></div>')
     html = html.replace('</body>',demo+'\n<script>\n'+controller+'\n</script>\n</body>')
     preview_css = '''
@@ -122,10 +135,9 @@ html { overflow:auto; }
 .demo-toolbar span{width:100%;margin-bottom:5px;} }
 '''
     html=html.replace('</head>', '<style>'+preview_css+'</style>\n</head>')
-    path = output/'PODGLAD.html'
-    path.write_text(html,encoding='utf-8')
+    files['PREVIEW.html'] = html
     # Keep the independent icon preview on the actual shipped stylesheet.
-    footer_path = output/'footer-icon.html'
+    footer_path = ROOT/'preview/footer-icon.html'
     footer_css = (ROOT/'ui'/'footer.css').read_text(encoding='utf-8')
     footer_html = footer_path.read_text(encoding='utf-8')
     footer_html = re.sub(r'<html lang="[^"]*">',
@@ -149,10 +161,20 @@ html { overflow:auto; }
             lambda m:appearance_style, footer_html, flags=re.S)
     else:
         footer_html = footer_html.replace('</head>', appearance_style+'\n</head>')
-    footer_path.write_text(footer_html, encoding='utf-8')
-    print(json.dumps({'preview':str(path),'launch_battles':normal['scopes']['launch']['summary']['battles'],
-        'manual_battles':normal['scopes']['manual']['summary']['battles'],
-        'wn8':normal['scopes']['launch']['summary']['wn8'],'bytes':path.stat().st_size},ensure_ascii=False))
+    files['footer-icon.html'] = footer_html
+    summary = normal['scopes']['launch']['summary']
+    return files, {'launch_battles':summary['battles'], 'wn8':summary['wn8'],
+                   'manual_battles':normal['scopes']['manual']['summary']['battles']}
+
+
+def main():
+    output = ROOT/'preview'
+    version = os.environ.get('SESSIONSTATS_VERSION', VERSION)
+    files, summary = preview_files(version)
+    for name, contents in files.items():
+        (output/name).write_bytes(contents.encode('utf-8'))
+    path = output/'PREVIEW.html'
+    print(json.dumps(dict(summary, preview=str(path), bytes=path.stat().st_size), ensure_ascii=False))
 
 
 if __name__=='__main__': main()

@@ -17,8 +17,8 @@ module.exports=async({browser,nativeHost,check})=>{
     try{
       await page.evaluate(()=>{window.__responsiveHeaderFixture=JSON.parse(model.payload);});
       let sequence=0;
-      async function publish(language,width,{paged=false,fresh=false,largeFinance=false,richVehicle=false,vehicleNames,selectedGroup='maps'}={}){
-        await page.evaluate(({language,messages,width,scale,sequence,paged,fresh,largeFinance,richVehicle,vehicleNames,selectedGroup,panelCSS})=>{
+      async function publish(language,width,{paged=false,fresh=false,largeFinance=false,richVehicle=false,vehicleNames,selectedGroup='maps',sort}={}){
+        await page.evaluate(({language,messages,width,scale,sequence,paged,fresh,largeFinance,richVehicle,vehicleNames,selectedGroup,sort,panelCSS})=>{
           const payload=JSON.parse(JSON.stringify(__responsiveHeaderFixture)),scope=payload.scopes.launch;
           payload.account_key='synthetic-responsive-header-'+scale+'-'+language;payload.window_size=[width,1100];
           payload.viewport={width:width<625?width*scale+20:3840,height:2800,scale};payload.localization={language,messages};
@@ -57,13 +57,14 @@ module.exports=async({browser,nativeHost,check})=>{
               return item;
             });
             scope.ordering[group]={metric:group==='battles'?'off':richVehicle&&group==='vehicles'?'credits_net_received':largeFinance?'credits_income_received':'credits_net_base',statistic:'avg',direction:'desc',chronology:'newest'};
+            if(sort&&group===selectedGroup)Object.assign(scope.ordering[group],sort);
             scope.pagination[group]={page:0,pages:paged&&group==='maps'?2:1,total:paged&&group==='maps'?4:2,page_size:2};
           }
           payload.scopes.timeline=JSON.parse(JSON.stringify(scope));
           payload.scopes.timeline.from_point=payload.scopes.timeline.to_point='';payload.scopes.timeline.time_points=[];
           model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
           document.getElementById('ss-scope-manual').click();document.getElementById('ss-group-'+selectedGroup).click();
-        },{language,messages:languages[language],width,scale,sequence:++sequence,paged,fresh,largeFinance,richVehicle,vehicleNames,selectedGroup,panelCSS:compiled.stdout.trim()});
+        },{language,messages:languages[language],width,scale,sequence:++sequence,paged,fresh,largeFinance,richVehicle,vehicleNames,selectedGroup,sort,panelCSS:compiled.stdout.trim()});
         await frames(page);
       }
       async function resize(width,height=1100){
@@ -97,7 +98,7 @@ module.exports=async({browser,nativeHost,check})=>{
             title=card.querySelector('.ss-group-title'),titleBox=rect(title),titleInk=ink(title),stats=card.querySelector('.ss-group-stats'),more=card.querySelector('.ss-more-button'),
             button=more&&rect(more),expectedDock=!two&&bounds.width<680,docked=card.classList.contains('ss-card-border-more'),failures=[];
           const titleFits=titleInk.every(part=>inside(part,titleBox)),titleStyle=getComputedStyle(title),
-            titleEllipsis=titleBox.width>20&&titleStyle.textOverflow==='ellipsis'&&titleStyle.overflowX==='hidden'&&titleStyle.whiteSpace==='nowrap'&&
+            titleEllipsis=titleBox.width>20&&title.classList.contains('ss-caption-ellipsis')&&titleStyle.textOverflow==='ellipsis'&&titleStyle.overflowX==='hidden'&&titleStyle.whiteSpace==='nowrap'&&
               title.getAttribute('data-ss-help')===title.textContent&&title.getAttribute('tabindex')==='0';
           if(identity.width<72||!titleInk.length||(!titleFits&&!titleEllipsis))failures.push('squeezed-identity');
           if(['Cliff','Klondike'].includes(title.textContent)&&titleInk.some(part=>Math.abs(part.top-titleInk[0].top)>1))failures.push('vertical-short-name');
@@ -108,7 +109,7 @@ module.exports=async({browser,nativeHost,check})=>{
           const headingExtras=[...name.querySelectorAll('.ss-group-heading > .ss-group-coverage,.ss-group-heading > .ss-info-button')],
             metadata=name.querySelector('.ss-vehicle-meta'),twoIdentityRows=headingExtras.length===2&&headingExtras.every(node=>overlapY(rect(node),titleBox))&&
               !!metadata&&!!xpBox&&overlapY(rect(metadata),xpBox)&&ink(xp.querySelector('strong')).every(part=>inside(part,xpBox));
-          let sortNumber=null,sortWidth=null,sortCaptionFits=null,inline=null,combined=null;
+          let sortNumber=null,sortWidth=null,sortCaptionFits=null,inline=null,rating=null,activeHeadline=null;
           if(stats){
             const statsBox=rect(stats),kpis=[...stats.querySelectorAll('.ss-group-kpi')].map(rect);
             const identityBox=rect(card.querySelector('.ss-group-identity'));
@@ -116,10 +117,13 @@ module.exports=async({browser,nativeHost,check})=>{
             if(!inline&&identityBox.bottom>statsBox.top+1)failures.push('identity-statistics-overlap');
             if(kpis.length!==3||kpis.some(box=>!inside(box,statsBox))||!inside(statsBox,header)||
               kpis.slice(1).some((box,index)=>box.left<kpis[index].right-1||!overlapY(box,kpis[index])))failures.push('statistics-stacked-or-outside');
-            const wn8=stats.querySelector('[data-wn8-kind="combined"] .ss-kpi-label');
-            if(wn8){
+            const wn8Kpi=stats.querySelector('.ss-group-wn8-kpi'),activeKpi=stats.querySelector('.ss-group-kpi[data-ss-sort-active]');
+            if(activeKpi)activeHeadline=activeKpi.getAttribute('data-ss-sort-active');
+            if(wn8Kpi){
+              const wn8=wn8Kpi.querySelector('.ss-kpi-label');
               const labelBox=rect(wn8),labelInk=ink(wn8);
-              combined={text:wn8.textContent,visible:wn8.scrollWidth<=wn8.clientWidth+1&&labelInk.length>0&&
+              rating={kind:wn8Kpi.getAttribute('data-wn8-kind'),width:rect(wn8Kpi).width,text:wn8.textContent,
+                visible:wn8.scrollWidth<=wn8.clientWidth+1&&labelInk.length>0&&
                 labelInk.every(part=>inside(part,labelBox)&&Math.abs(part.top-labelInk[0].top)<=1)};
             }
             const badge=stats.querySelector('.ss-group-sort-value');
@@ -160,7 +164,7 @@ module.exports=async({browser,nativeHost,check})=>{
               if(visuals.length!==2||visuals.some(visual=>[b,button].some(control=>overlap(control,visual))))failures.push('selection-overlaps-battle-header');
             }
           }
-          return {id:card.getAttribute('data-group-id'),title:title.textContent,titleFits,titleEllipsis,twoIdentityRows,bounds,header,identity,button,expectedDock,docked,failures,selected,sortNumber,sortWidth,sortCaptionFits,inline,combined,imageBox,xpBox,
+          return {id:card.getAttribute('data-group-id'),title:title.textContent,titleFits,titleEllipsis,twoIdentityRows,bounds,header,identity,button,expectedDock,docked,failures,selected,sortNumber,sortWidth,sortCaptionFits,inline,rating,activeHeadline,imageBox,xpBox,
             more:more&&more.textContent,expanded:more&&more.getAttribute('aria-expanded')};
         });
         return {panel,titlebar,timeline,controls,language,actions,rowsOK,topOK,two,cards};
@@ -242,7 +246,21 @@ module.exports=async({browser,nativeHost,check})=>{
       const unsortedTwoLane=await audit();
       check('An ordinary two-column card keeps a short vehicle identity level with the sort result at '+scale+'x: '+JSON.stringify(sortedTwoLane.cards),
         sortedTwoLane.two&&valid(sortedTwoLane)&&valid(unsortedTwoLane)&&sortedTwoLane.cards.every((card,index)=>
-          card.inline&&card.sortNumber==='234567890'&&Math.abs(card.header.height-unsortedTwoLane.cards[index].header.height)<=1));
+          card.inline&&card.sortNumber==='234567890'&&card.rating.width===72&&unsortedTwoLane.cards[index].rating.width===104&&
+          Math.abs(card.header.height-unsortedTwoLane.cards[index].header.height)<=1));
+      for(const group of ['vehicles','maps','tiers']){
+        const shortMetrics=['win_rate','off','xp_received','battle_wn8'];
+        if(group!=='tiers')shortMetrics.push('battles');
+        for(const metric of shortMetrics){
+          await publish('en',1300,{richVehicle:true,vehicleNames:['Pz. 55','CAV 71'],selectedGroup:group,sort:{metric}});
+          const result=await audit();
+          const kind=metric==='battle_wn8'?'avg':'combined';
+          const active=['win_rate','battles','battle_wn8'].includes(metric)?metric:null;
+          check('Ordinary two-column cards use the spare header width for WN8 '+group+'/'+metric+'/'+scale+'x',
+            valid(result)&&result.two&&result.cards.every(card=>card.inline&&card.sortNumber===null&&card.activeHeadline===active&&
+              card.rating.kind===kind&&card.rating.visible&&card.rating.width===104));
+        }
+      }
       await publish('pl',1300,{richVehicle:true,vehicleNames:['Zaćmienie','Bardzo długa nazwa pojazdu testowego'],selectedGroup:'vehicles'});
       const ordinary=await audit();
       check('Ordinary wide vehicle cards fit the name and metadata beside the thumbnail in two rows at '+scale+'x: '+JSON.stringify(ordinary.cards),
@@ -259,7 +277,7 @@ module.exports=async({browser,nativeHost,check})=>{
         await publish(language,1800,{selectedGroup:'vehicles'});const result=await audit();
         check('Wide vehicle cards show the full localized Combined WN8 caption at '+language+'/'+scale+'x: '+JSON.stringify(result.cards),
           valid(result)&&result.two&&result.cards.every(card=>card.bounds.width>=700&&card.inline&&card.imageBox&&
-            card.combined&&card.combined.visible&&card.combined.text===languages[language]['metric.combined_wn8']));
+            card.rating&&card.rating.kind==='combined'&&card.rating.visible&&card.rating.text===languages[language]['metric.combined_wn8']));
       }
       await publish('en',625,{paged:true});await page.evaluate(()=>{window.__firstHeaderFeedCard=document.querySelector('#ss-groups .ss-group');});
       await page.locator('#ss-page-next').click();await frames(page);

@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import unittest
 
-from test_runtime import FakeAPI, FakeWindow, Clock, Obj, EXPECTED
+from test_runtime import FakeAPI, FakeWindow, Clock, Obj, EXPECTED, wait_for_combat_capture
 from test_normalize import raw_result, ARENA_ID, START
 from grz_session_stats import runtime
 
@@ -46,6 +46,7 @@ class RuntimeHealthTests(unittest.TestCase):
         return mod
 
     def tearDown(self):
+        wait_for_combat_capture(self.mod)
         self.mod.stop()
         runtime.LOG.propagate = self.old_propagate
         logging.disable(self.old_disable)
@@ -59,6 +60,7 @@ class RuntimeHealthTests(unittest.TestCase):
         self.api.events.onAvatarReady()
 
     def garage(self):
+        wait_for_combat_capture(self.mod)
         self.api.battle = False
         self.api.events.onAccountShowGUI()
 
@@ -238,9 +240,10 @@ class RuntimeHealthTests(unittest.TestCase):
     def test_warning_waits_for_garage_instead_of_interrupting_active_battle(self):
         self.enter_battle()
         self.api.events.onBattleResultsReceived(True, [])
-        self.assertTrue(self.mod.monitor.has_problems)
+        self.assertFalse(self.mod.monitor.has_problems)
         self.assertEqual(self.api.notices, [])
         self.garage()
+        self.assertTrue(self.mod.monitor.has_problems)
         self.assertEqual(len(self.api.notices), 1)
 
     def test_failed_log_flush_cannot_stop_tick_rescheduling_or_result_collection(self):
@@ -262,6 +265,7 @@ class RuntimeHealthTests(unittest.TestCase):
 
     def test_same_activity_is_retried_after_a_silent_native_model_write_failure(self):
         self.enter_battle()
+        self.garage()
         applied = []
         attempts = []
         def setter(pending, processing):
@@ -269,7 +273,6 @@ class RuntimeHealthTests(unittest.TestCase):
             if len(attempts) > 1:
                 applied.append((pending, processing))
         self.footer.set_activity = setter
-        self.api.battle = False
         self.mod._publish_activity()
         self.assertEqual(applied, [])
         self.mod._publish_activity()
@@ -283,6 +286,22 @@ class RuntimeHealthTests(unittest.TestCase):
         self.assertEqual(self.footer.states[-1], (0, True))
         self.api.fire(self.mod._bonus_callback_id)
         self.assertEqual(self.footer.states[-1], (0, False))
+
+    def test_bonus_timer_due_during_battle_refreshes_only_on_garage_return(self):
+        refreshes = []
+        self.mod._refresh_posted = lambda: refreshes.append(self.api.battle)
+        self.api.event_bus.emit()
+        callback_id = self.mod._bonus_callback_id
+        self.assertIsNotNone(callback_id)
+        self.enter_battle()
+        self.api.fire(callback_id)
+        self.api.event_bus.emit()
+        self.assertIsNone(self.mod._bonus_callback_id)
+        self.assertEqual(refreshes, [])
+        self.garage()
+        self.assertIsNotNone(self.mod._bonus_callback_id)
+        self.api.fire(self.mod._bonus_callback_id)
+        self.assertEqual(refreshes, [False])
 
     def test_stopping_clears_spinner_and_stale_result_cannot_revive_it(self):
         self.enter_battle()

@@ -1,6 +1,6 @@
 /* An owned native rail remains visible, usable and bounded at both UI scales. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function sourceFunction(source,name){const start=source.indexOf('    function '+name+'('),line=source.indexOf('\n',start);
   const end=source.slice(start,line).endsWith('}')?line:source.indexOf('\n    }\n',start)+7;
   assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end);}
@@ -36,7 +36,7 @@ function assertScrollbarSource(source=shipped()){
     cancelBattleNavigation(){state.battleJump=null;},cancelUITimer(){},nativeDiagnostic(){},invoke(action,args){if(action==='resize')nativeSizes.push([args.width,args.height]);}};
   vm.createContext(context);
   const names=['windowSizeBounds','setLogicalSize','resizePanelDimensions','resizeNative','cancelPageJump','onScrollIntent','battleLayoutOffset','normalFlowScrollMaximum','scrollbarMetrics','syncScrollbar','queueScrollEdges','scrollFromScrollbar',
-    'beginScrollbar','moveScrollbar','endScrollbar','scrollbarKey','scrollbarWheel','bindScrollbar'];
+    'pointerUp','otherButtonReleased','matchesDragPointer','primaryButtonMissing','beginScrollbar','moveScrollbar','endScrollbar','scrollbarKey','scrollbarWheel','bindScrollbar'];
   vm.runInContext(names.map(name=>sourceFunction(source,name)).join('\n'),context);
   context.syncScrollbar();assert.strictEqual(rail.style.display,'block');assert.strictEqual(rail.attributes['aria-valuenow'],'0');
   assert(Math.abs(parseFloat(thumb.style.height)-78.8)<0.01,'Thumb represents the visible loaded fraction');
@@ -54,7 +54,13 @@ function assertScrollbarSource(source=shipped()){
   const beforeRelease=events.filter(event=>event==='edges').length;flush();
   assert.strictEqual(events.filter(event=>event==='edges').length,beforeRelease,'Page replacement waits while a native rail press is held');
   assert.strictEqual(captureReads,0,'The native capture/release bridge is never read');assert.strictEqual(focusCalls,0,'Native rail presses avoid synchronous host focus');
-  context.endScrollbar();state.pageJump={};state.battleJump={};state.feed.navigationPage=3;state.feed.navigationDeadline=999;
+  context.endScrollbar({type:'mouseup',button:0});
+  assert(state.scrollbarDrag,'Compatibility mouseup cannot retire a numbered pointer owner');
+  context.endScrollbar({type:'pointerup',pointerId:41,button:0});
+  assert(state.scrollbarDrag,'A different pointer cannot retire the numbered owner either');
+  context.endScrollbar({type:'pointerup',pointerId:40,button:0});
+  assert.strictEqual(state.scrollbarDrag,null,'The matching pointer releases its gesture');
+  state.pageJump={};state.battleJump={};state.feed.navigationPage=3;state.feed.navigationDeadline=999;
   context.beginScrollbar({button:0,target:thumb,clientY:thumb.getBoundingClientRect().top+5});
   assert.strictEqual(state.pageJump,null,'Pressing the scrollbar thumb retires automatic page alignment before the first movement');
   assert.strictEqual(state.battleJump,null,'Pressing the scrollbar thumb also retires a more specific battle destination');

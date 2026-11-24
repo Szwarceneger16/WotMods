@@ -7,7 +7,7 @@ import math
 import uuid
 from collections import Counter
 
-from .core import (_number, _text, _OUTCOMES, _CURRENCIES, _BREAKDOWN,
+from .core import (_number, _text, _base_credit_complete, _OUTCOMES, _CURRENCIES, _BREAKDOWN,
                    _CREDIT_METRICS, _CREDIT_ALIASES, aggregate_stats, wn8_from_totals)
 from .localization import message
 from .loading import complete
@@ -233,7 +233,7 @@ class Totals(object):
                     if include_currency_series:
                         result['currency_series'][currency][key] = series.snapshot()
                     if key in ('income_base', 'net_base'):
-                        values[key + '_complete'] = bool(series.count) and series.count == result['observed_battles']
+                        values[key + '_complete'] = _base_credit_complete(series.count, count)
                         if not values[key + '_complete']:
                             values[key] = None
             result['currencies'][currency] = values
@@ -450,7 +450,7 @@ class ScopeIndex(object):
         field = dict(_CREDIT_METRICS).get(metric)
         series = group.totals.money['credits'][field] if field else group.totals.series.get(metric)
         if (field in ('income_base', 'net_base') and options['statistic'] == 'sum' and
-                (not series.count or series.count != group.totals.counts['observed_battles'])):
+                not _base_credit_complete(series.count, group.totals.counts['battles'])):
             return None
         return series.snapshot().get(options['statistic']) if series else None
 
@@ -506,6 +506,25 @@ class ScopeIndex(object):
             ordered = self._ordered('battles', options)
             position = next(index for index, key in enumerate(ordered) if key[1] == identifier)
         return position // PAGE_SIZE
+
+    def group_page(self, kind, identifier, options=None):
+        if identifier not in self.groups[kind]:
+            return None
+        if not valid_order(options, kind):
+            options = TIER_ORDER if kind == 'tiers' else DEFAULT_ORDER
+        return next(position // PAGE_SIZE for position, group in enumerate(self._ordered(kind, options))
+                    if group.identifier == identifier)
+
+    def group_battle_page(self, kind, identifier, battle_id, options=None):
+        group = self.groups[kind].get(identifier)
+        record = group.records.get(battle_id) if group is not None else None
+        if record is None:
+            return None
+        options = options if valid_order(options, kind) else DEFAULT_ORDER
+        position = bisect.bisect_left(group.battle_order, (record.get('started_at') or 0, battle_id))
+        if options['chronology'] not in ('oldest', 'last_asc'):
+            position = len(group.battle_order) - 1 - position
+        return position // MAP_BATTLE_PAGE_SIZE
 
     def map_battles(self, identifier, page, options=None):
         return self._group_battles('maps', identifier, page, options)

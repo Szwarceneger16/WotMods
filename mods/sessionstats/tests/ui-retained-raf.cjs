@@ -1,6 +1,6 @@
 /* Exercise retained callbacks from the actual scheduler functions in Chrome. */
 const fs=require('fs'),path=require('path');
-const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actualFunction(name){
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   if(start<0||end<0)throw Error('Missing scheduler function: '+name);
@@ -27,7 +27,8 @@ module.exports=async({browser,check})=>{
           payload:{viewport:{scale:1,width:1800,height:1100},window_size:[1600,900]}};
         const noop=()=>{},scope={window,document,root,state,nodes:{groups:columns},
           hasNumber:value=>typeof value==='number'&&isFinite(value),hasExpandedBattle:()=>true,
-          arrangeCardLanes:()=>effects.arrange++,finishFeedAnchor:noop,finishBattleJump:noop,finishPageJump:noop,
+          arrangeCardLanes:()=>effects.arrange++,finishFeedAnchor:noop,finishRefreshAnchor:noop,keepSelectedBattleVisible:noop,
+          finishBattleJump:noop,finishPageJump:noop,
           updatePinnedFilters:noop,endResize:noop,endScrollbar:noop,
           windowSizeBounds:()=>({maxWidth:1800,maxHeight:1100,minWidth:320,minHeight:240}),
           resizePanelDimensions:()=>({width:1600,height:900}),layoutResizeGrips:noop,

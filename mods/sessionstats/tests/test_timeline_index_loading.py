@@ -300,8 +300,11 @@ class TimelineRuntimeLoadingTests(TimelineLoadingHelpers, unittest.TestCase):
         self.api.fire(callback_id)
         self.assertTrue(self.service.timeline_loading)
         self.assertEqual(self.service._timeline_job['index'].records, {})
-        self.assertEqual(self.api.callbacks[self.mod._load_id][0], 1.0)
+        self.assertIsNone(self.mod._load_id)
         self.api.battle = False
+        self.api.fire(self.mod._tick_id)
+        self.assertIsNotNone(self.mod._load_id)
+        self.assertEqual(self.api.callbacks[self.mod._load_id][0], 0.01)
         before = self.window.refreshes
         for unused in range(20):
             if not self.service.timeline_loading:
@@ -310,6 +313,51 @@ class TimelineRuntimeLoadingTests(TimelineLoadingHelpers, unittest.TestCase):
         self.assertFalse(self.service.timeline_loading)
         self.assertEqual(self.service.timeline_snapshot()['summary']['battles'], 6)
         self.assertGreater(self.window.refreshes, before)
+
+    def test_entering_battle_switches_to_slow_tick_and_disables_retained_loader(self):
+        self.select_history()
+        lobby_tick_id = self.mod._tick_id
+        lobby_tick_delay, lobby_tick = self.api.callbacks[lobby_tick_id]
+        loader_id = self.mod._load_id
+        unused_loader_delay, loader = self.api.callbacks[loader_id]
+        self.assertEqual(lobby_tick_delay, 5.0)
+
+        self.api.battle = True
+        cancel = self.api.cancel
+
+        def fail_cancel(callback_id):
+            raise RuntimeError('client retained callback')
+
+        self.api.cancel = fail_cancel
+        try:
+            self.api.events.onAvatarBecomePlayer()
+        finally:
+            self.api.cancel = cancel
+        battle_tick = self.mod._tick_id
+        self.assertEqual(self.api.callbacks[battle_tick][0], 15.0)
+        self.assertIsNone(self.mod._load_id)
+        lobby_tick()
+        loader()
+        self.assertEqual(self.mod._tick_id, battle_tick)
+        self.assertIsNone(self.mod._load_id)
+
+        calls = []
+        methods = ('_ensure_service', '_service_diagnostics_impl', '_publish_appearance', '_on_avatar')
+        originals = [getattr(self.mod, name) for name in methods]
+        for name in methods:
+            setattr(self.mod, name, lambda method=name: calls.append(method))
+        try:
+            self.api.fire(battle_tick)
+        finally:
+            for name, original in zip(methods, originals):
+                setattr(self.mod, name, original)
+        self.assertEqual(calls, ['_on_avatar'])
+        self.assertEqual(self.api.callbacks[self.mod._tick_id][0], 15.0)
+        self.assertEqual(self.service._timeline_job['index'].records, {})
+        self.api.battle = False
+        self.api.events.onAccountShowGUI()
+        self.assertEqual(self.api.callbacks[self.mod._tick_id][0], 5.0)
+        self.assertIsNotNone(self.mod._load_id)
 
     def test_shutdown_cancels_pending_projection_and_its_stale_scheduled_callback(self):
         self.select_history()

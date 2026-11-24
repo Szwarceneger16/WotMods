@@ -1,4 +1,4 @@
-/* Base-credit sources follow whole-period availability, independently per field. */
+/* Base-credit sources follow received coverage, independently per field. */
 const fs=require('fs'),path=require('path');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let count=4;
   function next(){if(--count)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);
@@ -22,7 +22,7 @@ module.exports=async({browser,nativeHost,check})=>{
           payload.appearance={window_settings:{maximized:false,background_transparency:0,restored_width:1320,restored_height:1100}};
           payload.localization={language,messages};scope.period_id=period;scope.data_revision='base-availability-'+revision;
           function fill(stats,owner){
-            Object.assign(stats,{battles:total,observed_battles:total,wn8:2100,wn8_count:total,win_rate:50});
+            Object.assign(stats,{battles:total,observed_battles:total+(options.pending||0),wn8:2100,wn8_count:total,win_rate:50});
             const ranges={xp_base:[154,558,1403],xp_received:[266,3111,13415],battle_wn8:[78,2016,8834],
               credits_income_base:[10000,25000,40000],credits_net_base:[-5000,12500,25000],
               credits_income_received:[20000,50000,80000],credits_net_received:[10000,37500,60000],credits_costs:[5000,12500,20000]},references={};
@@ -43,7 +43,7 @@ module.exports=async({browser,nativeHost,check})=>{
           for(const group of ['maps','vehicles','tiers']){
             const item=scope[group][0];item.id='base-availability-'+group;item.extrema_battles=fill(item.stats,group);
             scope[group]=[item];scope.pagination[group]={page:0,pages:1,total:1,page_size:40};
-            scope.ordering[group]={metric:options.sortMetric||'off',statistic:'min',direction:'desc',chronology:group==='tiers'?'tier_desc':'newest'};
+            scope.ordering[group]={metric:options.sortMetric||'off',statistic:options.statistic||'min',direction:'desc',chronology:group==='tiers'?'tier_desc':'newest'};
           }
           if(options.timeline){
             payload.scopes.timeline=JSON.parse(JSON.stringify(scope));payload.scopes.timeline.from_point=options.from||'';
@@ -63,7 +63,7 @@ module.exports=async({browser,nativeHost,check})=>{
           function panel(owner,prefix){
             const problems=[],base=[];
             for(const [metric,count]of [['credits_income_base',scenario.income],['credits_net_base',scenario.net]]){
-              const available=count>0&&count===total&&!options.nullBase,buttons=[...owner.querySelectorAll('.ss-metric-battle-link[data-ss-source-metric="'+metric+'"]')],
+              const available=count>0&&count===total&&(!options.nullBase||options.pending),buttons=[...owner.querySelectorAll('.ss-metric-battle-link[data-ss-source-metric="'+metric+'"]')],
                 expectedCount=available&&options.noBaseReferences?0:2;
               if(buttons.length!==expectedCount)problems.push(metric+':count:'+buttons.length);
               for(const button of buttons){
@@ -90,7 +90,8 @@ module.exports=async({browser,nativeHost,check})=>{
             if(others.length!==12||!others.every(button=>!button.disabled&&button.getAttribute('aria-disabled')!=='true'&&typeof button.onclick==='function'&&
               button.getAttribute('data-battle-id')===prefix+'-'+options.period+'-'+button.getAttribute('data-ss-source-metric')+'-'+button.getAttribute('data-ss-extreme')))problems.push('unrelated-sources');
             const value=metric=>normalize(owner.querySelector('.ss-money-value[data-ss-metric="'+metric+'"] > .ss-cell-value').textContent),
-              expected=[scenario.income===total&&!options.nullBase?'100000':'—','200000','-50000',scenario.net===total&&!options.nullBase?'+50000':'—','+150000'],
+              expected=[scenario.income===total&&(!options.nullBase||options.pending)?'100000':'—','200000','-50000',
+                scenario.net===total&&(!options.nullBase||options.pending)?'+50000':'—','+150000'],
               values=['credits_income_base','credits_income_received','credits_costs','credits_net_base','credits_net_received'].map(value);
             if(values.join('|')!==expected.join('|'))problems.push('amounts:'+values.join('|'));
             return {problems,base,otherSources:others.length,values};
@@ -130,13 +131,22 @@ module.exports=async({browser,nativeHost,check})=>{
         const period=await publish('en',scenario,options),result=await inspect('en',scenario,{...options,period});
         check('Base availability and source validity stay independent at '+scale+'x/'+scenario.name+'/'+JSON.stringify(options)+': '+JSON.stringify(result),valid(result));
       }
+      for(const group of ['maps','vehicles','tiers']){
+        for(const scenario of [scenarios[2],scenarios[3]]){
+          const options={group,pending:3,nullBase:true,sortMetric:'credits_income_base',statistic:'sum'};
+          const period=await publish('en',scenario,options),result=await inspect('en',scenario,{...options,period});
+          check('Pending battles preserve known base sums and sources in older '+group+' projections at '+scale+'x: '+JSON.stringify(result),
+            valid(result)&&!await page.locator('#ss-sort-data-warning').isVisible()&&
+            await page.locator('#ss-groups [data-ss-sort-active="credits_income_base"]').count()===1);
+        }
+      }
       const partial=scenarios[1],period=await publish('en',partial,{sortMetric:'credits_income_base'}),sorted=await inspect('en',partial,{period});
       check('Sorting an incomplete base metric never highlights its disabled source placeholder at '+scale+'x: '+JSON.stringify(sorted),valid(sorted));
       const account='synthetic-base-range-'+scale;
       await publish('en',partial,{account,timeline:true,period:'timeline:all',from:''});
       const beforeRange=await inspect('en',partial,{period:'timeline:all'});
       check('The full Timeline range starts with unavailable base extrema at '+scale+'x: '+JSON.stringify(beforeRange),valid(beforeRange));
-      const complete={name:'narrow-range',income:1,net:1},rangeOptions={account,timeline:true,period:'timeline:complete',from:'synthetic-start',total:1};
+      const complete={name:'narrow-range',income:1,net:1},rangeOptions={account,timeline:true,period:'timeline:complete',from:'synthetic-start',total:1,pending:3};
       await publish('en',complete,rangeOptions);const afterRange=await inspect('en',complete,rangeOptions);
       check('A narrower complete Timeline range enables newly owned base extrema at '+scale+'x: '+JSON.stringify(afterRange),valid(afterRange));
       const commandsBefore=await page.evaluate(()=>__grzCommands.filter(command=>command.action==='battle_select').length);

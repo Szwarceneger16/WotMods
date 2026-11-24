@@ -1,0 +1,157 @@
+{
+    "version":  1,
+    "scenes":  {
+                   "sniper":  {
+                                  "frames":  [
+                                                 {
+                                                     "step":  0,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  true,
+                                                     "marker_scale":  0.514,
+                                                     "src":  "scenes/sniper_0.png"
+                                                 },
+                                                 {
+                                                     "step":  1,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  true,
+                                                     "marker_scale":  0.483,
+                                                     "src":  "scenes/sniper_1.png"
+                                                 },
+                                                 {
+                                                     "step":  2,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  true,
+                                                     "marker_scale":  0.530,
+                                                     "src":  "scenes/sniper_2.png"
+                                                 },
+                                                 {
+                                                     "step":  3,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  true,
+                                                     "marker_scale":  0.581,
+                                                     "src":  "scenes/sniper_3.png"
+                                                 },
+                                                 {
+                                                     "step":  4,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  true,
+                                                     "marker_scale":  0.553,
+                                                     "src":  "scenes/sniper_4.png"
+                                                 }
+                                             ]
+                              },
+                   "arcade":  {
+                                  "frames":  [
+                                                 {
+                                                     "step":  0,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  false,
+                                                     "src":  "scenes/arcade_0.png"
+                                                 },
+                                                 {
+                                                     "step":  1,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  false,
+                                                     "src":  "scenes/arcade_1.png"
+                                                 },
+                                                 {
+                                                     "step":  2,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  false,
+                                                     "src":  "scenes/arcade_2.png"
+                                                 },
+                                                 {
+                                                     "step":  3,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  false,
+                                                     "src":  "scenes/arcade_3.png"
+                                                 },
+                                                 {
+                                                     "step":  4,
+                                                     "frame_size":  [
+                                                                        1920,
+                                                                        1080
+                                                                    ],
+                                                     "calibrated":  false,
+                                                     "src":  "scenes/arcade_4.png"
+                                                 }
+                                             ]
+                              },
+                   "arty_top":  {
+                                    "frames":  [
+                                                   {
+                                                       "step":  0,
+                                                       "frame_size":  [
+                                                                          1920,
+                                                                          1080
+                                                                      ],
+                                                       "calibrated":  false,
+                                                       "src":  "scenes/arty_top_0.png"
+                                                   },
+                                                   {
+                                                       "step":  1,
+                                                       "frame_size":  [
+                                                                          1920,
+                                                                          1080
+                                                                      ],
+                                                       "calibrated":  false,
+                                                       "src":  "scenes/arty_top_1.png"
+                                                   },
+                                                   {
+                                                       "step":  2,
+                                                       "frame_size":  [
+                                                                          1920,
+                                                                          1080
+                                                                      ],
+                                                       "calibrated":  false,
+                                                       "src":  "scenes/arty_top_2.png"
+                                                   },
+                                                   {
+                                                       "step":  3,
+                                                       "frame_size":  [
+                                                                          1920,
+                                                                          1080
+                                                                      ],
+                                                       "calibrated":  false,
+                                                       "src":  "scenes/arty_top_3.png"
+                                                   },
+                                                   {
+                                                       "step":  4,
+                                                       "frame_size":  [
+                                                                          1920,
+                                                                          1080
+                                                                      ],
+                                                       "calibrated":  false,
+                                                       "src":  "scenes/arty_top_4.png"
+                                                   }
+                                               ]
+                                }
+               }
+}

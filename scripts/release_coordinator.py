@@ -128,11 +128,14 @@ def selected_modules(paths, config):
     selected = [mod['id'] for mod in modules if any(
         fnmatch.fnmatchcase(path, pattern) for path in paths
         for pattern in mod['source_paths'])]
+    # A registered module can keep its tests and README alongside build inputs.
+    known_paths = [pattern for mod in modules for pattern in (
+        *mod['source_paths'], 'mods/' + mod['id'] + '/tests/**',
+        'mods/' + mod['id'] + '/README.md')]
     # A new module without a verifier/builder must never be silently omitted.
     for path in paths:
         if path.startswith('mods/') and not any(
-            fnmatch.fnmatchcase(path, pattern) for mod in modules
-            for pattern in mod['source_paths']):
+            fnmatch.fnmatchcase(path, pattern) for pattern in known_paths):
             raise ValueError('Unregistered mod source changed: ' + path)
     return selected
 

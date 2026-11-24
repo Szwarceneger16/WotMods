@@ -10,6 +10,7 @@ on:
       - 'scripts/wot_updates.py'
       - 'scripts/wot_dispatch.py'
       - 'tests/test_wot_updates.py'
+      - 'mods/staysharp/**'
       - 'source/**'
       - 'assets/**'
       - 'VERSION'
@@ -27,7 +28,6 @@ on:
       - 'tests/test_release_installers.py'
       - 'tests/test_hangar_release_installers.py'
       - 'tests/test_staysharp_ci_artifact.py'
-      - 'tests/test_pr_ci_scoping.py'
       - 'scripts/privacy_audit.py'
       - 'tests/test_mod.py'
       - 'tests/test_packaging.py'
@@ -38,7 +38,6 @@ on:
       - 'tests/test_release_ruleset.py'
       - 'tests/test_unified_release_workflow.py'
       - '.github/workflows/ci.yml'
-      - 'tests/test_ci_optimizations.py'
       - '.github/workflows/wotmods-release.yml'
   workflow_dispatch:
 
@@ -68,29 +67,43 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Resolve the layout on the checked-out ref during the Medkit move.
+          if [[ -d mods/staysharp ]]; then
+            root=mods/staysharp
+            builder=mods/staysharp/tools/build_wotmod.py
+          else
+            root=.
+            builder=source/build_wotmod.py
+          fi
           python3 --version
-          cat VERSION
+          cat "$root/VERSION"
+          printf 'STAYSHARP_ROOT=%s\nSTAYSHARP_BUILDER=%s\n' "$root" "$builder" >> "$GITHUB_ENV"
       - name: Privacy scan
         shell: bash
         run: python3 scripts/privacy_audit.py
       - name: Unit and packaging tests
         shell: bash
-        run: python3 -m unittest discover -s tests -v
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -v
+          if [[ "$STAYSHARP_ROOT" != . ]]; then
+            python3 -m unittest discover -s "$STAYSHARP_ROOT/tests" -v
+          fi
       - name: Build reviewed version and check original v1.6.0 only when applicable
         shell: bash
         run: |
           set -euo pipefail
-          python3 source/build_wotmod.py
-          if [[ "$(cat VERSION)" == '1.6.0' ]]; then
-            echo '9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927  dist/com.staysharp.medkitreminder_1.6.0.wotmod' | sha256sum --check --status
+          python3 "$STAYSHARP_BUILDER"
+          if [[ "$(cat "$STAYSHARP_ROOT/VERSION")" == '1.6.0' ]]; then
+            (cd "$STAYSHARP_ROOT" && echo '9f3d98948ed398c3a4dc14b6785b68f10f1319381f896c6cd49b8709359c4927  dist/com.staysharp.medkitreminder_1.6.0.wotmod' | sha256sum --check --status)
           fi
           python3 scripts/privacy_audit.py --scan-dist
       - name: Package reviewed Stay Sharp installer
         shell: bash
         run: |
           set -euo pipefail
-          (cd dist && sha256sum -- *.wotmod > SHA256SUMS.txt)
-          python3 scripts/release_installers.py package pr-artifact --source dist --mod staysharp
+          (cd "$STAYSHARP_ROOT/dist" && sha256sum -- *.wotmod > SHA256SUMS.txt)
+          python3 scripts/release_installers.py package pr-artifact --source "$STAYSHARP_ROOT/dist" --mod staysharp
       - name: Test automatic next-release version with the same reviewed sources
         shell: bash
         run: |
@@ -98,7 +111,10 @@ jobs:
           export WOTMOD_VERSION="$(python3 scripts/release_version.py --run-number 2)"
           echo "Testing generated patch version: $WOTMOD_VERSION"
           python3 -m unittest discover -s tests -q
-          python3 source/build_wotmod.py
+          if [[ "$STAYSHARP_ROOT" != . ]]; then
+            python3 -m unittest discover -s "$STAYSHARP_ROOT/tests" -q
+          fi
+          python3 "$STAYSHARP_BUILDER"
           python3 scripts/privacy_audit.py --scan-dist
       - name: Upload installable Stay Sharp Medkit ZIP without repackaging
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

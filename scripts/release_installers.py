@@ -24,7 +24,10 @@ KINDS = {
     'staysharp': ('StaySharp-Medkit-v', 'com.staysharp.medkitreminder_', 'Stay Sharp Medkit'),
     'sessionstats': ('Session-Stats-v', 'grz.sessionstats_', 'Session Stats'),
     'hangarsync': ('GRZ_Hangar_Sync-v', 'com.grz.hangarsync_', 'Hangar Sync'),
+    'aimtimer': ('GRZ_AimTimer-v', 'com.grz.aimtimer_', 'GRZ AimTimer'),
+    'rangefinder': ('GRZ_Rangefinder-v', 'com.grz.rangefinder_', 'GRZ Rangefinder'),
 }
+RETICLE_PACKAGES = {'aimtimer': 'GRZ_AimTimer.wotmod', 'rangefinder': 'GRZ_Rangefinder.wotmod'}
 HANGAR_PACKAGE = 'GRZ_Hangar_Sync.wotmod'
 HANGAR_CONFIG = 'mods/configs/GRZ_Hangar_Sync.json.example'
 HANGAR_MODULES = {
@@ -45,7 +48,7 @@ OPENWG_SHA256 = '2bb65f28663e3ab34b5a1102a1bbd1f6e17a65e1f6a898a8645c4ab732b5018
 
 def medkit_gameface_dependency():
     """Decode the existing, unmodified vendor package; never fetch at build time."""
-    path = ROOT / 'assets' / 'openwg_gameface_1.2.2.wotmod.b85'
+    path = ROOT / 'mods/staysharp/assets/openwg_gameface_1.2.2.wotmod.b85'
     if path.is_symlink() or not path.is_file() or path.stat().st_size > 128 * 1024:
         raise ValueError('Missing or invalid bundled OpenWG dependency')
     payload = base64.b85decode(b''.join(path.read_bytes().split()))
@@ -157,6 +160,8 @@ def installer_name(kind, version):
 def installed_package(kind, version, report=None):
     if kind == 'hangarsync':
         return HANGAR_PACKAGE
+    if kind in RETICLE_PACKAGES:
+        return RETICLE_PACKAGES[kind]
     legacy = KINDS[kind][1] + version + '.wotmod'
     if kind != 'sessionstats':
         return legacy
@@ -217,7 +222,11 @@ def verify(path):
         elif not name.startswith(doc):
             raise ValueError('Unexpected documentation path')
     wanted = {primary}
-    if kind == 'sessionstats':
+    if kind in RETICLE_PACKAGES:
+        dependency = 'mods/' + client + '/net.openwg/' + OPENWG_PACKAGE
+        wanted.add(dependency)
+        validate_reticle_installer(kind, version, files, package, primary, dependency, doc)
+    elif kind == 'sessionstats':
         wanted.add('mods/' + client + '/net.openwg/net.openwg.gameface_1.2.2.wotmod')
         if not wanted <= files.keys():
             raise ValueError('Missing OpenWG dependency')
@@ -242,6 +251,42 @@ def verify(path):
     if {n for n in files if n.startswith('mods/') and n.endswith('.wotmod')} != wanted:
         raise ValueError('Unexpected mod package')
     return kind, version, client, files, primary
+
+
+def validate_reticle_installer(kind, version, files, package, primary, dependency, doc):
+    allowed = {primary, dependency, *(doc + name for name in (
+        'INSTALLER.json', 'INSTALL.txt', 'README.md', 'OPENWG_LICENSE',
+        'SHA256SUMS.txt', 'COMPATIBILITY.txt'
+    ))}
+    if set(files) - allowed or not files.get(doc + 'README.md') or not files.get(doc + 'INSTALL.txt'):
+        raise ValueError('Unexpected reticle installer members')
+    if dependency not in files or digest(files[dependency]) != OPENWG_SHA256 or not files.get(doc + 'OPENWG_LICENSE'):
+        raise ValueError('Missing or modified reticle OpenWG dependency')
+    prefix = 'grz_' + kind
+    bootstrap = 'res/scripts/client/gui/mods/mod_' + prefix + '.pyc'
+    resource_version = 'v' + version.replace('.', '_')
+    ui = 'res/gui/gameface/mods/' + prefix + '/' + resource_version + '/'
+    registry = 'res/gui/gen_resources/grz.' + kind + '.' + resource_version + '.json'
+    title = RETICLE_PACKAGES[kind][len('GRZ_'):-len('.wotmod')]
+    flash = 'res/gui/flash/grz' + title
+    hosts = {flash + name + '_' + resource_version + '.swf'
+             for name in ('ReticleDecorPreview', 'BattleMechanicsPreview')}
+    expected = {bootstrap, registry, *hosts, *(ui + name for name in (
+        'settings.html', 'settings.js', 'settings.css', 'footer.js', 'footer.css', 'preview_scenes.js'
+    ))}
+    if not expected <= package.keys():
+        raise ValueError('Missing reticle runtime or settings resources')
+    for name, data in package.items():
+        if name in {'meta.xml', registry, *hosts}:
+            continue
+        if name.startswith(ui) and name.endswith(('.html', '.css', '.js', '.png')):
+            continue
+        if name.startswith('res/gui/maps/' + prefix + '/') and name.endswith('.dds'):
+            continue
+        if (name == bootstrap or name.startswith('res/scripts/client/' + prefix + '/')):
+            if name.endswith('.pyc') and len(data) > 8 and data.startswith(b'\x03\xf3\r\n'):
+                continue
+        raise ValueError('Unexpected reticle package resource: ' + name)
 
 
 def verify_hangar(version, files):
@@ -324,16 +369,27 @@ def write_installer(directory, kind, version, client, files):
                        'are saved in mods/configs/staysharp.medkit.json immediately.\n'
                        if includes_medkit_footer else
                        'OpenWG is included in Session Stats; no separate download is required.\n')
-    files[doc + 'INSTALL.txt'] = (
-        KINDS[kind][2] + ' ' + version + '\n\n'
-        'Close World of Tanks. Extract this ZIP into the game installation folder\n'
-        '(the folder containing WorldOfTanks.exe), preserving the mods/ paths.\n'
-        + upgrade +
+    configuration_note = (
         'The mod works with its built-in defaults. Configuration examples in\n'
         'mods/configs/ end in .json.example and are not loaded. To customize,\n'
         'copy the desired example, remove only .example, then edit the JSON.\n'
         'Keep your existing .json files when updating. Restart the game after edits.\n'
         + dependency_note
+    )
+    if kind in RETICLE_PACKAGES:
+        filename = RETICLE_PACKAGES[kind]
+        upgrade = ('Target client: ' + client + '. Installed file: ' + filename + '.\n'
+                   'Remove older preview copies named ' + filename[:-7] + '_v*.wotmod\n'
+                   'from this client version folder before starting the game.\n\n')
+        configuration_note = ('Use the mod settings in the game. Existing settings are kept.\n'
+                              'The same OpenWG Gameface package is shared by compatible mods.\n'
+                              'See README.md for setup and the optional companion mod.\n')
+    files[doc + 'INSTALL.txt'] = (
+        KINDS[kind][2] + ' ' + version + '\n\n'
+        'Close World of Tanks. Extract this ZIP into the game installation folder\n'
+        '(the folder containing WorldOfTanks.exe), preserving the mods/ paths.\n'
+        + upgrade +
+        configuration_note
     ).encode('utf-8')
     files[doc + 'SHA256SUMS.txt'] = ''.join(digest(b) + '  ' + n + '\n'
         for n, b in sorted(files.items())).encode('ascii')
@@ -418,23 +474,31 @@ def package(source, destination, kind, client=CLIENT):
                 # Preserve licenses, source and build information; keep guides
                 # for each mod separate when both ZIPs are extracted together.
                 payload['docs/sessionstats/' + name] = data
+    elif kind in RETICLE_PACKAGES:
+        if set(files) != {primary, 'SHA256SUMS.txt'}:
+            raise ValueError('Unexpected reticle build assets')
+        payload['mods/' + client + '/' + RETICLE_PACKAGES[kind]] = files[primary]
+        payload['mods/' + client + '/net.openwg/' + OPENWG_PACKAGE] = medkit_gameface_dependency()
+        payload['docs/' + kind + '/README.md'] = (ROOT / 'mods' / kind / 'README.md').read_bytes()
+        payload['docs/' + kind + '/OPENWG_LICENSE'] = (ROOT / 'mods/staysharp/assets/OPENWG_LICENSE').read_bytes()
     else:
+        module = ROOT / 'mods/staysharp'
         payload['mods/' + client + '/' + MEDKIT_INSTALLED_PACKAGE] = files[primary]
         resources = read_zip(io.BytesIO(files[primary]))
         if MEDKIT_GARAGE_RESOURCE in resources:
             payload['mods/' + client + '/net.openwg/' + OPENWG_PACKAGE] = medkit_gameface_dependency()
-            license_path = ROOT / 'assets' / 'OPENWG_LICENSE'
+            license_path = module / 'assets/OPENWG_LICENSE'
             if license_path.is_symlink() or not license_path.is_file():
                 raise ValueError('Missing bundled OpenWG license')
             payload['docs/staysharp/OPENWG_LICENSE'] = license_path.read_bytes()
-            guide = ROOT / 'docs' / 'INSTALACJA.md'
+            guide = module / 'docs/INSTALACJA.md'
             if guide.is_file():
                 payload['docs/staysharp/INSTALACJA.md'] = guide.read_bytes()
-        sample = ROOT / 'staysharp.medkit.example.json'
+        sample = module / 'staysharp.medkit.example.json'
         payload['mods/configs/staysharp.medkit.json.example'] = (
             sample.read_bytes() if sample.is_file() else b'{\n  "language": "auto"\n}\n')
         for name in ('CHANGELOG.md', 'docs/AUDIO.md', 'assets/VOICE_NOTICE.txt'):
-            path = ROOT / name
+            path = module / name
             if path.is_file():
                 payload['docs/staysharp/' + path.name] = path.read_bytes()
     destination.mkdir(parents=True, exist_ok=True)
@@ -575,7 +639,7 @@ def notes(directory, output, repository, tag):
         'Follow the included Hangar README; never publish your configuration. Existing `.json` '
         'settings are preserved. Restart WoT after editing.', '',
         'Instructions, licenses, source where applicable and build/checksum information '
-        'are inside `docs/staysharp/`, `docs/sessionstats/`, or the native Hangar `README.md` in each ZIP. '
+        'are inside the corresponding `docs/<mod>/` folder or the native Hangar `README.md` in each ZIP. '
         'GitHub source archives are for developers.', '',
         '<details>', '<summary>Installer SHA-256 checksums</summary>', '', '```text']
     for path in sorted(Path(directory).iterdir()):

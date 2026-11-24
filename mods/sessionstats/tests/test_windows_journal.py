@@ -93,6 +93,80 @@ class WindowsJournalTests(unittest.TestCase):
         self.assertNotIn(b'\r\n', raw)
         return service, journal
 
+    @unittest.skipUnless(os.name == 'nt', 'Requires native Windows paths')
+    def test_native_data_path_preserves_drive_and_unc_names(self):
+        drive = storage.native_data_path(self.directory)
+        self.assertEqual(drive, '\\\\?\\' + self.directory)
+        self.assertEqual(storage.native_data_path(drive), drive)
+        self.assertEqual(storage.logical_data_path(drive), self.directory)
+        unc = '\\\\fixture.invalid\\share\\folder'
+        self.assertEqual(storage.native_data_path(unc), '\\\\?\\UNC\\fixture.invalid\\share\\folder')
+        self.assertEqual(storage.logical_data_path(storage.native_data_path(unc)), unc)
+
+    @unittest.skipUnless(os.name == 'nt', 'Requires Windows CPython filesystem operations')
+    def test_long_profile_replays_durable_combat_after_deferred_start_and_restart(self):
+        from test_config_path import changed
+        from test_normalize import ARENA_ID, START, raw_result
+        from test_runtime import FakeAPI, FakeWindow, wait_for_combat_capture
+        from grz_session_stats import runtime
+        from grz_session_stats.appearance import CONFIG_FILENAME
+        from grz_session_stats.config_files import prepare_config, save_language
+
+        profile = os.path.join(self.directory, 'Ż' + 'x' * max(1, 235 - len(self.directory) - 2))
+        native_profile = storage.native_data_path(profile)
+        settings = os.path.join(profile, 'appearance', CONFIG_FILENAME)
+        self.assertGreater(len(settings), 260)
+        self.clock.value = START - 10
+        mod = None
+
+        def start():
+            api = FakeAPI()
+            mod = runtime.Runtime(api=api, data_dir=profile, installation_dir=self.directory,
+                                  appearance_path=settings, expected_table=EXPECTED, now=self.clock,
+                                  window=FakeWindow(), footer_installer=lambda unused: None)
+            mod.start()
+            for unused in range(1000):
+                if mod._load_id is None:
+                    break
+                api.fire(mod._load_id)
+            return mod
+
+        def check_ready(mod):
+            self.assertTrue(mod.active_service.ready, mod.active_service.last_error)
+            child = mod._instance_session.service
+            self.assertTrue(child.ready, child.last_error)
+            self.assertTrue(mod._log_handle.ok, mod._log_handle.error)
+            self.assertEqual(mod.snapshot()['localization']['selected'], 'de')
+
+        try:
+            prepare_config(settings, os.path.join(profile, 'missing-fixture.json'))
+            self.assertTrue(save_language(settings, 'de'))
+            mod = start()
+            check_ready(mod)
+            self.clock.value = START + 400
+            mod.api.battle = True
+            mod.api.context = {'arena_id': str(ARENA_ID), 'started_at': START,
+                               'vehicle_id': 1, 'map_id': 'map'}
+            mod.api.events.onAvatarReady()
+            mod.api.events.onBattleResultsReceived(True, raw_result())
+            wait_for_combat_capture(mod)
+            self.assertEqual(len(mod._combat_intake.pending('EU:7', limit=3)), 2)
+            mod.stop()
+            self.clock.value = START + 600
+            next_launch = 'b' * 32 if runtime.LAUNCH_ID != 'b' * 32 else 'c' * 32
+            with changed(runtime, 'LAUNCH_ID', next_launch):
+                mod = start()
+                check_ready(mod)
+                mod._drain_combat_intake()
+                self.assertEqual(mod.active_service.snapshot()['scopes']['manual']['summary']['battles'], 1)
+                self.assertEqual(mod._instance_session.snapshot()[0]['summary']['battles'], 1)
+                self.assertEqual(mod._combat_intake.pending('EU:7'), [])
+        finally:
+            if mod is not None:
+                mod.stop()
+            if os.path.isdir(native_profile):
+                shutil.rmtree(native_profile)
+
     def test_crt_fixture_expands_lf_despite_fdopen_binary_mode_without_descriptor_flag(self):
         path = os.path.join(self.directory, 'translation-control')
         with windows_crt():

@@ -13,7 +13,7 @@ import tempfile
 import types
 import unittest
 
-from test_runtime import FakeAPI, FakeWindow, Clock, Obj, EXPECTED
+from test_runtime import FakeAPI, FakeWindow, Clock, Obj, EXPECTED, wait_for_combat_capture
 from test_normalize import ARENA_ID, raw_result
 from grz_session_stats import runtime
 
@@ -36,6 +36,7 @@ class ExternalJSONTests(unittest.TestCase):
 
     def tearDown(self):
         for mod in self.modules:
+            wait_for_combat_capture(mod)
             mod.stop()
         if self.saved_resmgr is None:
             sys.modules.pop('ResMgr', None)
@@ -85,7 +86,9 @@ class ExternalJSONTests(unittest.TestCase):
         api.context = {'arena_id': ARENA_ID, 'started_at': self.clock.value,
                        'vehicle_id': 1, 'map_id': '17_map', 'mode': 'random'}
         api.events.onAvatarReady()
+        wait_for_combat_capture(mod)
         api.battle = False
+        api.events.onAccountShowGUI()
         api.events.onBattleResultsReceived(True, raw_result())
         summary = mod.active_service.snapshot()['scopes']['launch']['summary']
         self.assertEqual(summary['battles'], 1)

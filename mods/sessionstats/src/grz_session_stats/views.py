@@ -73,6 +73,12 @@ def _position(value):
     return None
 
 
+def _resize_token_number(token):
+    if isinstance(token, (str, type(u''))) and 1 <= len(token) <= 12 and all('0' <= char <= '9' for char in token):
+        return int(token)
+    return None
+
+
 def build_model_class():
     from frameworks.wulf import ViewModel
 
@@ -202,6 +208,9 @@ class StatsWindow(object):
         self._drag_active = False
         self._resize_gesture = None
         self._resize_anchor = None
+        self._resize_final = None
+        self._resize_sample = 0
+        self._resize_token = 0
         self._resize_callback_id = None
         self._resize_cursor_manager = None
         self._window_settings_signature = None
@@ -367,6 +376,9 @@ class StatsWindow(object):
         self._cancel_callback(self._resize_callback_id)
         self._resize_callback_id = None
         self._resize_gesture = self._resize_anchor = None
+        self._resize_final = None
+        self._resize_sample = 0
+        self._resize_token = 0
         self._cancel_watchdog()
         self._detach()
         self._view = self._model = self._parent = None
@@ -453,11 +465,11 @@ class StatsWindow(object):
         except (AttributeError, RuntimeError, TypeError, ValueError):
             return False
 
-    def _keep_visible(self):
+    def _keep_visible(self, size=None):
         if not self.is_open() or self._drag_active:
             return
         position = self._window_position()
-        size = self._reported_size or self._window_size()
+        size = size or self._reported_size or self._window_size()
         viewport = self._viewport()
         if position is None or size is None or viewport['width'] <= 0 or viewport['height'] <= 0:
             return
@@ -469,14 +481,14 @@ class StatsWindow(object):
         if target != position:
             self._move(target)
 
-    def _place(self, reason, force=False):
+    def _place(self, reason, force=False, native_size=None):
         if self._maximized and self.is_open() and not self._drag_active:
             viewport = self._viewport()
             if min(viewport['width'], viewport['height']) > 0:
                 self._move((min(10, max(0, viewport['width'] // 2)),
                             min(10, max(0, viewport['height'] // 2))))
         elif self._user_position:
-            self._keep_visible()
+            self._keep_visible(native_size)
         else:
             self._center(reason, force)
 
@@ -499,6 +511,8 @@ class StatsWindow(object):
 
     def _on_drag(self, active):
         if active in (True, 'true', 'True', '1'):
+            if self._resize_gesture is None:
+                self._resize_anchor = None
             self._drag_active = True
             self._user_position = True
             self._center_signature = None
@@ -565,10 +579,13 @@ class StatsWindow(object):
                            'GRZ UI: native resize cursor unavailable; CSS cursor remains active.')
 
     def _begin_resize(self, corner, token):
-        if corner not in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w') or self._resize_gesture:
+        number = _resize_token_number(token)
+        if corner not in ('nw', 'ne', 'sw', 'se', 'n', 'e', 's', 'w') or number is None or number <= self._resize_token:
             return
-        if not isinstance(token, (str, type(u''))) or not token.isdigit() or len(token) > 12:
-            return
+        self._resize_token = number
+        if self._resize_gesture is not None:
+            self._end_resize(discard_anchor=True)
+        self._resize_anchor = self._resize_final = None
         try:
             x, y, held = self._resize_mouse()
             viewport = self._viewport()
@@ -621,17 +638,19 @@ class StatsWindow(object):
             published_at = gesture['published_at']
             due = published_at is None or now < published_at or now - published_at >= 0.1
             # Input stays at 60 Hz; costly HTML/native surface changes are at
-            # most 10 Hz. Releasing always publishes the latest sample now.
-            if (dimensions != gesture['last'] and due) or not held:
-                gesture['target'] = _dimensions((width * scale, height * scale))
+            # most 10 Hz. During a stationary hold, refresh the release lease
+            # every half second. Releasing always publishes the latest sample.
+            heartbeat = published_at is None or now < published_at or now - published_at >= 0.5
+            if (dimensions != gesture['last'] and due) or heartbeat or not held:
+                # The document clamps the logical sample again against the
+                # parent viewport, including its global margins and minimum.
+                gesture['target'] = _dimensions(tuple(
+                    min(max(1, viewport[key] - 20), max(minimum * scale, value * scale))
+                    for key, minimum, value in zip(('width', 'height'), MIN_LOGICAL_SIZE, dimensions)))
                 gesture['last'] = dimensions
                 gesture['published_at'] = now
                 self._preferred_size = dimensions
-                payload = {'resize_gesture': {
-                    'token': gesture['token'], 'width': width, 'height': height, 'active': held,
-                }}
-                with self._model.transaction() as live:
-                    live.setPayload(json.dumps(payload))
+                self._publish_resize(gesture, held)
             # Model listeners can close/reopen the window or complete a gesture.
             if generation != self._generation or gesture is not self._resize_gesture:
                 return
@@ -648,11 +667,27 @@ class StatsWindow(object):
             self._log_once('resize_tracking_failed', logging.WARNING,
                            'GRZ UI: game-level resize tracking stopped after an input error.')
 
+    def _send_resize(self, sample):
+        # An idle heartbeat or a retry of the final sample must still change
+        # the model string, which native view models can deduplicate.
+        self._resize_sample += 1
+        with self._model.transaction() as live:
+            live.setPayload(json.dumps({'resize_gesture': dict(sample, sequence=self._resize_sample)}))
+
+    def _publish_resize(self, gesture, active):
+        width, height = gesture['last']
+        sample = {'token': gesture['token'], 'width': width, 'height': height, 'active': active}
+        if not active:
+            self._resize_final = sample
+        self._send_resize(sample)
+
     def _end_resize(self, token=None, discard_anchor=False, notify=False):
         gesture = self._resize_gesture
         if gesture is not None and token is not None and token != gesture['token']:
             return
         self._resize_gesture = None
+        if discard_anchor:
+            self._resize_anchor = None
         callback_id = self._resize_callback_id
         self._resize_callback_id = None
         self._cancel_callback(callback_id)
@@ -660,16 +695,14 @@ class StatsWindow(object):
         if gesture is not None:
             # A same-size release does not produce another renderer resize.
             # Keep the anchor only while the final surface update is pending.
-            if (discard_anchor or gesture.get('target') == self._window_size()):
+            if gesture.get('target') == self._window_size():
                 self._resize_anchor = None
+            elif self._resize_anchor is gesture:
+                gesture['finished_at'] = self._resize_clock()
             self._on_drag(False)
             if notify and self._model is not None and gesture.get('last'):
                 try:
-                    width, height = gesture['last']
-                    with self._model.transaction() as live:
-                        live.setPayload(json.dumps({'resize_gesture': {
-                            'token': gesture['token'], 'width': width, 'height': height, 'active': False,
-                        }}))
+                    self._publish_resize(gesture, False)
                 except (AttributeError, RuntimeError, TypeError, ValueError):
                     pass
 
@@ -677,6 +710,16 @@ class StatsWindow(object):
         anchor = self._resize_anchor
         if anchor is None:
             return
+        if self._resize_gesture is None:
+            finished_at = anchor.get('finished_at')
+            elapsed = self._resize_clock() - finished_at if finished_at is not None else -1
+            if not 0 <= elapsed <= 1 or anchor['viewport'] != self._viewport():
+                self._resize_anchor = None
+                return
+            target = anchor.get('target')
+            if target is None or any(abs(actual - expected) > 1 for actual, expected in zip(size, target)):
+                return
+            self._resize_anchor = None
         left, top = anchor['position']
         if 'w' in anchor['corner']:
             left += anchor['size'][0] - size[0]
@@ -685,8 +728,13 @@ class StatsWindow(object):
         target = (int(left), int(top))
         if self._window_position() != target:
             self._move(target)
-        if self._resize_gesture is None and size == anchor.get('target'):
+
+    def _retire_resize_after_viewport_change(self):
+        resize = self._resize_gesture or self._resize_anchor
+        if resize is not None and resize['viewport'] != self._viewport():
             self._resize_anchor = None
+            if self._resize_gesture is not None:
+                self._end_resize(discard_anchor=True, notify=True)
 
     def _on_ready(self, native):
         if native is not self._window or self._closing or not self.is_open():
@@ -738,13 +786,14 @@ class StatsWindow(object):
             self._size_logs += 1
         self._native_size = size
         self._anchor_resize(size)
-        self._place('native_resize')
+        self._place('native_resize', native_size=size)
         self._finish_watchdog_if_ready()
 
     def _on_parent_size(self, *args):
         if self.is_open():
             # A changed parent includes a game-window resize. Republish bounds
             # and resolved scale so the document can resize to fit that window.
+            self._retire_resize_after_viewport_change()
             self.refresh()
             self._place('parent_resize', force=True)
 
@@ -782,6 +831,7 @@ class StatsWindow(object):
         elif action == 'resize':
             self.resize(_read(arg, 'width'), _read(arg, 'height'))
         elif action == 'viewport':
+            self._retire_resize_after_viewport_change()
             self.refresh()
             self._place('viewport', force=True)
         elif action == 'drag':
@@ -795,9 +845,25 @@ class StatsWindow(object):
             elif not active and self._resize_gesture is None:
                 self._set_resize_cursor(False)
         elif action == 'resize_end':
-            if self._resize_gesture and _read(arg, 'token') == self._resize_gesture['token']:
-                self._cancel_callback(self._resize_callback_id)
-                self._poll_resize(self._generation, self._resize_gesture, finishing=True)
+            token = _read(arg, 'token')
+            number = _resize_token_number(token)
+            if number is None or number < self._resize_token:
+                return
+            if number > self._resize_token:
+                # The browser can finish its fallback before an earlier
+                # begin command reaches us. Retire that token here as well.
+                self._resize_token = number
+                self._end_resize(discard_anchor=True)
+                self._resize_final = None
+            elif self._resize_gesture is not None:
+                if token == self._resize_gesture['token']:
+                    self._cancel_callback(self._resize_callback_id)
+                    self._poll_resize(self._generation, self._resize_gesture, finishing=True)
+            elif self._resize_final is not None and token == self._resize_final['token']:
+                try:
+                    self._send_resize(self._resize_final)
+                except (AttributeError, RuntimeError, TypeError, ValueError):
+                    pass  # The renderer also owns a bounded release timeout.
         elif action == 'size_preference':
             size = _dimensions((_read(arg, 'width'), _read(arg, 'height')))
             if size is not None:

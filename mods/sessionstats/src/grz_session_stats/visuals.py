@@ -38,6 +38,7 @@ _PREFIXES = {'vehicle': 'gui/maps/icons/vehicle/', 'map': 'gui/maps/icons/map/',
              'vehicle_role': 'gui/maps/icons/roleExp/roles/24x24/'}
 _OUTCOME_FILES = dict((key, _PREFIXES['outcome'] + 'BgBattleResultIcon' + name + '-1.png')
                       for key, name in (('win', 'Victory'), ('loss', 'Defeat'), ('draw', 'Draw')))
+_SPG_ROLE_FILE = 'gui/maps/icons/roleExp/roles/22x22/role_SPG.png'
 _SAFE_PATH = re.compile(r'^[A-Za-z0-9_./-]+\Z')
 _SAFE_GEOMETRY = re.compile(r'^[A-Za-z0-9_-]{1,128}\Z')
 _DECIMAL = re.compile(r'^[0-9]+\Z')
@@ -110,7 +111,8 @@ def verified_image_url(native_url, kind, file_exists):
     if kind == 'outcome' and path not in tuple(_OUTCOME_FILES.values()) + tuple(
             value[:-4] + '.dds' for value in _OUTCOME_FILES.values()):
         return None
-    if not path.startswith(_PREFIXES[kind]) or not _SAFE_PATH.match(path):
+    allowed_role_file = kind == 'vehicle_role' and path in (_SPG_ROLE_FILE, _SPG_ROLE_FILE[:-4] + '.dds')
+    if not (path.startswith(_PREFIXES[kind]) or allowed_role_file) or not _SAFE_PATH.match(path):
         return None
     if any(part in ('', '.', '..') for part in path.split('/')):
         return None
@@ -275,18 +277,20 @@ class NativeVisualResolver(object):
                             pass
                 except Exception:
                     pass
-                if key != 'role_SPG':
+                if key == 'role_SPG':
+                    # The 24x24 role registry omits artillery. EU and CT both
+                    # ship its original 22x22 icon, checked by ResMgr at use.
+                    icon = verified_image_url('img://' + _SPG_ROLE_FILE, 'vehicle_role', self._file_exists)
+                else:
                     try:
-                        # Native getRoleIcon intentionally omits SPG; no fake glyph.
                         node = self._resources.images.gui.maps.icons.roleExp.roles.c_24x24.dyn(key)
                         icon = self._resource_url(node, 'vehicle_role')
-                        if icon:
-                            role['icon'] = {'kind': 'vehicle_role', 'src': icon}
                     except Exception:
-                        pass
+                        icon = None
+                if icon:
+                    role['icon'] = {'kind': 'vehicle_role', 'src': icon}
                 result['role'] = role
-                if (result.get('class_icon') and role.get('name') and role.get('description') and
-                        (role.get('icon') or key == 'role_SPG')):
+                if result.get('class_icon') and role.get('name') and role.get('description') and role.get('icon'):
                     self._vehicle_metadata[cache_key] = copy.deepcopy(result)
             return result or None
         except Exception:

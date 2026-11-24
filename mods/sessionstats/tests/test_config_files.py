@@ -42,13 +42,17 @@ class ConfigFilesTests(unittest.TestCase):
     def prepare(self):
         files.prepare_config(self.path, self.legacy)
 
+    def assert_config_entries(self, *names):
+        expected = list(names) if os.name == 'nt' else ['.' + CONFIG_FILENAME + '.lock'] + list(names)
+        self.assertEqual(sorted(os.listdir(os.path.dirname(self.path))), expected)
+
     def test_missing_directory_gets_complete_defaults_and_no_language_override(self):
         self.prepare()
         self.assertEqual(json.loads(self.read(self.path).decode('utf-8')), default_config())
         self.assertEqual(load_config(self.path), default_config())
         self.assertFalse(os.path.exists(self.languages))
         self.assertFalse(os.path.exists(self.legacy))
-        self.assertEqual(os.listdir(os.path.dirname(self.path)), [CONFIG_FILENAME])
+        self.assert_config_entries(CONFIG_FILENAME)
 
     def test_existing_central_files_win_and_are_never_rewritten(self):
         self.write(self.path, b'{"language":"pl","scroll":{"speed_multiplier":2}}')
@@ -103,7 +107,7 @@ class ConfigFilesTests(unittest.TestCase):
     def test_unreadable_legacy_does_not_publish_defaults_over_unknown_preferences(self):
         original = files.io.open
         def denied(path, *args, **kwargs):
-            if path == self.legacy:
+            if path == files.native_data_path(self.legacy):
                 raise IOError(errno.EACCES, 'private failure details')
             return original(path, *args, **kwargs)
         with changed(files.io, 'open', denied):
@@ -124,11 +128,11 @@ class ConfigFilesTests(unittest.TestCase):
         with changed(files.os, 'fsync', failed):
             self.prepare()
         self.assertFalse(os.path.exists(self.path))
-        self.assertEqual(os.listdir(os.path.dirname(self.path)), [])
+        self.assert_config_entries()
         self.prepare()
         self.assertEqual(load_config(self.path), default_config())
 
-    @unittest.skipUnless(hasattr(os, 'link'), 'Requires POSIX hard-link fixture')
+    @unittest.skipUnless(os.name != 'nt' and hasattr(os, 'link'), 'Requires POSIX hard-link publication')
     def test_concurrent_creation_wins_without_being_overwritten(self):
         original = files.os.link
         def raced(source, destination):
@@ -137,7 +141,7 @@ class ConfigFilesTests(unittest.TestCase):
         with changed(files.os, 'link', raced):
             self.prepare()
         self.assertEqual(load_config(self.path)['language'], 'uk')
-        self.assertEqual(os.listdir(os.path.dirname(self.path)), [CONFIG_FILENAME])
+        self.assert_config_entries(CONFIG_FILENAME)
 
     def test_windows_publication_uses_rename_and_keeps_concurrent_destination(self):
         def raced(source, destination):
@@ -147,7 +151,7 @@ class ConfigFilesTests(unittest.TestCase):
             with changed(files.os, 'rename', raced):
                 self.prepare()
         self.assertEqual(load_config(self.path)['language'], 'es')
-        self.assertEqual(os.listdir(os.path.dirname(self.path)), [CONFIG_FILENAME])
+        self.assert_config_entries(CONFIG_FILENAME)
 
     def test_unicode_installation_path(self):
         base = os.path.join(self.directory, '\u017b\u00f3\u0142\u0107')

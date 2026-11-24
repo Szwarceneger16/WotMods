@@ -41,6 +41,20 @@ module.exports=async({browser,nativeHost,check})=>{
       check('Face hit testing chooses '+(hour===0?'outer midnight':'inner noon'),await selected(hour,hour===12));
       await page.locator('body').dispatchEvent('mouseup');await picker.locator('[data-date-part="hour"]').click();
     }
+    check('A lost primary release and focus loss cannot move the calendar hand on hover',await picker.evaluate(node=>{
+      const face=node.querySelector('.ss-date-clock'),box=face.getBoundingClientRect();
+      const middle={x:box.left+box.width/2,y:box.top+box.height/2};
+      const start=()=>face.dispatchEvent(new MouseEvent('mousedown',{button:0,buttons:1,
+        clientX:middle.x,clientY:middle.y-box.height*.44,bubbles:true,cancelable:true}));
+      const move=()=>{const event=new MouseEvent('mousemove',{buttons:0,clientX:middle.x+box.width*.44,
+        clientY:middle.y,bubbles:true,cancelable:true});document.dispatchEvent(event);return !event.defaultPrevented;};
+      start();
+      document.dispatchEvent(new MouseEvent('mouseup',{button:2,buttons:1,bubbles:true}));
+      const rightUpKeptHour=face.isConnected;
+      const recovered=move()&&face.getAttribute('aria-valuenow')==='0';
+      start();window.dispatchEvent(new Event('blur'));
+      return rightUpKeptHour&&recovered&&move()&&face.getAttribute('aria-valuenow')==='0';
+    }));
     await face.press('Home');check('24h Home selects outer midnight',await selected(0,false));
     await face.press('ArrowLeft');check('24h backward wrap selects inner 23',await selected(23,true));
     await face.press('Home');for(let index=0;index<12;index++)await face.press('ArrowRight');

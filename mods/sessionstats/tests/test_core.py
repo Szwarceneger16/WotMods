@@ -119,6 +119,29 @@ class ServiceTests(unittest.TestCase):
     def summary(self, service=None, scope='launch'):
         return (service or self.service).snapshot()['scopes'][scope]['summary']
 
+    def test_delayed_metadata_cannot_attach_facts_to_a_different_vehicle_or_map(self):
+        self.assertTrue(self.service.record_result(result(vehicle_id=2, vehicle_name=None,
+            map_id='actual-map', map_name=None, damage=None, free_xp=None, complete=False)))
+        delayed = result(vehicle_id=1, vehicle_name='Previous vehicle', map_id='previous-map',
+                         map_name='Previous map', damage=2100, reconcile=True, _passive_capture=True)
+        receipt = ('a' * 32, 1)
+        self.service.replay_combat_capture(delayed, self.clock.value, self.service.launch_id, True, receipt)
+        row = self.service._state['battles']['1']
+        self.assertEqual((row['vehicle_id'], row['vehicle_name'], row['map_id'], row['map_name']),
+                         (2, None, 'actual-map', None))
+        self.assertEqual((row['damage'], row['free_xp'], row['complete']), (None, None, False))
+        self.assertTrue(self.service.has_combat_receipt(receipt))
+
+        self.service.begin_battle('1', started_at=110, vehicle_id=1, vehicle_name='Previous vehicle',
+                                  map_id='previous-map', map_name='Previous map', mode='random')
+        row = self.service._state['battles']['1']
+        self.assertEqual((row['vehicle_name'], row['map_name']), (None, None))
+
+        matching = dict(delayed, vehicle_id=2, vehicle_name='Actual vehicle', map_id='actual-map', map_name='Actual map')
+        self.assertTrue(self.service.record_result(matching))
+        row = self.service._state['battles']['1']
+        self.assertEqual((row['vehicle_name'], row['map_name'], row['damage']), ('Actual vehicle', 'Actual map', 2100))
+
     def test_live_observation_before_initialization_enters_both_scopes_durably(self):
         self.assertTrue(self.service.begin_battle('1', started_at=90, mode='random'))
         manual_id = self.service._state['current_manual_id']
@@ -301,7 +324,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.summary(next_launch, 'manual')['xp_received']['sum'], 4600)
 
     def test_authoritative_partial_components_recalculate_derived_net(self):
-        self.service.record_result(result(complete=False))
+        self.service.record_result(result(complete=False, xp_base=None))
         self.service.record_result({'arena_id': '1', 'complete': False, 'reconcile': True,
                                     'currencies': {'credits': {'income': -50, 'net': None}}})
         self.assertEqual(self.summary()['currencies']['credits']['net'], -70)

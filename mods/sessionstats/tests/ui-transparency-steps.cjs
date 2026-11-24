@@ -49,4 +49,51 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.mouse.up();
     }finally{await page.close();}
   }
+  const mixed=await nativeHost(browser,{viewport:{width:1600,height:1100,scale:1}});
+  try {
+    check('A numbered scrollbar gesture excludes the transparency slider, and the release permits its next gesture',
+      await mixed.evaluate(()=>{
+        const rail=document.getElementById('ss-scrollbar'),thumb=document.getElementById('ss-scrollbar-thumb');
+        const slider=document.getElementById('ss-background-transparency'),track=document.getElementById('ss-background-transparency-track');
+        const railPoint=thumb.getBoundingClientRect(),sliderPoint=track.getBoundingClientRect();
+        const send=(target,type,pointerId,x,y)=>target.dispatchEvent(new PointerEvent(type,{pointerId,button:0,
+          buttons:type==='pointerup'?0:1,clientX:x,clientY:y,bubbles:true,cancelable:true}));
+        const before=slider.getAttribute('aria-valuenow'),railX=railPoint.left+2,railY=railPoint.top+2;
+        const sliderX=sliderPoint.left+sliderPoint.width*.75,sliderY=sliderPoint.top+sliderPoint.height/2;
+        send(thumb,'pointerdown',11,railX,railY);
+        const railStarted=rail.classList.contains('is-dragging');
+        send(slider,'pointerdown',12,sliderX,sliderY);
+        document.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));
+        send(document,'pointerup',12,sliderX,sliderY);
+        const exclusive=rail.classList.contains('is-dragging')&&slider.getAttribute('aria-valuenow')===before;
+        send(document,'pointerup',11,railX,railY);
+        send(slider,'pointerdown',12,sliderX,sliderY);
+        send(document,'pointerup',12,sliderX,sliderY);
+        const settings=__grzCommands.filter(command=>command.action==='window_settings');
+        return railStarted&&exclusive&&!rail.classList.contains('is-dragging')&&settings.length===1&&
+          settings[0].background_transparency==='75';
+      }));
+  }finally{await mixed.close();}
+  const mouseOnly=await nativeHost({newPage:async options=>{
+    const page=await browser.newPage(options);
+    await page.addInitScript(()=>{window.PointerEvent=undefined;});
+    return page;
+  }},{viewport:{width:1600,height:1000,scale:1}});
+  try {
+    check('A mouse-only slider ignores right release and saves the last left position after a missed release',
+      await mouseOnly.evaluate(()=>{
+        const slider=document.getElementById('ss-background-transparency');
+        const track=document.getElementById('ss-background-transparency-track').getBoundingClientRect();
+        const events=(target,type,value,button,buttons)=>target.dispatchEvent(new MouseEvent(type,{button,buttons,
+          clientX:track.left+track.width*value/100,clientY:track.top+track.height/2,bubbles:true,cancelable:true}));
+        const saves=()=>__grzCommands.filter(command=>command.action==='window_settings');
+        events(slider,'mousedown',25,0,1);
+        events(document,'mouseup',75,2,1);
+        const stillHeld=slider.getAttribute('aria-valuenow')==='25'&&saves().length===0;
+        events(document,'mousemove',50,0,0);
+        events(document,'mouseup',75,2,0);
+        return stillHeld&&slider.getAttribute('aria-valuenow')==='25'&&saves().length===1&&
+          saves()[0].background_transparency==='25';
+      }));
+  }finally{await mouseOnly.close();}
 };

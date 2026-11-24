@@ -1,17 +1,17 @@
 /* Explicit page controls retain their divider through delayed native layout. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actualFunction(source,name){
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end+7);
 }
 function geometry(source=shipped()){
   let clock=1000,offset=0,physical=0,position=1500,missing=false,busy=false,validContext=true;
-  let lag=false,pendingOffset=null,nextTimer=1,pinnedUpdates=0,resizes=0;
+  let lag=false,pendingOffset=null,nextTimer=1,pinnedUpdates=0,resizes=0,maximum=4000;
   const timers=new Map(),owner={account_key:'synthetic-page-jump',scope:'launch',period_id:'synthetic-period'};
   const feed={context:owner,key:'synthetic-page-order',collectionKey:'synthetic-page-order',group:'maps',
     start:0,last:2,current:0,pages:5,navigationPage:2,topRequested:false,prependAnchor:null,pending:null};
-  const scroll={get scrollTop(){return offset;},set scrollTop(value){const next=Math.max(0,Math.min(4000,value));
+  const scroll={get scrollTop(){return offset;},set scrollTop(value){const next=Math.max(0,Math.min(maximum,value));
       if(lag==='drop'){lag=false;return;}
       if(lag){pendingOffset=next;if(lag==='getter')physical=next;if(lag==='rect')offset=next;}
       else{offset=next;physical=next;}},clientHeight:500,scrollHeight:4500,
@@ -28,12 +28,12 @@ function geometry(source=shipped()){
     hasNumber:value=>typeof value==='number'&&Number.isFinite(value),sameContext:()=>validContext,
     cancelUITimer:id=>timers.delete(id),window:{setTimeout(callback,delay){const id=nextTimer++;timers.set(id,{callback,delay});return id;}},
     document:{documentElement:{contains:()=>true}},pinnedFilterHeight:()=>60,
-    scrollbarMetrics:()=>({maximum:4000}),queueResize(){resizes++;},
+    scrollbarMetrics:()=>({maximum}),queueResize(){resizes++;},
     updatePinnedFilters(){pinnedUpdates++;},updateFeedControls(){},syncScrollbar(){},
     cancelBattleNavigation(){state.battleJump=null;},clearBattleTarget(){},
     resetViewScroll(){state.scrollTarget=0;scroll.scrollTop=0;}};
   vm.createContext(context);
-  const names=['beginPageJump','cancelPageJump','retryPageJump','finishPageJump','battleLayoutOffset','battleScrollPending','onScrollIntent','retireFeed'];
+  const names=['beginPageJump','cancelPageJump','retryPageJump','finishPageJump','battleLayoutOffset','battleScrollPending','battleOwnsViewport','onScrollIntent','retireFeed'];
   if(source.includes('    function pageScrollPending('))names.push('pageScrollPending');
   vm.runInContext(names.map(name=>actualFunction(source,name)).join('\n'),context);
   function tick(delta=100){clock+=delta;const next=[...timers].find(([,timer])=>timer.delay>0&&timer.delay<=100);
@@ -41,7 +41,7 @@ function geometry(source=shipped()){
   return{context,state,scroll,section,timers,feed,begin(){context.beginPageJump(feed,2);context.finishPageJump();},
     tick,settle(){for(let index=0;index<12&&state.pageJump;index++)tick(100);},
     show(){state.cardPages=[{index:2,section}];},missing(value){missing=value;},busy(value){busy=value;},
-    move(value){position=value;},setContext(value){validContext=value;},lag(value){lag=value;},
+    move(value){position=value;},limit(value){maximum=value;},setContext(value){validContext=value;},lag(value){lag=value;},
     flush(){lag=false;if(pendingOffset!==null){offset=pendingOffset;physical=pendingOffset;pendingOffset=null;}},
     pinnedUpdates:()=>pinnedUpdates,resizes:()=>resizes};
 }
@@ -52,28 +52,34 @@ function assertFreshPageDeadline(source){
   state.nativeSession=true;state.feedForceStart=null;
   old.revision='1';old.cache={};old.signatures={};old.navigationPage=2;old.navigationDeadline=999;
   const scope={data_revision:2,summary:{battles:200},maps:[{id:'revision-page-two'}],
-    pagination:{maps:{page:2,pages:5,total:200,page_size:40}}};
+    pagination:{maps:{page:1,pages:5,total:200,page_size:40}}};
   Object.assign(context,{feedIdentity:()=>old.key,feedCollectionIdentity:()=>old.collectionKey,
-    feedContextIdentity:()=>JSON.stringify(old.context),viewContext:()=>old.context,
+    feedContextIdentity:()=>JSON.stringify(old.context),viewContext:()=>old.context,suspendResizePrefetch(){},
+    visibleRefreshPage:()=>old.current,render(){},
     requestFeedPage(feed,page,navigate){feed.pending={page,id:'fill-'+page,navigate,timer:null};},
     captureFeedAnchor(){throw Error('Explicit page reply must not become an automatic prepend anchor');},
     revealFeedTop(){throw Error('A page reply must not request Back to top');}});
-  vm.runInContext(actualFunction(source,'prepareFeed'),context);
+  for(const name of ['prepareFeed','captureRefreshAnchor','retargetFeedRefresh','deferFeedRefresh'])vm.runInContext(actualFunction(source,name),context);
   const staged=context.prepareFeed(scope);
   assert.notStrictEqual(staged,old,'A changed result revision rebuilds its feed');
-  assert.strictEqual(staged.navigationPage,2,'The revision rebuild stages the existing page destination while prefix pages reload');
+  assert.strictEqual(staged.navigationPage,2,'The revision rebuild stages the existing page destination');
+  assert.strictEqual(staged.start,2);assert.strictEqual(staged.last,2);
+  assert.strictEqual(staged.pending.page,2,'Only the missing navigation destination is requested');
   assert.strictEqual(staged.navigationDeadline,999,'The staged revision retains its original navigation deadline');
-  context.onScrollIntent({type:'wheel',target:renewed.scroll});
+  context.onScrollIntent({type:'wheel',deltaY:1,target:renewed.scroll});
   assert.strictEqual(staged.navigationPage,null,'New user movement retires the staged revision destination');
-  // Complete the ordinary prefix cache, then accept a later, separately owned
-  // Next request. Its lifetime starts now instead of inheriting the old 999.
-  staged.cache[0]=[];staged.cache[1]=[];staged.signatures[0]='[]';staged.signatures[1]='[]';
+  for(let index=0;index<10&&staged.refreshInput;index++)renewed.tick(16);
+  // Refresh the still-visible page, then accept a later, separately owned
+  // page request with its own deadline.
+  scope.maps=[{id:'refreshed-visible-page'}];scope.pagination.maps.page=0;
+  assert.strictEqual(context.prepareFeed(scope),staged);
+  state.renderedFeed=staged;
   staged.pending={page:3,id:'fresh-page-request',navigate:true,timer:null};
   scope.maps=[{id:'fresh-page-three'}];scope.pagination.maps={page:3,pages:5,total:200,page_size:40,request_id:'fresh-page-request'};
   const accepted=context.prepareFeed(scope);
   assert.strictEqual(accepted,staged,'The separately owned reply fills the current revision cache');
   assert(state.pageJump&&state.pageJump.page===3,'The fresh async reply owns its requested page');
-  assert.strictEqual(state.pageJump.deadline,11000,'A new async page reply receives a full lifetime after cancellation, not expired deadline 999');
+  assert.strictEqual(state.pageJump.deadline,context.Date.now()+10000,'A new async page reply receives a full lifetime after cancellation, not expired deadline 999');
   state.renderedFeed=accepted;state.cardPages=[{index:3,section:renewed.section}];
   context.finishPageJump();assert(renewed.scroll.scrollTop>1000,'The fresh async destination aligns instead of expiring immediately');
   renewed.settle();assert.strictEqual(state.pageJump,null,'The fresh async destination settles normally');
@@ -119,6 +125,12 @@ function assertPageJumpSource(source=shipped()){
   assert.strictEqual(dropped.state.pageJump.requestedOffset,requested,'A dropped setter retries the same owned divider offset');
   assert.strictEqual(dropped.scroll.scrollTop,requested,'The page retry reissues the dropped setter without manual native acknowledgement');
   dropped.settle();assert.strictEqual(dropped.state.pageJump,null,'The reissued page setter settles without a manual flush');
+  const shrinking=geometry(source);shrinking.show();shrinking.lag('drop');shrinking.begin();
+  assert(shrinking.state.pageJump.requestedOffset>150,'The divider requested a position above the future range');
+  shrinking.move(225);shrinking.limit(150);shrinking.tick();
+  assert.strictEqual(shrinking.state.pageJump.requestedOffset,150,'A retained divider setter uses the new maximum');
+  assert.strictEqual(shrinking.scroll.scrollTop,150);
+  shrinking.settle();assert.strictEqual(shrinking.state.pageJump,null,'The divider settles before its timeout after the range shrinks');
 
   const final=geometry(source);final.show();final.move(4200);final.begin();final.settle();
   assert.strictEqual(final.scroll.scrollTop,4000,'A short final page clamps to the actual scroll range');
@@ -127,7 +139,7 @@ function assertPageJumpSource(source=shipped()){
   for(const kind of ['wheel','mousedown','keydown']){
     const moved=geometry(source);moved.begin();const retained=retainedTimer(moved);
     moved.feed.navigationPage=2;moved.feed.navigationDeadline=999;
-    moved.context.onScrollIntent({type:kind,key:'ArrowDown',target:moved.scroll});
+    moved.context.onScrollIntent({type:kind,key:'ArrowDown',deltaY:1,button:0,target:moved.scroll});
     moved.state.scrollTarget=null;moved.scroll.scrollTop=350;moved.show();retained();
     assert.strictEqual(moved.state.pageJump,null,'Newer '+kind+' retires an outstanding page destination');
     assert.strictEqual(moved.feed.navigationPage,null,'Newer '+kind+' clears a staged revision destination');

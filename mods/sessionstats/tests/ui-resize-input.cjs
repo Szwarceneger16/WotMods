@@ -249,4 +249,231 @@ module.exports = async function ({browser, nativeHost, check}) {
   check('Native release applies final dimensions and layout while delayed frame callbacks stay inert',
     timing.releaseLayout && timing.staleFramesInert);
   await responsive.close();
+
+  const missingRelease = await nativeHost(browser, {viewport:{width:1600,height:1100,scale:1}});
+  const release = await missingRelease.evaluate(() => {
+    const grip = document.querySelector('[data-corner="se"]'), tracking = [];
+    viewEnv.setTrackMouseOnStage = active => tracking.push(active);
+    const commands = action => __grzCommands.filter(command => command.action === action);
+    function press(pointerId) {
+      grip.dispatchEvent(new PointerEvent('pointerdown', {button:0,pointerId,clientX:690,clientY:725,
+        bubbles:true,cancelable:true}));
+      return commands('resize_begin').at(-1).token;
+    }
+    function sample(token,sequence,width,active) {
+      GRZSessionStats.update({resize_gesture:{token,sequence,width,height:800,active}});
+    }
+    function pointerUp(pointerId,button) {
+      document.dispatchEvent(new PointerEvent('pointerup', {pointerId,button,bubbles:true,cancelable:true}));
+    }
+    const timer = delay => [...__grzTimers].find(([,entry]) => entry.delay === delay);
+    function fire(entry) { __grzTimers.delete(entry[0]); entry[1].callback(); }
+    const first = press(1);
+    sample(first,1,880,true);
+    const oldLease = timer(1500);
+    sample(first,2,900,true);
+    oldLease[1].callback();
+    pointerUp(2,0);pointerUp(1,2);
+    const keepHolding = commands('resize_end').length === 0 && tracking.join(',') === 'true';
+    pointerUp(1,0);
+    const fallback = timer(400);
+    // A delayed active sample cannot extend a gesture that is already ending.
+    sample(first,3,1100,true);
+    fire(fallback);
+    const firstClosed = tracking.join(',') === 'true,false' &&
+      commands('resize_end').filter(command => command.token === first).length === 2 &&
+      commands('size_preference').at(-1).width === '900';
+    const filter = document.querySelector('#ss-sort-chronology .ss-select-trigger');
+    filter.click();
+    const filterOpened = filter.getAttribute('aria-expanded') === 'true';
+    sample(first,4,1500,false);
+    const obsoletePacketLeavesMenu = filterOpened && filter.getAttribute('aria-expanded') === 'true';
+    filter.click();
+
+    const second = press(2);
+    sample(second,5,920,true);
+    fallback[1].callback();
+    sample(first,6,1500,false);
+    const secondOwned = first !== second && tracking.at(-1) === true;
+    sample(second,7,950,false);
+    const secondClosed = tracking.at(-1) === false && commands('size_preference').at(-1).width === '950';
+
+    const outside = press(3);
+    sample(outside,8,970,true);
+    __grzEvents.mouseup();
+    const ambiguous = commands('resize_end').every(command => command.token !== outside);
+    fire(timer(1500));
+    const outsideClosed = tracking.at(-1) === false && commands('resize_end').at(-1).token === outside;
+
+    const last = press(4);
+    sample(last,9,980,true);
+    window.dispatchEvent(new Event('blur'));
+    const late = timer(400);
+    const blurArmed = late && commands('resize_end').at(-1).token === last;
+    GRZSessionStats.destroy();
+    const afterDestroy = __grzCommands.length;
+    late[1].callback();
+    return {keepHolding,firstClosed,obsoletePacketLeavesMenu,secondOwned,secondClosed,ambiguous,outsideClosed,blurArmed,
+      destroyRetired:tracking.at(-1) === false && __grzCommands.length === afterDestroy && !__grzTimers.has(late[0])};
+  });
+  check('Resize ignores unrelated pointer releases and stays active on a renewed native lease', release.keepHolding);
+  check('A lost terminal resize update releases capture and saves the last visible size', release.firstClosed);
+  check('An obsolete terminal resize update leaves a newly opened filter menu alone', release.obsoletePacketLeavesMenu);
+  check('Late resize packets and callbacks cannot finish a newer gesture', release.secondOwned && release.secondClosed);
+  check('A lost outside release is recovered after the native lease expires', release.ambiguous && release.outsideClosed);
+  check('Focus loss starts bounded release and destroying the panel retires its callback', release.blurArmed && release.destroyRetired);
+  await missingRelease.close();
+
+  const missingStart = await nativeHost(browser, {viewport:{width:1600,height:1100,scale:1},drag:'supported'});
+  try {
+    check('A missed first native resize sample and outside release restore the next resize and titlebar move',
+      await missingStart.evaluate(()=>{
+        const grip=document.querySelector('[data-corner="se"]'),title=document.getElementById('ss-titlebar');
+        const commands=action=>__grzCommands.filter(command=>command.action===action);
+        function press(pointerId) {
+          grip.dispatchEvent(new PointerEvent('pointerdown',{pointerId,button:0,buttons:1,clientX:690,clientY:725,bubbles:true,cancelable:true}));
+          return commands('resize_begin').at(-1).token;
+        }
+        const first=press(1);
+        document.dispatchEvent(new PointerEvent('pointermove',{pointerId:1,buttons:0,clientX:999,clientY:999,bubbles:true}));
+        const firstReleased=commands('resize_end').at(-1)?.token===first;
+        const second=press(2),lease=[...__grzTimers].find(([,timer])=>timer.delay===1500);
+        if(!lease) return false;
+        __grzTimers.delete(lease[0]);lease[1].callback();
+        title.dispatchEvent(new MouseEvent('mousedown',{button:0,buttons:1,bubbles:true,cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mouseup',{button:2,buttons:1,bubbles:true}));
+        const titleStillHeld=__grzWindowEvents.at(-1).on===true;
+        document.dispatchEvent(new MouseEvent('mousemove',{buttons:0,bubbles:true}));
+        return firstReleased&&second!==first&&commands('resize_end').at(-1).token===second&&titleStillHeld&&
+          __grzWindowEvents.at(-1).on===false;
+      }));
+    check('A resize and the titlebar cannot compete for native drag ownership',await missingStart.evaluate(()=>{
+      const grip=document.querySelector('[data-corner="se"]'),title=document.getElementById('ss-titlebar');
+      const commands=action=>__grzCommands.filter(command=>command.action===action);
+      const press=()=>grip.dispatchEvent(new PointerEvent('pointerdown',{pointerId:12,button:0,buttons:1,
+        clientX:690,clientY:725,bubbles:true,cancelable:true}));
+      const titlePress=()=>title.dispatchEvent(new MouseEvent('mousedown',{button:0,buttons:1,bubbles:true,cancelable:true}));
+      const before=commands('resize_begin').length,dragEvents=__grzWindowEvents.length;
+      press();
+      const token=commands('resize_begin').at(-1).token;
+      titlePress();
+      document.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));
+      const resizeOwns=__grzWindowEvents.length===dragEvents&&commands('resize_end').every(command=>command.token!==token);
+      document.dispatchEvent(new PointerEvent('pointerup',{pointerId:12,button:0,clientX:690,clientY:725,bubbles:true}));
+      titlePress();press();
+      document.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));
+      return resizeOwns&&commands('resize_begin').length===before+1&&commands('resize_end').at(-1).token===token&&
+        __grzWindowEvents.length===dragEvents+2&&__grzWindowEvents.at(-2).on===true&&__grzWindowEvents.at(-1).on===false;
+    }));
+    check('An account switch cancels an active resize and its late samples without saving the old size',
+      await missingStart.evaluate(()=>{
+        const grip=document.querySelector('[data-corner="se"]');
+        grip.dispatchEvent(new PointerEvent('pointerdown',{pointerId:3,button:0,buttons:1,clientX:690,clientY:725,bubbles:true}));
+        const token=__grzCommands.filter(command=>command.action==='resize_begin').at(-1).token;
+        GRZSessionStats.update({resize_gesture:{token,sequence:1,width:1000,height:800,active:true}});
+        const lease=[...__grzTimers].find(([,timer])=>timer.delay===1500);
+        const before=__grzCommands.length,payload=JSON.parse(model.payload);
+        payload.account_key='synthetic-resize-replacement';payload.window_size=[750,800];
+        GRZSessionStats.update(payload);
+        GRZSessionStats.update({resize_gesture:{token,sequence:2,width:1050,height:800,active:false}});
+        lease[1].callback();
+        const after=__grzCommands.slice(before);
+        return after.some(command=>command.action==='resize_end'&&command.token===token)&&
+          !after.some(command=>command.action==='size_preference'||command.action==='window_settings')&&
+          document.getElementById('grz-session-stats').style.width==='750rem';
+      }));
+  }finally{await missingStart.close();}
+
+  const feedPage = await nativeHost(browser, {
+    initialViewport:{width:1700,height:1150}, viewport:{width:1700,height:1150,scale:1},
+  });
+  try {
+    const settle = () => feedPage.evaluate(() => new Promise(resolve => {
+      let remaining = 5;
+      function frame() { if (--remaining) requestAnimationFrame(frame); else resolve(); }
+      requestAnimationFrame(frame);
+    }));
+    for (const input of ['wheel', 'uncancelable wheel', 'keyboard', 'scrollbar']) {
+      await feedPage.evaluate(input => {
+        const payload = JSON.parse(model.payload), scope = payload.scopes.launch;
+        const sample = scope.battles[0];
+        payload.account_key = 'resize-feed-' + input;
+        payload.window_size = [900, 780];
+        scope.battles = Array.from({length:10}, (_, index) => ({...sample,id:'resize-feed-card-' + index}));
+        scope.pagination = {...scope.pagination,battles:{page:0,pages:2,total:20,page_size:10}};
+        model.payload = JSON.stringify(payload);
+        __grzEvents['viewEnv.onDataChanged']();
+        document.getElementById('ss-group-battles').click();
+      }, input);
+      await settle();
+      await feedPage.evaluate(() => {
+        const grip = document.getElementById('ss-resize-grip'), scroll = document.getElementById('ss-scroll');
+        window.__resizeFeedPagesBefore = __grzCommands.filter(command => command.action === 'page').length;
+        window.__resizeFeedCard = document.querySelector('#ss-groups .ss-group');
+        const box = grip.getBoundingClientRect();
+        grip.dispatchEvent(new MouseEvent('mousedown', {button:0,clientX:box.left+2,clientY:box.top+2,bubbles:true,cancelable:true}));
+        const token = __grzCommands.filter(command => command.action === 'resize_begin').at(-1).token;
+        GRZSessionStats.update({resize_gesture:{token,width:1300,height:800,active:true}});
+        scroll.scrollTop = scroll.scrollHeight;
+        scroll.dispatchEvent(new Event('scroll'));
+        GRZSessionStats.update({resize_gesture:{token,width:1300,height:800,active:false}});
+      });
+      await feedPage.waitForFunction(() => __nativeSize[0] === 1300 && __nativeSize[1] === 800);
+      await settle();
+      await feedPage.evaluate(() => {
+        const scroll = document.getElementById('ss-scroll');
+        // Gameface can report the clamped scroll position after release. An
+        // incidental horizontal wheel or non-scrolling key must not own it.
+        scroll.dispatchEvent(new WheelEvent('wheel', {deltaX:10,bubbles:true,cancelable:true}));
+        scroll.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab',bubbles:true}));
+        scroll.scrollTop = scroll.scrollHeight;
+        scroll.dispatchEvent(new Event('scroll'));
+      });
+      await settle();
+      check('A late resize scroll keeps mounted Battles visible with no page request before '+input,
+        await feedPage.evaluate(() => document.getElementById('grz-session-stats').getAttribute('aria-busy') === 'false' &&
+          document.querySelector('#ss-groups .ss-group') === __resizeFeedCard &&
+          __grzCommands.filter(command => command.action === 'page').length === __resizeFeedPagesBefore));
+      await feedPage.evaluate(input => {
+        const scroll = document.getElementById('ss-scroll');
+        window.__resizeFeedTimersBefore = __grzTimerSequence;
+        if (input === 'scrollbar') {
+          const rail = document.getElementById('ss-scrollbar'), rect = rail.getBoundingClientRect();
+          const mouse = {bubbles:true,cancelable:true,button:0,clientX:rect.left+2,clientY:rect.bottom-4};
+          rail.dispatchEvent(new MouseEvent('mousedown', mouse));
+          document.dispatchEvent(new MouseEvent('mouseup', mouse));
+        } else if (input === 'keyboard') {
+          scroll.dispatchEvent(new KeyboardEvent('keydown', {key:'End',bubbles:true}));
+        } else {
+          scroll.dispatchEvent(new WheelEvent('wheel', {deltaY:-5,bubbles:true,cancelable:input === 'wheel'}));
+        }
+        scroll.dispatchEvent(new Event('scroll'));
+      }, input);
+      if (input === 'uncancelable wheel') {
+        await settle();
+        check('An uncancelable synthetic wheel cannot claim the guarded resize viewport',
+          await feedPage.evaluate(() => __grzCommands.filter(command => command.action === 'page').length === __resizeFeedPagesBefore));
+        continue;
+      }
+      await feedPage.waitForFunction(() => __grzCommands.filter(command => command.action === 'page').length > __resizeFeedPagesBefore);
+      check('Intentional '+input+' still requests the adjacent Battles page and displays its loading state',
+        await feedPage.evaluate(() => {
+          const pages = __grzCommands.filter(command => command.action === 'page'), request = pages.at(-1);
+          return pages.length === __resizeFeedPagesBefore+1 && request.group === 'battles' && request.page === '1' &&
+            document.getElementById('grz-session-stats').getAttribute('aria-busy') === 'true';
+        }));
+      if (input === 'wheel') {
+        await feedPage.evaluate(() => {
+          const timer = [...__grzTimers].find(([id, entry]) => id > __resizeFeedTimersBefore && entry.delay === 10000);
+          __grzTimers.delete(timer[0]);
+          timer[1].callback();
+        });
+        check('A missing page clears the resize view loading state and remains retryable',
+          await feedPage.evaluate(() => document.getElementById('grz-session-stats').getAttribute('aria-busy') === 'false' &&
+            document.querySelector('.ss-page-pending button').textContent === 'Retry'));
+        await feedPage.locator('.ss-page-pending button').click();
+        await feedPage.waitForFunction(() => __grzCommands.filter(command => command.action === 'page').length === __resizeFeedPagesBefore+2);
+      }
+    }
+  } finally { await feedPage.close(); }
 };

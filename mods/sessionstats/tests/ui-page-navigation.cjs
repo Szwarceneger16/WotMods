@@ -16,13 +16,13 @@ async function emit(page,index,request,revision){
 }
 async function aligned(page,index){
   try{await page.waitForFunction(index=>{
-    const section=document.querySelector('.ss-continuous-page[data-page-index="'+index+'"]');
+    const section=document.querySelector('.ss-continuous-page[data-page-index="'+index+'"]:not(.ss-page-pending)');
     if(!section)return false;
     const marker=section.getBoundingClientRect(),filter=document.getElementById('ss-filter-panel').getBoundingClientRect();
     return marker.width>1&&marker.height>1&&marker.top>=filter.bottom-1&&marker.top<=filter.bottom+20;
   },index,{timeout:2500});}catch(error){
     throw Error('Page '+index+' did not align: '+JSON.stringify(await page.evaluate(index=>{
-      const section=document.querySelector('.ss-continuous-page[data-page-index="'+index+'"]');
+      const section=document.querySelector('.ss-continuous-page[data-page-index="'+index+'"]:not(.ss-page-pending)');
       return {marker:section&&section.getBoundingClientRect().top,
         filter:document.getElementById('ss-filter-panel').getBoundingClientRect().bottom,
         top:document.getElementById('ss-scroll').scrollTop,state:GRZSessionStats.getState()};
@@ -44,6 +44,26 @@ module.exports=async({browser,nativeHost,check})=>{
         scope.battles=Array.from({length:40},(_,index)=>({...__pageJumpSample,id:'synthetic-page-navigation-'+index}));
         delete scope.battle_focus;model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
       },scale);await page.locator('#ss-group-battles').click();await frames(page);
+      const topRequestCount=(await commands(page)).length;
+      await page.evaluate(()=>{
+        const thumb=document.getElementById('ss-scrollbar-thumb');
+        const box=thumb.getBoundingClientRect();
+        window.__topReplacedCard=document.querySelector('#ss-groups .ss-group');
+        thumb.dispatchEvent(new MouseEvent('mousedown',{button:0,buttons:1,clientY:box.top+2,bubbles:true,cancelable:true}));
+      });
+      await emit(page,0,null,2);
+      check('A refresh with cached page one defers replacing cards while the scrollbar is held at '+scale+'x',await page.evaluate(()=>
+        document.getElementById('ss-scrollbar').classList.contains('is-dragging')&&document.getElementById('ss-groups').getAttribute('aria-busy')==='true'&&
+        document.querySelector('#ss-groups .ss-group')===__topReplacedCard));
+      await page.evaluate(()=>{
+        document.getElementById('ss-scroll-top').click();
+        document.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));
+      });await frames(page);
+      check('Top installs the staged first page and clears the spinner without a native request at '+scale+'x',
+        (await commands(page)).length===topRequestCount&&await page.evaluate(()=>
+          document.getElementById('ss-groups').getAttribute('aria-busy')==='false'&&
+          !!document.querySelector('#ss-groups .ss-group')&&document.querySelector('#ss-groups .ss-group')!==__topReplacedCard&&
+          document.getElementById('ss-scroll').scrollTop===0));
       await page.locator('#ss-page-next').click();await frames(page);
       let sent=await commands(page),request=sent[sent.length-1];
       check('Next owns an asynchronous page-two request at '+scale+'x',request.page==='1'&&!!request.request_id);
@@ -82,22 +102,19 @@ module.exports=async({browser,nativeHost,check})=>{
         };
       });
       await page.locator('#ss-page-next').click();
-      await emit(page,1,null,2);sent=await commands(page);request=sent[sent.length-1];
-      check('An active page destination survives a same-period revision while the missing prefix reloads at '+scale+'x',
-        request.page==='0'&&(await commands(page)).length===loaded+1);
-      await page.evaluate(scale=>{
-        const style=document.createElement('style');style.textContent='.ss-continuous-page[data-page-index="0"]{padding-bottom:'+300*scale+'px}';
-        document.head.appendChild(style);
-      },scale);
-      await emit(page,0,request);
+      await emit(page,1,null,3);
+      check('An active page destination survives a same-period revision without refetching the prefix at '+scale+'x',
+        (await commands(page)).length===loaded&&await page.locator('.ss-continuous-page[data-page-index="1"]:not(.ss-page-pending)').count()===1);
       await page.evaluate(()=>{Element.prototype.getBoundingClientRect=__pageJumpRect;});
       await aligned(page,1);await page.waitForTimeout(650);
       check('The rebuilt feed still aligns the explicitly requested page at '+scale+'x',
         await page.locator('#ss-page-label').textContent()==='Page 2 of 3');
 
-      // Top is a newer destination even while a cached jump is correcting.
-      await page.locator('#ss-page-previous').click();await aligned(page,0);
-      await page.locator('#ss-scroll-top').click();await page.waitForTimeout(750);
+      // Top is a newer destination while Previous is still awaiting its page.
+      await page.locator('#ss-page-previous').click();await frames(page);
+      sent=await commands(page);request=sent[sent.length-1];
+      check('Previous requests the earlier page after the revision at '+scale+'x',request.page==='0'&&sent.length===loaded+1);
+      await page.locator('#ss-scroll-top').click();await emit(page,0,request);await page.waitForTimeout(750);
       check('Back to top retires page retries instead of being pulled back to a divider at '+scale+'x',
         await page.locator('#ss-scroll').evaluate(node=>Math.abs(node.scrollTop)<=1));
     }finally{await page.close();}

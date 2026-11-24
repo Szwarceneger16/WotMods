@@ -7,7 +7,11 @@ import io
 import json
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
+import threading
+import time
 import unittest
 
 import test_native_pagination as paging
@@ -42,7 +46,8 @@ class WindowConfigTests(unittest.TestCase):
         self.assertTrue(config_files.save_language(self.path, 'fr'))
         document['language'] = 'fr'
         self.assertEqual(self.read(), document)
-        self.assertEqual(os.listdir(self.directory), ['settings.json'])
+        expected = ['settings.json'] if os.name == 'nt' else ['.settings.json.lock', 'settings.json']
+        self.assertEqual(sorted(os.listdir(self.directory)), expected)
 
     def test_invalid_updates_and_malformed_window_section_leave_original_bytes(self):
         document = {'language': 'en', 'window': {'maximized': False}}
@@ -85,6 +90,104 @@ class WindowConfigTests(unittest.TestCase):
         finally:
             config_files._replace_file = replace
         self.assertEqual(self.read(), {'language': 'uk', 'custom': 42})
+
+    def test_simultaneous_language_and_window_writes_preserve_both_changes(self):
+        self.write({'language': 'en', 'window': {'background_transparency': 0}})
+        first_ready = threading.Event()
+        allow_first = threading.Event()
+        second_started = threading.Event()
+        second_done = threading.Event()
+        results = {}
+        replace = config_files._replace_file
+
+        def delay_language_replace(source, destination):
+            with io.open(source, 'r', encoding='utf-8') as handle:
+                if json.load(handle)['language'] == 'pl' and not first_ready.is_set():
+                    first_ready.set()
+                    if not allow_first.wait(5):
+                        raise IOError('Timed out before publishing the first update.')
+            replace(source, destination)
+
+        def change_language():
+            results['language'] = config_files.save_language(self.path, 'pl')
+
+        def change_window():
+            second_started.set()
+            try:
+                results['window'] = config_files.save_window_settings(
+                    self.path, {'background_transparency': 25})
+            finally:
+                second_done.set()
+
+        first = threading.Thread(target=change_language)
+        second = threading.Thread(target=change_window)
+        config_files._replace_file = delay_language_replace
+        first.start()
+        try:
+            self.assertTrue(first_ready.wait(5))
+            second.start()
+            self.assertTrue(second_started.wait(5))
+            self.assertFalse(second_done.wait(0.25))
+        finally:
+            allow_first.set()
+            first.join(5)
+            if second.ident is not None:
+                second.join(5)
+            config_files._replace_file = replace
+        self.assertEqual(results, {'language': True, 'window': True})
+        self.assertEqual(self.read(), {'language': 'pl', 'window': {'background_transparency': 25}})
+
+    def test_another_process_cannot_save_while_the_configuration_is_locked(self):
+        self.write({'language': 'en'})
+        source = os.path.dirname(os.path.dirname(config_files.__file__))
+        command = (
+            'import sys; sys.path.insert(0, sys.argv[1]); '
+            'from grz_session_stats.config_files import save_window_settings; '
+            'print(int(save_window_settings(sys.argv[2], {"maximized": True})))'
+        )
+        with config_files._settings_lock(self.path):
+            child = subprocess.Popen(
+                [sys.executable, '-B', '-c', command, source, self.path], stdout=subprocess.PIPE)
+            deadline = time.time() + 5
+            while child.poll() is None and time.time() < deadline:
+                time.sleep(0.01)
+            if child.poll() is None:
+                child.kill()
+                child.communicate()
+                self.fail('The second process did not report lock contention.')
+            result, unused = child.communicate()
+            self.assertEqual(child.returncode, 0)
+            self.assertEqual(result.strip(), b'0')
+            self.assertEqual(self.read(), {'language': 'en'})
+        self.assertTrue(config_files.save_window_settings(self.path, {'maximized': True}))
+        self.assertEqual(self.read(), {'language': 'en', 'window': {'maximized': True}})
+
+    @unittest.skipUnless(os.name == 'nt', 'Requires Windows delete-on-close locking')
+    def test_terminated_settings_writer_does_not_leave_a_stale_lock(self):
+        self.write({'language': 'en'})
+        source = os.path.dirname(os.path.dirname(config_files.__file__))
+        ready = os.path.join(self.directory, 'owner.ready')
+        command = (
+            'import sys, time\n'
+            'sys.path.insert(0, sys.argv[1])\n'
+            'from grz_session_stats.config_files import _settings_lock\n'
+            'with _settings_lock(sys.argv[2]):\n'
+            '    open(sys.argv[3], "w").close()\n'
+            '    time.sleep(30)\n'
+        )
+        child = subprocess.Popen([sys.executable, '-B', '-c', command, source, self.path, ready])
+        try:
+            deadline = time.time() + 5
+            while not os.path.isfile(ready) and child.poll() is None and time.time() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(os.path.isfile(ready))
+            self.assertFalse(config_files.save_language(self.path, 'pl'))
+        finally:
+            if child.poll() is None:
+                child.kill()
+            child.wait()
+        self.assertTrue(config_files.save_language(self.path, 'pl'))
+        self.assertEqual(self.read(), {'language': 'pl'})
 
     def test_window_and_wide_card_validation_is_bounded_and_does_not_share_defaults(self):
         value = appearance.validate_config({'window': {'background_transparency': 100, 'maximized': True,

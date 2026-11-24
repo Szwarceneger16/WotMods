@@ -72,21 +72,21 @@ class SessionStatsPipelineTests(unittest.TestCase):
     def test_complete_browser_phase_prepares_once_before_any_package_is_built(self):
         workflow = (ROOT/'.github/workflows/sessionstats-ci.yml').read_text()
         validate = (ROOT/'scripts/sessionstats/validate.sh').read_text()
-        command = 'run: bash scripts/sessionstats/validate.sh browser'
+        command = 'run: python -I scripts/sessionstats/browser_qa.py --e2e build'
         self.assertEqual(workflow.count(command), 1)
         self.assertNotIn('browser_qa.py --prepare', workflow)
         self.assertEqual(validate.count('python3 -I scripts/sessionstats/browser_qa.py'), 1)
-        start = workflow.rfind('      - name:', 0, workflow.index(command))
-        stop = workflow.find('\n      - ', workflow.index(command))
-        preparation = workflow[start:stop]
-        self.assertIn("if: steps.source.outputs.enabled == 'true'", preparation)
-        self.assertLess(workflow.index('id: source'), start)
-        self.assertLess(workflow.index('validate.sh preview'), start)
-        self.assertLess(start, workflow.index('validate.sh build'))
-        self.assertLess(start, workflow.index('scripts/release_installers.py package'))
+        _source, downstream = workflow.split('\n  sessionstats_windows:\n', 1)
+        windows, packaging = downstream.split('\n  sessionstats:\n', 1)
+        self.assertIn("if: needs.source.outputs.enabled == 'true'", windows)
+        self.assertIn('runs-on: windows-2025', windows)
+        self.assertIn(command, windows)
+        self.assertIn('needs: [updates, source, sessionstats_windows]', packaging)
+        self.assertIn('WINDOWS_RESULT: ${{ needs.sessionstats_windows.result }}', packaging)
+        self.assertIn('true:success|false:skipped) ;;', packaging)
         self.assertIn('contents: read', workflow)
         self.assertNotIn('contents: write', workflow)
-        self.assertNotRegex(preparation, r'\|\|\s*(?:true|:)')
+        self.assertNotIn('continue-on-error', windows)
 
     def test_both_pr_and_production_keep_the_complete_validation_transaction(self):
         validate = (ROOT/'scripts/sessionstats/validate.sh').read_text()

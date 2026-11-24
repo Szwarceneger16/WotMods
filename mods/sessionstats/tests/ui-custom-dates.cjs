@@ -51,6 +51,17 @@ module.exports=async ({browser,nativeHost,check})=>{
           return input.parentNode.classList.contains('ss-date-editor') && !input.closest('button') && buttons.length===2 &&
             Math.abs(a.top-b.top)<=1 && Math.abs(a.top-c.top)<=1 && a.right<=b.left+1 && b.right<=c.left+1;
         }) && (await requests(page)).length===before);
+      if(language==='en') {
+        const savedPoint=page.locator('#ss-timeline-to [data-value="early"]');
+        await page.locator('#ss-timeline-to .ss-select-trigger').click();
+        check('An earlier saved point is hidden before editing the opposite From draft',!await savedPoint.isVisible());
+        await page.keyboard.press('Escape');
+        await from.fill('01.09.2026 09:15');
+        await page.locator('#ss-timeline-to .ss-select-trigger').click();
+        check('Opening To uses the live edited From draft without submitting a range',
+          await savedPoint.isVisible()&&await from.inputValue()==='01.09.2026 09:15'&&(await requests(page)).length===before);
+        await page.keyboard.press('Escape');
+      }
       for(const invalid of language==='en' ? ['30.02.2026 11:15','01.13.2026 10:00','01.11.2026 24:00','00.11.2026 10:00','29.02.2025 10:00'] : ['30.02.2026 11:15']) {
         await from.fill(local(invalid));await from.press('Enter');
         check('Invalid local calendar input cannot dispatch in '+language+': '+invalid,

@@ -12,10 +12,12 @@ module.exports=async({browser,nativeHost,check})=>{
       await page.evaluate(()=>{window.__aggregateTableFixture=JSON.parse(model.payload);});
       let sequence=0;
       async function publish(group,language,width=1320,options={}){
-        await page.evaluate(({group,language,messages,width,scale,sequence,options})=>{
+        const viewportWidth=width<625?width*scale+20:3840;
+        await page.setViewportSize({width:viewportWidth,height:2560});
+        await page.evaluate(({group,language,messages,width,viewportWidth,scale,sequence,options})=>{
           const payload=JSON.parse(JSON.stringify(__aggregateTableFixture)),scope=payload.scopes.launch;
           payload.account_key='synthetic-aggregate-tables-'+scale+'-'+sequence;
-          payload.viewport={width:3840,height:2560,scale};payload.window_size=[width,1100];
+          payload.viewport={width:viewportWidth,height:2560,scale};payload.window_size=[width,1100];
           payload.appearance={window_settings:{background_transparency:0,maximized:false,restored_width:width,restored_height:1100}};
           payload.localization={language,messages};
           const sample=scope[group][0];
@@ -29,6 +31,7 @@ module.exports=async({browser,nativeHost,check})=>{
             if(options.fiveDigit){
               ranges.xp_base=[13415,22000,33415];ranges.xp_received=[13415,30000,43415];ranges.battle_wn8=[13415,24000,33415];
             }
+            if(options.shortValues)for(const metric of ['xp_base','xp_received','battle_wn8'])ranges[metric]=[123,456,789];
             if(options.large)for(const metric of ['xp_base','xp_received','battle_wn8'])ranges[metric]=[12345678,23456789,34567890];
             item.extrema_battles={};
             for(const [metric,[min,avg,max]]of Object.entries(ranges)){
@@ -43,6 +46,7 @@ module.exports=async({browser,nativeHost,check})=>{
               gold:{income:0,income_count:14,costs:0,costs_count:14,net:0,net_count:14}};
             if(options.sevenDigit)Object.assign(stats.currencies.credits,{income:1485270,costs:1417829,net:67441});
             if(options.large)Object.assign(stats.currencies.credits,{income_base:12345678,income:98765432,costs:76543210,net_base:-64197532,net:22222222});
+            if(options.shortValues)Object.assign(stats.currencies.credits,{income_base:1234,income:9876,costs:7654,net_base:-6420,net:2222});
             if(options.missingBase){
               stats.currencies.credits.income_base=stats.currencies.credits.net_base=null;
               stats.currencies.credits.income_base_count=stats.currencies.credits.net_base_count=0;
@@ -54,7 +58,7 @@ module.exports=async({browser,nativeHost,check})=>{
           scope.pagination[group]={page:0,pages:1,total:2,page_size:40};scope.data_revision='adjacent-'+sequence;
           model.payload=JSON.stringify(payload);GRZSessionStats.update(payload);
           document.getElementById('ss-scope-launch').onclick();document.getElementById('ss-group-'+group).onclick();
-        },{group,language,messages:languages[language],width,scale,sequence:++sequence,options});
+        },{group,language,messages:languages[language],width,viewportWidth,scale,sequence:++sequence,options});
         await frames(page);
       }
       async function audit(){return page.locator('#ss-groups').evaluate((owner,scale)=>{
@@ -119,7 +123,14 @@ module.exports=async({browser,nativeHost,check})=>{
             for(const ink of range.getClientRects())if(ink.width>0&&!tops.some(top=>Math.abs(top-ink.top)<scale))tops.push(ink.top);
             return {text:node.textContent,lines:tops.length};
           });
+          const metricCaptionsInline=[...card.querySelectorAll('.ss-metric-row')].every(row=>{
+            const label=rect(row.querySelector('.ss-metric-name')),amount=rect(row.querySelector('.ss-metric-number'));
+            return Math.abs(label.top-amount.top)<=1&&label.right<=amount.left+1;
+          });
+          const financeLane=card.querySelector('.ss-economy'),financeWidth=Number(financeLane.getAttribute('data-ss-finance-content-width')),
+            financeNumber=Number(financeLane.getAttribute('data-ss-finance-number-width'));
           return {financialActions,performanceValues,creditCaptions,bounds,details,performance,economy,failures,creditValues,header,identity,headlineStats,
+            metricCaptionsInline,financeCompact:financeLane.classList.contains('ss-credit-compact'),financeWidth,financeNumber,
             singleHeadline:identity.right<=headlineStats.left+1&&identity.top<headlineStats.bottom&&headlineStats.top<identity.bottom&&
               header.height<=Math.max(identity.height,headlineStats.height)+4,
             adjacent:economy.left>=performance.right-1&&Math.abs(economy.top-performance.top)<=1,
@@ -197,6 +208,18 @@ module.exports=async({browser,nativeHost,check})=>{
         corrected.cards.every((card,index)=>card.bounds.height<=legacy.cards[index].bounds.height-24));
       await obsolete.evaluate(node=>node.remove());await frames(page);
       check('Removing the obsolete aggregate flex bases restores adjacent tables at '+scale+'x',(await audit()).cards.every(card=>card.adjacent));
+      for(const width of [365,525,625]){
+        await publish('vehicles','en',width,{shortValues:true});const value=await audit();
+        check('Narrow aggregate tables budget captions from their actual lanes at '+width+'/'+scale+'x: '+JSON.stringify(value),
+          value.cards.length===2&&value.cards.every(card=>card.adjacent===(width>=525)&&card.metricCaptionsInline&&
+            card.financeWidth>0&&card.financeNumber>0&&card.financeCompact===(card.financeWidth-3*card.financeNumber<64)&&
+            card.contained&&!card.failures.length&&card.sources===6&&
+            card.creditValues.join('|')==='1234|9876|-7654|-6420|+2222'));
+      }
+      await publish('vehicles','pl',320,{large:true});const veryLarge=await audit();
+      check('Exceptionally long figures still fit when their captions need a separate line at '+scale+'x: '+JSON.stringify(veryLarge),
+        veryLarge.cards.every(card=>!card.adjacent&&!card.metricCaptionsInline&&card.financeCompact&&card.contained&&
+          !card.failures.length&&card.sources===6&&card.creditValues.join('|')==='12345678|98765432|-76543210|-64197532|+22222222'));
     }finally{await page.close();}
   }
 };

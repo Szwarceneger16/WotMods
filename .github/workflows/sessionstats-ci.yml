@@ -25,13 +25,13 @@ on:
       - 'tests/test_hangar_release_installers.py'
       - 'tests/test_release_pipeline.py'
       - 'tests/test_release_snapshot.py'
-      - 'tests/test_pr_ci_scoping.py'
       - 'tests/test_release_coordinator.py'
       - 'tests/test_release_ruleset.py'
       - 'tests/test_unified_release_workflow.py'
       - '.github/workflows/sessionstats-ci.yml'
+      - '.github/workflows/sessionstats-matrix-command.yml'
       - '.github/actions/python27/**'
-      - 'tests/test_ci_optimizations.py'
+      - '.github/actions/python27-windows/**'
       - '.github/workflows/wotmods-release.yml'
   workflow_dispatch:
 
@@ -45,14 +45,16 @@ concurrency:
 
 jobs:
   updates:
+    name: WoT EU client version and patch notes RSS
     uses: ./.github/workflows/wot-updates.yml
     with:
       strict: false
-  sessionstats:
-    needs: updates
+  source:
+    name: Detect Session Stats source import
     runs-on: ubuntu-24.04
-    cache-mode: read
-    timeout-minutes: 30
+    timeout-minutes: 10
+    outputs:
+      enabled: ${{ steps.source.outputs.enabled }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,53 +63,129 @@ jobs:
       - name: Detect source import
         id: source
         run: python3 scripts/sessionstats/source_state.py
+  sessionstats_windows:
+    name: Session Stats Windows tests
+    needs: source
+    if: needs.source.outputs.enabled == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      # Keep checkout bytes identical to the repository for source contracts.
+      GIT_CONFIG_COUNT: '1'
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: 'false'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify Windows Python 3 and configure test workspace
+        run: |
+          python -c "import sys; assert sys.platform == 'win32' and sys.version_info[0] == 3; print(sys.version)"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          @("TMP=$env:RUNNER_TEMP", "TEMP=$env:RUNNER_TEMP") | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Test Chromium report assembly
+        run: node --test scripts/sessionstats/local-e2e/merge-report.test.cjs scripts/sessionstats/local-e2e/report.test.cjs scripts/sessionstats/local-e2e/run.test.cjs
+      - name: Test Session Stats navigation acknowledgements
+        run: |
+          $checks = @('ui-filter-ux', 'ui-bidirectional-pages', 'ui-battle-jump', 'ui-page-jump', 'ui-window-settings-source')
+          foreach ($check in $checks) {
+            node "mods/sessionstats/tests/$check.cjs"
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: Install verified CPython 2.7.18 for Windows
+        uses: ./.github/actions/python27-windows
+      - name: Generate current Session Stats preview
+        run: python -B mods/sessionstats/tools/make_preview.py
+      - parallel:
+          - name: Test Session Stats on Windows Python 3
+            run: python -B -m unittest discover -s mods/sessionstats/tests -v
+          - name: Test Session Stats on Windows Python 2.7
+            run: '& $env:PYTHON27 -E -s -B -m unittest discover -s mods/sessionstats/tests -v'
+          - name: Run short Session Stats Chromium smoke
+            run: python -I scripts/sessionstats/browser_qa.py --e2e build
+  sessionstats:
+    name: Build Session Stats installer ZIP
+    needs: [updates, source, sessionstats_windows]
+    # Run the gate even when a dependency fails. A skipped packaging job
+    # would otherwise appear successful as a required check.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    timeout-minutes: 30
+    steps:
+      - name: Require the Session Stats checks before packaging
+        env:
+          UPDATES_RESULT: ${{ needs.updates.result }}
+          SOURCE_RESULT: ${{ needs.source.result }}
+          SOURCE_ENABLED: ${{ needs.source.outputs.enabled }}
+          WINDOWS_RESULT: ${{ needs.sessionstats_windows.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$UPDATES_RESULT" != success || "$SOURCE_RESULT" != success ]]; then
+            echo '::error::Update and source checks must succeed before packaging.'
+            exit 1
+          fi
+          case "$SOURCE_ENABLED:$WINDOWS_RESULT" in
+            true:success|false:skipped) ;;
+            *)
+              echo '::error::Session Stats Windows tests must succeed for an imported source tree.'
+              exit 1
+              ;;
+          esac
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Test release infrastructure
         run: |
           python3 -m unittest discover -s tests -p 'test_sessionstats_*.py' -v
           python3 -m unittest discover -s tests -p 'test_release_*.py' -v
           python3 -m unittest discover -s tests -p 'test_hangar_release_installers.py' -v
-          python3 -m unittest discover -s tests -p 'test_pr_ci_scoping.py' -v
-          python3 -m unittest discover -s tests -p 'test_ci_optimizations.py' -v
-      - name: Restore or compile verified CPython 2.7.18
-        if: steps.source.outputs.enabled == 'true'
+      - name: Restore or compile verified CPython 2.7.18 for packaging
+        if: needs.source.outputs.enabled == 'true'
         uses: ./.github/actions/python27
       - name: Generate current Session Stats preview
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         run: bash scripts/sessionstats/validate.sh preview
-      - parallel:
-          - name: Test Session Stats on Python 3
-            if: steps.source.outputs.enabled == 'true'
-            run: bash scripts/sessionstats/validate.sh python3
-          - name: Test Session Stats on Python 2.7
-            if: steps.source.outputs.enabled == 'true'
-            run: bash scripts/sessionstats/validate.sh python27
-          - name: Run complete pinned browser QA
-            if: steps.source.outputs.enabled == 'true'
-            run: bash scripts/sessionstats/validate.sh browser
       - name: Build twice and verify all six release assets
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         run: bash scripts/sessionstats/validate.sh build
       - name: Verify module integration
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         run: bash scripts/sessionstats/validate.sh integration
       - name: Audit source, archives and game bytecode
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         run: bash scripts/sessionstats/validate.sh privacy
       - name: Package independently verified Session Stats PR installer
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         run: |
           set -euo pipefail
           python3 scripts/release_installers.py package pr-artifact-sessionstats \
             --source mods/sessionstats/dist --mod sessionstats
           python3 - <<'PY'
+          import json
           from pathlib import Path
           from scripts.release_installers import verify
           installers = list(Path('pr-artifact-sessionstats').glob('Session-Stats-v*.zip'))
           assert len(installers) == 1
-          assert verify(installers[0])[0] == 'sessionstats'
+          kind, version, _, files, _ = verify(installers[0])
+          assert kind == 'sessionstats'
+          docs = 'docs/sessionstats/'
+          required = (
+              'INSTALL.txt', 'USER_GUIDE.txt', 'CHANGELOG.md', 'PREVIEW.html',
+              'source/USER_GUIDE.txt', 'source/CHANGELOG.md', 'source/preview/PREVIEW.html',
+              'source/preview/demo_snapshot.json',
+          )
+          assert all(files.get(docs + name) for name in required), 'Missing Session Stats documentation'
+          legacy = {'README_PL.txt', 'ZMIANY.txt', 'PODGLAD.html'}
+          assert not any(Path(name).name in legacy for name in files), 'Legacy documentation filename in ZIP'
+          snapshots = json.loads(files[docs + 'source/preview/demo_snapshot.json'])
+          assert {snapshot['version'] for snapshot in snapshots.values()} == {version}, 'Preview version differs from the installer'
           PY
       - name: Upload installable Session Stats ZIP without repackaging
-        if: steps.source.outputs.enabled == 'true'
+        if: needs.source.outputs.enabled == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: pr-artifact-sessionstats/Session-Stats-v*.zip

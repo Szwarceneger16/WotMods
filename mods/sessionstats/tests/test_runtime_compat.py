@@ -17,7 +17,7 @@ try:
 except ImportError:
     import __builtin__ as builtins
 
-from test_runtime import FakeAPI, FakeEvent, FakeWindow, Clock, Obj, EXPECTED
+from test_runtime import FakeAPI, FakeEvent, FakeWindow, Clock, Obj, EXPECTED, wait_for_combat_capture
 from test_normalize import raw_result, ARENA_ID
 from grz_session_stats import runtime, views, visuals
 
@@ -70,6 +70,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
 
     def tearDown(self):
         if self.mod is not None:
+            wait_for_combat_capture(self.mod)
             self.mod.stop()
         logging.disable(self.log_level)
         shutil.rmtree(self.directory)
@@ -90,6 +91,11 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         if emit:
             self.api.events.onAvatarReady()
 
+    def garage(self):
+        wait_for_combat_capture(self.mod)
+        self.api.battle = False
+        self.api.events.onAccountShowGUI()
+
     def summary(self, service=None):
         service = service or self.mod.active_service
         return service.snapshot()['scopes']['launch']['summary']
@@ -103,7 +109,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.api.input = None
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.api.events.onBattleResultsReceived(True, raw_result())
         self.assertTrue(self.mod.running)
         self.assertEqual(self.summary()['battles'], 1)
@@ -117,7 +123,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
             views.StatsWindow = broken
             self.start(native_window=True)
             self.begin()
-            self.api.battle = False
+            self.garage()
             self.api.events.onBattleResultsReceived(True, raw_result())
             self.assertIsNone(self.mod.window)
             self.assertEqual(self.summary()['battles'], 1)
@@ -133,7 +139,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.window = BrokenWindow()
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         visited = []
         self.api.events.onBattleResultsReceived += lambda *args: visited.append(True)
         self.api.events.onBattleResultsReceived(True, raw_result())
@@ -150,7 +156,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.api.events.onBattleResultsReceived = None
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         bundle = Obj(results=raw_result())
         self.api.results_service.onResultPosted(None, Obj(getResults=lambda: bundle))
         self.assertEqual(self.summary()['battles'], 1)
@@ -164,7 +170,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.start()
         self.assertEqual(self.api.results_service.onResultPosted.handlers, [])
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.api.events.onBattleResultsReceived(True, raw_result())
         self.assertEqual(self.summary()['battles'], 1)
         self.assertIn('results:posted', self.mod.compatibility_warnings)
@@ -174,7 +180,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_broken_bonus_helper_preserves_valid_raw_results_and_currencies(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         for offset, error in enumerate((RuntimeError, KeyError)):
             arena_id = str(int(ARENA_ID) + offset)
             self.clock.value = runtime.arena_start(arena_id) + 400
@@ -209,7 +215,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.start()
         self.assertEqual(len(retained.handlers), 1)
         self.begin()
-        self.api.battle = False
+        self.garage()
         visited = []
         retained.handlers.append(lambda *args: visited.append(True))
         retained(True, raw_result())
@@ -225,9 +231,12 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.start()
         self.begin(emit=False)
         self.tick()
-        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [])
+        wait_for_combat_capture(self.mod)
+        self.assertEqual(self.mod._combat_intake.pending(self.mod.active_key)[0][1], 'begin')
         self.api.battle = False
         self.tick()
+        self.assertEqual(self.mod.active_service.pending_arena_ids(), [ARENA_ID])
         arena_id, callback = self.api.pending_callbacks.pop()
         self.assertEqual(arena_id, ARENA_ID)
         callback(1, raw_result())
@@ -237,7 +246,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_changed_callback_arity_is_contained_and_does_not_invent_results(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         visited = []
         self.api.events.onBattleResultsReceived += lambda *args: visited.append(True)
         self.api.events.onBattleResultsReceived(raw_result())
@@ -250,7 +259,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_broken_thumbnail_adapter_does_not_hide_numeric_snapshot(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.api.events.onBattleResultsReceived(True, raw_result())
         original = visuals.enrich_snapshot
         try:
@@ -269,7 +278,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.start()
         self.assertIsNone(self.mod._tick_id)
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.api.events.onBattleResultsReceived(True, raw_result())
         visited = []
         self.api.event_bus.addListener('fixture-tail', lambda *args: visited.append(True))
@@ -282,7 +291,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_broken_cache_is_visible_and_pending_membership_survives(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         original = self.api.request_result
         self.api.request_result = broken
         self.tick()
@@ -414,7 +423,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
         self.mod.stop()
         self.mod.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         timer_id = self.mod._tick_id
         callbacks_before = len(self.api.callbacks)
         old_event(True, raw_result())
@@ -428,7 +437,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_cache_callback_cannot_replace_its_account_using_extra_arguments(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.tick()
         unused_id, callback = self.api.pending_callbacks.pop()
         original_service = self.mod.active_service
@@ -441,7 +450,7 @@ class RuntimeCompatibilityTests(unittest.TestCase):
     def test_old_cache_callback_cannot_clear_new_inflight_after_runtime_restart(self):
         self.start()
         self.begin()
-        self.api.battle = False
+        self.garage()
         self.tick()
         unused_id, old_callback = self.api.pending_callbacks.pop()
         self.mod.stop()

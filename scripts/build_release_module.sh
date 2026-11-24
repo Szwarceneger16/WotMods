@@ -14,12 +14,13 @@ export WOT_CLIENT_VERSION="$client"
 case "$module" in
   staysharp)
     export WOTMOD_VERSION="$version"
+    source_dir=mods/staysharp/dist
     python3 scripts/privacy_audit.py
     python3 -m unittest discover -s tests -v
-    python3 source/build_wotmod.py
+    python3 -m unittest discover -s mods/staysharp/tests -v
+    python3 mods/staysharp/tools/build_wotmod.py
     python3 scripts/privacy_audit.py --scan-dist
-    (cd dist && sha256sum -- *.wotmod > SHA256SUMS.txt && sha256sum --check --strict SHA256SUMS.txt)
-    source_dir=dist
+    (cd "$source_dir" && sha256sum -- *.wotmod > SHA256SUMS.txt && sha256sum --check --strict SHA256SUMS.txt)
     ;;
   sessionstats)
     export SESSIONSTATS_VERSION="$version"
@@ -83,6 +84,12 @@ if problems:
 print('Planned Hangar version/client build is reproducible and privacy-audited')
 PY
     source_dir=mods/hangarsync/dist
+    ;;
+  aimtimer|rangefinder)
+    bash scripts/sessionstats/python27.sh
+    export PYTHON27="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/sessionstats-cpython27/Python-2.7.18/python"
+    bash scripts/reticles/validate.sh "$module" "$version"
+    source_dir="mods/$module/dist"
     ;;
   *)
     echo "Unknown module builder: $module" >&2

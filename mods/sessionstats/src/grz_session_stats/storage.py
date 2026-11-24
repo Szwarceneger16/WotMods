@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import threading
 import uuid
 
@@ -31,6 +32,10 @@ _PROCESS_LOCK = threading.RLock()
 
 
 class StorageError(Exception):
+    pass
+
+
+class StorageBusyError(StorageError):
     pass
 
 
@@ -58,6 +63,32 @@ def check_json_depth(value):
             raise ValueError('JSON nesting exceeds the supported data shape')
         children = current.values() if isinstance(current, dict) else current
         pending.extend((item, depth + 1) for item in children if isinstance(item, (dict, list)))
+
+
+def native_data_path(path):
+    """Use wide Windows paths for generated files, including temporary siblings."""
+    if sys.platform != 'win32':
+        return path
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding() or 'utf-8')
+    path = os.path.abspath(path)
+    # An extended spelling refers to the same location as older releases.
+    if path.startswith(('\\\\?\\', '\\\\.\\')):
+        return path
+    if path.startswith('\\\\'):
+        return '\\\\?\\UNC\\' + path[2:]
+    return '\\\\?\\' + path
+
+
+def logical_data_path(path):
+    """Keep drive and UNC paths in their ordinary spelling for display and identity."""
+    if sys.platform != 'win32':
+        return path
+    if path[:8].lower() == '\\\\?\\unc\\':
+        return '\\\\' + path[8:]
+    if path.startswith('\\\\?\\') and path[5:7] == ':\\':
+        return path[4:]
+    return path
 
 
 def _ensure_directory(directory):
@@ -96,8 +127,8 @@ def _journal_header(handle):
 class _WriteLock(object):
     """An OS-released lock: process crashes never leave a permanent lock."""
 
-    def __init__(self, directory):
-        self.path = os.path.join(directory, '.write.lock')
+    def __init__(self, directory, filename='.write.lock'):
+        self.path = os.path.join(directory, filename)
         self.handle = None
         self.platform = None
         self.fallback = False
@@ -126,11 +157,14 @@ class _WriteLock(object):
                 import fcntl
                 self.platform = fcntl
                 fcntl.flock(self.handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except (IOError, OSError, ImportError):
+        except (IOError, OSError, ImportError) as error:
             if self.handle is not None:
                 self.handle.close()
             self.handle = None
             _PROCESS_LOCK.release()
+            if self.platform is not None and getattr(error, 'errno', None) in (
+                    errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK, errno.EDEADLK):
+                raise StorageBusyError(message('storage.busy'))
             raise StorageError(message('storage.busy'))
         return self
 
@@ -158,7 +192,7 @@ class StateDelta(dict):
 
 class GenerationStore(object):
     def __init__(self, directory, schema_version=SCHEMA_VERSION, keep_generations=3):
-        self.directory = directory
+        self.directory = native_data_path(directory)
         self.schema_version = schema_version
         self.keep_generations = max(2, int(keep_generations))
         self.sequence = 0
@@ -179,6 +213,10 @@ class GenerationStore(object):
             if match:
                 found.append((int(match.group(1)), os.path.join(self.directory, name)))
         return sorted(found, reverse=True)
+
+    def changed_on_disk(self):
+        files = self._files()
+        return (files[0][0] if files else 0) != self._observed_generation
 
     def _decode(self, path, generation, allow_journal=True, file_checksum=None):
         output = [None]

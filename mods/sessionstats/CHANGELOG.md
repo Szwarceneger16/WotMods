@@ -1,0 +1,768 @@
+# Session Stats changelog
+
+## 0.9.38 - 2026-11-22
+
+- Preserve confirmed XP, damage and mission progress when replaying older results or migrating installation history.
+- Recover interrupted garage writes and known installation records across account switches. Keep independent receipt producers moving and retry concurrent startup writes.
+- Recover missing vehicle and map metadata from saved battles after a restart.
+- Keep map and vehicle history on the last requested page, bound the number of mounted history pages, and finish interrupted pointer gestures.
+- Report the requested Chromium matrix coverage and avoid changing controls that the selected sort does not use.
+
+## 0.9.37 - 2026-11-22
+
+- Protect newer battle facts when another client publishes an older result, and retain installation provenance while its source is being resolved.
+- Retry interrupted garage writes, fill missing fields from cached results, and restore vehicle and map metadata when their native resolvers recover.
+- Resolve Windows directory aliases to the same installation history.
+- Restore resize controls after interrupted native gestures and release stale window anchors.
+- Return to the exact map or vehicle history row when newer results move it to another page.
+- Clamp pending scroll positions to current bounds and reject commands from a previous visit to the same Timeline range.
+- Check the displayed card order against the statistics model and run PR validation for matrix workflow changes.
+
+## 0.9.36 - 2026-11-22
+
+- Preserve the order of combat results across concurrent clients and temporarily unreadable files, and finish accepted writes on clean shutdown.
+- Retry saving installation provenance and handle extended Windows paths throughout battle history and local settings.
+- Keep page refreshes, Back to source, sort timeouts and repeated timeline ranges responsive when replies arrive late.
+- Provide an inline retry when vehicle or map battle history stops responding.
+- Let newer window preferences save after a rejected or unanswered request.
+- Check actual Chromium wheel movement and show failed upstream checks in downloadable reports.
+
+## 0.9.35 - 2026-11-22
+
+- Preserve battle receipts when reading their installation binding must be retried or the Windows profile path is long.
+- Keep deferred diagnostics through client shutdown and avoid looking up source files to format exceptions during battle.
+- Preserve newer scroll input when results refresh and restore the exact source when returning from a selected battle.
+- Confirm only the latest matching sort request, even when its options match an earlier snapshot.
+- Keep valid Chromium results available when a shard is malformed, reject stale matrices and detect missing or invalid screenshots.
+- Keep Automatic selected after resetting the standalone preview and report the default demo's correct battle count.
+
+## 0.9.34 - 2026-11-21
+
+- Preserve asynchronously captured battles when an earlier receipt is temporarily unreadable.
+- Keep battle selection and its visible position up to date across changes to results or the window. Bound page refreshes and recover from unanswered sort requests.
+- Update date-range choices when editing a draft and preserve concurrent changes to different preferences.
+- Keep the captured Crucible stage until the arena is ready, recognize supported bond result fields, and defer diagnostic disk writes during battle.
+- Publish partial Chromium reports when a shard is missing or damaged and show their incomplete status in HTML.
+- Generate a reproducible standalone preview with the built version, battle history and battle selection.
+
+## 0.9.33 - 2026-11-21
+
+- Keep the selected battle in view after opening it from a history list or a statistic.
+- Resume loading nearby pages when the user scrolls and stop showing a spinner if the game does not answer a navigation request.
+
+## 0.9.32 - 2026-11-21
+
+- Use English filenames for the user guide, changelog, and browser preview in the Session Stats ZIP and its bundled source.
+- Use English labels in the Chromium test report and English instructions and diagnostics in the local test tools.
+
+## 0.9.31 - 2026-11-21
+
+- Save battle starts and incoming results in the background during combat and replay durable captures in the garage.
+- Park history loading, ledger maintenance and garage updates during combat.
+- Use a 15-second battle fallback when the client event is missed.
+
+## 0.9.30 - 2026-11-20
+
+- Keep dropdown options and keyboard focus reachable within low windows.
+- Keep the filter row count stable when a metric hides its statistic control.
+- Use received reports to decide whether base credit figures and their source battles are available.
+- Fit more data into narrow cards with space-aware XP and finance tables.
+- Use localized titles for missions whose names are missing from the battle report.
+
+## 0.9.29 - 2026-11-19
+
+- Collapse unused Statistic controls and center the filter strip within the panel.
+- Give WN8 captions more space in aggregate cards when the identity and other figures fit alongside them.
+
+## 0.9.28 - 2026-11-18
+
+- Separate the blue sort cue from the amber last-source outline and inset Min/Max controls within the credit cells.
+- Keep loaded battle cards visible during resize and fetch another page after scroll input.
+- Keep battle identity on two lines when its map has a caption and show the original artillery role icon.
+- Center results in shared table columns and account for the finance gutter before sizing the Net column.
+
+## 0.9.27 - 2026-11-18
+
+- Show the full current history page in the main scroll area, with available game artwork above map and result captions.
+- Keep vehicle headers compact in ordinary two-column cards and give the sort label more width in ultra-wide cards.
+- Save the last window size without rebuilding the stats and keep the selected battle in view after resizing.
+
+## 0.9.26 - 2026-11-18
+
+- Base history columns on the card width and give each Missions section a shared background.
+- Fit help boxes to their text and reserve less space for the active sort badge.
+- Apply resize dimensions promptly while deferring expensive card layout during the drag.
+
+## 0.9.25 - 2026-11-18
+
+- Widen the Combined WN8 label in wide cards and place the identity and figures on one row in narrow cards when space permits.
+- Show the full selected-battle caption beside Back and More/Less, and add a distinct tint to mission cards.
+- Set the minimum window width to 625 logical pixels when the game viewport has room.
+
+## 0.9.24 - 2026-11-18
+
+- Fade WN8 card glow evenly outside the original thin border.
+- Keep card summary figures close to larger captions and dock narrow controls clear of the card content.
+- Use two columns for history in the widest cards and continue long mission lists below the bonuses.
+
+## 0.9.23 - 2026-11-17
+
+- Keep narrow title controls separate and assign card identity width before the first layout.
+- Dock More/Less on the border of single-column cards below 680 logical pixels, beside Back when present.
+- Add compact All/Min/Avg/Max choices to the existing summary finance heading, updating figures in place from actual credit, Bond and Gold distributions.
+- Keep incomplete Base-credit figures unavailable in every summary mode and preserve source actions.
+
+## 0.9.22 - 2026-11-16
+
+- Shorten group-information help to the essential explanation.
+- Disable Base-credit Min/Max source actions when their selected-period coverage is incomplete, enabling them for fully covered periods.
+- Center aggregate and upper-summary numeric values in their cells.
+- Give WN8-colored card glow more depth while retaining a thin border.
+
+## 0.9.21 - 2026-11-16
+
+- Center paired data tables in wide individual-battle cards, giving performance more room and bounding the finance-table width.
+- Align medium individual-battle financial headings, credit rows and Bonds from the same logical column budget.
+- Preserve complete figures, single-line captions and the existing aggregate-card layout.
+
+## 0.9.20 - 2026-11-16
+
+- Keep table captions on one line, with an ellipsis where needed and full-caption custom hover help after 500 ms.
+- Distribute spare width in wide aggregate cards to performance and numeric columns instead of an oversized currency-caption column.
+- Preserve complete figures and the assigned logical finance-column budget used by native Gameface layouts.
+
+## 0.9.19 - 2026-11-16
+
+- Allocate aggregate finance columns from the assigned card width, avoiding stale native geometry after flex resizing.
+- Give credit rows, headings and Bonds explicit matching widths while preserving complete figures and adjacent tables.
+- Visit direct financial rows when applying column widths instead of relying on a compound selector.
+
+## 0.9.18 - 2026-11-16
+
+- Keep performance and finance tables adjacent in ordinary vehicle, map and tier cards.
+- Size Min/Average/Max columns from their actual text and source arrows, preserving complete figures.
+- Avoid a forced second header row when no additional sorting result needs the space.
+- Retain readable fallback layouts for genuinely narrow cards and unusually wide figures.
+
+## 0.9.17 - 2026-11-16
+
+- Reclaim space from the battle performance table for readable single-line currency labels and shorter cards.
+- Center outcome and map artwork/captions with the existing More action.
+- Use smaller square source arrows with clear spacing from their figures.
+
+## 0.9.16 - 2026-11-15
+
+- Restore the exact upper-summary cell after returning from its source battle, including native stale-offset handling.
+- Highlight the selected metric and statistic cell instead of a shared Min/Average/Max heading.
+- Always retain base and received credit rows; missing base figures remain unavailable instead of removing the row.
+- Display actual battle costs once, centered across the base and received credit pair with one Min/Max action set.
+
+## 0.9.15 - 2026-11-15
+
+- Keep extrema figures and source arrows in one explicit non-wrapping row, with value painting outside the button.
+- Show custom help after 500 ms from entering the same action, without restarting on pointer movement.
+- Use missing fields in received reports consistently for range and per-card orange warnings; pending-only coverage keeps its own counts.
+- Mark the restored source action with an orange outline after returning from its battle.
+
+## 0.9.14 - 2026-11-15
+
+- Reserve arrow space in the native numeric line instead of positioning the cue over digits.
+- Restore compact fixed-width headline statistics and widen only the sorting result.
+- Keep sorting captions on one line and use a separate compact statistics row on small cards.
+- Expand default single-column aggregate cards up to the configured wide width and choose table layout by actual card width.
+
+## 0.9.13 - 2026-11-14
+
+- Place source arrows immediately after their figures and keep native numeric nodes intact.
+- Center compact financial Min/Max pairs with a 3 px gap and add thin table cell rules.
+- Reuse the native alert triangle for framed filter warnings and partial-value indicators.
+- Add Back beside Selected battle to restore the exact source view.
+- Share aggregate header space naturally and size the gold value block to its content.
+- Preserve missing-value semantics, source ownership and coverage help.
+
+## 0.9.12 - 2026-11-14
+
+- Show premium account bonuses as absolute earned amounts rather than multipliers.
+- Translate vehicle role tooltips using the selected mod language with English fallback.
+- Warn in the filter section when received results lack the selected metric.
+- Center the active sorting caption and value within their existing header slot.
+- Keep black WN8 bold on its muted backing without a light outline or shadow ring.
+- Distribute performance rows evenly and remove empty financial action rows.
+- Open off-page summary source battles when Battles is already selected.
+
+## 0.9.11 - 2026-11-14
+
+- Replace framed performance links with rounded arrow cues and retain cell navigation.
+- Fit financial Min/Max buttons to their captions with equal surrounding spacing.
+- Derive selected sorting figures from their matching series, including retained cards.
+- Mark partial sorting samples and leave incomplete base-credit totals unavailable.
+- Correct one-based Crucible stage selection and retire obsolete next-stage placeholders.
+
+## 0.9.10 - 2026-11-14
+
+- Preserve native Min/Max number painting with clearly marked source actions.
+- Show one global result count and one upper-left partial card badge.
+- Remove repeated visible coverage from tables, metric labels and footer.
+- Keep historical received earnings visible and omit unavailable base comparisons.
+- Verify legacy ledger upgrade and reconciliation preserve all existing metrics.
+
+## 0.9.9 - 2026-11-14
+
+- Use original native metal class emblems and elite badges alongside role icons.
+- Center the processing spinner over the native-aligned footer chart.
+- Keep Min/Max source-battle actions available independently of sorting.
+- Center stacked battle counts and preserve readable large values.
+- Separate base/received credit income and net sorting with independent coverage.
+
+## 0.9.8 - 2026-11-14
+
+- Link aggregate Min/Max sorting values to the battle responsible for the result.
+- Remove redundant visible XP-total and global table-header coverage counts.
+- Move global performance and finance titles into their table headers.
+- Blend black WN8 figure backing into a muted olive gray.
+- Show native vehicle class and role icons with role explanations.
+- Keep compact headline statistics and selected sorting values in stable slots.
+
+## 0.9.7 - 2026-11-13
+
+- Arrange Base, Received and Free XP totals in three horizontal columns.
+- Always show Base XP and Received XP together in performance tables and battles.
+- Remove the XP display selector while preserving legacy saved data.
+- Use a muted translucent gray backing for black WN8 figures.
+- Clarify net credit income labels and add cost sorting with Min/Avg/Max/All.
+
+## 0.9.6 - 2026-11-13
+
+- Fill decorative result/map thumbnails without black side bands.
+- Compact the XP summary into Base, Received and Free XP total rows.
+- Put a light backing directly behind black WN8 figures for small-text contrast.
+- Add aggregate All sorting for XP and credits, including gross credits.
+- Present battle outcomes consistently in uppercase in all interface languages.
+- Show a centered panel-wide loading overlay with softly blurred results.
+
+## 0.9.5 - 2026-11-13
+
+- Keep the two XP totals and their coverage in explicit, non-overlapping rows.
+- Use readable two-column mission rows when compact card space permits.
+- Match map preview frames to the selected artwork's native proportions.
+- Retain a finer light edge around black WN8 numbers.
+- Keep sorting controls and aggregate KPI columns stable when metrics change.
+
+## 0.9.4 - 2026-11-12
+
+- Use a neutral sorting-highlight fill while preserving rating colors.
+- Paint WN8 captions like interface labels; retain numeric rating outlines.
+- Center wrapped filter rows and keep pinned filters at their normal-flow
+  origin through fast scrolling and delayed native geometry.
+- Resolve map display names and calendar text in the selected UI language,
+  preserving client/config numeric date formatting and saved history.
+- Show Base XP and Received XP totals together with independent coverage.
+- Size stacked battle details by content instead of horizontal flex bases.
+- Snap transparency pointer and keyboard input to five-percent ticks.
+
+## 0.9.3 - 2026-11-12
+
+- Put midnight on the outer 24-hour clock ring and noon on the inner ring,
+  with consistent hand position, pointer selection and keyboard navigation.
+- Align battle outcome/map artwork and More/Less in fixed caption-independent
+  slots across all interface languages, keeping compact cards readable.
+- Replace missing arrow-only chronology distinctions with explicit translated
+  boundary/direction captions, keeping the fixed filter row budget.
+- Retain explicit page navigation until native scrolling and layout settle;
+  keep cached/loaded page dividers visible below pinned filters.
+- Add selected XP totals with their own coverage below the main summary;
+  preserve the same row geometry for base and received XP.
+- Keep generated native appearance CSS within a bounded 128 KiB bridge limit.
+- Explain combined WN8 as an overall rating for the selected battle series,
+  separately from the arithmetic average of individual-battle ratings.
+
+## 0.9.2 - 2026-11-12
+
+- Make filter layout deterministic from the full control budget, preserving
+  rendered cards/scroll position and coalescing resize promotion into one frame.
+- Keep narrow Off choices selectable with a gray diagonal hatch.
+- Identify Combined WN8 separately from individual-battle Min/Average/Max.
+- Stack result/map captions on compact cards; keep inline artwork on wide cards.
+- Use WoT client date resources and independent explicit date_time overrides;
+  remove operating-system regional settings from automatic formatting.
+- Offer first/last battle ascending/descending chronology for aggregate groups;
+  keep expanded map/vehicle history pages in the same selected date direction.
+
+## 0.9.1 - 2026-11-11
+
+- Make verified native result illustrations clearer on opaque outcome frames.
+- Add battle-card map thumbnails with the same hover previews as Maps.
+- Remove individual-battle win-rate sorting; keep it for aggregate groups.
+- Center highlighted card figures and every wrapped filter row.
+- Keep shared Min/Average/Max WN8 captions neutral and color each value.
+- Visibly gray unavailable calendar/clock choices and clamp today to the
+  current valid minute when a previous day retained a later clock time.
+
+## 0.9.0 - 2026-11-11
+
+- Replace duplicate sorting captions with an orange mark on the existing value;
+  advanced WN8 ordering shows its exact Min/Average/Max in the main card figure.
+- Add win-rate ordering to Vehicles, Maps, Tiers and individual Battles.
+- Keep the calendar and centered graphical clock together, with short hints.
+- Disable future and inverted-range choices and validate typed bounds as well.
+- Avoid native pointer capture and defer feed work out of scrollbar mouse events.
+
+## 0.8.1 - 2026-11-11
+
+- Keep black WN8 legible on dark camouflage with a fine, light, zero-blur text
+  outline in the panel and native battle results. Other rating halos are unchanged.
+
+## 0.8.0 - 2026-11-11
+
+- Use a subtle, consistent WN8 text halo and a faint matching card outline.
+- Keep expanded missions readable below bonus tables when side-by-side content
+  would be too narrow, including native layout and interface scaling.
+- Frame the compact sorting switch and visibly gray inactive chronology.
+- Default Tiers to highest tier first, with both tier orders in the main selector.
+- Remove the duplicate recorded-battles caption from count-sorted groups.
+- Add a compact camouflage calendar with month/year grids and a graphical clock.
+- Follow native/system date order, separator, week start and 12/24-hour preferences;
+  retain manual date entry and limit calendar selection to 2010 through this year.
+- Prefer high-resolution local map artwork for hover previews; allow a tactical
+  minimap instead through maps.preview_mode, with safe local fallback.
+
+## 0.7.0 - 2026-11-10
+
+- Replace the wide sorting button with an olive-and-orange switch.
+- Keep metric sorting independent of chronology and show its actual WN8 value.
+- Sort vehicle and map groups by their recorded battle count.
+- Color WN8 text using the nine WoT-Life rating tiers, without rating fills.
+- Preview map thumbnails at four times their displayed size on hover.
+- Follow delayed battle destinations after loading without moving card layout.
+- Verify startup recovery of eight incomplete results, including partial failures.
+
+## 0.6.0 - 2026-11-10
+
+- Edit custom dates inline and choose a date and 24-hour time from a calendar.
+- Mark the selected battle with a visible localized banner as well as its frame.
+- Show a visible scrollbar and protect the minimum usable window dimensions.
+- Display filter-loading activity; hide aggregate statistics in Battles and use
+  a separate sorting toggle when all wide-screen controls fit on one row.
+- Make short map/vehicle histories compact and align bonus labels with values.
+- Add the first battle's timestamp to page boundaries and space the dashes out.
+
+## 0.5.1 - 2026-11-10
+
+- Keep a single empty-period message across repeated panel refreshes.
+- Keep selected battle frames visible through transient native focus changes;
+  dismiss them on an explicit outside click or a view/context change.
+- Load preceding result pages while scrolling upward from a middle page,
+  preserving the visible card position as earlier pages are inserted.
+- Make Back to top return to page one of the selected result order.
+
+## 0.5.0 - 2026-11-09
+
+- Append paged results continuously with numbered dashed boundaries, loading
+  indicators, cached page navigation and a native double-chevron top action.
+- Pin grouping/sort filters during scrolling and preserve the visible position.
+- Keep history pagination inside fixed-height cards without rebuilding the UI.
+- Pulse the selected battle outline for five seconds, then fade it by 30% until
+  focus moves away. Give wide-card space to missions instead of bonus columns.
+- Add map and vehicle battle-history lists with direct navigation and persistent
+  orange highlighting of the selected battle.
+- Support custom local dates in both timeline bounds and localized More/Less labels.
+- Add persistent maximize/restore, background transparency and wider two-column cards.
+- Preserve known mission-objective metadata when partial result retries omit fields.
+- Refresh all time-range captions immediately when the language changes.
+- Normalize filter heights, gray unavailable statistics and display the exact
+  per-battle value used by net-credit sorting.
+- Group the Transparency slider and fit the gray WN8 loader inside the stock
+  garage icon bounds. Adopt a second 720-pixel card preset at attainable widths.
+
+## 0.4.0 - 2026-11-04
+
+- Add daily, weekly, campaign and event mission results alongside Crucible outcomes,
+  Battle Pass points and bonuses. Identify personal operations and honors.
+- Include account-level bond awards in the same battle finances as vehicle earnings.
+- Replace the account reset tab with a timeline of saved points and prior reset boundaries.
+- Add a resize grip that respects the game's interface scale.
+- Show per-battle WN8 in the native Random Battle overview's bottom statistics.
+  Keep its label visible with a spinner while processing and a dash if unavailable.
+- Place the garage button just after built-in statistics in the native control
+  row, preserving the original notification spacing.
+- Put Battle Pass in a full-width strip above a wider bonus table and compact
+  mission cards. Stack each mission's progress below its name within one outline;
+  wrap the sections for narrow cards and unusually large rewards.
+- Allow several battle details to stay open together. Fill chronological gaps
+  beside expanded cards before returning to alternating columns below them.
+
+## 0.3.4 - 2026-10-30
+
+- Use the requested lowercase installed filename grz_sessions_stats.wotmod.
+  ZIP downloads and internal metadata retain their release version.
+- Recognize the preceding GRZ_Session_Stats.wotmod test filename for config
+  discovery, while rejecting duplicate current/previous names together.
+- Verify the new stable Medkit installer alongside Session Stats. Preserve older
+  Session Stats and Medkit installers byte-for-byte when carrying them forward.
+- Remove GRZ_Session_Stats.wotmod once when replacing the earlier 0.3.3 test build.
+
+## 0.3.3 - 2026-10-30
+
+- Keep the download ZIP versioned, but always install GRZ_Session_Stats.wotmod.
+  Extracting later releases overwrites the existing mod instead of adding copies.
+- Keep config discovery working with the stable filename, including paths.xml
+  roots and legacy adjacent-config migration. Duplicate active copies stay ambiguous.
+- Retain verification and byte-for-byte carry-forward of older installers.
+- Remove all old grz.sessionstats_*.wotmod files once when adopting the new name.
+  Existing configuration and battle history remain intact.
+
+## 0.3.2 - 2026-10-27
+
+- Align Previous/date order/Next in one equal-height row. Keep the page counter
+  beside the list count, independently of button sizing.
+- Restore compact cards and table rows. Put Victory/Defeat captions beside the
+  unchanged artwork, WN8 coverage beside the name and Free XP above the tables.
+- Show identical financial coverage once by the currency name; preserve separate
+  counts whenever income, costs and net have different coverage.
+- Put shared XP/battle-WN8 coverage in the metric header, keeping partial rows
+  compact. Different metric coverage retains its independent count.
+- Put Language in the existing toolbar, saving a separate row of panel space.
+- Accept native Python 2 byte-string language commands. Support embedded Windows
+  clients without ctypes with rollback and interrupted-write recovery.
+- All seven language catalogs remain inside the .wotmod; the config stores only
+  the selected language along with the user's other existing settings.
+
+## 0.3.1 - 2026-10-26
+
+- Deduplicate data notices after translation. Legacy Polish and canonical English
+  copies of the same warning now produce one visible message and one notice count.
+  The original saved records and numerical statistics remain unchanged.
+- Apply the same notice handling during history loading and failures. Distinct
+  errors and parameter values remain visible; unknown text is rendered literally.
+- Explain x/y as battles with the given value out of all recorded battles, in all
+  seven languages. Per-value descriptions retain each metric's own coverage.
+- Size Previous/Next to their captions instead of 25% of the panel width, while
+  retaining the panel button style, 25rem minimum height and disabled states.
+
+## 0.3.0 - 2026-10-26
+
+- Add global Min/Avg/Max sorting by Base XP, Received XP, net credits and battle WN8, ascending or descending.
+- Add independent newest/oldest date ordering between Previous and Next.
+- Add Tiers with the same totals and sorting in all session scopes, including tier XI and unknown metadata.
+- Add two compact rows of Gameface-compatible dropdown controls and seven-language captions.
+- Return to page one after sorting; preserve full-period totals and bounded native payloads.
+- Bundle all seven translations internally; ignore and stop distributing external catalogs.
+- Add a GUI language dropdown that saves the existing config, applies immediately and preserves all other settings.
+- Include the accepted Windows journal recovery fixes from 0.2.12.
+
+## 0.2.12 - 2026-10-26
+
+- Create storage files with an explicitly binary OS descriptor on Windows.
+  Python 2.7 text-mode newline expansion could invalidate journal offsets and
+  checksums after a restart, eventually making all retained saves unreadable.
+- Recover the precise legacy journal-header defect in memory, only when the
+  original committed checksum still verifies. No existing file is rewritten
+  during loading, and other corruption still uses the normal backup/read-only
+  safeguards. The data schema, statistics and full history are unchanged.
+- Add synthetic Windows CRT regression tests for new writes, legacy loading,
+  deferred results, mixed journal chains, mirrors, torn writes and tampering.
+  See docs/WINDOWS_JOURNAL_RECOVERY.md for recovery limits and validation scope.
+- Preserve AppData history and custom configuration when upgrading. Remove older
+  active Session Stats packages and install grz.sessionstats_0.2.12.wotmod.
+  No SQLite or additional mod dependency is introduced.
+
+## 0.2.9 - 2026-10-24
+
+- Previous/Next now use the same olive/gold action-button style as the panel,
+  including native-scale spacing, captions and disabled states.
+- Battle outcomes reference unchanged, existing WG notification artwork and
+  show a separate caption. When languages match, captions use the original
+  client translations. Missing resources preserve readable text and statistics.
+  No artwork is edited, bundled or downloaded; no other mod is required.
+- New configuration defaults to "language": "auto": follow the game language,
+  otherwise English. An explicit configured language takes priority. Existing
+  "language": "en" is preserved; change it to "auto" to follow the game.
+- Advance package/runtime metadata and active installation guides to 0.2.9.
+  History format and calculations are unchanged; no reset or migration is needed.
+- See docs/UI_0.2.9_SOURCE_EVIDENCE.md for source checks and test scope.
+
+## 0.2.8 - 2026-10-23
+
+- Native window commands now forward page changes to the runtime, restoring
+  access beyond the first 40 rows in every scope and grouping.
+- Delayed results cannot borrow a posted XP bonus from a different account or
+  battle. Matching current-account bonus updates remain supported.
+- Optional roster, vehicle descriptor and map metadata failures no longer block
+  recording a verified random-battle beginning. See docs/FINAL_REVIEW_PR3.md.
+
+- Appearance/language configuration now lives in mods/configs, outside the client
+  version folder. Missing main configuration is created from defaults or copied
+  from the active package's legacy adjacent JSON. Optional language overrides
+  migrate too. Existing central files and legacy originals are never overwritten.
+  Installer paths, internal checksums and guides use the same new location.
+
+- Assign a new package version to the accumulated review, reliability and
+  performance corrections. Package metadata, runtime version and active guides
+  now identify 0.2.8; the client target and OpenWG dependency are unchanged.
+- Saves append checksummed journal changes instead of rewriting the full history.
+  Incremental summaries and 40-row pages preserve full-period statistics while
+  reducing ready-state save and panel preparation work.
+- Result recovery, account/installation isolation, native callback teardown and
+  coexistence safeguards include the corrections documented in
+  docs/REVIEW_FIXES_PR3.md and docs/INDEPENDENT_SAFETY_REVIEW_PR3.md.
+- History loading now runs in scheduled garage steps, including JSON reading,
+  checksum verification, journal replay, validation and index construction.
+  Background history work pauses during battles. No SQLite or new mod dependency.
+- Battle beginnings and results received during loading are durably queued.
+  Committed receipt watermarks prevent double application after interruption
+  between the history commit and queue cleanup. Account and launch ownership,
+  corrections and installation provenance are retained.
+- Late installation discovery also retains queued live beginnings before loading
+  finishes and backfills completed account results after readiness. Live battle
+  timestamps ahead of the local clock retain session ownership. Ambiguous game
+  path encodings cannot silently select another installation.
+- The panel shows loading/failure instead of partial totals and disables reset
+  until ready. Full history, period totals, WN8, XP and financial calculations remain.
+- Backups must include startup-intake/ as well as all journal files. Finish loading
+  before downgrading to a release that does not understand the startup queue.
+- See docs/HISTORY_PERFORMANCE.md for synthetic measurements and remaining limits;
+  the scheduling budget is not a hard frame-time guarantee. No live WoT test.
+
+Upgrade with the game closed: remove the previous Session Stats .wotmod and
+install grz.sessionstats_0.2.8.wotmod. Preserve custom JSON, language overrides
+and the complete account/installation history directories. No reset is required.
+
+## 0.2.7 - 2026-10-21
+
+Appearance and scrolling configuration beside the mod package:
+
+- New grz.sessionstats.json beside grz.sessionstats_0.2.7.wotmod. The complete
+  supplied file preserves the current appearance: 140 colors, 12 corner radii
+  and three opacity settings covering the panel, tables, lines, text, shadows,
+  control states, icon and spinner.
+- scroll.speed_multiplier ranges from 0.1 to 8; default 1.0 preserves speed.
+  Colors support alpha, radii range from 0 to 24 and opacity from 0 to 1.
+  Layout, spacing, dimensions and scroll direction remain unchanged.
+- Configuration loads at startup, panel opening and Refresh. Appearance edits
+  do not require restarting the game. No per-frame/tick file polling.
+- Missing files or invalid JSON restore all defaults. Invalid individual fields
+  restore their own defaults while other valid fields remain active. Unknown
+  keys are ignored and logged.
+- UTF-8 with BOM support and a 128 KiB limit. Duplicate keys and NaN/Infinity are
+  rejected; types, finiteness and ranges are checked. Arbitrary CSS, paths and
+  scripts are not accepted.
+- CONFIG diagnostics in session-stats.log identify fields/reasons and syntax
+  line/column when available. CONFIG_PATH identifies ambiguous active-package
+  discovery. Raw JSON is not logged.
+- Discovery uses physical client paths.xml and active *.wotmod roots with bounded
+  scanning. It does not select the highest version directory or stale inactive
+  configuration. Ambiguity uses defaults. Game files are not modified.
+- The panel model receives appearance.panel_css, footer_css and scroll_speed.
+  The footer has a separate appearance StringProperty and handle set_appearance.
+  Optional configuration failures retain static styles and default wheel behavior.
+- Expanded parser, validation, default-style, discovery, reload, footer-bridge
+  and wheel-multiplier tests. Python: 284/284 on Python 3 and CPython 2.7.18;
+  UI appearance: 30/30. Default panel/icon images match their static-style
+  baselines pixel for pixel within the same test. UI regressions: panel 78/78,
+  wheel 22/22, footer compatibility 12/12, spinner 22/22, baseline footer PASS.
+  No JavaScript errors. No live WoT test. Guide: source/docs/APPEARANCE_CONFIG.md.
+
+### Installing the update
+
+Close the game. Replace grz.sessionstats_0.2.6.wotmod or an older version with
+grz.sessionstats_0.2.7.wotmod. Place grz.sessionstats.json beside it, for example
+in mods/2.4.1.0/. OpenWG 1.2.2 is unchanged; retain one copy. Preserve your custom
+JSON in future updates and move it with the package when the version folder changes.
+Existing AppData config.json still handles the shortcut and footer_button.
+History format is unchanged; updating from 0.2.6 requires no reset. This release
+was not run in a live WoT client here.
+
+## 0.2.6 - 2026-10-21
+
+Result compatibility checks, dedicated logging and garage activity indicator:
+
+- Received-result health checks cover known names, types/container shapes,
+  adapter-required data, numeric ranges, vehicle identity, costs and deductions,
+  including bonds. The catalog is pinned to reviewed client definitions rather
+  than learned from the first post-update battle.
+- Garage WoT system warnings identify problematic fields and the log path.
+  Each signature is reported once per launch. New problems are grouped with
+  at least 60 seconds between notification attempts. Failed notifications retry;
+  the panel retains incompatibilities detected during the current launch.
+- Dedicated UTF-8 log: %APPDATA%/grz_wot_session_stats/logs/session-stats.log.
+  UTC timestamps, severity, version and schema diagnostics without raw results,
+  account identifiers or nicknames. Rotation is approximately 1 MiB plus three
+  backups. A short nonblocking lock coordinates concurrent processes. Without
+  a locking module, session-stats-<PID>.log uses the same limit per PID family;
+  other processes' logs are not removed. Warnings show the actual path. Dedicated
+  log failure is reported without disabling statistics; game.log remains available.
+- A spinner above the small WN8 icon's bars indicates the account queue or
+  result/XP-bonus processing. The tooltip distinguishes states and pending count.
+  The icon retains its size and opens the panel.
+- An ongoing battle alone does not start pending-result activity. Returning early
+  waits for WoT's result. In this historical release, incomplete results could
+  remain waiting after restart. Manual reset did not discard the account queue;
+  account changes and stopping isolated old callbacks.
+- Unknown expense-tuple lengths are not interpreted using old indexes. With a
+  known layout, one missing currency amount preserves other amounts. Valid combat
+  and XP data remain usable with partial finances.
+- Tests cover schema, notifications, delayed results, account changes, stopping,
+  logging/rotation and spinner states. Python: 214/214 on Python 3 and CPython
+  2.7.18. Browser checks: panel 78, wheel 22, footer compatibility 12, activity/
+  spinner 22; baseline-icon PASS.
+
+Checks cannot detect changed meanings with identical names, types and valid ranges.
+Unused internals are not fully validated; absent unused optional fields are not
+alarms. New names may be harmless extensions. Waiting is not a format error.
+Scope and sources: source/docs/RESULT_HEALTH_CONTRACT.md.
+
+The main panel, wheel, WN8 data and history format remain unchanged. No migration
+or reset. Automated tests do not replace a live 0.2.6 test; none was performed here.
+
+### Installing the update
+
+Close the game. Remove grz.sessionstats_0.2.5.wotmod or an older version from the
+active mods directory and install grz.sessionstats_0.2.6.wotmod. OpenWG 1.2.2 is
+unchanged. Saved sessions require no reset.
+
+## 0.2.5 - 2026-10-20
+
+Client-change resilience after the user confirmed 0.2.4 in the game:
+
+- Result collection, window, shortcut, footer and optional data sources start
+  independently. One UI failure does not block persistence.
+- Guarded callbacks and init/fini boundaries. Changed event signatures do not
+  leak mod errors into native dispatchers. Repeated problems log once; unavailable
+  result/XP-bonus channels produce readable panel warnings.
+- Independent cleanup and invalidation of old listeners, timers and result
+  callbacks after stopping. A pending JS frame cannot restore a removed garage button.
+- Optional Wulf events do not block working controls. Footer integration preserves
+  the original client method's return values and exceptions.
+- Vehicle-thumbnail helpers load lazily; their absence does not disable maps.
+- Re-reading an old result after restart preserves known names and map identity
+  rather than replacing them with fallback names. Confirmed current metadata may
+  still improve earlier descriptions.
+- Tests cover missing/changed interfaces, rejected subscriptions, cleanup,
+  restarting and history retention. Source audit:
+  source/docs/UPDATE_COMPATIBILITY_SOURCES.md.
+
+Main panel HTML/JS/CSS, icon appearance, WN8 calculations, financial normalization
+and storage remain consistent with working 0.2.4. No data migration. Major result,
+Wulf/Gameface or bytecode changes can still require fixes. Automated checks are
+not a live WoT 0.2.5 test.
+
+### Installing the update
+
+Close the game. Replace grz.sessionstats_0.2.4.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.5.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+## 0.2.4 - 2026-10-20
+
+Fixes following 0.2.3 screenshots and feedback from the real client:
+
+- Faster scrolling: ordinary vertical input moves one quarter of the visible
+  list height. Small client input such as delta 1 no longer means one pixel.
+  Correct 0.2.3 direction, endpoints, history batching and normal browser-preview
+  scrolling remain.
+- Dedicated single-battle layout: one XP value, one WN8 value, date, map and
+  outcome. Repeated min/average/max and Battles=1 / WR=0–100% are removed. Base/
+  received XP selection applies here too. Missing data does not become zero;
+  finances, free XP and thumbnails remain.
+- Session, vehicle and map aggregates retain minimum/average/maximum.
+- Softer styling: lightly rounded surfaces/headers, subtle horizontal separators
+  and spacing around numbers. Vertical cell grids no longer dominate. Larger
+  digits, colors and compactness remain.
+
+Presentation and wheel handling change; calculations, result adapter, history and
+credit/bond/gold settlement do not. Chrome UI tests and client-contract simulations
+do not replace running 0.2.4 in WoT; the complete game was not run here.
+
+### Installing the update
+
+Close the game. Replace grz.sessionstats_0.2.3.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.4.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+## 0.2.3 - 2026-10-20
+
+More readable tables after real-client 0.2.2 testing:
+
+- Larger XP/WN8/financial numbers and clearer table labels: XP/WN8 from 14 to 16
+  logical units, finances from 12 to 14, labels from 12 to 13.
+- Subtle row/column separators, emphasized headers and gentler cell backgrounds
+  help align values visually.
+- Compact 700×620 panel, immediately visible details and unabbreviated values
+  remain. Wider columns fit full 100.0% and large amounts; narrow layouts wrap.
+- Wheel handling follows the current client's Gameface sign: down advances to
+  later results, up returns toward the beginning. Browser previews retain native
+  browser handling.
+
+New user screenshots showed correct vehicle/map thumbnails, the upper-right close
+button and two saved results in 0.2.2. This update improves readability/scrolling
+without changing calculations, settlement or history. UI/native-contract tests
+are not a live WoT test of 0.2.3.
+
+### Installing the update
+
+Close the game. Replace grz.sessionstats_0.2.2.wotmod or an older version in the
+active mods directory with grz.sessionstats_0.2.3.wotmod. OpenWG 1.2.2 is unchanged.
+Saved sessions require no reset.
+
+## 0.2.2 - 2026-10-20
+
+Fixes following four more WoT screenshots:
+
+- Three visible garage-icon bars use an explicit background color instead of
+  unsupported Gameface background currentColor. Small WN8 remains in the corner.
+- The close control has explicit upper-right title-bar positioning, independent
+  of automatic margins ignored by the game renderer.
+- Title dragging uses native WoT window events. Result refresh should not replace
+  the player's chosen position. Native document dimensions follow the panel;
+  diagnostics distinguish requested and observed position/size.
+- Vehicle/map thumbnails use local resources resolved by identifiers, without
+  additional downloads or history-format changes. Missing images do not disable stats.
+- Negative amounts use ASCII '-' so the client font does not hide the sign.
+  This covers expenses and negative balances in every grouping.
+
+The screenshot confirmed at least one result in 0.2.1: a battle, WN8, XP, credits
+and bonds. It neither validates every result type nor tests new 0.2.2 in the client.
+
+### Installing the update
+
+Close the game. Remove grz.sessionstats_0.2.0.wotmod or grz.sessionstats_0.2.1.wotmod
+from the active mods directory. Install grz.sessionstats_0.2.2.wotmod and retain
+one OpenWG Gameface 1.2.2 copy. No session reset. See the [user guide](USER_GUIDE.txt).
+
+## 0.2.1 - 2026-10-20
+
+Fixes following a real-client report and screenshot:
+
+- Controls have explicit layout, dimensions and separate labels, removing reliance
+  on default browser button-text rendering. Applies to session tabs, Base/Received
+  XP, Vehicles/Maps/Battles, Refresh, Reset and Close.
+- Clearer Warhelios body/button fonts with explicit sizes. The compact panel and
+  single scrolling detail list remain.
+- Native window centering starts on opening; dimensions honor WoT UI scale.
+- A 44-logical-unit icon replaces the wide garage label: three gray bars and a
+  small superscript-like WN8 in the corner. It scales with the native footer.
+  Bars are custom CSS shapes based on the game's visual pattern.
+- Expanded label-rendering, controls, scaling and window/icon lifecycle tests.
+  Window tests simulate client APIs; HTML tests run Chrome, not native WoT Gameface.
+
+### Installing the update
+
+Close the game. Replace only grz.sessionstats_0.2.0.wotmod in active mods with
+grz.sessionstats_0.2.1.wotmod. Retain one OpenWG Gameface copy; bundled 1.2.2 is
+unchanged. No AppData reset. See the [user guide](USER_GUIDE.txt).
+
+### Verification scope
+
+This fix uses a specific screenshot and reviewed client contracts. Version 0.2.1
+was not run in WoT here. Initial button visibility/actions, window position and
+icon checks can be performed in the garage without a random battle. Zero battles
+on a screenshot alone does not establish whether new-result receipt works;
+that requires comparison with a game result.
+
+## 0.2.0 - 2026-10-20
+
+First installation package with actual Python 2.7 bytecode, a Gameface window,
+garage button, persistent manual session, launch session and vehicle/map/battle
+groupings. Includes WN8, XP-mode switching and currency settlements including
+bonds. Earlier Chrome checks missed rendering defects later visible in the
+user's live-client screenshot.

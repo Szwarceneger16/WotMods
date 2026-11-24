@@ -51,6 +51,7 @@ module.exports=async({browser,nativeHost,check})=>{
           check('Choosing the complete caption preserves chronology identity '+value+' in '+label,request.chronology===value&&request.group==='maps');
           await page.evaluate(request=>{
             const payload=JSON.parse(model.payload);payload.scopes.launch.ordering.maps={metric:'off',statistic:'avg',direction:'desc',chronology:request.chronology};
+            payload.scopes.launch.pagination.maps.order_request_id=request.request_id;
             model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
           },request);await frames(page);
           const selected=await geometry(page);

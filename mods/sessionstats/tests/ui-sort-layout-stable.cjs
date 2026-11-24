@@ -11,7 +11,7 @@ const frames=page=>page.evaluate(()=>new Promise((resolve,reject)=>{let left=6;
   }requestAnimationFrame(next);}));
 module.exports=async({browser,nativeHost,check})=>{
   const languages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages;
-  const metrics=[['battles','avg'],['win_rate','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['credits_net_received','avg'],['credits_costs','max'],['xp_received','sum'],['off','avg']];
+  const metrics=[['battles','avg'],['win_rate','avg'],['off','avg'],['battle_wn8','min'],['battle_wn8','max'],['xp_received','avg'],['credits_net_received','avg'],['credits_costs','max'],['xp_received','sum'],['off','avg']];
   const scaleResults=await Promise.allSettled([1,2].map(async scale=>{
     const page=await nativeHost(browser,{initialViewport:{width:3840,height:2400},viewport:{width:3840,height:2400,scale}});
     try{
@@ -35,14 +35,17 @@ module.exports=async({browser,nativeHost,check})=>{
         },{language,messages,width,scale});
         await page.waitForFunction(({width,scale})=>{
           const row=document.getElementById('ss-list-controls');
-          return row.getAttribute('data-filter-layout')===(width-38>=903?'wide':'wrapped')&&
+          return row.getAttribute('data-filter-layout')===(width-38>=875?'wide':'wrapped')&&
             Number(row.getAttribute('data-filter-width'))===width-38&&window.__nativeSize&&__nativeSize[0]===Math.ceil(width*scale);
         },{width,scale});await frames(page);
         const groups=language==='en'&&width===1200?['maps','vehicles','tiers']:['maps'];
         for(const group of groups){
-          let baseline;
+          const baselines=new Map();
+          let remembered='xp_base';
           for(const [metric,statistic]of metrics){
             if(group==='tiers'&&metric==='battles')continue;
+            if(metric!=='off')remembered=metric;
+            const hasStatistic=remembered!=='battles'&&remembered!=='win_rate';
             await page.evaluate(({group,metric,statistic})=>{
               const payload=JSON.parse(model.payload),scope=payload.scopes.launch;
               scope.ordering[group]={metric,statistic,direction:'desc',chronology:'newest'};
@@ -53,7 +56,8 @@ module.exports=async({browser,nativeHost,check})=>{
               const bar=document.getElementById('ss-list-controls'),card=document.querySelector('#ss-groups .ss-group');
               const barBox=bar.getBoundingClientRect(),cardBox=card.getBoundingClientRect();
               const rect=(node,origin)=>{const box=node.getBoundingClientRect();return [box.left-origin.left,box.top-origin.top,box.width,box.height];};
-              const controls=['#ss-page-previous','#ss-sort-chronology','#ss-page-next','#ss-sort-direction','#ss-sort-metric','#ss-sort-off','#ss-sort-statistic'].map(selector=>rect(document.querySelector(selector),barBox));
+              const controls=['#ss-page-previous','#ss-sort-chronology','#ss-page-next','#ss-sort-direction','#ss-sort-metric','#ss-sort-off','#ss-sort-statistic']
+                .map(selector=>rect(document.querySelector(selector),barBox)).filter(box=>box[2]>0);
               const kpis=[...card.querySelectorAll('.ss-group-kpi')].map(node=>{
                 const box=node.getBoundingClientRect(),number=node.querySelector('.ss-kpi-value'),range=document.createRange();range.selectNodeContents(number);
                 const text=range.getBoundingClientRect(),label=node.querySelector('.ss-kpi-label'),labelBox=label.getBoundingClientRect(),labelRange=document.createRange();labelRange.selectNodeContents(label);
@@ -108,16 +112,21 @@ module.exports=async({browser,nativeHost,check})=>{
               const separate=nodes=>{const boxes=nodes.map(node=>node.getBoundingClientRect()).filter(box=>box.width>0&&box.height>0);
                 return boxes.every((a,index)=>boxes.slice(index+1).every(b=>Math.min(a.right,b.right)-Math.max(a.left,b.left)<=1||Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)<=1));};
               const siblings=[...header.children],statistics=[...card.querySelector('.ss-group-stats').children];
+              const sorting=document.getElementById('ss-sorting'),sortingBox=sorting.getBoundingClientRect();
+              const lastRight=Math.max(...[...sorting.querySelectorAll('.ss-select-trigger, #ss-sort-off')]
+                .map(node=>node.getBoundingClientRect()).filter(box=>box.width>0).map(box=>box.right));
               return {controls,kpis,host:rect(host,cardBox),hostFits,headerFits:contained(siblings)&&contained(statistics)&&separate(siblings)&&separate(statistics),
-                card:rect(card,cardBox),header:rect(header,cardBox),sorting:rect(document.getElementById('ss-sorting'),barBox),
-                hidden:getComputedStyle(field).visibility==='hidden',aria:field.getAttribute('aria-hidden'),disabled:trigger.disabled};
+                card:rect(card,cardBox),header:rect(header,cardBox),sorting:rect(sorting,barBox),
+                trailing:sortingBox.right-lastRight,statisticWidth:field.getBoundingClientRect().width,
+                hidden:getComputedStyle(field).display==='none',aria:field.getAttribute('aria-hidden'),disabled:trigger.disabled};
             });
             const value=await audit();
             const caption=language+'/'+scale+'x/'+width+'/'+group+'/'+metric+'/'+statistic;
-            if(!baseline)baseline=value;
+            if(!baselines.has(hasStatistic))baselines.set(hasStatistic,value);
+            const baseline=baselines.get(hasStatistic);
             const same=(left,right)=>left.length===right.length&&left.every((part,index)=>Array.isArray(part)?same(part,right[index]):Math.abs(part-right[index])<=scale*0.1);
             const unchanged=same(value.controls,baseline.controls)&&same(value.sorting,baseline.sorting);
-            check('Metric changes preserve the logical filter control boxes '+caption+(unchanged?'':': '+JSON.stringify(value)),unchanged);
+            check('Metrics with the same available controls preserve the filter geometry '+caption+(unchanged?'':': '+JSON.stringify(value)),unchanged);
             const centered=value.kpis.every(item=>item.centered&&item.fits)&&value.hostFits&&value.headerFits&&
               Math.max(...value.kpis.map(item=>item.label[1]))-Math.min(...value.kpis.map(item=>item.label[1]))<=scale&&
               Math.max(...value.kpis.map(item=>item.value[1]+item.value[3]))-Math.min(...value.kpis.map(item=>item.value[1]+item.value[3]))<=scale;
@@ -137,8 +146,12 @@ module.exports=async({browser,nativeHost,check})=>{
                 same(value.header,repeated.header)&&same(value.host,repeated.host)&&same(value.card,repeated.card)&&
                 value.kpis.every((item,index)=>same(item.box,repeated.kpis[index].box)&&same(item.label,repeated.kpis[index].label)&&same(item.value,repeated.kpis[index].value)));
             }
-            if(metric==='battles'||metric==='win_rate')check('Inapplicable Statistic reserves space without becoming visible or focusable '+caption,
-              value.hidden&&value.aria==='true'&&value.disabled);
+            const wide=width-38>=875, expectedWidth=wide?(hasStatistic?357:287):(hasStatistic?294:229);
+            check('Statistic availability matches the measured sorting footprint '+caption+': '+JSON.stringify({
+              sorting:value.sorting,statisticWidth:value.statisticWidth,trailing:value.trailing,hidden:value.hidden,aria:value.aria,disabled:value.disabled}),
+              value.hidden===!hasStatistic&&value.aria===String(!hasStatistic)&&value.disabled===(!hasStatistic||metric==='off')&&
+              (value.statisticWidth>0)===hasStatistic&&Math.abs(value.sorting[2]/scale-expectedWidth)<=0.5&&
+              value.trailing>=-0.5*scale&&value.trailing<=6.5*scale);
           }
         }
       }

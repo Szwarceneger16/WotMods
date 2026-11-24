@@ -18,15 +18,18 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 import sys
+import threading
 import time
-import traceback
 
 from . import VERSION
+from .storage import _ensure_directory, native_data_path
 
 MAX_LOG_BYTES = 1024 * 1024
 BACKUP_COUNT = 3
 MAX_PENDING = 32
 MAX_RECORD_CHARS = 4096
+_CLOSE_ATTEMPTS = 20
+_CLOSE_RETRY_SECONDS = 0.05
 LOGGER_NAME = 'grz.sessionstats'
 _active = {}
 _previous_level = None
@@ -43,9 +46,14 @@ class _LocalFormatter(logging.Formatter):
     def formatException(self, info):
         # A changed client API can include a full result, nickname or account
         # ID in its exception text. Keep useful locations and class, not values.
-        frames = traceback.extract_tb(info[2])[-8:]
-        locations = ' > '.join('%s:%s:%s' % (os.path.basename(path), line, name)
-                               for path, line, name, unused_source in frames)
+        # Read code metadata directly so linecache never looks up source files.
+        frames = deque(maxlen=8)
+        trace = info[2]
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            frames.append((os.path.basename(code.co_filename), trace.tb_lineno, code.co_name))
+            trace = trace.tb_next
+        locations = ' > '.join('%s:%s:%s' % frame for frame in frames)
         return 'exception=%s frames=%s' % (info[0].__name__, locations)
 
     def format(self, record):
@@ -111,12 +119,13 @@ class _Lock(object):
 
 
 class _ModLogHandler(RotatingFileHandler):
-    def __init__(self, path, lock_module=None, windows=False):
+    def __init__(self, path, lock_module=None, windows=False, defer=None):
         super(_ModLogHandler, self).__init__(path, maxBytes=MAX_LOG_BYTES,
                                             backupCount=BACKUP_COUNT,
                                             encoding='utf-8', delay=True)
         self.lock_module = lock_module
         self.windows = windows
+        self.defer = defer
         self.queue = deque()
         self.error = None
         self.dropped = 0
@@ -154,10 +163,7 @@ class _ModLogHandler(RotatingFileHandler):
             if stream is not None:
                 stream.close()
 
-    def flush(self):
-        if self.stopped or (self._probed and not self.queue and self.error is None):
-            return
-        self.acquire()
+    def _flush_pending(self):
         try:
             if self.lock_module is None:
                 self._write_pending()
@@ -167,6 +173,16 @@ class _ModLogHandler(RotatingFileHandler):
                         self._write_pending()
                     # Contention is temporary; keep the bounded queue and the
                     # last real error status until a later tick can flush it.
+        except Exception as error:
+            self.error = message('log.write').format(type(error).__name__)
+
+    def flush(self):
+        if self.stopped or (self._probed and not self.queue and self.error is None):
+            return
+        self.acquire()
+        try:
+            if not self.stopped and (self.defer is None or not self.defer()):
+                self._flush_pending()
         except Exception as error:
             self.error = message('log.write').format(type(error).__name__)
         finally:
@@ -187,13 +203,49 @@ class _ModLogHandler(RotatingFileHandler):
             # host must not print a raw record or leak this failure to the UI.
             self.error = message('log.prepare').format(type(error).__name__)
 
-    def close(self):
-        self.flush()
-        self.stopped = True
+    def _finish_close(self):
         try:
             super(_ModLogHandler, self).close()
         except Exception as error:
             self.error = message('log.close').format(type(error).__name__)
+
+    def _retry_close(self):
+        try:
+            for attempt in range(_CLOSE_ATTEMPTS):
+                self.acquire()
+                try:
+                    self._flush_pending()
+                    if not self.queue:
+                        return
+                finally:
+                    self.release()
+                if attempt + 1 < _CLOSE_ATTEMPTS:
+                    time.sleep(_CLOSE_RETRY_SECONDS)
+            if self.error is None:
+                self.error = message('log.write').format('LockBusy')
+        finally:
+            self._finish_close()
+
+    def close(self):
+        self.acquire()
+        try:
+            if self.stopped:
+                return
+            self.stopped = True
+            if self.queue and (self.defer is None or not self.defer()):
+                self._flush_pending()
+            if self.queue:
+                # Battle shutdown and a shared file still in use must not
+                # block the client thread. Normal Python shutdown joins us.
+                worker = threading.Thread(target=self._retry_close, name='SessionStats-log-close')
+                worker.daemon = False
+                worker.start()
+            else:
+                self._finish_close()
+        except Exception as error:
+            self.error = message('log.close').format(type(error).__name__)
+        finally:
+            self.release()
 
 
 class LogState(object):
@@ -234,11 +286,12 @@ class LogState(object):
             _previous_level = None
 
 
-def start_logging(data_dir):
+def start_logging(data_dir, defer=None):
     """Return an idempotent local log state; failures never stop statistics.
 
     flush() is cheap when idle and should also be called by the existing
     runtime tick, so a single health warning queued during contention is saved.
+    The optional defer predicate keeps formatted records buffered until it clears.
     Only this mod's logger/handler is configured; root handlers and propagation
     are untouched. A missing OS locking extension uses a process-private log.
     """
@@ -249,16 +302,11 @@ def start_logging(data_dir):
             data_dir = data_dir.decode(sys.getfilesystemencoding() or 'utf-8')
         directory = os.path.join(os.path.abspath(data_dir), 'logs')
         state.path = os.path.join(directory, 'session-stats.log')
-        state._key = os.path.normcase(state.path)
+        state._key = os.path.normcase(native_data_path(state.path))
         existing = _active.get(state._key)
         if existing is not None and not existing._closed:
             return existing
-        if not os.path.isdir(directory):
-            try:
-                os.makedirs(directory, 0o700)
-            except OSError as error:
-                if error.errno != errno.EEXIST or not os.path.isdir(directory):
-                    raise
+        _ensure_directory(native_data_path(directory))
         windows = os.name == 'nt'
         try:
             if windows:
@@ -268,7 +316,7 @@ def start_logging(data_dir):
         except ImportError:
             lock_module = None
             state.path = os.path.join(directory, 'session-stats-%d.log' % os.getpid())
-        state._handler = _ModLogHandler(state.path, lock_module, windows)
+        state._handler = _ModLogHandler(native_data_path(state.path), lock_module, windows, defer)
         state._handler.flush()  # Probe the destination without exposing data.
         if state._handler.error:
             state._error = state._handler.error

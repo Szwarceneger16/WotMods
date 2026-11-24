@@ -19,7 +19,9 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
   const messages=JSON.parse(fs.readFileSync(path.join(__dirname,'../data/languages.json'),'utf8')).languages.en;
   const append=(parent,node)=>parent.appendChild(node),documentRoot=new Node(),commands=[];
   const state={group:'maps',openMaps:{}},nodes={scroll:new Node()};
+  const timers=new Map();let nextTimer=0;
   const context={state,nodes,document:{activeElement:null,documentElement:documentRoot},
+    window:{setTimeout(callback){const id=++nextTimer;timers.set(id,callback);return id;},clearTimeout:id=>timers.delete(id)},
     append,element:(tag,cls,text)=>new Node(cls,text),clear:node=>node.children.slice().forEach(child=>node.removeChild(child)),
     t:(key,args=[])=>String(messages[key] || key).replace(/\{(\d+)\}/g,(match,index)=>args[index]===undefined?match:args[index]),
     hasNumber:value=>typeof value==='number' && isFinite(value),integer:value=>String(value),
@@ -37,6 +39,7 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     extract('    function nativeVisualSource(','    function appendBattleMap(')+
     extract('    var bonusLabels = {','    function missionProgress(')+
     extract('    function renderBattleMore(panel, battle) {','    function attachBattleMore(')+
+    extract('    function cancelUITimer(','    function retireFeed(')+
     extract('    function attachMapMore(card, header, map) {','    function appendGroupBatch('),context);
   const bonusPanel=new Node();
   context.renderBattleMore(bonusPanel,{details:{bonuses:{eventCredits:12345678,eventCrystal:43,wotPlusCredits:3456,wotPlusXP:64,wotPlusFreeXP:8,wotPlusCrewXP:96},missions:{}}});
@@ -78,7 +81,9 @@ function sourceChecks(source=fs.readFileSync(path.join(__dirname,'../ui/session_
     assert(body.querySelector('.ss-map-battle-info').querySelector('.ss-map-battle-date'),'Name and date share the same flex identity');
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:0,pages:2,total:13,page_size:10,items:Array.from({length:10},(_,index)=>item(index))}});
     assert.strictEqual(body.querySelectorAll('.ss-map-battle-row').length,10);next.onclick();
+    assert.strictEqual(timers.size,1,'Only the latest history request owns a timer');
     card._ssHistoryUpdate({id:'synthetic-group',battle_list:{page:1,pages:2,total:13,page_size:10,items:Array.from({length:3},(_,index)=>item(index+10))}});
+    assert.strictEqual(timers.size,0,'Receiving the history page releases its timer');
     assert.strictEqual(card.querySelector('.ss-history-body'),body);assert.strictEqual(card.querySelector('.ss-map-page-previous'),previous);
     assert.strictEqual(card.querySelector('.ss-map-page-next'),next);
     assert.strictEqual(body.querySelectorAll('.ss-map-battle-row').length,3);assert(!previous.disabled && next.disabled);

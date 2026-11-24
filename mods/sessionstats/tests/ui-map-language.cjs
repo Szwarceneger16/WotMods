@@ -1,5 +1,6 @@
 /* Actual Python localization feeds native-model language switches and previews. */
 const fs=require('fs'),path=require('path'),{spawnSync}=require('child_process');
+const {pathToFileURL}=require('node:url');
 const frames=page=>page.evaluate(()=>new Promise(resolve=>{let n=6;function next(){if(--n)requestAnimationFrame(next);else resolve();}requestAnimationFrame(next);}));
 module.exports=async({browser,nativeHost,check})=>{
   const root=path.resolve(__dirname,'..'),fixture=JSON.parse(fs.readFileSync(path.join(root,'preview/demo_snapshot.json'),'utf8')).normal;
@@ -49,13 +50,50 @@ module.exports=async({browser,nativeHost,check})=>{
     }
   }finally{await page.close();}
   const preview=await browser.newPage();try{
-    await preview.goto('file://'+path.join(root,'preview/PODGLAD.html'));await preview.locator('#ss-group-maps').click();
+    await preview.goto(pathToFileURL(path.join(root,'preview/PREVIEW.html')).href);await preview.locator('#ss-group-maps').click();
+    const mapCard=preview.locator('#ss-groups .ss-group').first();
+    await mapCard.locator('.ss-map-more-button').click();
+    const mapHistory=mapCard.locator('.ss-map-battles');
+    check('The standalone preview loads map history from the synthetic snapshot',
+      await mapHistory.getAttribute('aria-busy')==='false'&&await mapHistory.locator('.ss-map-battle-row').count()>0);
     for(const language of ['pl','en']){
       await preview.locator('#ss-language .ss-select-trigger').click();await preview.locator('#ss-language [data-value="'+language+'"]').click();await frames(preview);
       const expected=await preview.evaluate(language=>GRZ_DEMO_LOCALIZED[language].normal.scopes.launch.maps.map(row=>row.name).sort(),language),
         actual=(await preview.locator('#ss-groups .ss-group-title').allTextContents()).sort();
       check('The standalone preview uses the same offline localized map snapshots in '+language,JSON.stringify(actual)===JSON.stringify(expected));
+      check('An open preview history survives a language change to '+language,
+        await mapHistory.getAttribute('aria-busy')==='false'&&await mapHistory.locator('.ss-map-battle-row').count()>0);
     }
+    const mapResult=mapHistory.locator('.ss-map-battle-open').first();
+    const arena=await mapResult.getAttribute('data-battle-id');
+    await mapResult.click();
+    const selected=preview.locator('#ss-groups .ss-battle-target');
+    check('Show battle in the standalone map history selects the matching synthetic result',
+      await selected.getAttribute('data-group-id')===arena);
+    await selected.locator('.ss-battle-return').click();
+    await mapHistory.waitFor({state:'visible'});
+    check('The standalone preview returns to the open synthetic map history',
+      await mapHistory.locator('.ss-map-battle-open').first().getAttribute('data-battle-id')===arena);
+    await preview.locator('#ss-group-vehicles').click();
+    const vehicle=preview.locator('#ss-groups .ss-group').first();
+    await vehicle.locator('.ss-vehicle-more-button').click();
+    const vehicleHistory=vehicle.locator('.ss-vehicle-battles');
+    const vehicleResult=vehicleHistory.locator('.ss-map-battle-open').first();
+    const vehicleArena=await vehicleResult.getAttribute('data-battle-id');
+    check('The standalone preview loads vehicle history from the synthetic snapshot',
+      await vehicleHistory.getAttribute('aria-busy')==='false'&&!!vehicleArena);
+    await vehicleResult.click();
+    check('Show battle in the standalone vehicle history selects the matching synthetic result',
+      await selected.getAttribute('data-group-id')===vehicleArena);
+    const language=preview.locator('#ss-language');
+    await language.locator('.ss-select-trigger').click();
+    await language.locator('[data-value="auto"]').click();
+    await preview.locator('#demo-restart').click();await frames(preview);
+    await language.locator('.ss-select-trigger').click();
+    check('Restoring the standalone example keeps Automatic selected with English preview text',
+      await language.locator('[data-value="auto"]').getAttribute('aria-selected')==='true'&&
+      await preview.locator('html').getAttribute('lang')==='en'&&
+      await preview.locator('#demo-restart').textContent()==='Restore example');
   }finally{await preview.close();}
   const legacy=await browser.newPage(),legacyErrors=[];legacy.on('pageerror',error=>legacyErrors.push(String(error)));
   try{

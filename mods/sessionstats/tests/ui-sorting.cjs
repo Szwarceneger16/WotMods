@@ -37,6 +37,7 @@ module.exports=async ({browser,nativeHost,check})=>{
       const snapshot=JSON.parse(model.payload),scope=snapshot.scopes[command.scope];
       scope.ordering[command.group]={metric:command.metric,statistic:command.statistic,direction:command.direction,chronology:command.chronology};
       scope.pagination[command.group].page=0;
+      scope.pagination[command.group].order_request_id=command.request_id;
       model.payload=JSON.stringify(snapshot);GRZSessionStats.update(model.payload);
     });
   }
@@ -131,6 +132,7 @@ module.exports=async ({browser,nativeHost,check})=>{
   const branches=[
     ['totals',()=>require('./ui-sort-totals.cjs')({browser,nativeHost,check})],
     ['chronology and controls',chronologyAndControls],
+    ['menu bounds',()=>require('./ui-select-bounds.cjs')({browser,nativeHost,check})],
     ['extrema',()=>require('./ui-sort-extrema.cjs')({browser,nativeHost,check})]
   ];
   const results=await Promise.allSettled(branches.map(async([name,run])=>{

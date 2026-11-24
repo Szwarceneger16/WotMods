@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rangefinder settings</title><link rel="stylesheet" href="settings.css"></head>
+<body><section id="rf-settings" class="rf-window" role="dialog" aria-labelledby="rf-title">
+<header class="rf-window-header"><span class="rf-window-badge" aria-hidden="true"></span><h1 id="rf-title">Rangefinder</h1><span id="rf-version" class="rf-window-version">v0.1.13</span><button id="rf-x" class="rf-window-close" type="button" aria-label="Close"><span class="rf-window-close-icon" aria-hidden="true"></span></button></header>
+<div class="rf-window-body">
+<div class="rf-window-row rf-inline rf-visibility">
+<span id="rf-enabled-label" class="rf-window-label">Show distance</span>
+<button id="rf-enabled" class="rf-window-clear" type="button" aria-pressed="true"><span id="rf-enabled-caption" class="rf-window-button-label">ON</span></button>
+<button id="rf-hide-stock-rangefinder" class="rf-window-clear rf-stock-rangefinder-checkbox" type="button" role="checkbox" aria-checked="false" aria-labelledby="rf-hide-stock-rangefinder-label">
+<span class="rf-window-checkmark" aria-hidden="true"></span>
+<span id="rf-hide-stock-rangefinder-label">Hide the stock distance readout</span>
+</button>
+</div>
+<div class="rf-window-row rf-rule">
+<label class="rf-threshold-field"><span id="rf-threshold-label" class="rf-window-label">Limit (m, 0 = none)</span><input id="rf-threshold" type="text" inputmode="decimal" maxlength="12" value="50"></label>
+<div class="rf-comparison-field"><span id="rf-comparison-label" class="rf-window-label">Green when distance is</span><div id="rf-comparison" class="rf-button-group" role="group" aria-labelledby="rf-comparison-label"><button id="rf-cmp-lt" class="rf-window-clear" type="button"><span class="rf-window-button-label">&lt;</span></button><button id="rf-cmp-le" class="rf-window-clear" type="button"><span class="rf-window-button-label">&lt;=</span></button><button id="rf-cmp-ge" class="rf-window-clear" type="button"><span class="rf-window-button-label">&gt;=</span></button><button id="rf-cmp-gt" class="rf-window-clear" type="button"><span class="rf-window-button-label">&gt;</span></button></div></div></div>
+<div class="rf-window-row rf-presets"><span id="rf-presets-label" class="rf-window-label rf-presets-label">Quick choice</span><div class="rf-button-group"><button id="rf-p50" class="rf-window-clear" type="button">50 m</button><button id="rf-p100" class="rf-window-clear" type="button">100 m</button><button id="rf-p300" class="rf-window-clear" type="button">300 m</button><button id="rf-p500" class="rf-window-clear" type="button">500 m</button></div></div>
+<div class="rf-window-row rf-position-controls"><span id="rf-position-label" class="rf-window-label">Position preview</span><div class="rf-button-group"><button id="rf-position-arcade" class="rf-window-clear" type="button">Third person</button><button id="rf-position-sniper" class="rf-window-clear" type="button">Sniper</button><button id="rf-position-arty" class="rf-window-clear" type="button">Artillery</button></div></div>
+<div class="rf-window-row rf-display"><label><span id="rf-font-label" class="rf-window-label">Text size (px)</span><input id="rf-font" type="text" inputmode="numeric" maxlength="2" value="24"></label><label><span id="rf-opacity-label" class="rf-window-label">Frame opacity (%)</span><input id="rf-opacity" type="text" inputmode="decimal" maxlength="6" value="50"></label><label><span id="rf-frame-label" class="rf-window-label">Frame size (%)</span><input id="rf-frame" type="text" inputmode="numeric" maxlength="3" value="110"></label></div>
+<div id="rf-feedback" role="status" aria-live="polite"></div>
+<footer class="rf-actions"><button id="rf-reset" class="rf-window-clear" type="button">Defaults</button><div class="rf-footer-actions"><button id="rf-close" class="rf-window-clear" type="button">Close</button><button id="rf-apply" class="rf-window-clear rf-primary" type="button">Apply</button></div></footer>
+</div></section>
+<section id="rf-editor" class="rf-placement-editor" role="dialog" aria-labelledby="rf-editor-title" style="display:none">
+<div id="rf-editor-stage" class="rf-editor-stage">
+<span id="rf-editor-center" class="rf-editor-center" aria-hidden="true"></span>
+<span id="rf-editor-reference" class="rf-editor-reference" aria-hidden="true">1500.5 m</span>
+<span id="rf-editor-peer-reference" class="rf-editor-reference" aria-hidden="true"></span>
+<div id="rf-editor-peer-sample" class="rf-editor-sample rf-editor-peer-sample"><span id="rf-editor-peer-reading"></span><small id="rf-editor-peer-state" class="rf-editor-peer-state"></small></div>
+<div id="rf-editor-sample" class="rf-editor-sample"><span id="rf-editor-reading">1500.5 m</span><button id="rf-editor-handle" class="rf-editor-handle" type="button" aria-label="Move reading"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l-5 6h3v6H8v-3l-6 5 6 5v-3h6v6h-3l5 6 5-6h-3v-6h6v3l6-5-6-5v3h-6V8h3z"/></svg></button></div>
+</div>
+<aside id="rf-editor-view-controls" class="rf-editor-view-controls" aria-label="Preview view">
+<div id="rf-editor-arty-cameras" class="rf-editor-arty-cameras" style="display:none"><button id="rf-editor-arty-top" class="rf-window-clear" type="button">Top view</button><button id="rf-editor-arty-trajectory" class="rf-window-clear" type="button">Trajectory</button></div>
+<div class="rf-editor-zoom"><button id="rf-editor-zoom-out" class="rf-window-clear" type="button" aria-label="Zoom out">-</button><span id="rf-editor-zoom-level" role="status" aria-live="polite"></span><button id="rf-editor-zoom-in" class="rf-window-clear" type="button" aria-label="Zoom in">+</button></div>
+<button id="rf-editor-view-reset" class="rf-window-clear" type="button">Reset view</button>
+<div id="rf-editor-focus" class="rf-editor-focus" role="group" aria-labelledby="rf-editor-focus-label" style="display:none">
+<span id="rf-editor-focus-label">Dispersion</span>
+<div class="rf-editor-focus-choices">
+<button id="rf-editor-focus-wide" class="rf-window-clear" type="button" aria-pressed="false">Wide</button>
+<button id="rf-editor-focus-medium" class="rf-window-clear" type="button" aria-pressed="true">Medium</button>
+<button id="rf-editor-focus-tight" class="rf-window-clear" type="button" aria-pressed="false">Tight</button>
+</div>
+<button id="rf-editor-focus-demo" class="rf-window-clear" type="button">Animate aiming</button>
+</div>
+</aside>
+<p id="rf-editor-scene-status" class="rf-editor-scene-status" role="status" aria-live="polite"></p>
+<header class="rf-editor-header"><h2 id="rf-editor-title">Placement preview</h2><p id="rf-editor-help">Drag the handle, then save the position.</p><p id="rf-editor-preview-status" class="rf-editor-preview-status" role="status" aria-live="polite"></p><div class="rf-editor-profiles" role="group" aria-labelledby="rf-editor-profile-label"><span id="rf-editor-profile-label">Original reticle</span>
+<div id="rf-preview-filters" class="rf-preview-filters" style="display:none">
+<button id="rf-preview-mechanics" class="rf-window-clear" type="button" aria-pressed="true" aria-controls="rf-editor-choices">Mechanics</button>
+<button id="rf-preview-vehicles" class="rf-window-clear" type="button" aria-pressed="false" aria-controls="rf-editor-choices">Tier XI vehicles</button>
+</div>
+<div id="rf-editor-list-wrap" class="rf-editor-list-wrap"><div id="rf-editor-choices" class="rf-editor-choices"></div><div id="rf-editor-scrollbar" class="rf-editor-scrollbar" role="scrollbar" tabindex="0" aria-orientation="vertical" aria-controls="rf-editor-choices" style="display:none"><span id="rf-editor-scrollbar-thumb"></span></div></div>
+<p id="rf-preview-note" class="rf-preview-note" aria-live="polite" style="display:none"></p>
+</div></header>
+<footer class="rf-editor-actions"><button id="rf-editor-reset" class="rf-window-clear" type="button">Default position</button><div><button id="rf-editor-cancel" class="rf-window-clear" type="button">Cancel</button><button id="rf-editor-save" class="rf-window-clear rf-primary" type="button">Save position</button></div></footer>
+</section>
+<script src="preview_scenes.js"></script><script src="settings.js"></script></body></html>

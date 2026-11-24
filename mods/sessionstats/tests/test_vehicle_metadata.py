@@ -12,6 +12,7 @@ from grz_session_stats.visuals import canonical_vehicle_class, _native_role_text
 CLASS_PATH = 'gui/maps/icons/vehicleTypes/24x24_metal/AT-SPG.png'
 ROLE_KEY = 'role_ATSPG_sniper'
 ROLE_PATH = 'gui/maps/icons/roleExp/roles/24x24/' + ROLE_KEY + '.png'
+SPG_ROLE_PATH = 'gui/maps/icons/roleExp/roles/22x22/role_SPG.png'
 
 
 def fixture():
@@ -138,7 +139,7 @@ class VehicleMetadataTests(unittest.TestCase):
         for identifier in (VEHICLE_ID, None, 'Strv 103B', True, '-1', '257\n'):
             self.assertIsNone(value.resolver.vehicle_metadata(identifier))
 
-    def test_spg_has_its_original_class_icon_and_no_fabricated_role_art(self):
+    def test_spg_role_uses_verified_22px_art_and_recovers_when_the_asset_appears(self):
         value = fixture()
         value.vehicles[VEHICLE_ID].classTag = 'SPG'
         path = 'gui/maps/icons/vehicleTypes/24x24_metal/SPG.png'
@@ -146,11 +147,15 @@ class VehicleMetadataTests(unittest.TestCase):
         value.paths[33] = 'img://' + path
         value.files.add(path)
         value.resolver._role_label_getter = lambda descriptor: 'role_SPG'
+        value.resources.strings.menu.roleExp.roleDescr.nodes['role_SPG'] = Node(42)
         data = value.resolver.vehicle_metadata(VEHICLE_ID)
         self.assertEqual(data['class'], 'SPG')
         self.assertEqual(data['role']['key'], 'role_SPG')
         self.assertNotIn('icon', data['role'])
         self.assertTrue(data.get('class_icon'))
+        value.files.add(SPG_ROLE_PATH)
+        data = value.resolver.vehicle_metadata(VEHICLE_ID)
+        self.assertEqual(data['role']['icon'], {'kind': 'vehicle_role', 'src': 'img://' + SPG_ROLE_PATH})
 
     def test_unknown_future_role_is_not_given_a_fabricated_name_or_definition(self):
         value = fixture()

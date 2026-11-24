@@ -28,7 +28,10 @@ module.exports=async ({browser,nativeHost,check})=>{
         negative:{kind:'daily',name:'Synthetic reset counter objective',status:'progress',progress_state:'changed',
           objectives:[{key:'counter',unit:'counter',before:9,after:7,delta:-2}]},
         completed:{kind:'personal',name:'Synthetic completed objective',status:'completed',progress_state:'unavailable',
-          objectives:[{key:'counter',unit:'counter',after:3,target:10}]}}};
+          objectives:[{key:'counter',unit:'counter',after:3,target:10}]},
+        'pm3:conversion:operation:8':{status:'completed',progress_state:'unavailable'},
+        'legacy:internal:weekly':{kind:'weekly',name:'legacy:internal:weekly',status:'progress',stage:2},
+        'untitled:crucible':{kind:'crucible',name:'  ',operation:'Synthetic operation',status:'observed'}}};
       scope.battles=[card];if(scope.pagination) scope.pagination.battles={page:0,page_size:40,total:1,pages:1};
       model.payload=JSON.stringify(payload);__grzEvents['viewEnv.onDataChanged']();
     });
@@ -42,7 +45,8 @@ module.exports=async ({browser,nativeHost,check})=>{
         const rows={};
         for(const row of panel.querySelectorAll('.ss-more-mission')) {
           const name=row.querySelector('.ss-more-mission-name strong').textContent,status=row.querySelector('.ss-more-mission-status');
-          rows[name]={text:status.textContent,lines:[...status.querySelectorAll('.ss-more-objective')].map(line=>({unit:line.dataset.unit,text:line.textContent}))};
+          rows[name]={caption:row.querySelector('.ss-more-mission-name .ss-more-caption')?.textContent??null,
+            text:status.textContent,lines:[...status.querySelectorAll('.ss-more-objective')].map(line=>({unit:line.dataset.unit,text:line.textContent}))};
         }
         const clipped=[];
         for(const node of panel.querySelectorAll('.ss-more-objective')) {
@@ -72,6 +76,11 @@ module.exports=async ({browser,nativeHost,check})=>{
       check('Counter reductions keep their sign and terminal mission outcomes remain visible in '+language,
         negative.text.includes('−2') && !negative.text.includes('+−') &&
         completed.text.includes(messages['more.mission.completed']) && compact(completed.text).includes('3/10') && !completed.text.includes('+3'));
+      check('Missing and legacy technical mission names use localized titles in '+language,
+        value.rows[messages['more.kind.other']]?.text===messages['more.mission.completed'] &&
+        value.rows[messages['more.kind.other']].caption===null && !value.rows['pm3:conversion:operation:8'] &&
+        value.rows[messages['more.kind.weekly']]?.caption===messages['more.stage'].replace('{0}','2') && !value.rows['legacy:internal:weekly'] &&
+        value.rows[messages['more.kind.crucible']]?.caption==='Synthetic operation');
     }
     await page.evaluate(()=>{
       const payload=JSON.parse(model.payload),objectives=payload.scopes.launch.battles[0].details.missions.changed.objectives;

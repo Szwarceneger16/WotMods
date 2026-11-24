@@ -1,6 +1,6 @@
 /* Exercise the shipped native scroll compensation without browser geometry. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actualFunction(name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0 && end>start,'Missing shipped function '+name);
@@ -55,7 +55,7 @@ module.exports=async({check})=>{
   for(const cancel of ['user-scroll','top','context','detached-section']) {
     const interrupted=nativeGeometry();interrupted.prepend();
     if(cancel==='user-scroll') {
-      interrupted.context.onScrollIntent({type:'mousedown',target:interrupted.scroll});interrupted.scroll.scrollTop=175;
+      interrupted.context.onScrollIntent({type:'mousedown',button:0,target:interrupted.scroll});interrupted.scroll.scrollTop=175;
     } else if(cancel==='top')interrupted.context.revealFeedTop(interrupted.feed);
     else if(cancel==='context')interrupted.context.retireFeed();
     else interrupted.detach();

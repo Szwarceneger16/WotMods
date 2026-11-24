@@ -1,0 +1,238 @@
+# Stay Sharp audio
+
+The mod uses **WoT's Wwise engine for the bundled voice**, via
+`SoundGroups.g_instance.getSound2D(...).play()`. No Windows playback, OS
+speech, external process, background thread or runtime download is used.
+
+## Behavior
+
+- Start the selected voice about 0.5 seconds before a tracked medkit cooldown
+  ends. If the medkit is already ready at battle start, play it one second after
+  the battle starts. A late join announces readiness as soon as the HUD is usable.
+- Repeat the voice every 10 seconds while the medkit remains eligible. The
+  orange pulse continues independently, with its original four-second cycle.
+- Timestamp native equipment updates once; the game's remaining time is a
+  snapshot, not a live countdown. Without a trustworthy cooldown update, announce
+  at actual readiness. The state check can add up to 0.25 seconds of timing delay.
+  Anticipation keeps the same announcement latch through READY, preventing a
+  duplicate at zero, and never starts the visual pulse before actual readiness.
+- Press **Ctrl+Alt+M** in battle to turn the visual and audio reminder off or
+  back on. The shortcut is ignored while
+  battle chat is focused and does not consume the game's key event.
+- Use the game's visible, active cursor to left-click either icon above the
+  medkit. Ctrl can show the cursor, but clicking works with or without Ctrl;
+  the mod does not depend on receiving the modifier's state.
+  The power icon toggles the whole reminder. The speaker icon toggles voice
+  independently, allowing the orange pulse to continue with voice switched off.
+  Controls appear in arcade and artillery views and hide in the ordinary
+  sniper view. Both toggles apply for the current battle. The next battle
+  starts with the configured defaults, which enable both controls.
+- Use/cooldown, injury/stun warnings, hiding the HUD, spectator mode,
+  destruction and battle end suppress the reminder. A frame stall never
+  generates a catch-up burst.
+- If the sound API raises an exception, audio is disabled for that battle and
+  the outline continues. No native medkit sound is used as a fallback.
+  Falsey `play()` returns are not interpreted as failure: their meaning is
+  not established. Wwise may report errors only in the game's log.
+
+## Crew eligibility and input isolation
+
+The own vehicle must have a learned `commander_staySharp` skill in an active crew
+role. The mod reads `Vehicle.crewCompactDescrs` through the client's
+`TankmanDescr(..., battleOnly=True).skillLevels(active_roles)` so bonus role skills
+are included and temporary `perkEffects` inactivity is not mistaken for a missing
+skill. Changed crew snapshots are decoded once; identifiers and snapshots are
+never logged. Missing or unsupported crew data leaves the mod dormant.
+
+While dormant, there are no mod GUI components, mouse polls, audio handles or
+hotkey/equipment subscriptions. One cached state check per second permits recovery
+when the own vehicle or crew changes. Learned-but-inactive perks retain their
+status controls, but the pulse and voice still require the server's usable-medkit
+perk effect.
+
+The icons have native GUI focus and mouse focus disabled and no GUI script.
+A single timer samples the actual cursor and left mouse button every 20 ms while
+the cursor is usable, otherwise every 100 ms. A completed press/release on the same
+icon queues its action outside input dispatch. Root detachment is deferred too.
+This avoids the native GUI `BW::KeyEvent` conversion path observed immediately
+before reported client access violations. It does not prove the absence of all
+possible game crashes; artillery camera/minimap retesting is still required.
+
+## Language configuration
+
+The same seven language codes as Session Stats are supported, with actual
+spoken recordings in each language:
+
+| Code | Language | Spoken announcement |
+| --- | --- | --- |
+| `en` | English | Medkit is ready. |
+| `pl` | Polish | Apteczka gotowa. |
+| `ru` | Russian | Аптечка готова. |
+| `fr` | French | Trousse de soins prête. |
+| `de` | German | Das Medikit ist bereit. |
+| `es` | Spanish | Botiquín listo. |
+| `uk` | Ukrainian | Аптечка готова. |
+
+The optional configuration is `<World_of_Tanks_EU>/mods/configs/staysharp.medkit.json`.
+The `configs` folder is beside version folders such as `2.4.1.0`, so the
+setting survives game-version folder changes. On first startup the mod
+creates the default file there when the installation is identifiable and
+writable. Without a readable file it uses the automatic default:
+
+```json
+{
+  "language": "auto",
+  "enabled": true,
+  "voice_enabled": true,
+  "voice_volume": 70
+}
+```
+
+`auto` follows WoT's language using `helpers.getClientLanguage()`. Regional
+codes such as `pl-PL` and `fr_FR` are normalized. Unsupported or unavailable
+game languages use English. To force Polish, change the value to `"pl"`;
+the other codes in the table work the same way. A copyable sample is provided
+inside the installer as `mods/configs/staysharp.medkit.json.example` (remove
+only `.example` to activate it), and as `mods/staysharp/staysharp.medkit.example.json` in the repository. Copy it to
+`mods/configs/staysharp.medkit.json` if you want to prepare the setting before
+the first game launch.
+
+Older configurations containing only `language` use the enabled defaults and
+70 percent voice volume. `voice_volume` accepts a number from 0 to 100.
+The mod applies it to the voice sound object as a gain from 0.0 to 1.0,
+in addition to the game's master and voice bus volume settings.
+
+**Restart WoT after editing this file.** Configuration is read once at mod
+startup, never on animation/state ticks. A missing file is created with
+`auto`; an existing file is never replaced. Malformed JSON, non-object
+roots, invalid values, read errors and files over 4 KiB use automatic
+selection and log a short local diagnostic without echoing file contents.
+The installation is identified through WoT's resource resolver and physical
+`paths.xml`/`mods` paths, with a bounded application-directory/CWD fallback.
+If the installation cannot be identified uniquely, the mod uses automatic
+language without writing configuration elsewhere. Existing AppData config
+files are not read or migrated. The diagnostic log location is unchanged.
+No native medkit activation effect is used.
+
+## Bank and volume
+
+The package contains `res/audioww/staysharp_medkit.bnk`, with seven events: the existing English `staysharp_medkit_ready` and
+`staysharp_medkit_ready_<code>` for the other six languages. Each embedded
+mono PCM voice is under two seconds long; only the selected one is played.
+The sound routes to the game's existing **VOICE_GUI** bus, inheriting WoT's
+master/voice notification volume and mute controls. No existing game event, bus or voiceover bank is
+replaced. Sound settings and the final loudness must be checked in-game.
+
+`mods/staysharp/tools/build_audio_bank.py` serializes the small Wwise 2023.1 / bank-version
+150 subset directly, including the Wargaming bank-header representation.
+The four header fields use the encoding documented by
+[OpenWG.Utils](https://github.com/Aslain/wows.openwg.utils/tree/9f6733e48ffda5149beb34d43e8817059472d2fc/src/wwise).
+Rebuilding requires only Python's standard library;
+it verifies the original WAV checksum before building Wwise PCM media and
+all seven Sound -> Play Action -> Event graphs. IDs use Wwise's lowercase FNV-1.
+All seven recordings are **AI-generated neural speech**, created offline
+with **Boson AI's Higgs TTS 3 4B**. The Polish and English takes follow the
+owner-auditioned delivery; the other five use the same determination and
+projected-voice controls. No real-person voice-cloning reference is used.
+The generated Ukrainian sentence includes explicit Ukrainian context to
+disambiguate the identical Russian/Ukrainian spelling of the target phrase;
+only the complete announcement is extracted for packaging.
+
+The source model produces 24 kHz float audio. Post-processing uses
+**FFmpeg `atempo=1.07`** for the selected 7% faster tempo while retaining
+pitch, followed by constant gain to approximately **-20 LUFS**, subject to
+a **-1.5 dBTP** ceiling, and mono 16-bit PCM export at 16 kHz. There is no
+intercom filter, ambience, reverb or pitch shift. The earlier time-stretch
+method was rejected after a measured change to the selected Polish
+recording's low-mid balance. The Wwise builder embeds the finished PCM
+samples without another audio encode.
+
+Exact text, model/codec/port revisions, generation parameters, raw waveform
+hashes, Ukrainian crop bounds and final WAV/PCM hashes are recorded in
+`mods/staysharp/assets/voices/manifest.json`. The generated-audio credit is prominent in
+the README and retained in `mods/staysharp/assets/VOICE_NOTICE.txt`, which is included in
+the soundbank package and installer. The original model's terms are the
+[Boson Higgs TTS 3 Research and Non-Commercial License, including its
+Creator Use Grant](https://huggingface.co/bosonai/higgs-tts-3-4b/blob/239f63fb7b02b1aa085f98d9efae5e35cc5523e8/LICENSE).
+The model license is not an open-source license, and this audio notice does
+not relicense the mod's code. No model weights or inference runtime are
+shipped by the mod.
+
+Inference ran from pinned local files in a rootless container with networking
+disabled. Neither the game nor the package builder requires the generator
+or its libraries. Local speech recognition checked each announcement's
+wording; it cannot certify native pronunciation or acting. The final
+language quality and loudness still require an in-game listening check.
+
+Format and routing references:
+
+- [Wwise bank format parser](https://github.com/bnnm/wwiser/blob/master/wwiser/parser/wparser.py)
+- [Wwise PCM format reader](https://github.com/vgmstream/vgmstream/blob/master/src/meta/wwise.c)
+- [WoT equipment activation mapping](https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/gui/battle_control/controllers/consumables/equipment_ctrl.py)
+- [WoT SoundGroups API](https://github.com/izeberg/wot-src/blob/EU/sources/res/scripts/client/SoundGroups.py)
+- [WoT Wwise mixer reference](https://github.com/Supergrefu/9.13-Wot-gun-sounds-for-wot/tree/main/Master-Mixer%20Hierarchy)
+
+## Loading and coexistence with other sound mods
+
+For a normal installation, the bundled `res/audioww/audio_mods.xml` asks
+WoT to load the custom bank. It contains only a `loadBanks` entry and no
+event remapping. A namespaced `staysharp_medkit.xml` descriptor is also
+provided for existing **BanksLoader** installations to discover/merge.
+BanksLoader is not required on an otherwise unmodified client.
+
+**`audio_mods.xml` is a shared WoT resource.** If another sound mod or a
+loose file already supplies it, the game's resource precedence may select
+that file instead of this package's descriptor, or vice versa. Merely
+placing several versions of that XML in separate packages does not merge
+them. With an existing sound configuration, preserve all its entries and
+add this bank under its `loadBanks` element:
+
+```xml
+<bank><name>staysharp_medkit.bnk</name></bank>
+```
+
+Alternatively use your existing BanksLoader to merge the namespaced bank
+descriptor. The mod does not rewrite your global audio configuration,
+install another loader, request a restart or delete another mod's entries.
+After changing audio loading configuration, fully restart WoT.
+
+## Verification and limits
+
+Offline tests cover announcement timing, repetition, cancellation, camera
+and HUD transitions, failed audio calls, package resources, PCM content,
+IDs and bank references. The existing bank layout was previously parsed
+independently with **wwiser v20260808**, with all 21 HIRC objects consumed
+and no parse errors. The current builder encodes the header for the Wargaming
+reader. Packaging tests independently decode those header fields and compare
+every embedded PCM payload to its source
+and provenance checksums. These checks do not prove native engine loading
+or audible output.
+There is no WoT client in the build environment: perform the in-game checks
+in [the installation guide](INSTALACJA.md) before calling this version
+confirmed stable. A future Wwise upgrade may require updating the bank
+format; Python/API and visual compatibility are separate concerns.
+
+## OpenWG.Utils format reference notice
+
+MIT License
+
+Copyright (c) 2017-2022 OpenWG.Utils Contributors
+Copyright (c) 2024 OpenWG.Utils Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -6,7 +6,10 @@ const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require(
 function assertEmptyStateSource(source=fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8')) {
   const start=source.indexOf('    function renderGroups(scope) {');
   const end=source.indexOf('    function pinnedFilterHeight()',start);
-  assert(start>=0 && end>start,'The regression must exercise the actual shipped renderGroups function');
+  const retireStart=source.indexOf('    function retireHistoryCards() {');
+  const retireEnd=source.indexOf('    function cardSortValue(',retireStart);
+  assert(start>=0 && end>start && retireStart>=0 && retireEnd>retireStart,
+    'The regression must exercise the shipped group renderer and card cleanup');
   class Node {
     constructor(className='',text=''){this.className=className;this.ownText=text;this.children=[];this.style={};this.attributes={};this.parentNode=null;}
     get firstElementChild(){return this.children[0] || null;}
@@ -44,7 +47,8 @@ function assertEmptyStateSource(source=fs.readFileSync(path.join(__dirname,'../u
       state.groupCards=state.groupCards.concat(page.cards);},
     append,element:(tag,className,text)=>new Node(className,text),
     showFeedPending(){},updateFeedControls(){},ordered:items=>items,getOrder:()=>({}),layoutBattleCards(){},finishFeedAnchor(){},queueResize(){}};
-  vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+  vm.createContext(context);
+  vm.runInContext(source.slice(retireStart,retireEnd)+'\n'+source.slice(start,end),context);
   const render=()=>context.renderGroups({vehicles:currentFeed ? currentFeed.cache[0] : []});
   const emptyCount=()=>nodes.groups.querySelectorAll('.ss-empty').filter(node=>node.textContent==='groups.empty').length;
   render();assert.strictEqual(emptyCount(),1,'An initially empty native feed has one empty notice');
@@ -54,8 +58,11 @@ function assertEmptyStateSource(source=fs.readFileSync(path.join(__dirname,'../u
   currentFeed.cache[0]=[{id:'synthetic-battle'}];currentFeed.total=1;currentFeed.version++;
   render();assert.strictEqual(emptyCount(),0,'Newly received results remove the empty notice');
   assert.strictEqual(nodes.groups.querySelectorAll('.ss-group').length,1,'The new result is rendered');
+  let retired=0;
+  nodes.groups.querySelector('.ss-group')._ssHistoryDispose=()=>{retired++;};
   currentFeed.cache[0]=[];currentFeed.total=0;currentFeed.version++;
   render();render();assert.strictEqual(emptyCount(),1,'Results becoming empty again create only one notice');
+  assert.strictEqual(retired,1,'Removing the old group retires its pending history once');
   currentFeed=feed();currentFeed.cache={};
   render();assert.strictEqual(emptyCount(),0,'A pending uncached page is not presented as completed empty data');
   currentFeed.cache[0]=[];

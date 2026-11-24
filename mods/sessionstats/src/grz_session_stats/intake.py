@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 
+from .localization import message
 from .storage import GenerationStore, StorageError, canonical_bytes
 
 MAX_INTAKE_BYTES = 1024 * 1024
@@ -38,6 +39,13 @@ class Intake(object):
     def events(self):
         return self.state['events']
 
+    def refresh(self):
+        if self.store.changed_on_disk():
+            state = self.store.load(self.validate)
+            if state is None:
+                raise StorageError(message('storage.changed'))
+            self.state = state
+
     def _save(self, events):
         candidate = dict(self.state, events=events)
         # Include room for the storage envelope; never create a file that this
@@ -47,6 +55,22 @@ class Intake(object):
         self.store.save(candidate)
         self.state = candidate
 
+    def _update(self, event, remove):
+        for attempt in range(4):
+            self.refresh()
+            if remove:
+                if event not in self.events:
+                    return  # A peer already removed this acknowledged event.
+                events = [saved for saved in self.events if saved != event]
+            else:
+                events = self.events + [event]
+            try:
+                self._save(events)
+                return
+            except StorageError:
+                if attempt == 3 or not self.store.changed_on_disk():
+                    raise
+
     def append(self, kind, launch_id, timestamp, record=None, context=None):
         event = {'producer': self.producer, 'sequence': self.sequence + 1,
                  'kind': kind, 'launch_id': launch_id, 'at': timestamp}
@@ -54,10 +78,9 @@ class Intake(object):
             event['record'] = record
         if context:
             event['context'] = context
-        self._save(self.events + [event])
+        self._update(event, remove=False)
         self.sequence += 1
         return event
 
     def remove(self, event):
-        if self.events and self.events[0] == event:
-            self._save(self.events[1:])
+        self._update(event, remove=True)

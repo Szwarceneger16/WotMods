@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every browser check with pinned Chromium, fonts and OS dependencies."""
+"""Run CI browser checks with pinned Chromium and isolated dependencies."""
 import argparse
 import json
 import os
@@ -19,9 +19,12 @@ IMAGE = ('mcr.microsoft.com/playwright:v1.62.1-noble@sha256:'
          'dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e')
 UI_TESTS = ('ui_contract', 'ui-wheel', 'ui-footer', 'ui-footer-activity',
             'ui-footer-compat', 'ui-appearance')
+E2E_MODES = {'build': ('build', 'failures'), 'smoke': ('build', 'all'),
+             'full': ('full', 'final'), 'exhaustive': ('full', 'final')}
 PULL_TIMEOUT = 600
 PREPARE_TIMEOUT = 300
 TEST_TIMEOUT = 900
+MATRIX_TIMEOUT = 150 * 60
 HOST_CA = Path('/etc/ssl/certs/ca-certificates.crt')
 
 
@@ -52,11 +55,13 @@ def python_runtime():
             'version': sys.version}
 
 
-def docker_command(command, *, runtime, workspace, temporary, name):
+def docker_command(command, *, runtime, workspace, temporary, name, offline=False):
     """Build a container command without forwarding host credentials or sockets."""
     args = ['docker', 'run', '--rm', '--init', '--platform', 'linux/amd64',
             '--shm-size=1g', '--name', name, '--user', '{}:{}'.format(os.getuid(), os.getgid()),
             '--workdir', str(workspace)]
+    if offline:
+        args += ['--network', 'none']
     mounts = [(workspace, str(workspace), False),
               (temporary, str(temporary), False)]
     mounts += [(source, target, True) for source, target in runtime['mounts']]
@@ -78,6 +83,8 @@ def docker_command(command, *, runtime, workspace, temporary, name):
         'PATH': '/host-python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         **runtime['environment'],
     }
+    if offline:
+        environment['GITHUB_ACTIONS'] = 'true'
     if HOST_CA.is_file():
         environment['NODE_EXTRA_CA_CERTS'] = '/host-ca-certificates.crt'
     for key, value in sorted(environment.items()):
@@ -85,15 +92,15 @@ def docker_command(command, *, runtime, workspace, temporary, name):
     return args + [IMAGE] + list(command)
 
 
-def execute(command, timeout):
-    subprocess.run(command, check=True, timeout=timeout)
+def execute(command, timeout, **options):
+    subprocess.run(command, check=True, timeout=timeout, **options)
 
 
-def container(command, *, runtime, workspace, temporary, timeout):
+def container(command, *, runtime, workspace, temporary, timeout, offline=False):
     name = 'sessionstats-browser-' + uuid.uuid4().hex
     try:
         execute(docker_command(command, runtime=runtime, workspace=workspace,
-                               temporary=temporary, name=name), timeout)
+                               temporary=temporary, name=name, offline=offline), timeout)
     finally:
         # Killing a timed-out Docker CLI does not stop its container. Remove
         # this invocation's unique name only; never prune unrelated containers.
@@ -149,7 +156,104 @@ for (const name of %s) {
 """ % json.dumps(UI_TESTS)
 
 
-def run(prepare=False):
+def e2e_command(profile, report_dir, shard, target_sha=None, *, python='/host-python/bin/python3'):
+    suite, capture = E2E_MODES[profile]
+    command = ['node', 'scripts/sessionstats/local-e2e/run.cjs', '--suite', suite,
+               '--engine', 'chromium', '--python', python,
+               '--capture', capture, '--out', str(report_dir)]
+    if suite == 'full':
+        command += ['--image-format', 'jpeg', '--jpeg-quality', '48']
+    if profile == 'exhaustive':
+        command += ['--all-ranges']
+    if shard or profile == 'smoke':
+        command += ['--shard', shard or '1/1']
+    if target_sha:
+        command += ['--commit', target_sha]
+    return command
+
+
+def merge_report_command(profile, report_dir, expected_shards, parts, target_sha=None, upstream=None):
+    suite, capture = E2E_MODES[profile]
+    version = (ROOT / 'mods/sessionstats/VERSION').read_text(encoding='ascii').strip()
+    command = ['node', 'scripts/sessionstats/local-e2e/merge-report.cjs', '--out', str(report_dir),
+               '--expected-shards', str(expected_shards), '--expected-version', version,
+               '--expected-suite', suite, '--expected-capture', capture, '--coverage', profile]
+    if target_sha:
+        command += ['--expected-commit', target_sha]
+    for name, result in (upstream or {}).items():
+        command += ['--' + name + '-result', result]
+    return command + ['--', *parts]
+
+
+def checkout_commit():
+    sha = subprocess.check_output(['git', 'rev-parse', '--verify', 'HEAD'], cwd=ROOT, text=True, timeout=10).strip()
+    if not re.fullmatch(r'[0-9a-f]{40}', sha):
+        raise RuntimeError('The matrix checkout does not have a valid commit SHA')
+    return sha
+
+
+def verify_target_checkout(sha):
+    if checkout_commit() != sha:
+        raise RuntimeError('The checked-out commit does not match the planned matrix commit')
+
+
+def target_commit(explicit, *, render_matrix):
+    if explicit:
+        verify_target_checkout(explicit)
+        return explicit
+    # Before the default workflow passed --target-sha, its checkout was already
+    # pinned to the planned PR head. GITHUB_SHA names the default branch instead.
+    if (render_matrix and os.environ.get('GITHUB_ACTIONS') == 'true'
+            and os.environ.get('GITHUB_EVENT_NAME') == 'issue_comment'):
+        return checkout_commit()
+    return None
+
+
+def windows_smoke(report_dir, target_sha):
+    """Run the normal build check using Windows CPython and Chromium directly."""
+    npm = shutil.which('npm.cmd')
+    if npm is None or shutil.which('node.exe') is None:
+        raise RuntimeError('Windows browser smoke requires Node.js 22 or later with npm')
+    # Forward OS process and network settings. The synthetic test does not
+    # need the runner's GitHub credentials, workflow commands or user modules.
+    inherited = {'path', 'pathext', 'systemroot', 'windir', 'comspec', 'temp', 'tmp',
+                 'programfiles', 'programfiles(x86)', 'programdata', 'userprofile',
+                 'localappdata', 'appdata', 'homedrive', 'homepath', 'http_proxy',
+                 'https_proxy', 'no_proxy'}
+    environment = {key: value for key, value in os.environ.items() if key.lower() in inherited}
+    directory = os.environ.get('RUNNER_TEMP') or None
+    with tempfile.TemporaryDirectory(prefix='sessionstats-browser-', dir=directory) as directory:
+        temporary = Path(directory).resolve()
+        tools = temporary / 'tools'
+        tools.mkdir()
+        modules = tools / 'node_modules'
+        dependencies = temporary / 'python'
+        environment.update({'CI': '1', 'GITHUB_ACTIONS': 'true', 'NODE_PATH': str(modules),
+                            'PLAYWRIGHT_BROWSERS_PATH': str(temporary / 'browsers'),
+                            'PYTHONPATH': str(dependencies), 'PYTHONNOUSERSITE': '1',
+                            'PYTHONDONTWRITEBYTECODE': '1', 'npm_config_strict_ssl': 'true',
+                            'npm_config_userconfig': str(temporary / 'npmrc'),
+                            'npm_config_cache': str(temporary / 'npm-cache')})
+        options = {'cwd': ROOT, 'env': environment}
+        execute([sys.executable, '-I', '-m', 'pip', '--isolated', 'install', '--disable-pip-version-check', '--no-cache-dir',
+                 '--target', str(dependencies), '-r', str(ROOT / 'scripts/sessionstats/local-e2e/requirements.txt')],
+                PREPARE_TIMEOUT, **options)
+        execute([npm, 'install', '--prefix', str(tools), '--no-audit', '--no-fund', '--ignore-scripts',
+                 '--save-exact', 'playwright@' + PLAYWRIGHT_VERSION], PREPARE_TIMEOUT, **options)
+        execute(['node', str(modules / 'playwright/cli.js'), 'install', '--only-shell', 'chromium'],
+                PULL_TIMEOUT, **options)
+        execute(e2e_command('build', report_dir or temporary / 'report', None, target_sha, python=sys.executable),
+                TEST_TIMEOUT, **options)
+
+
+def run(prepare=False, *, e2e=None, report_dir=None, shard=None, target_sha=None):
+    if report_dir is not None:
+        report_dir = report_dir.resolve()
+        if ROOT not in report_dir.parents:
+            raise RuntimeError('The CI report directory must be inside the workspace')
+    if sys.platform == 'win32' and e2e == 'build':
+        windows_smoke(report_dir, target_sha)
+        return
     if not shutil.which('docker'):
         raise RuntimeError('Docker is required for the pinned browser QA runtime')
     runtime = python_runtime()
@@ -164,16 +268,53 @@ def run(prepare=False):
                    '--no-fund', '--save-exact', 'playwright@' + PLAYWRIGHT_VERSION],
                   timeout=PREPARE_TIMEOUT, **options)
         container(['node', '-e', smoke_script(runtime)], timeout=PREPARE_TIMEOUT, **options)
-        if not prepare:
+        if e2e:
+            timeout = MATRIX_TIMEOUT if e2e in ('full', 'exhaustive') else TEST_TIMEOUT
+            container(e2e_command(e2e, report_dir or temporary / 'report', shard, target_sha),
+                      timeout=timeout, offline=True, **options)
+        elif not prepare:
             container(['node', '-e', test_script()], timeout=TEST_TIMEOUT, **options)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prepare', action='store_true', help='Install and smoke-test the runtime only')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--prepare', action='store_true', help='Install and smoke-test the runtime only')
+    modes.add_argument('--e2e', choices=E2E_MODES,
+                       help='Render a short CI check or an on-demand matrix')
+    modes.add_argument('--merge-report', choices=E2E_MODES, help='Assemble the downloaded matrix parts')
+    parser.add_argument('--report-dir', type=Path, help='Keep the report under this workspace path')
+    parser.add_argument('--shard', help='Render the given full-matrix shard (N/M)')
+    parser.add_argument('--expected-shards', type=int, help='Number of shards from the CI plan')
+    parser.add_argument('--target-sha', help='Commit from the CI plan')
+    jobs = ('render', 'contracts', 'download')
+    for name in jobs:
+        parser.add_argument('--' + name + '-result', choices=('success', 'failure', 'cancelled', 'skipped'),
+                            help='Outcome from the workflow')
+    parser.add_argument('parts', nargs='*', help='Shard directories to merge')
     args = parser.parse_args()
+    if args.report_dir is not None and not (args.e2e or args.merge_report):
+        parser.error('--report-dir requires --e2e or --merge-report')
+    if args.shard and args.e2e not in ('full', 'exhaustive'):
+        parser.error('--shard requires --e2e full or --e2e exhaustive')
+    if args.target_sha is not None and (not (args.e2e or args.merge_report) or
+                                        not re.fullmatch(r'[0-9a-f]{40}', args.target_sha)):
+        parser.error('--target-sha requires a 40-character commit SHA with --e2e or --merge-report')
+    if args.merge_report:
+        if not args.report_dir or not args.expected_shards or args.expected_shards < 1:
+            parser.error('--merge-report requires --report-dir and a positive --expected-shards')
+    elif args.expected_shards is not None or args.parts:
+        parser.error('--expected-shards and shard directories require --merge-report')
+    upstream = {name: getattr(args, name + '_result') for name in jobs}
+    if any(upstream.values()) and (not args.merge_report or not all(upstream.values())):
+        parser.error('Provide all three job results with --merge-report')
     try:
-        run(prepare=args.prepare)
+        sha = target_commit(args.target_sha, render_matrix=args.e2e or args.merge_report)
+        if args.merge_report:
+            command = merge_report_command(args.merge_report, args.report_dir, args.expected_shards, args.parts,
+                                           target_sha=sha, upstream=upstream if all(upstream.values()) else None)
+            return subprocess.run(command, cwd=ROOT, check=False).returncode
+        run(prepare=args.prepare, e2e=args.e2e, report_dir=args.report_dir, shard=args.shard, target_sha=sha)
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         print('Browser QA failed: ' + str(error), file=sys.stderr)
         return 1

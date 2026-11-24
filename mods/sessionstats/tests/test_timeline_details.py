@@ -16,6 +16,7 @@ from grz_session_stats.battle_details import game_active_crucible, game_mission_
 from grz_session_stats.core import StatsService
 from grz_session_stats.sessions import InstallationSession
 from grz_session_stats.normalize import normalize_result
+from grz_session_stats.storage import GenerationStore
 
 
 class TimelineAndBattleDetailsTests(unittest.TestCase):
@@ -87,6 +88,30 @@ class TimelineAndBattleDetailsTests(unittest.TestCase):
         self.assertEqual(details['missions']['daily:test']['status'], 'completed')
         avatar['questsProgress'][active] = ('group', {}, {'bonusCount': 1})
         self.assertEqual(normalize_result(raw)['details']['missions'][active]['status'], 'completed')
+
+    def test_complementary_reports_replace_the_fallback_battle_pass_total(self):
+        raw = raw_result()
+        avatar = raw['personal']['avatar']
+        avatar.update(bpTopPoints=8, bpBonusPoints=15)
+        first = normalize_result(raw)
+        self.clock.value = first['started_at'] + 10
+        self.assertTrue(self.service.record_result(first))
+        del avatar['bpTopPoints'], avatar['bpBonusPoints']
+        avatar.update(eventBattlePassPoints=10, bpNonChapterPointsDiff=4)
+        second = normalize_result(raw)
+        self.assertEqual(second['details']['pass_points'], {'missions': 10, 'credited': 4})
+        self.assertTrue(self.service.record_result(second))
+
+        store = GenerationStore(self.service.store.directory)
+        history = store.load()
+        points = history['battles'][first['arena_id']]['details']['pass_points']
+        expected = {'battle': 8, 'missions': 10, 'vehicle': 15, 'credited': 33}
+        self.assertEqual(points, expected)
+        points['credited'] = 4
+        store.save(history)
+        reopened = self.open_service('reopened')
+        battle = reopened.timeline_snapshot()['battles'][0]
+        self.assertEqual(battle['details']['pass_points'], expected)
 
     def test_active_crucible_and_confirmed_result_survive_reopen_and_partial_retry(self):
         active = 'challenge:8:2'

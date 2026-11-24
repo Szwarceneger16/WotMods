@@ -1,18 +1,23 @@
 /* Native page-three navigation must follow the exact card through late layout. */
 const assert=require('assert'),fs=require('fs'),path=require('path'),vm=require('vm');
-const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8');
+const shipped=()=>fs.readFileSync(path.join(__dirname,'../ui/session_stats.js'),'utf8').replace(/\r\n/g,'\n');
 function actualFunction(source,name) {
   const start=source.indexOf('    function '+name+'('),end=source.indexOf('\n    }\n',start);
   assert(start>=0&&end>start,'Exercise actual shipped '+name);return source.slice(start,end+7);
 }
 function geometry(source=shipped()) {
   let clock=1000,offset=0,physical=0,position=1500,missing=false,busy=false,validContext=true,lag=false,pendingOffset=null,focused=0,paints=0,nextTimer=1,pinnedUpdates=0;
+  let droppedWrites=0,maximum=4000;
   const timers=new Map(),owner={account_key:'synthetic-jump',scope:'launch',period_id:'synthetic-period'};
   const feed={navigationPage:2};
   const target={getAttribute:name=>name==='data-group-id'?'selected-page-three':null,
     get offsetTop(){return position;},
-    getBoundingClientRect:()=>missing?{top:0,width:0,height:0}:({top:100+position-physical,bottom:250+position-physical,width:500,height:150})};
-  const scroll={get scrollTop(){return offset;},set scrollTop(value){const next=Math.max(0,Math.min(4000,value));
+    getBoundingClientRect:()=>missing?{top:0,width:0,height:0}:({top:100+position-physical,bottom:250+position-physical,width:500,height:150}),
+    querySelector:selector=>selector==='.ss-battle-selection-banner'?{
+      getBoundingClientRect:()=>({top:90+position-physical,bottom:110+position-physical,height:20})
+    }:null};
+  const scroll={get scrollTop(){return offset;},set scrollTop(value){const next=Math.max(0,Math.min(maximum,value));
+      if(droppedWrites>0){droppedWrites--;return;}
       if(lag){pendingOffset=next;if(lag==='getter')physical=next;if(lag==='rect')offset=next;}
       else {offset=next;physical=next;}},
     clientHeight:500,scrollHeight:4500,getBoundingClientRect:()=>({top:100,bottom:600,width:700,height:500})};
@@ -25,20 +30,22 @@ function geometry(source=shipped()) {
     cardFlowQueued:false,scrollTarget:null,pageJump:{feed,page:2}};
   const context={state,nodes:{scroll,groups},Date:{now:()=>clock},Math,
     hasNumber:value=>typeof value==='number'&&Number.isFinite(value),sameContext:()=>validContext,
+    currentScope:()=>({}),renderFilterActivity(){},
     clearBattleTarget(){state.highlightedBattle=null;},paintBattleTarget(){paints++;},
     cancelUITimer:id=>timers.delete(id),window:{setTimeout(callback,delay){const id=nextTimer++;timers.set(id,{callback,delay});return id;}},
-    focusControl(){focused++;},pinnedFilterHeight:()=>60,scrollbarMetrics:()=>({maximum:4000}),
+    focusControl(){focused++;},pinnedFilterHeight:()=>60,scrollbarMetrics:()=>({maximum}),
     queueResize(){context.finishBattleJump();},updatePinnedFilters(){pinnedUpdates++;},syncScrollbar(){}};
   vm.createContext(context);
   const names=['cancelBattleNavigation','cancelPageJump','retireFeed','consumeBattleFocus','startBattleJump','retainBattleTargetAfterResize',
-    'renderedBattleTarget','finishBattleJump','finishPageJump','onScrollIntent'];
+    'renderedBattleTarget','finishBattleJump','finishPageJump','onScrollIntent','battleOwnsViewport','keepSelectedBattleVisible'];
   for(const name of ['retryBattleJump','battleLayoutOffset','battleScrollPending'])if(source.includes('    function '+name+'('))names.push(name);
   vm.runInContext(names.map(name=>actualFunction(source,name)).join('\n'),context);
   context.consumeBattleFocus({battle_focus:{id:'selected-page-three',request_id:'owned-focus'},pagination:{battles:{page:2}}});
   return {context,state,scroll,target,timers,
     tick(delta=100){clock+=delta;const next=[...timers].find(([,timer])=>timer.delay>0&&timer.delay<=100);if(next){timers.delete(next[0]);next[1].callback();}},
     show(){state.groupCards=[target];},missing(value){missing=value;},busy(value){busy=value;},
-    move(value){position=value;},setContext(value){validContext=value;},lag(value){lag=value;},
+    move(value){position=value;},limit(value){maximum=value;},setContext(value){validContext=value;},lag(value){lag=value;},
+    dropNextWrite(){droppedWrites++;},
     flush(){lag=false;if(pendingOffset!==null){offset=pendingOffset;physical=pendingOffset;pendingOffset=null;}},
     focused:()=>focused,paints:()=>paints,pinnedUpdates:()=>pinnedUpdates};
 }
@@ -75,8 +82,22 @@ function assertBattleJumpSource(source=shipped()) {
   late.scroll.scrollTop=1175;late.context.retainBattleTargetAfterResize();late.context.finishBattleJump();
   assert.strictEqual(late.scroll.scrollTop,1175,'A visible selected card keeps its current scroll after resizing');
   assert.strictEqual(late.focused(),1,'Resize reveal leaves keyboard focus on the active control');
-  late.context.onScrollIntent({type:'wheel',target:late.scroll});late.scroll.scrollTop=500;late.tick();
+  late.context.onScrollIntent({type:'wheel',deltaY:1,target:late.scroll});late.scroll.scrollTop=500;late.tick();
   assert.strictEqual(late.scroll.scrollTop,500,'New user scrolling supersedes resize alignment');
+  late.context.retainBattleTargetAfterResize();
+  assert.strictEqual(late.context.battleOwnsViewport(),false,'A resize can reveal the card once without reclaiming ownership after a user scroll');
+  assert.strictEqual(late.state.battleJump.revealOnly,true);
+
+  const notices=geometry(source);notices.show();notices.context.finishBattleJump();
+  for(let index=0;index<8&&notices.state.battleJump;index++)notices.tick();
+  assert.strictEqual(notices.state.battleJump,null);
+  notices.move(1475);
+  notices.context.keepSelectedBattleVisible();
+  assert(notices.state.battleJump,'Removing a notice triggers correction even when the selected card node was reused');
+  notices.context.finishBattleJump();
+  assert(notices.target.querySelector('.ss-battle-selection-banner').getBoundingClientRect().top>=160,
+    'The marker returns below the pinned filters without a native scrollbar event');
+  assert.strictEqual(notices.focused(),1,'The correction does not steal keyboard focus again');
 
   const duringJump=geometry(source);duringJump.show();duringJump.state.resize={};duringJump.context.finishBattleJump();
   assert.strictEqual(duringJump.scroll.scrollTop,0,'An initial jump also waits while the window is being resized');
@@ -99,10 +120,25 @@ function assertBattleJumpSource(source=shipped()) {
     assert.strictEqual(async.state.battleJump,null,'Acknowledged '+phase+' geometry settles and retires');
   }
 
+  const dropped=geometry(source);dropped.show();dropped.dropNextWrite();dropped.context.finishBattleJump();
+  assert.strictEqual(dropped.scroll.scrollTop,0,'A discarded native setter changes neither the scroll getter nor the rendered geometry');
+  for(let index=0;index<8&&dropped.scroll.scrollTop===0;index++)dropped.tick();
+  assert.strictEqual(dropped.scroll.scrollTop,1424,'A discarded scroll write is reissued while the original battle still owns alignment');
+  assert.strictEqual(dropped.focused(),1,'Reissuing the scroll preserves the single focus transfer');
+
+  const shrinking=geometry(source);shrinking.show();shrinking.dropNextWrite();shrinking.context.finishBattleJump();
+  assert(shrinking.state.battleJump.requestedOffset>150,'The selected card requested a position above the future range');
+  shrinking.move(225);shrinking.limit(150);shrinking.tick();
+  assert.strictEqual(shrinking.state.battleJump.requestedOffset,150,'The retained selected card setter uses the new maximum');
+  assert.strictEqual(shrinking.scroll.scrollTop,150);
+  for(let index=0;index<12&&shrinking.state.battleJump;index++)shrinking.tick();
+  assert.strictEqual(shrinking.state.battleJump,null,'The selected card settles before timeout after the range shrinks');
+  assert.strictEqual(shrinking.focused(),1);
+
   for(const kind of ['wheel','mousedown','keydown']) {
     const moved=geometry(source);moved.context.finishBattleJump();
     const retained=[...moved.timers.values()].find(timer=>timer.delay===100).callback;
-    moved.context.onScrollIntent({type:kind,key:'ArrowDown',target:moved.scroll});
+    moved.context.onScrollIntent({type:kind,key:'ArrowDown',deltaY:1,button:0,target:moved.scroll});
     moved.state.scrollTarget=null;moved.scroll.scrollTop=350;moved.show();retained();
     assert.strictEqual(moved.state.battleJump,null,'Newer '+kind+' retires the pending target');
     assert.strictEqual(moved.scroll.scrollTop,350,'Late target geometry cannot undo newer '+kind);
